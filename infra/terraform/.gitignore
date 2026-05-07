@@ -1,0 +1,26 @@
+# Local Terraform state and caches — never committed.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Plan artifacts.
+*.tfplan
+*.tfplan.binary
+
+# Variable files with secrets — only example files are committed.
+*.tfvars
+*.tfvars.json
+!example.tfvars
+!*.example.tfvars
+
+# CLI logs.
+crash.log
+crash.*.log
+
+# Override files (local dev convenience).
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

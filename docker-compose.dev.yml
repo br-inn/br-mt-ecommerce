@@ -1,0 +1,271 @@
+# =============================================================================
+# Docker Compose — Local Development (Caddy single entry point)
+# =============================================================================
+# Modelo de despliegue local:
+#   - Caddy expone HTTP al host (único entry point).
+#   - Backend (FastAPI) y Frontend (Next.js) NO se exponen directamente.
+#   - DB: Supabase real (DATABASE_URL en backend/.env apunta al pooler).
+#   - Auth + Storage: Supabase real.
+#   - Redis: dockerizado (broker Celery + cache).
+#
+# Puertos configurables vía .env.deploy. Si los defaults están ocupados:
+#   ./infra/scripts/check-ports.sh   |   .\infra\scripts\check-ports.ps1
+#
+# Comandos:
+#   ./infra/scripts/dev-up.sh                            # Arranca el stack
+#   ./infra/scripts/dev-down.sh                          # Para el stack
+#   ./infra/scripts/dev-down.sh -v                       # Para + borra Redis cache
+#
+# Acceso:
+#   App (vía Caddy):                http://localhost:${CADDY_HTTP_PORT}
+#   Redis directo (IDE):            localhost:${REDIS_HOST_PORT}
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Redis 7 — Celery broker + result backend + cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: mt-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
+  # Backend (FastAPI) — uvicorn con hot-reload — NO expuesto al host
+  # DB y Auth: Supabase real (config en mt-pricing-backend/.env)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./mt-pricing-backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: mt-backend
+    restart: unless-stopped
+    expose:
+      - "8000"
+    env_file:
+      - ./mt-pricing-backend/.env
+    environment:
+      # Solo overrides de servicios dockerizados; DATABASE_URL viene del .env
+      # apuntando a Supabase pooler.
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: development
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./mt-pricing-backend/app:/app/app
+      # Alembic migrations — bind mount para que nuevas revisiones se vean
+      # sin rebuild de imagen (dev only).
+      - ./mt-pricing-backend/alembic:/app/alembic
+      # Fixtures dev-only — montaje read-only para `/imports/pim/run-from-fixture`.
+      - "./Documentos referencia de articulos:/fixtures:ro"
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/health/live',timeout=2).status==200 else sys.exit(1)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: ./mt-pricing-backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: mt-worker
+    restart: unless-stopped
+    env_file:
+      - ./mt-pricing-backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: development
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./mt-pricing-backend/app:/app/app
+      # Fixtures dev-only — el worker accede al PIM completo.xlsx para batch import.
+      - "./Documentos referencia de articulos:/fixtures:ro"
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.worker",
+        "worker",
+        "-Q",
+        "imports,pricing,images,comparator,notifications,audit,default",
+        "-l",
+        "info",
+      ]
+    # Override healthcheck heredado del Dockerfile (que asume HTTP server).
+    # Worker no corre HTTP — chequeamos Celery inspect ping.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "celery -A app.workers.worker inspect ping -d celery@$$HOSTNAME -t 5 || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat — DatabaseScheduler en Supabase Postgres
+  # ---------------------------------------------------------------------------
+  beat:
+    build:
+      context: ./mt-pricing-backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: mt-beat
+    restart: unless-stopped
+    env_file:
+      - ./mt-pricing-backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: development
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./mt-pricing-backend/app:/app/app
+      - ./mt-pricing-backend/alembic:/app/alembic
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.worker",
+        "beat",
+        "--scheduler=app.scheduler.database_scheduler:DatabaseScheduler",
+        "-l",
+        "info",
+      ]
+    # Beat no corre HTTP. Verificamos el cmdline del PID 1 (siempre el celery beat
+    # process). pgrep/ps no estan en la imagen slim — leemos /proc directo.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "grep -q beat /proc/1/cmdline || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js) — dev server con HMR — NO expuesto al host
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./mt-pricing-frontend
+      dockerfile: Dockerfile
+      target: deps
+    container_name: mt-frontend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    env_file:
+      - ./mt-pricing-frontend/.env.local
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:${CADDY_HTTP_PORT:-8080}
+      NODE_ENV: development
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./mt-pricing-frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: ["pnpm", "dev"]
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
+  # Caddy 2 — ÚNICO entry point HTTP. Routing inteligente.
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: mt-caddy
+    restart: unless-stopped
+    ports:
+      - "${CADDY_HTTP_PORT:-8080}:80"
+      - "${CADDY_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      CADDY_HTTP_PORT: ${CADDY_HTTP_PORT:-8080}
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    healthcheck:
+      test:
+        ["CMD", "wget", "-qO-", "--tries=1", "http://localhost:80/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mt-internal
+
+# -----------------------------------------------------------------------------
+# Volumes — solo Redis cache + Caddy state. NO Postgres (todo en Supabase).
+# -----------------------------------------------------------------------------
+volumes:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+# -----------------------------------------------------------------------------
+# Network interna — backend/frontend/worker/beat NO accesibles desde host.
+# -----------------------------------------------------------------------------
+networks:
+  mt-internal:
+    name: mt-pricing-dev
+    driver: bridge

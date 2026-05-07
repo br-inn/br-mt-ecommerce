@@ -1,0 +1,111 @@
+# =============================================================================
+# Infra overlay — Celery worker (Dockerfile.worker) + Flower opcional.
+#
+# IMPORTANTE: este archivo es complementario, NO sustituye al
+# `docker-compose.dev.yml` raíz (que ya define `worker` con Dockerfile genérico
+# para hot-reload dev). Aquí añadimos:
+#   - `worker-image`: container construido con `Dockerfile.worker` (slim Debian
+#     con libwebp/libjpeg/zlib pre-instalados — R-S2-09). Útil para integration
+#     tests + staging.
+#   - `flower`: UI de monitoring Celery en puerto 5555 (opcional).
+#
+# Uso:
+#   # Stack base + overlay:
+#   docker compose -f docker-compose.dev.yml -f infra/docker-compose.dev.yml up
+#
+#   # Sólo flower (asume worker base ya corriendo):
+#   docker compose -f infra/docker-compose.dev.yml up flower
+#
+# Refs: ADR-055, US-1A-02-07/08, R-S2-09 (alpine-prohibido para image processing).
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Worker dedicado image pipeline — usa Dockerfile.worker (slim + libwebp).
+  # Coexiste con el `worker` del compose raíz; aquí escalamos sólo `images`
+  # queue para que el throughput de probe+thumbnails no compita con imports.
+  # ---------------------------------------------------------------------------
+  worker-images:
+    build:
+      context: ../mt-pricing-backend
+      dockerfile: Dockerfile.worker
+    container_name: mt-worker-images
+    restart: unless-stopped
+    env_file:
+      - ../mt-pricing-backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: development
+      # SSRF defaults (ADR-055) — el feature flag PIM España queda OFF hasta Q-09.
+      ALLOW_PROBE_FROM_PIM_ES: "false"
+      ALLOW_HTTP_PROBE: "false"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      - "celery"
+      - "-A"
+      - "app.workers.worker"
+      - "worker"
+      - "-Q"
+      - "images"
+      - "--loglevel=INFO"
+      - "--concurrency=4"
+      - "--hostname"
+      - "worker-images@%h"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "celery -A app.workers.worker inspect ping -d worker-images@$$HOSTNAME -t 5 || exit 1"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
+  # Flower — UI de monitoring Celery (opcional, dev-only). Puerto 5555.
+  # NOTA: Flower NO tiene auth por defecto. Si exponemos en staging, configurar
+  # FLOWER_BASIC_AUTH=user:pass.
+  # ---------------------------------------------------------------------------
+  flower:
+    image: mher/flower:2.0
+    container_name: mt-flower
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5555:5555"
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      FLOWER_PORT: "5555"
+      FLOWER_PURGE_OFFLINE_WORKERS: "60"
+      # Auth basic — override en staging/prod.
+      FLOWER_BASIC_AUTH: "${FLOWER_BASIC_AUTH:-admin:devpassword}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      - "celery"
+      - "--broker=redis://redis:6379/1"
+      - "flower"
+      - "--port=5555"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "wget -qO- --tries=1 --user=admin --password=devpassword http://localhost:5555/healthcheck || exit 1"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - mt-internal
+
+# Reusamos la red del compose raíz — `external: true` evita que docker-compose
+# intente crearla (ya existe como `mt-pricing-dev`).
+networks:
+  mt-internal:
+    name: mt-pricing-dev
+    external: true

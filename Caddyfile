@@ -1,0 +1,118 @@
+# =============================================================================
+# Caddyfile — Local Development Reverse Proxy (único entry point HTTP)
+# =============================================================================
+# Caddy es el único servicio expuesto al host. Routea internamente:
+#   /api/*    → backend FastAPI (mt-backend:8000)
+#   /health/* → backend FastAPI (healthchecks bypass auth)
+#   /_next/*  → frontend Next.js (assets HMR + chunks)
+#   /        → frontend Next.js (mt-frontend:3000)
+#
+# Backend y frontend NO se exponen al host directamente — solo accesibles vía
+# Caddy a través de la red interna mt-internal del docker compose.
+#
+# Producción tendrá un Caddyfile separado en infra/ con dominio real + auto-HTTPS.
+# Referencia: ADR-035 (Caddy reverse proxy).
+# =============================================================================
+
+{
+	# Auto-HTTPS off — sin dominio real en local.
+	auto_https off
+	# Admin API off — endurecimiento.
+	admin off
+	# Logging estructurado JSON a stdout (docker compose logs los captura).
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+}
+
+# -----------------------------------------------------------------------------
+# Listener HTTP en :80 (Caddy container internal); host expone vía CADDY_HTTP_PORT.
+# -----------------------------------------------------------------------------
+:80 {
+	# -------------------------------------------------------------------------
+	# Healthcheck bypass — directo a backend, sin rate-limiting ni auth checks.
+	# Lo usan: Docker healthcheck, monitores externos, scripts de smoke test.
+	# -------------------------------------------------------------------------
+	handle /health/* {
+		reverse_proxy backend:8000 {
+			# Timeouts cortos — un health stuck no debe colgar la app.
+			transport http {
+				dial_timeout 2s
+				response_header_timeout 5s
+			}
+		}
+	}
+
+	# -------------------------------------------------------------------------
+	# Métricas Prometheus — solo accesible internamente (placeholder, hardening
+	# en prod debe restringir por IP allowlist o auth).
+	# -------------------------------------------------------------------------
+	handle /metrics {
+		reverse_proxy backend:8000
+	}
+
+	# -------------------------------------------------------------------------
+	# API routes — todo bajo /api/* va a FastAPI.
+	# -------------------------------------------------------------------------
+	handle /api/* {
+		reverse_proxy backend:8000 {
+			# Headers para que el backend conozca el cliente real.
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Request-ID {http.request.header.X-Request-ID}
+
+			# Timeouts más generosos — imports y recálculos pueden tardar.
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 60s
+				read_timeout 600s
+			}
+		}
+	}
+
+	# -------------------------------------------------------------------------
+	# Documentación OpenAPI auto-generada por FastAPI.
+	# -------------------------------------------------------------------------
+	handle /docs* {
+		reverse_proxy backend:8000
+	}
+	handle /redoc* {
+		reverse_proxy backend:8000
+	}
+	handle /openapi.json {
+		reverse_proxy backend:8000
+	}
+
+	# -------------------------------------------------------------------------
+	# Frontend (Next.js) — catch-all para SSR, assets estáticos, _next/*, HMR.
+	#
+	# Caddy 2 detecta Connection: Upgrade automáticamente y promueve la conexión
+	# a WebSocket. Mantenemos config minimalista para no interferir con el
+	# upgrade (X-Forwarded-* van por defecto; transport custom rompe el WS).
+	# -------------------------------------------------------------------------
+	handle {
+		reverse_proxy frontend:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -------------------------------------------------------------------------
+	# Security headers — aplicados a TODAS las responses.
+	# HSTS se setea incluso en dev para que browsers cachéen política a prod.
+	# -------------------------------------------------------------------------
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Strip Server header — menor superficie de fingerprinting.
+		-Server
+	}
+
+	# Compresión — zstd preferido, gzip fallback.
+	encode zstd gzip
+}
