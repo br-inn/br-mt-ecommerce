@@ -1,0 +1,83 @@
+# =============================================================================
+# Dependabot configuration
+# =============================================================================
+# Weekly updates for backend (pip), frontend (npm), GitHub Actions, and Docker.
+# Dev/minor updates auto-merge via .github/workflows/dependabot-auto-merge.yml.
+# =============================================================================
+---
+version: 2
+updates:
+  # ---------------------------------------------------------------------------
+  # Backend Python dependencies (managed by uv / pyproject.toml).
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/mt-pricing-backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - backend
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # ---------------------------------------------------------------------------
+  # Frontend npm/pnpm dependencies.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/mt-pricing-frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - frontend
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions versions (pin SHA tags to mitigate supply chain risk).
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+
+  # ---------------------------------------------------------------------------
+  # Docker base images.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/mt-pricing-backend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - dependencies
+      - backend
+      - docker
+
+  - package-ecosystem: "docker"
+    directory: "/mt-pricing-frontend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - dependencies
+      - frontend
+      - docker

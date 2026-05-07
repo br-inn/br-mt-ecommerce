@@ -1,0 +1,44 @@
+# Line endings normalization
+# Default: detect text vs binary, normalize to LF in repo, checkout with platform default
+* text=auto
+
+# Force LF on shell scripts and shebang files (BOM/CRLF break execution)
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Force CRLF on Windows-only scripts
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+
+# Force LF on common config / source / docs (cross-platform safe)
+*.py    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.mjs   text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.md    text eol=lf
+*.sql   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf
+
+# Mark binaries explicitly so git no las trata como texto
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.xlsx  binary
+*.xls   binary
+*.docx  binary
+*.zip   binary

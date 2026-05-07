@@ -1,0 +1,189 @@
+# =============================================================================
+# br-mt-ecommerce — .gitignore (monorepo: Python backend + Node frontend + IaC)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Python (mt-pricing-backend)
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Tools (NOTA: uv.lock SÍ se versiona — no aparece aquí)
+.python-version.local
+
+# Test fixtures con datos confidenciales del cliente (US-1A-06-01) — usar el
+# archivo real desde `Documentos referencia de articulos/` o symlink local.
+mt-pricing-backend/tests/fixtures/*.xlsx
+mt-pricing-backend/tests/fixtures/*.xlsm
+
+# -----------------------------------------------------------------------------
+# Node / Next.js (mt-pricing-frontend)
+# -----------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.next/
+out/
+.turbo/
+.swc/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/
+.vitest-cache/
+
+# -----------------------------------------------------------------------------
+# Terraform / IaC (infra/)
+# -----------------------------------------------------------------------------
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl.local
+crash.log
+crash.*.log
+
+# tfvars: ignorar reales, permitir ejemplos
+*.tfvars
+*.tfvars.json
+!*.example.tfvars
+!*.example.tfvars.json
+
+# -----------------------------------------------------------------------------
+# Environment / secrets
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+.env.deploy
+# NO ignoramos .env.example NI .env.deploy.example (deben versionarse como template)
+
+# Doppler local cache
+.doppler/
+
+# -----------------------------------------------------------------------------
+# IDEs / editores
+# -----------------------------------------------------------------------------
+# VSCode: ignoramos casi todo excepto settings y extensions recomendados
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+.\#*
+\#*\#
+
+# Sublime
+*.sublime-workspace
+*.sublime-project
+
+# -----------------------------------------------------------------------------
+# OS-specific
+# -----------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+*.tar
+docker-volumes/
+.docker-data/
+
+# -----------------------------------------------------------------------------
+# BMAD (mantener planning-artifacts y adr; ignorar caches/temporales)
+# -----------------------------------------------------------------------------
+_bmad-output/.cache/
+_bmad-output/tmp/
+_bmad-output/.scratch/
+
+# -----------------------------------------------------------------------------
+# Husky / pre-commit hooks
+# -----------------------------------------------------------------------------
+# .husky/_  → carpeta generada por husky en cada install (no versionar)
+.husky/_/
+
+# pre-commit framework cache
+.pre-commit-cache/
+
+# detect-secrets baseline (si se adopta a futuro: SÍ versionar)
+# .secrets.baseline  ← descomentar SOLO si se decide NO versionar el baseline
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.bak
+*.tmp
+*.orig
+.cache/
+
+# -----------------------------------------------------------------------------
+# Coverage / test outputs (raíz monorepo, scripts orquestadores)
+# -----------------------------------------------------------------------------
+coverage.xml
+.coverage.*
+
+# Reference artifacts (large binaries, not source)
+MT_Pricing_Run_Kit/
+MT_Pricing_Run_Kit*.zip
+Documentos referencia de articulos/
+MT_Middle_East_Documento_Maestro*.docx
+mt_logo.png
+
+# Claude Code per-dev runtime + locally-installed skills (not source)
+.claude/scheduled_tasks.lock
+.claude/skills/

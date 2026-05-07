@@ -1,0 +1,123 @@
+name: Postmortem
+description: Blameless postmortem after a SEV1/SEV2 incident.
+title: "[postmortem]: "
+labels: [postmortem, sev1]
+assignees: [psierra]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Blameless postmortem template. Focus on systems and processes, not people.
+        Reference: SRE Workbook chapter 10.
+
+  - type: input
+    id: incident_id
+    attributes:
+      label: Incident ID
+      placeholder: INC-2026-001
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: Incident date (UTC)
+      placeholder: 2026-05-06 14:30 UTC
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - SEV1
+        - SEV2
+    validations:
+      required: true
+
+  - type: input
+    id: duration
+    attributes:
+      label: Duration (detection -> resolution)
+      placeholder: 47 min
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Executive summary (TL;DR)
+      description: 2-3 sentences for leadership / customers.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Customer / business impact
+      description: Affected users, lost revenue, SLO burn, data integrity.
+    validations:
+      required: true
+
+  - type: textarea
+    id: timeline
+    attributes:
+      label: Timeline (UTC)
+      description: Bullet list with timestamps. Detection, escalation, mitigation, recovery.
+      placeholder: |
+        - 14:30 — alert fires (p99 latency > 2s)
+        - 14:33 — on-call paged
+        - 14:41 — root cause identified (DB connection pool exhausted)
+        - 14:50 — mitigation deployed (pool size doubled)
+        - 15:17 — full recovery confirmed
+    validations:
+      required: true
+
+  - type: textarea
+    id: root_cause
+    attributes:
+      label: Root cause
+      description: Use 5-Whys or causal chain. Avoid "human error" — find the system gap.
+    validations:
+      required: true
+
+  - type: textarea
+    id: detection
+    attributes:
+      label: How was it detected?
+      description: Alert / customer report / dashboard. Was detection adequate?
+    validations:
+      required: true
+
+  - type: textarea
+    id: response
+    attributes:
+      label: What went well?
+    validations:
+      required: true
+
+  - type: textarea
+    id: response_bad
+    attributes:
+      label: What went poorly?
+    validations:
+      required: true
+
+  - type: textarea
+    id: lucky
+    attributes:
+      label: Where did we get lucky?
+    validations:
+      required: false
+
+  - type: textarea
+    id: action_items
+    attributes:
+      label: Action items
+      description: Concrete, owned, dated. Linked to issues/PRs.
+      placeholder: |
+        - [ ] Add pool exhaustion alert (owner @x, due YYYY-MM-DD, #issue)
+        - [ ] Add load test for connection pool (owner @y)
+    validations:
+      required: true

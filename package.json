@@ -1,0 +1,39 @@
+{
+  "name": "br-mt-ecommerce-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo orquestador para la plataforma MT Middle East (MDM + Pricing). Backend FastAPI/Python, Frontend Next.js/React, IaC Terraform.",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "docker compose -f docker-compose.dev.yml up",
+    "dev:frontend": "pnpm --filter mt-pricing-frontend dev",
+    "dev:backend": "echo 'Use: cd mt-pricing-backend && uv run uvicorn app.main:app --reload'",
+    "build": "pnpm run build:frontend",
+    "build:frontend": "pnpm --filter mt-pricing-frontend build",
+    "lint": "pnpm run lint:frontend && pnpm run lint:backend",
+    "lint:frontend": "pnpm --filter mt-pricing-frontend lint",
+    "lint:backend": "cd mt-pricing-backend && uv run ruff check . && uv run ruff format --check .",
+    "typecheck": "pnpm run typecheck:frontend && pnpm run typecheck:backend",
+    "typecheck:frontend": "pnpm --filter mt-pricing-frontend typecheck",
+    "typecheck:backend": "cd mt-pricing-backend && uv run mypy app",
+    "test": "pnpm run test:frontend && pnpm run test:backend",
+    "test:frontend": "pnpm --filter mt-pricing-frontend test",
+    "test:backend": "cd mt-pricing-backend && uv run pytest --cov=app --cov-report=term-missing",
+    "format:frontend": "pnpm --filter mt-pricing-frontend format",
+    "format:backend": "cd mt-pricing-backend && uv run ruff format .",
+    "hooks:install": "pre-commit install && pre-commit install --hook-type commit-msg",
+    "hooks:run": "pre-commit run --all-files",
+    "commitlint": "commitlint --edit",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.7"
+  },
+  "packageManager": "pnpm@9.1.0"
+}

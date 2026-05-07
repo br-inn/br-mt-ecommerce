@@ -1,0 +1,125 @@
+# =============================================================================
+# pre-commit hooks
+# =============================================================================
+# Install with: pre-commit install && pre-commit install --hook-type commit-msg
+# Run on all files: pre-commit run --all-files
+# Reference: https://pre-commit.com/
+# =============================================================================
+---
+repos:
+  # ---------------------------------------------------------------------------
+  # Generic hygiene hooks.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=10000"]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # ---------------------------------------------------------------------------
+  # Python — ruff (lint + format) for backend code only.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^mt-pricing-backend/
+      - id: ruff-format
+        files: ^mt-pricing-backend/
+
+  # ---------------------------------------------------------------------------
+  # Python — mypy (slow, runs on save in editor too).
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        files: ^mt-pricing-backend/app/
+        additional_dependencies:
+          - pydantic>=2
+          - sqlalchemy>=2
+
+  # ---------------------------------------------------------------------------
+  # JS/TS/JSON/Markdown — prettier (frontend only).
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        files: ^mt-pricing-frontend/.*\.(ts|tsx|js|jsx|json|md|yaml|yml|css|scss)$
+
+  # ---------------------------------------------------------------------------
+  # Secrets — gitleaks. Blocks commits containing accidental credentials.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------------------
+  # Shell scripts — shellcheck.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+
+  # ---------------------------------------------------------------------------
+  # YAML — yamllint (relaxed config; tighter rules in CI).
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ["-d", "relaxed"]
+
+  # ---------------------------------------------------------------------------
+  # Commit messages — commitizen enforces conventional-commits (commit-msg hook).
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.27.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # ---------------------------------------------------------------------------
+  # Frontend ESLint + tsc --noEmit — locales (delegan a pnpm en mt-pricing-frontend).
+  # Solo corren si hay archivos del frontend en el commit. Bloquean si fallan.
+  # NOTA: requieren `pnpm install` previo en mt-pricing-frontend/.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: frontend-eslint
+        name: Frontend ESLint (next lint)
+        entry: pnpm --filter mt-pricing-frontend lint
+        language: system
+        files: ^mt-pricing-frontend/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: frontend-typecheck
+        name: Frontend tsc --noEmit
+        entry: pnpm --filter mt-pricing-frontend typecheck
+        language: system
+        files: ^mt-pricing-frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: backend-mypy-fast
+        # Mypy "rápido" (sin instalar deps adicionales) — el hook mirrors-mypy
+        # arriba sigue siendo el principal; este es un fallback editor-friendly.
+        # Lo dejamos aquí comentado por defecto para evitar dobles ejecuciones.
+        name: Backend mypy (skip — usar mirrors-mypy)
+        entry: "true"
+        language: system
+        always_run: false
+        stages: [manual]

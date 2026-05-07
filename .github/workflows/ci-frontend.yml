@@ -1,0 +1,231 @@
+# =============================================================================
+# CI - Frontend (Next.js / Node 20 / pnpm)
+# =============================================================================
+# Stages: lint -> typecheck -> test -> build -> bundle size -> Lighthouse.
+# =============================================================================
+---
+name: ci-frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mt-pricing-frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+  pull_request:
+    paths:
+      - "mt-pricing-frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+
+concurrency:
+  group: ci-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9.12.0"
+  WORKDIR: mt-pricing-frontend
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint (eslint via pnpm script)
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
+
+      - name: Install deps
+        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
+        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
+            pnpm install --no-frozen-lockfile
+          fi
+
+      - name: Lint
+        run: pnpm lint
+
+  # ---------------------------------------------------------------------------
+  # Typecheck (tsc --noEmit)
+  # ---------------------------------------------------------------------------
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
+
+      - name: Install deps
+        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
+        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
+            pnpm install --no-frozen-lockfile
+          fi
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  # ---------------------------------------------------------------------------
+  # Unit tests (vitest / jest configured in package.json)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
+
+      - name: Install deps
+        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
+        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
+            pnpm install --no-frozen-lockfile
+          fi
+
+      - name: Test
+        run: pnpm test -- --reporter=default --coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: ${{ env.WORKDIR }}/coverage
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Production build + bundle size analysis.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [lint, typecheck, test]
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
+
+      - name: Install deps
+        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
+        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
+            pnpm install --no-frozen-lockfile
+          fi
+
+      - name: Build (Next.js)
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Bundle size check
+        # Fails if any first-load JS bundle exceeds 250 KB gzipped (placeholder).
+        # TODO: replace with `next-bundle-analyzer` or `size-limit` once configured.
+        run: |
+          echo "TODO: integrate size-limit / next-bundle-analyzer"
+          du -sh .next/static || true
+
+      - name: Upload Next.js build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: |
+            ${{ env.WORKDIR }}/.next
+            !${{ env.WORKDIR }}/.next/cache
+          retention-days: 3
+
+  # ---------------------------------------------------------------------------
+  # Lighthouse CI — placeholder. Wires up once a preview URL is available.
+  # ---------------------------------------------------------------------------
+  lighthouse:
+    name: Lighthouse CI (placeholder)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lighthouse placeholder
+        run: |
+          echo "TODO: run Lighthouse CI against deploy preview."
+          echo "Suggested action: treosh/lighthouse-ci-action@v12"

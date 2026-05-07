@@ -1,0 +1,35 @@
+# Path-based PR labels (used by .github/workflows/pr-checks.yml).
+# Reference: https://github.com/actions/labeler
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file: "mt-pricing-backend/**"
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: "mt-pricing-frontend/**"
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "infra/**"
+          - "docker-compose*.yml"
+          - "Caddyfile"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "_bmad-output/**"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/pyproject.toml"
+          - "**/uv.lock"
+          - "**/package.json"
+          - "**/pnpm-lock.yaml"

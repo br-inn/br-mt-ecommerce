@@ -1,0 +1,120 @@
+# =============================================================================
+# CI - Infrastructure (Terraform)
+# =============================================================================
+# Validates Terraform formatting, syntax, and security posture.
+# `terraform plan` runs only on PRs (with read-only credentials).
+# Reference: ADR-050 (Terraform on Hetzner Cloud).
+# =============================================================================
+---
+name: ci-infra
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/ci-infra.yml"
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/ci-infra.yml"
+
+concurrency:
+  group: ci-infra-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write # for plan comments on PRs
+
+env:
+  TF_VERSION: "1.9.5"
+  TF_DIR: infra/terraform
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # terraform fmt --check
+  # ---------------------------------------------------------------------------
+  fmt:
+    name: terraform fmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: terraform fmt --check
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform fmt -check -recursive -diff
+
+  # ---------------------------------------------------------------------------
+  # terraform validate
+  # ---------------------------------------------------------------------------
+  validate:
+    name: terraform validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: terraform init (no backend)
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform validate
+
+  # ---------------------------------------------------------------------------
+  # tflint — lint Terraform code (style + best practices)
+  # ---------------------------------------------------------------------------
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.53.0
+
+      - name: tflint init
+        working-directory: ${{ env.TF_DIR }}
+        run: tflint --init
+
+      - name: tflint
+        working-directory: ${{ env.TF_DIR }}
+        run: tflint --recursive --format compact
+
+  # ---------------------------------------------------------------------------
+  # tfsec — static security analysis
+  # ---------------------------------------------------------------------------
+  tfsec:
+    name: tfsec
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-sarif-action@v0.1.4
+        with:
+          working_directory: ${{ env.TF_DIR }}
+          sarif_file: tfsec.sarif
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec.sarif

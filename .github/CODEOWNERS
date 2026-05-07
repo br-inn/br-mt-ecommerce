@@ -1,0 +1,25 @@
+# =============================================================================
+# CODEOWNERS — automatic reviewer assignment
+# =============================================================================
+# Reference: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# Last matching pattern wins. Keep generic rules at the top.
+# =============================================================================
+
+# Default — every file requires this reviewer unless overridden below.
+* @psierra
+
+# Backend
+/mt-pricing-backend/ @psierra
+/mt-pricing-backend/app/db/ @psierra
+
+# Frontend
+/mt-pricing-frontend/ @psierra
+
+# Infra (Terraform, scripts, compose, Caddy, CI)
+/infra/ @psierra
+/.github/ @psierra
+/Caddyfile @psierra
+/docker-compose.dev.yml @psierra
+
+# Docs — ADRs require extra scrutiny.
+/_bmad-output/planning-artifacts/adr/ @psierra
