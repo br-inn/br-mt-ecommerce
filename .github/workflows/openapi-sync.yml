@@ -1,0 +1,107 @@
+# =============================================================================
+# CI - OpenAPI sync — verifica que el spec versionado coincida con el FastAPI app
+# =============================================================================
+# US-1A-DEV-01: regenera mt-api-contract-openapi.json desde app.main:app y falla
+# si difiere del versionado, forzando que todo cambio de API incluya regen.
+# Coexiste con ci-backend.yml / ci-backend-full.yml — se dispara sólo cuando
+# tocamos rutas API o el script de export.
+# =============================================================================
+name: openapi-sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mt-pricing-backend/app/api/**"
+      - "mt-pricing-backend/app/main.py"
+      - "mt-pricing-backend/app/schemas/**"
+      - "mt-pricing-backend/app/scripts/export_openapi.py"
+      - "_bmad-output/planning-artifacts/mt-api-contract-openapi.*"
+      - ".github/workflows/openapi-sync.yml"
+  pull_request:
+    paths:
+      - "mt-pricing-backend/app/api/**"
+      - "mt-pricing-backend/app/main.py"
+      - "mt-pricing-backend/app/schemas/**"
+      - "mt-pricing-backend/app/scripts/export_openapi.py"
+      - "_bmad-output/planning-artifacts/mt-api-contract-openapi.*"
+      - ".github/workflows/openapi-sync.yml"
+
+concurrency:
+  group: openapi-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  drift-check:
+    name: Detect OpenAPI drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHON_VERSION: "3.11"
+      UV_VERSION: "0.4.18"
+      SPEC_PATH: _bmad-output/planning-artifacts/mt-api-contract-openapi.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install backend deps
+        working-directory: mt-pricing-backend
+        run: uv sync --frozen --no-dev
+
+      - name: Export OpenAPI spec
+        working-directory: mt-pricing-backend
+        run: uv run python -m app.scripts.export_openapi --out ../${{ env.SPEC_PATH }}.generated
+
+      - name: Diff against versioned spec
+        run: |
+          if [[ ! -f "${SPEC_PATH}" ]]; then
+            echo "::warning::Versioned spec ${SPEC_PATH} missing — committing baseline."
+            mv "${SPEC_PATH}.generated" "${SPEC_PATH}"
+            exit 0
+          fi
+          if ! diff -u "${SPEC_PATH}" "${SPEC_PATH}.generated" > /tmp/openapi.diff; then
+            echo "::error::OpenAPI drift detected — run 'mt-pricing-frontend/scripts/openapi-gen.sh' and commit ${SPEC_PATH} + lib/api/types.ts"
+            head -200 /tmp/openapi.diff
+            exit 1
+          fi
+          echo "OK — OpenAPI spec sync."
+
+  frontend-types:
+    name: Frontend types regen
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: drift-check
+    defaults:
+      run:
+        working-directory: mt-pricing-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: mt-pricing-frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Regenerate types from JSON spec
+        run: |
+          npx --yes openapi-typescript ../_bmad-output/planning-artifacts/mt-api-contract-openapi.json -o lib/api/types.generated.ts
+          if ! diff -u lib/api/types.ts lib/api/types.generated.ts > /tmp/types.diff; then
+            echo "::error::lib/api/types.ts drift — run 'scripts/openapi-gen.sh' and commit"
+            head -200 /tmp/types.diff
+            exit 1
+          fi
+          echo "OK — frontend types in sync."
