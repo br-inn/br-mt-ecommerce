@@ -329,6 +329,51 @@ async def patch_product_data_quality(
     return ProductDetail.model_validate(full)
 
 
+@router.post(
+    "/classify",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Disparar classifier PVF rule-based en lote",
+    responses={
+        503: {"model": ProblemDetails, "description": "Celery no disponible"},
+    },
+)
+async def classify_pim_batch(
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    only_partial: Annotated[bool, Query(description="Si false revisa todos los productos.")] = True,
+    promote_to_complete: Annotated[bool, Query()] = True,
+) -> dict[str, Any]:
+    """Encola la task `mt.products.classify_pim_batch` que extrae
+    family/material/dn/pn del `name_en` de cada producto y promueve a
+    `complete` los que cumplen los 5 campos requeridos.
+
+    Idempotente: solo modifica campos vacíos o `family='unclassified'`.
+    Respeta `manual_locked_fields`. Audit por cada cambio.
+    """
+    try:
+        from app.workers.tasks.products import classify_pim_batch_task
+
+        async_result = classify_pim_batch_task.apply_async(
+            args=[str(user.id), only_partial, promote_to_complete],
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "classify_celery_unavailable",
+                "title": "Celery no respondió.",
+            },
+        ) from exc
+
+    return {
+        "celery_task_id": async_result.id,
+        "queued_at": async_result.date_done,
+        "params": {
+            "only_partial": only_partial,
+            "promote_to_complete": promote_to_complete,
+        },
+    }
+
+
 @router.delete(
     "/{sku}",
     status_code=status.HTTP_204_NO_CONTENT,

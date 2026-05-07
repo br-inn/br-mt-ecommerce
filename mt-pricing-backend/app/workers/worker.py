@@ -51,6 +51,7 @@ def make_celery() -> Celery:
         backend=str(settings.CELERY_RESULT_BACKEND),
         include=[
             "app.workers.tasks.imports",
+            "app.workers.tasks.products",
             "app.workers.tasks.pricing",
             "app.workers.tasks.images",
             "app.workers.tasks.comparator",
@@ -90,6 +91,7 @@ def make_celery() -> Celery:
         task_default_routing_key="default",
         task_routes={
             "mt.imports.*": {"queue": "imports"},
+            "mt.products.*": {"queue": "imports"},
             "mt.pricing.*": {"queue": "pricing"},
             "mt.images.*": {"queue": "images"},
             "mt.comparator.*": {"queue": "comparator"},
