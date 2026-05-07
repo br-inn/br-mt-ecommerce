@@ -19,6 +19,7 @@ from app.db.models.import_run import ImportRun
 from app.db.models.job import JobDefinition, JobRun
 from app.db.models.match_candidate import MatchCandidate
 from app.db.models.material_compatibility import MaterialCompatibility
+from app.db.models.notification import Notification
 from app.db.models.pricing import (
     Channel,
     ExceptionRule,
@@ -74,4 +75,6 @@ __all__ = [
     # calibrator training pipeline (Sprint 5 — US-1A-09-07)
     "GoldenLabel",
     "CalibratorVersion",
+    # notifications inbox (Sprint 6 — US-1B-02-08)
+    "Notification",
 ]

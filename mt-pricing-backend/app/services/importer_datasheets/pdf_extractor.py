@@ -236,4 +236,152 @@ def extract_text_from_pdf(payload: bytes) -> str:
     return _extract_manual(payload)
 
 
-__all__ = ["PDFExtractionError", "extract_text_from_pdf"]
+# ---------------------------------------------------------------------------
+# Sprint 6 — US-1A-06-04-V2 stretch: structured tables + metadata
+# ---------------------------------------------------------------------------
+
+
+def _normalize_table_row(row: list) -> list[str]:
+    """Limpia una fila pdfplumber: None→'', strip, colapsa whitespace."""
+    return [
+        " ".join((cell or "").split()) if cell is not None else ""
+        for cell in row
+    ]
+
+
+def _normalize_table(raw_rows: list[list]) -> dict | None:
+    """Convierte el output de ``page.extract_tables()`` a ``{headers, rows}``.
+
+    La primera fila no vacía se asume header. Filas con todos los cells vacíos
+    se descartan. Devuelve ``None`` si la tabla quedó vacía tras limpieza.
+    """
+    cleaned = [_normalize_table_row(r) for r in raw_rows if r]
+    cleaned = [r for r in cleaned if any(c for c in r)]
+    if not cleaned:
+        return None
+    headers = cleaned[0]
+    rows = cleaned[1:]
+    return {"headers": headers, "rows": rows}
+
+
+def extract_tables_from_pdf(payload: bytes) -> list[dict]:
+    """Extrae tablas estructuradas usando pdfplumber.
+
+    Returns:
+        Lista de ``{page: int (1-indexed), headers: list[str], rows: list[list[str]]}``.
+        Si pdfplumber no está disponible o falla, devuelve ``[]`` (no excepción).
+
+    El extractor de tablas REQUIERE pdfplumber (no hay fallback puro Python
+    que detecte tabular layouts de forma robusta). Para PDFs escaneados o
+    sin tablas, retorna lista vacía sin error.
+    """
+    if not payload or not payload.lstrip().startswith(_PDF_MAGIC):
+        return []
+    try:
+        import pdfplumber  # type: ignore  # noqa: I001
+    except Exception:  # noqa: BLE001
+        logger.info("pdfplumber unavailable — tables extraction skipped")
+        return []
+    try:
+        import io as _io
+
+        out: list[dict] = []
+        with pdfplumber.open(_io.BytesIO(payload)) as pdf:  # pragma: no cover
+            for page_idx, page in enumerate(pdf.pages, start=1):
+                try:
+                    raw_tables = page.extract_tables() or []
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("page %d extract_tables failed: %s", page_idx, exc)
+                    continue
+                for raw in raw_tables:
+                    norm = _normalize_table(raw)
+                    if norm is not None:
+                        out.append({"page": page_idx, **norm})
+        return out
+    except Exception as exc:  # pragma: no cover  # noqa: BLE001
+        logger.warning("extract_tables_from_pdf failed: %s", exc)
+        return []
+
+
+def _is_pdf_encrypted(payload: bytes) -> bool:
+    """Detecta encryption sin parsear todo. Heurística: busca ``/Encrypt`` en trailer."""
+    return b"/Encrypt" in payload[-4096:] if len(payload) > 4096 else b"/Encrypt" in payload
+
+
+def extract_pdf_metadata(payload: bytes) -> dict:
+    """Devuelve metadata + parsed_content compatible con ``product_datasheets.parsed_content``.
+
+    Schema:
+        {
+            "parse_method": "pdfplumber" | "manual_text" | "encrypted" | "invalid",
+            "page_count": int,
+            "text": str,
+            "tables": list[{page, headers, rows}],
+            "warnings": list[str],
+        }
+
+    NO lanza — para PDFs inválidos retorna parse_method='invalid' con warning.
+    """
+    warnings: list[str] = []
+    if not payload:
+        return {
+            "parse_method": "invalid",
+            "page_count": 0,
+            "text": "",
+            "tables": [],
+            "warnings": ["empty_payload"],
+        }
+    if not payload.lstrip().startswith(_PDF_MAGIC):
+        return {
+            "parse_method": "invalid",
+            "page_count": 0,
+            "text": "",
+            "tables": [],
+            "warnings": ["invalid_header"],
+        }
+    if _is_pdf_encrypted(payload):
+        return {
+            "parse_method": "encrypted",
+            "page_count": 0,
+            "text": "",
+            "tables": [],
+            "warnings": ["pdf_encrypted"],
+        }
+
+    page_count = 0
+    parse_method = "manual_text"
+    try:
+        import pdfplumber  # type: ignore
+        import io as _io
+
+        with pdfplumber.open(_io.BytesIO(payload)) as pdf:  # pragma: no cover
+            page_count = len(pdf.pages)
+            parse_method = "pdfplumber"
+    except Exception as exc:  # noqa: BLE001
+        warnings.append(f"pdfplumber_unavailable: {exc.__class__.__name__}")
+
+    try:
+        text = extract_text_from_pdf(payload)
+    except PDFExtractionError as exc:
+        text = ""
+        warnings.append(exc.code)
+
+    tables = extract_tables_from_pdf(payload)
+    if not tables and parse_method == "pdfplumber":
+        warnings.append("no_tables_detected")
+
+    return {
+        "parse_method": parse_method,
+        "page_count": page_count,
+        "text": text,
+        "tables": tables,
+        "warnings": warnings,
+    }
+
+
+__all__ = [
+    "PDFExtractionError",
+    "extract_pdf_metadata",
+    "extract_tables_from_pdf",
+    "extract_text_from_pdf",
+]

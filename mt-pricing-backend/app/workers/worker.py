@@ -63,6 +63,8 @@ def make_celery() -> Celery:
             "app.workers.tasks.calibrator",
             # S5 — pricing engine bulk-recalc nocturno (US-1B-01-07)
             "app.workers.tasks.pricing_recalc",
+            # S6 — pricing escalation pending_review > 48h (US-1B-02-08)
+            "app.workers.escalation",
             # Observabilidad: heartbeat publisher (signal + task periódica)
             "app.workers.heartbeat",
             # Mantenimiento DB: particiones audit_events (R-S2-08, US-1A-07-01)

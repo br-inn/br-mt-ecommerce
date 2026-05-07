@@ -112,6 +112,10 @@ class User(Base):
         UUID_PG, ForeignKey("roles.id", ondelete="SET NULL")
     )
 
+    delegate_user_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("users.id", ondelete="SET NULL")
+    )
+
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failed_logins: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")

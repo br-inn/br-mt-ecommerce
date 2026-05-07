@@ -46,6 +46,15 @@ BEAT_SCHEDULE: dict[str, dict] = {
         "kwargs": {"source": "nightly_beat"},
         "options": {"queue": "pricing"},
     },
+    # ----- Pricing escalation pending_review > 48h (US-1B-02-08, Sprint 6) -----
+    # Sweep cada 2h. Service es idempotente — propuestas ya escaladas se omiten.
+    "pricing_escalation_sweep": {
+        "task": "mt.pricing.escalate_pending",
+        "schedule": crontab(minute="0", hour="*/2"),
+        "args": (),
+        "kwargs": {"window_hours": 48},
+        "options": {"queue": "pricing"},
+    },
 }
 
 

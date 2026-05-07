@@ -192,6 +192,11 @@ class Price(UuidPkMixin, TimestampMixin, AuditMixin, Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rejection_reason: Mapped[str | None] = mapped_column(Text)
 
+    escalated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     valid_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
