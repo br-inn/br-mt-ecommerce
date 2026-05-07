@@ -1,0 +1,97 @@
+# syntax=docker/dockerfile:1.7
+# =============================================================================
+# MT Middle East — Celery Worker (image pipeline + Pillow + WebP)
+#
+# IMPORTANTE: base `python:3.11-slim` (Debian) — NO alpine. Ref R-S2-09:
+# Pillow + libwebp en alpine se compila con musl y produce WebP de menor
+# calidad / mayor tamaño + bugs reportados con AVIF. Slim (Debian) usa glibc
+# y libwebp del repo oficial.
+#
+# Multi-stage:
+#   - builder: instala wheels Python (uv).
+#   - runtime: slim minimal con libs sistema necesarias para Pillow (jpeg, png,
+#     webp, zlib, ICC profiles) + curl para healthchecks.
+#
+# Refs: ADR-030 (Celery), ADR-055 (SSRF guard), US-1A-02-07/08.
+# =============================================================================
+
+# --- Stage 1: builder --------------------------------------------------------
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /build
+
+# Sistema: libs de desarrollo para que Pillow (y posibles deps con C-extensions)
+# encuentren headers durante el wheel build cuando no hay wheel manylinux.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        ca-certificates \
+        libjpeg-dev \
+        libpng-dev \
+        libwebp-dev \
+        zlib1g-dev \
+        liblcms2-dev \
+        libtiff-dev \
+        libfreetype6-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv
+
+COPY pyproject.toml uv.lock* README.md ./
+# NOTE: Pillow se asume listada en pyproject.toml (Agente 1 — ver bloqueo en informe).
+# Si no está, descomentar la línea siguiente:
+# RUN uv pip install --system --no-cache "Pillow>=10.2"
+RUN uv pip install --system --no-cache .
+
+COPY app ./app
+
+# --- Stage 2: runtime (slim, libs runtime) -----------------------------------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+# Runtime libs (sin -dev) — sólo lo necesario para que Pillow cargue.
+# Tamaño objetivo: ~180-220 MB final.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        libjpeg62-turbo \
+        libpng16-16 \
+        libwebp7 \
+        libwebpmux3 \
+        libwebpdemux2 \
+        zlib1g \
+        liblcms2-2 \
+        libtiff6 \
+        libfreetype6 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 1001 mtworker \
+    && useradd --system --uid 1001 --gid mtworker --no-create-home mtworker
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder --chown=mtworker:mtworker /build/app /app/app
+
+USER mtworker
+
+# Healthcheck: ping al worker via Celery inspect. Requiere broker disponible.
+# Comentado del Dockerfile y se prefiere overrideable via docker-compose donde
+# tenemos contexto de hostname.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD celery -A app.workers.worker inspect ping -d celery@$HOSTNAME -t 5 || exit 1
+
+# Default: consumir todas las queues. En prod escalar 1 worker por queue.
+CMD ["celery", "-A", "app.workers.worker", "worker", \
+     "-Q", "imports,pricing,images,comparator,notifications,audit,default", \
+     "--loglevel=INFO", \
+     "--concurrency=4"]

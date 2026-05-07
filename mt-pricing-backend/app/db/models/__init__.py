@@ -1,0 +1,64 @@
+"""Re-export todos los modelos ORM para que Alembic los registre via Base.metadata.
+
+⚠ Nuevos modelos: añadir el import + el nombre en `__all__`. Si no, Alembic
+no los descubre y las migraciones autogenerate los ignoran.
+"""
+
+from __future__ import annotations
+
+from app.db.models.audit import AuditEvent
+from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
+from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
+from app.db.models.cost_scheme import CostScheme
+from app.db.models.currency import Currency
+from app.db.models.import_run import ImportRun
+from app.db.models.job import JobDefinition, JobRun
+from app.db.models.match_candidate import MatchCandidate
+from app.db.models.material_compatibility import MaterialCompatibility
+from app.db.models.pricing import (
+    Channel,
+    ExceptionRule,
+    FXRate,
+    Price,
+    PriceApprovalEvent,
+)
+from app.db.models.product import Product, ProductImage, ProductTranslation
+from app.db.models.supplier import Supplier
+from app.db.models.user import Permission, Role, RolePermission, User
+
+__all__ = [
+    # users / auth
+    "User",
+    "Role",
+    "Permission",
+    "RolePermission",
+    # products
+    "Product",
+    "ProductTranslation",
+    "ProductImage",
+    # master data fase 1a
+    "Currency",
+    "Supplier",
+    "CostScheme",
+    # audit
+    "AuditEvent",
+    # jobs / scheduler
+    "JobDefinition",
+    "JobRun",
+    # imports (US-1A-06-01)
+    "ImportRun",
+    # pricing engine (Wave 2 — motor v5.1)
+    "Channel",
+    "FXRate",
+    "Cost",
+    "Price",
+    "ExceptionRule",
+    "PriceApprovalEvent",
+    # matching pipeline (Sprint 3 — US-1A-09-01)
+    "MatchCandidate",
+    # channel mirror (Sprint 3 — US-1A-09-02)
+    "ChannelListing",
+    "ChannelSyncEvent",
+    # importer materials (Sprint 3 — US-1A-06-03)
+    "MaterialCompatibility",
+]

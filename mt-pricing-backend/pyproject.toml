@@ -1,0 +1,108 @@
+[project]
+name = "mt-pricing-backend"
+version = "0.1.0"
+description = "MT Middle East MDM + Pricing — Backend API (FastAPI + Celery + SQLAlchemy 2.0 async)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [
+    { name = "BR Innovation — MT Middle East", email = "platform@br-innovation.com" },
+]
+
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "gunicorn>=21",
+    "pydantic[email]>=2.6",
+    "pydantic-settings>=2.2",
+    "sqlalchemy[asyncio]>=2.0.27",
+    "asyncpg>=0.29",
+    "psycopg[binary]>=3.1",
+    "alembic>=1.13",
+    "celery[redis]>=5.3",
+    "redis>=5.0",
+    "supabase>=2.4",
+    "httpx>=0.27",
+    "structlog>=24",
+    "loguru>=0.7",
+    "sentry-sdk[fastapi,celery]>=1.40",
+    "python-multipart>=0.0.9",
+    "openpyxl>=3.1",
+    "python-jose[cryptography]>=3.3",
+    "PyYAML>=6",
+    "croniter>=2.0",
+    "tenacity>=8.2",
+    "prometheus-client>=0.20",
+    "prometheus-fastapi-instrumentator>=7.0",
+    "Pillow>=10.2,<11",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4",
+    "testcontainers[postgresql,redis]>=4",
+    "ruff>=0.3",
+    "mypy>=1.9",
+    "types-PyYAML",
+    "httpx>=0.27",
+    "pip-audit",
+    "schemathesis>=3.27",
+    "respx>=0.20",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF", "ANN"]
+ignore = ["ANN101", "ANN102", "ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN", "B", "SIM"]
+"alembic/**/*.py" = ["ANN", "E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/versions/.*"]
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "supabase.*",
+    "sentry_sdk.*",
+    "testcontainers.*",
+    "prometheus_fastapi_instrumentator.*",
+]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=app --cov-report=term-missing --cov-report=xml --strict-markers"
+markers = [
+    "unit: pure unit tests, no IO",
+    "integration: requires testcontainers (Postgres/Redis)",
+    "e2e: full ASGI client end-to-end",
+]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = ["app/db/migrations/*", "alembic/*"]

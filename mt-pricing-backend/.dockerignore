@@ -1,0 +1,50 @@
+# --- VCS ---------------------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+
+# --- Python ------------------------------------------------------------------
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+env/
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# --- Editor / OS -------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Env / secrets -----------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- Tests / docs ------------------------------------------------------------
+tests/
+docs/
+*.md
+!README.md
+
+# --- Docker ------------------------------------------------------------------
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# --- CI ----------------------------------------------------------------------
+.github/

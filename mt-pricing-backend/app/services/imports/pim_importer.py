@@ -1,0 +1,340 @@
+"""PimImporter — orquestador batch async del PIM completo (US-1A-06-01).
+
+Diseñado para correr en Celery worker:
+- Recibe ``run_id`` de un ``ImportRun`` ya persistido en estado ``queued``.
+- Lee xlsx desde filesystem o Storage (path se resuelve por el caller, aquí
+  se asume un path local accesible por el worker — los uploads via API se
+  descargan a /tmp antes de invocar).
+- Itera con openpyxl ``read_only=True`` (no carga 5k filas en RAM).
+- Por cada fila: cast → upsert en `products` por SKU → audit event.
+- Commit periódico cada 100 filas + flush incremental del ImportRun.
+- Errores por celda no abortan el run; se acumulan en ``ImportRun.errors``
+  cap a 100 entradas (display).
+
+Idempotencia:
+- UPSERT por ``products.sku`` (PK natural). Re-correr el mismo PIM no
+  duplica filas. Campos con ``manual_locked_fields`` NO se sobrescriben
+  (alineado con el wizard sincrono — la lógica vive en `_apply_to_product`).
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models.import_run import ImportRun
+from app.db.models.product import Product
+from app.repositories.audit import AuditRepository
+from app.repositories.product import ProductRepository
+from app.services.importer.column_mapper import EXPECTED_HEADERS
+from app.services.imports.pim_row_mapper import map_pim_row_to_product
+
+logger = logging.getLogger(__name__)
+
+#: Cap de errores serializados en ImportRun.errors (display).
+MAX_ERRORS_LOGGED: int = 100
+
+#: Frecuencia de commit periódico (filas).
+COMMIT_EVERY_N_ROWS: int = 100
+
+
+class PimImporter:
+    """Importer batch del PIM completo.xlsx.
+
+    Args:
+        session: AsyncSession con autocommit OFF — el importer hace commits
+            periódicos cada 100 filas via ``session.commit()`` directo.
+        source_path: path filesystem del xlsx (worker tiene el volumen montado).
+        run_id: UUID del ImportRun pre-creado (estado ``queued``).
+        actor_id: UUID del user que disparó el run (para audit). None permitido
+            sólo en endpoint de fixture dev (run_pim_from_fixture).
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        source_path: str | Path,
+        run_id: UUID | str,
+        actor_id: UUID | None = None,
+    ) -> None:
+        self.session = session
+        self.source_path = Path(source_path)
+        self.run_id = run_id if isinstance(run_id, UUID) else UUID(str(run_id))
+        self.actor_id = actor_id
+        self._run: ImportRun | None = None
+        self._repo = ProductRepository(session)
+        self._audit = AuditRepository(session)
+
+    # ------------------------------------------------------------------ run
+    async def run(self) -> ImportRun:
+        """Ejecuta el import. NO lanza excepciones por filas malas — sólo por
+        errores fatales (archivo no encontrado, header mismatch, DB caída).
+        """
+        self._run = await self.session.get(ImportRun, self.run_id)
+        if self._run is None:
+            raise RuntimeError(f"ImportRun {self.run_id} no existe.")
+
+        if not self.source_path.exists():
+            await self._mark_failed(f"Archivo no encontrado: {self.source_path}")
+            raise FileNotFoundError(self.source_path)
+
+        # Load workbook streaming. data_only=True para evaluar formulas pre-cache.
+        from openpyxl import load_workbook
+
+        try:
+            wb = load_workbook(
+                str(self.source_path), read_only=True, data_only=True
+            )
+        except Exception as exc:  # noqa: BLE001
+            await self._mark_failed(f"openpyxl load failed: {exc}")
+            raise
+
+        try:
+            ws = wb[wb.sheetnames[0]]
+            rows_iter = ws.iter_rows(values_only=True)
+
+            # Header validation — abortar si no coincide con la spec.
+            try:
+                header = next(rows_iter)
+            except StopIteration:
+                await self._mark_failed("Archivo vacío (sin header).")
+                return self._run
+
+            header_errors = self._collect_header_errors(header)
+            if header_errors:
+                await self._mark_failed(
+                    "Header mismatch: " + "; ".join(header_errors[:5])
+                )
+                return self._run
+
+            # Marca run como running.
+            self._run.status = "running"
+            self._run.started_at = datetime.now(tz=timezone.utc)
+            await self.session.commit()
+
+            inserted = 0
+            updated = 0
+            skipped = 0
+            errors: list[dict[str, Any]] = []
+            error_rows = 0
+            row_idx = 1  # 1 = primera fila de datos (post-header)
+
+            for row in rows_iter:
+                # Skip filas totalmente vacias (openpyxl emite tail rows None).
+                if all(v is None or v == "" for v in row):
+                    skipped += 1
+                    row_idx += 1
+                    continue
+
+                # Savepoint per fila — una mala no contamina el resto.
+                try:
+                    async with self.session.begin_nested():
+                        action = await self._process_row(row, row_idx)
+                    if action == "inserted":
+                        inserted += 1
+                    elif action == "updated":
+                        updated += 1
+                    else:
+                        skipped += 1
+                except Exception as exc:  # noqa: BLE001 — toleramos por fila
+                    error_rows += 1
+                    if len(errors) < MAX_ERRORS_LOGGED:
+                        errors.append(
+                            {
+                                "row": row_idx + 1,  # +1 porque header es row 1
+                                "error": str(exc)[:200],
+                            }
+                        )
+                    logger.warning(
+                        "PimImporter row %d failed: %s", row_idx + 1, exc
+                    )
+
+                # Commit periódico — flush al ImportRun + a products.
+                if row_idx % COMMIT_EVERY_N_ROWS == 0:
+                    self._run.inserted_rows = inserted
+                    self._run.updated_rows = updated
+                    self._run.skipped_rows = skipped
+                    self._run.error_rows = error_rows
+                    self._run.errors = errors
+                    self._run.total_rows = row_idx
+                    try:
+                        await self.session.commit()
+                    except Exception:  # noqa: BLE001
+                        logger.exception(
+                            "PimImporter periodic commit failed at row %d",
+                            row_idx,
+                        )
+                        try:
+                            await self.session.rollback()
+                        except Exception:  # noqa: BLE001
+                            pass
+                row_idx += 1
+        finally:
+            wb.close()
+
+        # Final flush.
+        self._run.total_rows = row_idx - 1
+        self._run.inserted_rows = inserted
+        self._run.updated_rows = updated
+        self._run.skipped_rows = skipped
+        self._run.error_rows = error_rows
+        self._run.errors = errors
+        self._run.summary = {
+            "inserted": inserted,
+            "updated": updated,
+            "skipped": skipped,
+            "errors": error_rows,
+            "max_errors_logged": MAX_ERRORS_LOGGED,
+        }
+        self._run.finished_at = datetime.now(tz=timezone.utc)
+        self._run.status = (
+            "completed" if error_rows == 0 else "completed_with_errors"
+        )
+        await self.session.commit()
+        logger.info(
+            "PimImporter completed run_id=%s inserted=%d updated=%d errors=%d",
+            self.run_id, inserted, updated, error_rows,
+        )
+        return self._run
+
+    # --------------------------------------------------------- header check
+    @staticmethod
+    def _collect_header_errors(header: tuple[Any, ...]) -> list[str]:
+        """Devuelve lista de mismatches contra EXPECTED_HEADERS. Vacia → OK."""
+        errors: list[str] = []
+        if len(header) < len(EXPECTED_HEADERS):
+            errors.append(
+                f"Header con {len(header)} columnas; esperadas "
+                f"{len(EXPECTED_HEADERS)}."
+            )
+            return errors
+        for i, expected in enumerate(EXPECTED_HEADERS):
+            actual = header[i]
+            actual_str = (str(actual) if actual is not None else "").strip()
+            if actual_str != expected:
+                errors.append(
+                    f"col {i}: esperado {expected!r}, recibido {actual_str!r}"
+                )
+        return errors
+
+    async def _mark_failed(self, reason: str) -> None:
+        """Marca el run como failed + persiste la razón en errors."""
+        if self._run is None:
+            return
+        self._run.status = "failed"
+        self._run.finished_at = datetime.now(tz=timezone.utc)
+        existing = list(self._run.errors or [])
+        existing.append({"row": 0, "error": reason[:200]})
+        self._run.errors = existing[:MAX_ERRORS_LOGGED]
+        try:
+            await self.session.commit()
+        except Exception:  # noqa: BLE001
+            logger.exception("PimImporter _mark_failed commit failed")
+            await self.session.rollback()
+
+    # --------------------------------------------------------- row process
+    async def _process_row(
+        self, row: tuple[Any, ...], row_idx: int
+    ) -> str:
+        """Procesa una fila: cast → upsert. Devuelve 'inserted'|'updated'|'skipped'."""
+        payload = map_pim_row_to_product(row)
+        cast_errors = payload.pop("_row_errors", None)
+        # Limpia keys que no son columnas reales del modelo Product.
+        payload.pop("_row_errors", None)
+
+        sku = payload["sku"]
+        existing = await self._repo.get_by_sku(sku)
+
+        if existing is None:
+            # INSERT — campos default vienen del payload (brand, family, etc.).
+            if self.actor_id is not None:
+                payload["created_by"] = self.actor_id
+                payload["updated_by"] = self.actor_id
+            await self._repo.create(**payload)
+            await self._audit_event(
+                action="product.imported.created",
+                sku=sku,
+                payload_diff={
+                    "_import_run_id": str(self.run_id),
+                    "cast_errors": cast_errors or [],
+                },
+                after=_safe_repr(payload),  # Decimal/datetime → str para JSONB.
+            )
+            return "inserted"
+
+        # UPDATE — solo campos no locked. Alineado con applier sincrono.
+        locked = set(existing.manual_locked_fields or [])
+        changed: dict[str, Any] = {}
+        for field, new_value in payload.items():
+            if field in locked:
+                continue
+            if field in {"sku", "internal_id", "created_at", "created_by"}:
+                continue
+            current = getattr(existing, field, None)
+            # Comparacion shallow — JSONB se compara por igualdad de dicts.
+            if current != new_value:
+                setattr(existing, field, new_value)
+                changed[field] = {"from": _safe_repr(current), "to": _safe_repr(new_value)}
+
+        if not changed:
+            return "skipped"
+
+        if self.actor_id is not None:
+            existing.updated_by = self.actor_id
+        existing.updated_at = datetime.now(tz=timezone.utc)
+        await self.session.flush()
+        await self._audit_event(
+            action="product.imported.updated",
+            sku=sku,
+            payload_diff={
+                "_import_run_id": str(self.run_id),
+                "diff": changed,
+                "cast_errors": cast_errors or [],
+            },
+        )
+        return "updated"
+
+    async def _audit_event(
+        self,
+        *,
+        action: str,
+        sku: str,
+        payload_diff: dict[str, Any],
+        after: dict[str, Any] | None = None,
+    ) -> None:
+        """Audit event tolerante — un fallo aqui no debe matar la fila."""
+        try:
+            await self._audit.record(
+                entity_type="product",
+                entity_id=sku,
+                action=action,
+                actor_id=self.actor_id,
+                payload_diff=payload_diff,
+                after=after,
+                reason=f"PIM batch import run {self.run_id}",
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "PimImporter audit failed sku=%s action=%s", sku, action
+            )
+
+
+def _safe_repr(value: Any) -> Any:
+    """JSONB-safe representation — Decimal/datetime → str, dicts pasan tal cual."""
+    from decimal import Decimal
+
+    if isinstance(value, (Decimal, datetime)):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _safe_repr(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_safe_repr(v) for v in value]
+    return value
+
+
+__all__ = ["PimImporter", "MAX_ERRORS_LOGGED", "COMMIT_EVERY_N_ROWS"]
