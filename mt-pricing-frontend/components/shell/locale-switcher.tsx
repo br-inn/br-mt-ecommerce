@@ -20,6 +20,7 @@ import { isLocale, locales, type Locale } from "@/lib/i18n/config";
 const LABELS: Record<Locale, { label: string; flag: string }> = {
   es: { label: "Español", flag: "ES" },
   en: { label: "English", flag: "EN" },
+  ar: { label: "العربية", flag: "AR" },
 };
 
 /**

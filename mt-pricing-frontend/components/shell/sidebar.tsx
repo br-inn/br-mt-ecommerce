@@ -9,14 +9,17 @@ import {
   Coins,
   Database,
   FileUp,
+  Flag,
   GitCompare,
   Home,
   LayoutGrid,
   Network,
+  Receipt,
   ScrollText,
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Tags,
   Timer,
   Truck,
@@ -48,6 +51,7 @@ const SECTION_OPS: readonly NavItem[] = [
   { href: "/precios", label: "Precios", icon: Tags },
   { href: "/canales", label: "Canales", icon: Network, badge: "5" },
   { href: "/precios/aprobaciones", label: "Aprobaciones", icon: ShieldCheck, badge: 45 },
+  { href: "/costos", label: "Cobertura costes", icon: Receipt, permissions: ["costs:read"] },
 ] as const;
 
 const SECTION_QA: readonly NavItem[] = [
@@ -61,6 +65,8 @@ const SECTION_SYS: readonly NavItem[] = [
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },
   { href: "/admin/jobs", label: "Jobs", icon: Timer, permissions: ["jobs:read"] },
   { href: "/admin/imports", label: "Importaciones", icon: Database, permissions: ["imports:read"] },
+  { href: "/admin/flags", label: "Feature flags", icon: Flag, permissions: ["admin:read"] },
+  { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
   { href: "/ajustes", label: "Configuración", icon: Settings },
 ] as const;
 

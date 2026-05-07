@@ -8,6 +8,7 @@ import { QueryProvider } from "@/lib/providers/query-provider";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { resolveLocale } from "@/lib/i18n/cookie";
+import { localeDirection } from "@/lib/i18n/config";
 import { WebVitalsReporter } from "./_components/web-vitals-reporter";
 
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-sans" });
@@ -27,9 +28,10 @@ export default async function RootLayout({
 }) {
   const locale = await resolveLocale();
   const messages = (await import(`@/messages/${locale}.json`)).default;
+  const dir = localeDirection(locale);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-background text-foreground`}>
         <I18nProvider locale={locale} messages={messages}>
           <QueryProvider>

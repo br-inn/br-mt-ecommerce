@@ -1,0 +1,1121 @@
+{
+  "app": {
+    "name": "MT Pricing",
+    "tagline": "التسعير وإدارة البيانات الرئيسية"
+  },
+  "nav": {
+    "dashboard": "لوحة المعلومات",
+    "catalog": "الكتالوج",
+    "suppliers": "الموردون",
+    "proveedores": "الموردون",
+    "prices": "الأسعار",
+    "imports": "عمليات الاستيراد",
+    "audit": "سجل التدقيق",
+    "settings": "الإعدادات",
+    "admin": "الإدارة",
+    "adminFx": "العملات / أسعار الصرف",
+    "account": "حسابي"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "search": "بحث",
+    "loading": "جارٍ التحميل…",
+    "empty": "لا توجد نتائج",
+    "error": "حدث خطأ ما",
+    "retry": "إعادة المحاولة",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "confirm": "تأكيد",
+    "close": "إغلاق",
+    "yes": "نعم",
+    "no": "لا"
+  },
+  "login": {
+    "title": "تسجيل الدخول",
+    "subtitle": "ادخل إلى MT Pricing",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "submit": "تسجيل الدخول",
+    "forgot": "هل نسيت كلمة المرور؟"
+  },
+  "auth": {
+    "login": {
+      "title": "تسجيل الدخول",
+      "subtitle": "ادخل إلى MT Pricing",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "submit": "تسجيل الدخول",
+      "magicLink": "أرسل رابط الدخول السحري",
+      "magicLinkSent": "أرسلنا إليك رابطًا لتسجيل الدخول.",
+      "usePassword": "استخدم كلمة المرور",
+      "useMagicLink": "استخدم الرابط السحري",
+      "forgot": "هل نسيت كلمة المرور؟"
+    },
+    "resetPassword": {
+      "title": "إعادة تعيين كلمة المرور",
+      "subtitle": "سنرسل إليك رابطًا لإعادة تعيين كلمة المرور.",
+      "email": "البريد الإلكتروني",
+      "submit": "إرسال الرابط",
+      "emailSent": "إذا كان الحساب موجودًا، ستتلقى بريدًا إلكترونيًا قريبًا.",
+      "backToLogin": "العودة إلى تسجيل الدخول"
+    },
+    "logout": "تسجيل الخروج",
+    "errors": {
+      "invalidCredentials": "بيانات اعتماد غير صحيحة. حاول مجددًا.",
+      "sessionRevoked": "تم إنهاء جلستك من قبل المسؤول.",
+      "networkError": "تعذّر الاتصال بالخادم. حاول مجددًا."
+    },
+    "account": {
+      "title": "حسابي",
+      "loading": "جارٍ التحميل…",
+      "updated": "تم تحديث الملف الشخصي.",
+      "profileTitle": "الملف الشخصي",
+      "profileSubtitle": "عدّل اسمك وتفضيلاتك.",
+      "fullName": "الاسم الكامل",
+      "locale": "اللغة",
+      "save": "حفظ التغييرات",
+      "permissionsTitle": "الصلاحيات الفعّالة",
+      "rolePrefix": "الدور المعيّن:",
+      "noRole": "لا يوجد دور معيّن. تواصل مع IT Integration.",
+      "noPermissions": "ليس لديك أي صلاحيات بعد.",
+      "signOut": "تسجيل الخروج"
+    }
+  },
+  "dashboard": {
+    "title": "لوحة المعلومات",
+    "subtitle": "نظرة عامة على MT Pricing",
+    "welcome": "مرحبًا بك في MT Pricing",
+    "placeholder": "ستُضاف مؤشرات الأداء في التكرارات القادمة.",
+    "asOf": "محدَّث في {time}",
+    "kpis": {
+      "products": "المنتجات",
+      "productsSubtext": "{active} نشط · {complete} مكتمل",
+      "translations": "الترجمات",
+      "translationsSubtext": "التغطية ES {es}% · AR {ar}%",
+      "users": "المستخدمون",
+      "usersSubtext": "{withRole} لديهم دور معيّن",
+      "activity24h": "النشاط خلال 24 ساعة",
+      "activitySubtext": "{runs} مهمة · {failures} حالة فشل"
+    },
+    "recentActivity": {
+      "title": "النشاط الحديث",
+      "subtitle": "آخر 10 أحداث في النظام",
+      "empty": "لا يوجد نشاط حديث."
+    },
+    "dataQuality": {
+      "title": "جودة البيانات",
+      "subtitle": "توزيع الأكواد SKU حسب حالة الجودة",
+      "complete": "مكتمل",
+      "partial": "جزئي",
+      "blocked": "محجوب",
+      "empty": "لم يتم تحميل أي منتجات بعد."
+    },
+    "error": {
+      "title": "تعذّر تحميل مؤشرات الأداء",
+      "description": "تحقّق من الاتصال بالواجهة الخلفية وحاول مجددًا.",
+      "retry": "إعادة المحاولة"
+    }
+  },
+  "command": {
+    "placeholder": "ابحث عن أوامر، منتجات، مستخدمين…",
+    "noResults": "لا توجد نتائج",
+    "loading": "جارٍ البحث…",
+    "actions": "الإجراءات",
+    "products": "المنتجات",
+    "users": "المستخدمون",
+    "newSku": "SKU جديد",
+    "searchSku": "ابحث عن SKU…",
+    "goCatalog": "الذهاب إلى الكتالوج",
+    "goDashboard": "الذهاب إلى لوحة المعلومات",
+    "goImports": "الذهاب إلى الاستيراد"
+  },
+  "audit": {
+    "loading": "جارٍ التحميل…",
+    "loadMore": "تحميل المزيد",
+    "loadError": "تعذّر تحميل السجل.",
+    "empty": "لا توجد أحداث مسجلة لهذا العنصر بعد.",
+    "system": "النظام",
+    "showDiff": "إظهار التغييرات",
+    "hideDiff": "إخفاء التغييرات",
+    "diff": "الفروق",
+    "before": "قبل",
+    "after": "بعد"
+  },
+  "shell": {
+    "userMenu": "الحساب",
+    "signOut": "تسجيل الخروج",
+    "myAccount": "حسابي",
+    "toggleSidebar": "إظهار/إخفاء الشريط الجانبي",
+    "openCommand": "فتح لوحة الأوامر",
+    "locale": "اللغة"
+  },
+  "errors": {
+    "boundaryTitle": "حدث خطأ ما",
+    "boundaryDescription": "نعمل على حلّ المشكلة. يُرجى المحاولة مجددًا.",
+    "notFoundTitle": "الصفحة غير موجودة",
+    "notFoundDescription": "الصفحة التي تبحث عنها غير موجودة أو تم نقلها."
+  },
+  "catalog": {
+    "title": "الكتالوج",
+    "subtitle": "إدارة الأكواد SKU والترجمات",
+    "newSku": "SKU جديد",
+    "importPim": "استيراد من PIM",
+    "search": "ابحث عن SKU، الاسم، DN، PN…",
+    "loading": "جارٍ تحميل المنتجات…",
+    "loadMore": "تحميل المزيد",
+    "totalCount": "{count, plural, =0 {لا توجد منتجات} =1 {منتج واحد} other {# منتجات}}",
+    "filters": {
+      "title": "المرشّحات",
+      "family": "العائلة",
+      "anyFamily": "أي عائلة",
+      "dataQuality": "جودة البيانات",
+      "anyQuality": "أي جودة",
+      "translationStatus": "الترجمة",
+      "anyTranslation": "أي حالة",
+      "active": "النشطة فقط",
+      "inactive": "غير النشطة فقط",
+      "all": "الكل",
+      "clear": "مسح المرشّحات",
+      "more": "مرشّحات إضافية",
+      "advancedHint": "مرشّحات إضافية تبقى محفوظة في الرابط.",
+      "apply": "تطبيق",
+      "remove": "إزالة المرشّح",
+      "dn": "DN",
+      "pn": "PN",
+      "material": "المادة",
+      "status": "الحالة",
+      "anyStatus": "أي حالة",
+      "createdAfter": "أُنشئ بعد",
+      "createdBefore": "أُنشئ قبل"
+    },
+    "columns": {
+      "sku": "SKU",
+      "name": "الاسم (EN)",
+      "family": "العائلة",
+      "dn": "DN",
+      "pn": "PN",
+      "material": "المادة",
+      "dataQuality": "الجودة",
+      "active": "نشط",
+      "actions": "الإجراءات"
+    },
+    "empty": {
+      "title": "لا توجد منتجات",
+      "description": "لا توجد أكواد SKU بعد. أنشئ واحدًا أو استورد من PIM.",
+      "create": "إنشاء أوّل SKU"
+    },
+    "errors": {
+      "loadFailed": "تعذّر تحميل المنتجات.",
+      "saveFailed": "تعذّر الحفظ.",
+      "deleteFailed": "تعذّر الحذف.",
+      "notFound": "SKU غير موجود."
+    },
+    "actions": {
+      "view": "عرض التفاصيل",
+      "edit": "تعديل",
+      "archive": "أرشفة",
+      "unarchive": "إلغاء الأرشفة",
+      "delete": "حذف",
+      "menu": "إجراءات SKU",
+      "deleteConfirm": "هل تريد حذف هذا SKU؟ العملية قابلة للتراجع (حذف ناعم).",
+      "deleted": "تم حذف SKU.",
+      "archived": "تمت أرشفة SKU.",
+      "unarchived": "تم استرجاع SKU.",
+      "activated": "تم تفعيل SKU.",
+      "deactivated": "تم تعطيل SKU."
+    },
+    "product": {
+      "tabs": {
+        "specs": "المواصفات",
+        "images": "الصور",
+        "translations": "الترجمات",
+        "costs": "التكاليف",
+        "datasheets": "المستندات",
+        "audit": "سجل التدقيق"
+      },
+      "fields": {
+        "sku": "SKU",
+        "name_en": "الاسم (EN)",
+        "description_en": "الوصف (EN)",
+        "family": "العائلة",
+        "dn": "القطر الاسمي (DN)",
+        "pn": "الضغط الاسمي (PN)",
+        "material": "المادة",
+        "type": "النوع",
+        "connection": "الوصلة",
+        "weight_kg": "الوزن (كجم)",
+        "dimensions": "الأبعاد",
+        "length": "الطول",
+        "width": "العرض",
+        "height": "الارتفاع",
+        "unit": "الوحدة",
+        "packaging": "التغليف",
+        "qty_x_box": "الوحدات لكل صندوق",
+        "ean_unit": "EAN للوحدة",
+        "ean_box": "EAN للصندوق",
+        "moq": "MOQ",
+        "intrastat": "Intrastat",
+        "hs_code": "كود HS",
+        "origin_country": "بلد المنشأ",
+        "net_weight_kg": "الوزن الصافي (كجم)",
+        "active": "نشط"
+      },
+      "specs": {
+        "title": "المواصفات الفنية",
+        "subtitle": "البيانات القياسية للـ SKU."
+      },
+      "packaging": {
+        "title": "التغليف وIntrastat",
+        "subtitle": "بيانات اللوجستيات والجمارك."
+      }
+    },
+    "create": {
+      "title": "SKU جديد",
+      "subtitle": "أضف منتجًا إلى الكتالوج في 4 خطوات.",
+      "stepLabel": "الخطوة {current} من {total}",
+      "step1": "التعريف",
+      "step2": "المواصفات الفنية",
+      "step3": "التغليف وIntrastat",
+      "step4": "التأكيد",
+      "step1Description": "بيانات SKU الأساسية.",
+      "step2Description": "DN وPN والمادة والأبعاد.",
+      "step3Description": "الصناديق وأكواد EAN وIntrastat.",
+      "step4Description": "راجع وأكّد.",
+      "submit": "إنشاء SKU",
+      "creating": "جارٍ الإنشاء…",
+      "success": "تم إنشاء SKU.",
+      "validation": {
+        "skuRequired": "حقل SKU مطلوب.",
+        "skuFormat": "يُسمح فقط بالحروف الكبيرة والأرقام والشرطة والشرطة السفلية.",
+        "nameRequired": "الاسم بالإنجليزية مطلوب.",
+        "nameMin": "يجب ألّا يقلّ الاسم عن 3 أحرف.",
+        "familyRequired": "اختر عائلة.",
+        "weightInvalid": "يجب أن يكون الوزن قيمة موجبة.",
+        "moqInvalid": "يجب أن يكون MOQ عددًا صحيحًا موجبًا.",
+        "qtyInvalid": "يجب أن تكون الوحدات لكل صندوق عددًا صحيحًا موجبًا.",
+        "eanFormat": "صيغة EAN غير صحيحة (12-14 رقمًا)."
+      }
+    },
+    "edit": {
+      "title": "تعديل SKU",
+      "subtitle": "عدّل بيانات المنتج.",
+      "editButton": "تعديل",
+      "submit": "حفظ التغييرات",
+      "success": "تم تحديث SKU.",
+      "saving": "جارٍ الحفظ…",
+      "conflict": "تعارض: تم تعديل هذا SKU من مكان آخر. أعد التحميل.",
+      "diffSubtitle": "{count, plural, =0 {لا توجد تغييرات معلّقة} =1 {حقل واحد معدَّل} other {# حقول معدَّلة}}",
+      "noChanges": "لا توجد تغييرات مقارنةً بالحالة الحالية.",
+      "validation": {
+        "nameMin": "يجب ألّا يقلّ الاسم عن 3 أحرف.",
+        "weightInvalid": "يجب أن يكون الوزن قيمة موجبة."
+      }
+    },
+    "translations": {
+      "title": "الترجمات",
+      "subtitle": "EN قياسي + ترجمات ES وAR.",
+      "canonical": "القياسي (EN)",
+      "languages": {
+        "es": "الإسبانية",
+        "ar": "العربية"
+      },
+      "fields": {
+        "name": "الاسم",
+        "description": "الوصف"
+      },
+      "status": {
+        "draft": "مسودّة",
+        "pending": "بانتظار الموافقة",
+        "approved": "مُعتمَدة",
+        "missing": "غير مترجَمة"
+      },
+      "actions": {
+        "saveDraft": "حفظ المسودّة",
+        "requestApproval": "طلب موافقة",
+        "approve": "اعتماد"
+      },
+      "feedback": {
+        "saved": "تم حفظ المسودّة.",
+        "requested": "تم طلب الموافقة.",
+        "approved": "تم اعتماد الترجمة.",
+        "saveFailed": "تعذّر حفظ الترجمة."
+      },
+      "rtlNote": "تحرير من اليمين إلى اليسار مفعَّل للعربية."
+    },
+    "images": {
+      "title": "الصور",
+      "subtitle": "معرض SKU. اختر صورة رئيسية.",
+      "primary": "رئيسية",
+      "setPrimary": "تعيين كصورة رئيسية",
+      "delete": "حذف الصورة",
+      "deleteConfirm": "هل تريد حذف هذه الصورة؟",
+      "noImages": "لا توجد صور لهذا SKU بعد.",
+      "upload": "رفع صورة",
+      "uploadHint": "اسحب وأفلت أو انقر لتحديد ملف (JPG, PNG, WebP).",
+      "uploadDisabled": "الرفع المباشر سيتوفّر في Sprint 2.",
+      "selectFile": "اختر ملفًا",
+      "limits": "حتى 5 ميغابايت. JPG أو PNG أو WebP أو AVIF.",
+      "errors": {
+        "tooLarge": "حجم الملف يتجاوز الحد المسموح به (5 ميغابايت).",
+        "invalidFormat": "صيغة غير صالحة. استخدم JPG أو PNG أو WebP أو AVIF."
+      },
+      "feedback": {
+        "primarySet": "تم تعيين الصورة كرئيسية.",
+        "deleted": "تم حذف الصورة.",
+        "uploaded": "تم رفع الصورة."
+      }
+    },
+    "audit": {
+      "title": "سجل التغييرات",
+      "placeholder": "سيتوفّر الجدول الزمني للتغييرات في Sprint 2 (US-1A-07-XX). يتم تسجيل أحداث التدقيق بالفعل."
+    }
+  },
+  "proveedores": {
+    "title": "الموردون",
+    "subtitle": "ملف الموردين مع عملة العقد ووقت التسليم.",
+    "newButton": "مورّد جديد",
+    "search": "ابحث بالكود أو الاسم…",
+    "loadMore": "تحميل المزيد",
+    "totalCount": "{count, plural, =0 {لا يوجد موردون} =1 {مورّد واحد} other {# موردين}}",
+    "filters": {
+      "currency": "عملة العقد",
+      "anyCurrency": "أي عملة",
+      "status": "الحالة",
+      "anyStatus": "أي حالة",
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "clear": "مسح المرشّحات"
+    },
+    "columns": {
+      "code": "الكود",
+      "name": "الاسم",
+      "currency": "العملة",
+      "leadTime": "وقت التسليم",
+      "paymentTerms": "الدفع",
+      "active": "نشط",
+      "actions": "الإجراءات"
+    },
+    "tabs": {
+      "data": "البيانات",
+      "costs": "التكاليف المرتبطة",
+      "audit": "سجل التدقيق"
+    },
+    "actions": {
+      "edit": "تعديل",
+      "archive": "أرشفة",
+      "activate": "تفعيل",
+      "deactivate": "تعطيل",
+      "delete": "حذف",
+      "deleteConfirm": "هل تريد أرشفة هذا المورّد؟ ستظل التكاليف التاريخية محفوظة.",
+      "menu": "الإجراءات",
+      "view": "عرض التفاصيل",
+      "activated": "تم تفعيل المورّد.",
+      "deactivated": "تمت أرشفة المورّد."
+    },
+    "fields": {
+      "code": "الكود",
+      "name": "الاسم",
+      "legal_name": "الاسم القانوني",
+      "country": "الدولة",
+      "contact_email": "البريد الإلكتروني",
+      "contact_phone": "الهاتف",
+      "payment_terms_days": "أيام الدفع",
+      "contract_currency": "عملة العقد",
+      "lead_time_days": "وقت التسليم (أيام)",
+      "notes": "ملاحظات",
+      "active": "نشط"
+    },
+    "empty": {
+      "title": "لا يوجد موردون",
+      "description": "لا توجد موردون بعد. أنشئ أوّل واحد."
+    },
+    "errors": {
+      "loadFailed": "تعذّر تحميل الموردين.",
+      "notFound": "المورّد غير موجود."
+    },
+    "newPage": {
+      "title": "مورّد جديد",
+      "subtitle": "إنشاء مورّد رئيسي."
+    },
+    "editPage": {
+      "title": "تعديل المورّد",
+      "subtitle": "عدّل البيانات واحفظ."
+    }
+  },
+  "costs": {
+    "title": "التكاليف",
+    "subtitle": "التكاليف حسب نظام البيع.",
+    "newButton": "إضافة تكلفة",
+    "loading": "جارٍ تحميل التكاليف…",
+    "empty": "لا توجد تكاليف لهذا SKU بعد. أنشئ واحدة لتبدأ.",
+    "fields": {
+      "scheme": "النظام",
+      "supplier": "المورّد",
+      "total": "الإجمالي",
+      "currency": "العملة",
+      "fob": "FOB",
+      "freight": "الشحن",
+      "customs": "الجمارك",
+      "fba_fee": "رسوم FBA",
+      "fbm_fee": "رسوم FBM",
+      "payment_fee": "رسوم الدفع",
+      "marketing": "التسويق",
+      "valid_from": "ساري من",
+      "valid_to": "ساري حتى"
+    },
+    "status": {
+      "current": "ساري",
+      "expired": "منتهٍ"
+    },
+    "breakdown": "التفصيل",
+    "form": {
+      "title": "تكلفة جديدة",
+      "editTitle": "تعديل التكلفة",
+      "create": "إنشاء التكلفة",
+      "save": "حفظ التغييرات",
+      "cancel": "إلغاء"
+    },
+    "actions": {
+      "edit": "تعديل",
+      "delete": "حذف",
+      "deleteConfirm": "هل تريد حذف هذه التكلفة؟ هذا الإجراء غير قابل للتراجع."
+    },
+    "errors": {
+      "loadFailed": "تعذّر تحميل التكاليف.",
+      "saveFailed": "تعذّر حفظ التكلفة.",
+      "deleteFailed": "تعذّر الحذف."
+    }
+  },
+  "fx": {
+    "title": "العملات وأسعار الصرف",
+    "subtitle": "جدول أسعار الصرف بنظام الإصدارات.",
+    "currenciesTitle": "العملات المُهيّأة",
+    "currenciesSubtitle": "للقراءة فقط في Sprint 1 — تُدار من قاعدة البيانات.",
+    "ratesTitle": "تاريخ الأسعار",
+    "ratesSubtitle": "كل سعر جديد يُغلق تلقائيًا السعر الحالي للزوج.",
+    "newRateButton": "سعر جديد",
+    "current": "ساري",
+    "expired": "منتهٍ",
+    "filters": {
+      "from": "من",
+      "to": "إلى",
+      "anyCurrency": "أي عملة",
+      "clear": "مسح المرشّحات"
+    },
+    "columns": {
+      "code": "الكود",
+      "name": "الاسم",
+      "symbol": "الرمز",
+      "decimals": "الخانات العشرية",
+      "isBase": "أساسية",
+      "from_currency": "من",
+      "to_currency": "إلى",
+      "rate": "السعر",
+      "effective_from": "ساري من",
+      "effective_to": "ساري حتى",
+      "source": "المصدر",
+      "status": "الحالة"
+    },
+    "fields": {
+      "from": "من",
+      "to": "إلى",
+      "rate": "السعر",
+      "effective_from": "ساري من",
+      "effective_to": "ساري حتى",
+      "source": "المصدر"
+    },
+    "sources": {
+      "manual": "يدوي",
+      "ecb": "ECB",
+      "fixer": "Fixer",
+      "cbuae": "CBUAE"
+    },
+    "empty": {
+      "rates": "لا توجد أسعار للمرشّحات المطبَّقة.",
+      "currencies": "لا توجد عملات نشطة."
+    },
+    "form": {
+      "create": "إنشاء سعر",
+      "createTitle": "سعر صرف جديد",
+      "createSubtitle": "سيُغلق تلقائيًا السعر النشط للزوج."
+    },
+    "errors": {
+      "loadFailed": "تعذّر تحميل أسعار الصرف.",
+      "saveFailed": "تعذّر حفظ سعر الصرف.",
+      "samePair": "يجب أن تكون \"من\" و\"إلى\" عملتين مختلفتين.",
+      "rateInvalid": "يجب أن يكون السعر قيمة موجبة."
+    },
+    "feedback": {
+      "created": "تم إنشاء السعر."
+    }
+  },
+  "suppliers": {
+    "title": "الموردون",
+    "subtitle": "ملف الموردين الرئيسي. إنشاء وتعديل وتعطيل.",
+    "search": "ابحث بالاسم أو الكود…",
+    "loadMore": "تحميل المزيد",
+    "totalCount": "{count, plural, =0 {لا يوجد موردون} =1 {مورّد واحد} other {# موردين}}",
+    "daysShort": "{count, plural, =1 {يوم واحد} other {# أيام}}",
+    "infoTitle": "المعلومات",
+    "infoSubtitle": "بيانات المورّد.",
+    "editTitle": "تعديل المورّد",
+    "editSubtitle": "عدّل البيانات واحفظ.",
+    "filters": {
+      "country": "الدولة",
+      "anyCountry": "أي دولة",
+      "currency": "العملة",
+      "anyCurrency": "أي عملة",
+      "status": "الحالة",
+      "anyStatus": "أي حالة",
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "clear": "مسح المرشّحات"
+    },
+    "columns": {
+      "code": "الكود",
+      "name": "الاسم",
+      "country": "الدولة",
+      "currency": "العملة",
+      "leadTime": "وقت التسليم",
+      "email": "البريد الإلكتروني",
+      "active": "نشط",
+      "actions": "الإجراءات"
+    },
+    "empty": {
+      "title": "لا يوجد موردون",
+      "description": "لا توجد موردون بعد. أنشئ أوّل واحد."
+    },
+    "errors": {
+      "loadFailed": "تعذّر تحميل الموردين.",
+      "notFound": "المورّد غير موجود."
+    },
+    "actions": {
+      "view": "عرض التفاصيل",
+      "edit": "تعديل",
+      "activate": "تفعيل",
+      "deactivate": "تعطيل",
+      "deactivateConfirm": "سيُخفي ذلك المورّد مع الإبقاء على التكاليف التاريخية. هل تريد المتابعة؟",
+      "menu": "إجراءات المورّد",
+      "activated": "تم تفعيل المورّد.",
+      "deactivated": "تم تعطيل المورّد."
+    },
+    "new": "مورّد جديد",
+    "newPage": {
+      "title": "مورّد جديد",
+      "subtitle": "إنشاء مورّد رئيسي."
+    },
+    "form": {
+      "submitCreate": "إنشاء المورّد",
+      "submitEdit": "حفظ التغييرات",
+      "created": "تم إنشاء المورّد.",
+      "updated": "تم تحديث المورّد.",
+      "errors": {
+        "duplicateCode": "يوجد بالفعل مورّد بهذا الكود."
+      },
+      "fields": {
+        "code": "الكود",
+        "name": "الاسم",
+        "country": "الدولة",
+        "currency": "العملة",
+        "contractCurrency": "عملة العقد",
+        "leadTimeDays": "وقت التسليم (أيام)",
+        "email": "البريد الإلكتروني للتواصل",
+        "phone": "الهاتف",
+        "paymentTerms": "شروط الدفع",
+        "notes": "ملاحظات",
+        "active": "نشط"
+      },
+      "validation": {
+        "codeRequired": "الكود مطلوب.",
+        "codeFormat": "حروف كبيرة وأرقام وشرطة وشرطة سفلية فقط.",
+        "nameRequired": "الاسم مطلوب.",
+        "nameMin": "يجب ألّا يقلّ الاسم عن حرفين.",
+        "emailInvalid": "بريد إلكتروني غير صالح.",
+        "leadTimeInvalid": "يجب أن يكون ≥ 0.",
+        "currencyRequired": "اختر عملة العقد."
+      }
+    }
+  },
+  "imports": {
+    "title": "عمليات الاستيراد",
+    "subtitle": "تحميل مجمَّع من PIM (xlsx). معاينة قبل التطبيق.",
+    "noPermission": "ليس لديك صلاحية تشغيل عمليات الاستيراد.",
+    "wizard": {
+      "step1": "رفع الملف",
+      "step2": "المعاينة",
+      "step3": "التأكيد",
+      "step4": "التطبيق والتقرير"
+    },
+    "upload": {
+      "title": "ارفع ملف PIM",
+      "hint": "اسحب وأفلت ملف .xlsx أو انقر للاختيار.",
+      "limits": "حتى 50 ميغابايت. صيغة XLSX.",
+      "dropLabel": "منطقة الرفع",
+      "remove": "إزالة الملف",
+      "startPreview": "إنشاء المعاينة",
+      "uploading": "جارٍ الرفع…",
+      "errors": {
+        "tooLarge": "حجم الملف يتجاوز 50 ميغابايت.",
+        "invalidFormat": "يُسمح فقط بصيغة XLSX."
+      }
+    },
+    "preview": {
+      "title": "ملخّص الفروقات",
+      "confirm": "تأكيد وتطبيق",
+      "emptyBucket": "لا توجد صفوف في هذه الفئة.",
+      "summary": {
+        "creates": "تم إنشاؤها",
+        "updates": "تم تحديثها",
+        "skipped": "تم تخطّيها",
+        "errors": "أخطاء"
+      },
+      "tabs": {
+        "creates": "تم إنشاؤها",
+        "updates": "تم تحديثها",
+        "skipped": "تم تخطّيها",
+        "errors": "أخطاء"
+      }
+    },
+    "apply": {
+      "starting": "بدء التطبيق…",
+      "waiting": "بانتظار تقدّم الـ worker…",
+      "chunks": "الجزء {done} من {total}",
+      "rowsDone": "{count, plural, =1 {صفّ واحد طُبِّق} other {# صفوف طُبِّقت}}",
+      "status": {
+        "queued": "في الانتظار",
+        "parsing": "جارٍ تحليل الملف",
+        "preview_ready": "المعاينة جاهزة",
+        "applying": "جارٍ تطبيق التغييرات…",
+        "completed": "اكتمل التطبيق",
+        "failed": "فشل التطبيق",
+        "cancelled": "أُلغيت"
+      }
+    },
+    "report": {
+      "titleSuccess": "اكتمل الاستيراد",
+      "titleFailed": "الاستيراد به مشكلات",
+      "creates": "تم إنشاؤها",
+      "updates": "تم تحديثها",
+      "skipped": "تم تخطّيها",
+      "errors": "أخطاء",
+      "newImport": "استيراد جديد",
+      "goProducts": "الذهاب إلى الكتالوج"
+    }
+  },
+  "pricing": {
+    "title": "الأسعار",
+    "subtitle": "محرّك v5.1 — مقترحات واعتمادات وقابلية تتبّع",
+    "empty": "لا توجد أسعار للمرشّحات المختارة",
+    "filters": {
+      "channel": "القناة",
+      "status": "الحالة",
+      "all": "الكل",
+      "refresh": "تحديث"
+    },
+    "columns": {
+      "scheme": "النظام",
+      "amount": "المبلغ",
+      "margin": "الهامش",
+      "rule": "القاعدة",
+      "status": "الحالة",
+      "actions": "الإجراءات",
+      "view": "عرض",
+      "alerts": "تنبيهات"
+    },
+    "actions": {
+      "approve": "اعتماد",
+      "reject": "رفض",
+      "revise": "مراجعة",
+      "export": "تصدير",
+      "approvedToast": "تم اعتماد السعر",
+      "rejectedToast": "تم رفض السعر",
+      "revisedToast": "تمت مراجعة السعر"
+    },
+    "approvals": {
+      "cta": "قائمة الاعتمادات",
+      "title": "الاعتمادات المعلَّقة",
+      "subtitle": "أسعار تتطلّب مراجعة يدوية قبل الاعتماد التلقائي",
+      "empty": "لا توجد أسعار معلَّقة",
+      "approveSelected": "اعتماد المحدَّد",
+      "review": "مراجعة",
+      "bulkApprovedToast": "تم اعتماد الأسعار دفعةً واحدة"
+    },
+    "detail": {
+      "created": "تم الإنشاء",
+      "amounts": "المبالغ",
+      "alerts": "التنبيهات",
+      "noAlerts": "لا توجد تنبيهات",
+      "breakdown": "التفصيل",
+      "history": "سجل الاعتماد",
+      "noEvents": "لا توجد أحداث",
+      "actions": "الإجراءات",
+      "reason": "السبب",
+      "reasonPlaceholder": "سبب التغيير (مطلوب للرفض/المراجعة)",
+      "newAmount": "المبلغ الجديد",
+      "formula": "الصيغة"
+    },
+    "simulate": {
+      "cta": "المحاكي",
+      "title": "محاكي what-if",
+      "subtitle": "اختبر محرّك v5.1 بقيم اختيارية دون حفظ",
+      "inputs": "المدخلات",
+      "result": "النتيجة",
+      "run": "احسب"
+    },
+    "errors": {
+      "loadFailed": "حدث خطأ أثناء تحميل الأسعار",
+      "actionFailed": "فشل الإجراء"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "المستخدمون",
+      "subtitle": "إدارة المستخدمين والأدوار والصلاحيات الفعّالة.",
+      "inviteCta": "دعوة مستخدم",
+      "inviteTitle": "دعوة مستخدم",
+      "inviteSubtitle": "يُنشئ Magic Link من Supabase ويعيّن الدور الأوّلي.",
+      "detailTitle": "تفاصيل المستخدم",
+      "backToList": "العودة إلى القائمة",
+      "noPermission": "ليس لديك صلاحية لعرض هذا القسم.",
+      "empty": "لا يوجد مستخدمون للمرشّحات المطبَّقة.",
+      "columns": {
+        "email": "البريد الإلكتروني",
+        "fullName": "الاسم",
+        "role": "الدور",
+        "lastSignIn": "آخر تسجيل دخول",
+        "active": "نشط",
+        "actions": "الإجراءات",
+        "view": "عرض",
+        "yes": "نعم",
+        "no": "لا"
+      },
+      "filters": {
+        "search": "بحث",
+        "searchPlaceholder": "البريد أو الاسم…",
+        "role": "الدور",
+        "anyRole": "أي",
+        "active": "نشط",
+        "any": "أي",
+        "yes": "نعم",
+        "no": "لا"
+      },
+      "detail": {
+        "profileTitle": "الملف الشخصي",
+        "fullName": "الاسم الكامل",
+        "locale": "اللغة",
+        "active": "نشط",
+        "lastSignIn": "آخر تسجيل دخول",
+        "rolesTitle": "الأدوار المعيّنة",
+        "rolesSubtitle": "يحدّد الدور الصلاحيات الفعّالة.",
+        "noRole": "لا يوجد دور معيّن.",
+        "assignRole": "تعيين دور",
+        "pickRole": "اختر دورًا…",
+        "assign": "تعيين",
+        "revoke": "إلغاء",
+        "roleAssigned": "تم تعيين الدور.",
+        "roleAssignFailed": "تعذّر تعيين الدور.",
+        "roleRevoked": "تم إلغاء الدور.",
+        "roleRevokeFailed": "تعذّر إلغاء الدور.",
+        "permsTitle": "الصلاحيات الفعّالة",
+        "permsSubtitle": "مشتقّة من الدور المعيّن.",
+        "noPerms": "لا توجد صلاحيات فعّالة.",
+        "auditTitle": "سجل التدقيق",
+        "auditSubtitle": "الأحداث ذات الصلة بالمستخدم.",
+        "auditPlaceholder": "الجدول الزمني متاح في Sprint 2.",
+        "dangerTitle": "الإجراءات",
+        "forceLogout": "فرض تسجيل الخروج",
+        "forceLogoutOk": "تم إنهاء الجلسات.",
+        "forceLogoutFailed": "تعذّر فرض تسجيل الخروج.",
+        "archive": "أرشفة",
+        "archived": "تمت أرشفة المستخدم.",
+        "archiveFailed": "تعذّرت الأرشفة.",
+        "confirmForceLogoutTitle": "فرض تسجيل الخروج؟",
+        "confirmForceLogoutDesc": "ستُنهى جميع جلسات Supabase النشطة.",
+        "confirmArchiveTitle": "أرشفة المستخدم؟",
+        "confirmArchiveDesc": "سيصبح المستخدم غير نشط ولن يتمكّن من تسجيل الدخول.",
+        "confirmRevokeTitle": "إلغاء الدور؟",
+        "confirmRevokeDesc": "سيخسر المستخدم الصلاحيات المرتبطة بالدور وسيُجبَر على تسجيل الخروج."
+      },
+      "invite": {
+        "formTitle": "بيانات الدعوة",
+        "formSubtitle": "بعد الدعوة، يستلم المستخدم Magic Link من Supabase.",
+        "email": "البريد الإلكتروني",
+        "fullName": "الاسم الكامل",
+        "role": "الدور الأوّلي",
+        "locale": "اللغة",
+        "submit": "إرسال الدعوة",
+        "success": "تم إرسال الدعوة.",
+        "errors": {
+          "email": "بريد إلكتروني غير صالح.",
+          "fullName": "الاسم قصير جدًا.",
+          "failed": "تعذّر إرسال الدعوة."
+        }
+      },
+      "errors": {
+        "loadFailed": "حدث خطأ أثناء تحميل المستخدمين."
+      }
+    },
+    "jobs": {
+      "title": "Jobs",
+      "subtitle": "DatabaseScheduler — Celery Beat قابل للتعديل.",
+      "createCta": "إنشاء job",
+      "createTitle": "إنشاء job",
+      "createSubtitle": "عرّف job_definition جديدة بـ cron أو interval.",
+      "detailTitle": "تفاصيل الـ job",
+      "backToList": "العودة إلى القائمة",
+      "noPermission": "ليس لديك صلاحية لعرض هذا القسم.",
+      "empty": "لا توجد jobs مسجَّلة.",
+      "toast": {
+        "enabled": "تم تفعيل الـ job.",
+        "disabled": "تم تعطيل الـ job."
+      },
+      "columns": {
+        "code": "الكود",
+        "description": "الوصف",
+        "cron": "Cron / Interval",
+        "queue": "الطابور",
+        "lastRun": "آخر تشغيل",
+        "lastStatus": "الحالة",
+        "nextRun": "التشغيل التالي",
+        "enabled": "مفعَّل",
+        "actions": "الإجراءات",
+        "on": "ON",
+        "off": "OFF",
+        "enable": "تفعيل",
+        "disable": "تعطيل"
+      },
+      "detail": {
+        "editTitle": "تعديل الإعدادات",
+        "editSubtitle": "تُطبَّق التغييرات في الـ tick التالي للـ scheduler.",
+        "cronExpression": "تعبير cron (m h dom mon dow)",
+        "cronPreview": "التشغيلات الخمس التالية",
+        "queue": "طابور Celery",
+        "args": "Args (JSON array)",
+        "kwargs": "Kwargs (JSON object)",
+        "enabled": "مفعَّل",
+        "savedToast": "تم تحديث الـ job.",
+        "runNow": "تشغيل الآن",
+        "runNowQueued": "تم وضع التشغيل في الطابور.",
+        "runsTitle": "سجل التشغيلات",
+        "runsSubtitle": "آخر JobRuns لهذا الـ job.",
+        "noRuns": "لا توجد تشغيلات بعد.",
+        "startedAt": "البداية",
+        "finishedAt": "النهاية",
+        "status": "الحالة",
+        "durationMs": "المدّة (ms)",
+        "error": "خطأ",
+        "confirmRunTitle": "تشغيل الآن؟",
+        "confirmRunDesc": "سيتم وضع تشغيل ad-hoc في طابور Celery دون انتظار الـ tick التالي.",
+        "errors": {
+          "save": "تعذّر الحفظ.",
+          "runNow": "تعذّر التشغيل.",
+          "argsJson": "يجب أن يكون JSON array صالحًا.",
+          "kwargsJson": "يجب أن يكون JSON object صالحًا."
+        }
+      },
+      "create": {
+        "formTitle": "بيانات الـ job",
+        "formSubtitle": "يجب أن يطابق task_name مهمة Celery مسجَّلة.",
+        "code": "الكود",
+        "taskName": "Task name (Celery)",
+        "description": "الوصف",
+        "owner": "المالك",
+        "scheduleType": "نوع الجدولة",
+        "cronExpression": "تعبير cron",
+        "intervalSeconds": "الفاصل الزمني (ثوانٍ)",
+        "timezone": "المنطقة الزمنية",
+        "queue": "الطابور",
+        "enabled": "مفعَّل عند الإنشاء",
+        "submit": "إنشاء الـ job",
+        "success": "تم إنشاء الـ job.",
+        "errors": {
+          "scheduleRequired": "cron يتطلّب تعبيرًا؛ interval يتطلّب ثوانٍ > 0.",
+          "failed": "تعذّر إنشاء الـ job."
+        }
+      },
+      "errors": {
+        "loadFailed": "حدث خطأ أثناء تحميل الـ jobs.",
+        "toggle": "تعذّر تغيير الحالة."
+      }
+    },
+    "imports": {
+      "title": "عمليات الاستيراد",
+      "subtitle": "سجل التشغيلات (PIM، التكاليف، أوراق البيانات).",
+      "uploadCta": "استيراد PIM",
+      "detailTitle": "تفاصيل عملية الاستيراد",
+      "backToList": "العودة إلى القائمة",
+      "noPermission": "ليس لديك صلاحية لعرض هذا القسم.",
+      "empty": "لا توجد تشغيلات للمرشّحات المطبَّقة.",
+      "errors": {
+        "loadFailed": "حدث خطأ أثناء تحميل التشغيلات."
+      },
+      "columns": {
+        "type": "النوع",
+        "filename": "الملف",
+        "status": "الحالة",
+        "total": "الإجمالي",
+        "inserted": "أُدرجت",
+        "updated": "حُدِّثت",
+        "errors": "أخطاء",
+        "startedAt": "البداية",
+        "finishedAt": "النهاية",
+        "actions": "الإجراءات"
+      },
+      "filters": {
+        "importType": "النوع",
+        "status": "الحالة",
+        "any": "أي"
+      },
+      "upload": {
+        "title": "استيراد PIM",
+        "subtitle": "ارفع ملف xlsx أو شغّل fixture التطوير.",
+        "dropHere": "أفلت الملف هنا أو استخدم الزر.",
+        "pickFile": "اختر ملفًا",
+        "upload": "رفع وتشغيل",
+        "uploadOk": "تم وضع الاستيراد في الطابور.",
+        "uploadFailed": "تعذّر الرفع.",
+        "runFixture": "تشغيل fixture (dev)",
+        "fixtureOk": "تم وضع الـ fixture في الطابور.",
+        "fixtureFailed": "تعذّر تشغيل الـ fixture."
+      },
+      "detail": {
+        "loadFailed": "حدث خطأ أثناء تحميل التشغيل.",
+        "type": "النوع",
+        "filename": "الملف",
+        "duration": "المدّة",
+        "startedAt": "البداية",
+        "finishedAt": "النهاية",
+        "celeryTaskId": "Celery task id",
+        "countersTitle": "العدّادات",
+        "totalRows": "إجمالي الصفوف",
+        "inserted": "أُدرجت",
+        "updated": "حُدِّثت",
+        "skipped": "تم تخطّيها",
+        "errors": "أخطاء",
+        "errorsTitle": "الأخطاء",
+        "errorsSubtitle": "قائمة مقسَّمة بالأخطاء التي رُصدت أثناء التشغيل.",
+        "errorRow": "الصفّ",
+        "errorSku": "SKU",
+        "errorField": "الحقل",
+        "errorMessage": "الرسالة",
+        "errorsCapped": "عرض {shown} من {total}.",
+        "summaryTitle": "Summary (JSONB)",
+        "retryTitle": "إعادة التشغيل",
+        "retrySubtitle": "متاح فقط للتشغيلات الفاشلة (admin).",
+        "retryAction": "إعادة التشغيل",
+        "retryQueued": "تم وضع إعادة التشغيل في الطابور.",
+        "retryFailed": "تعذّرت إعادة التشغيل.",
+        "confirmRetryTitle": "إعادة تشغيل الاستيراد؟",
+        "confirmRetryDesc": "سيُنشأ ImportRun جديد باستخدام fixture التطوير."
+      }
+    },
+    "flags": {
+      "title": "Feature flags",
+      "subtitle": "تفعيل/تعطيل flags في وقت التشغيل وتشغيل kill-switch العام.",
+      "noPermission": "ليس لديك صلاحية لعرض هذا القسم.",
+      "killSwitchTag": "kill-switch",
+      "columns": {
+        "key": "المفتاح",
+        "description": "الوصف",
+        "value": "القيمة",
+        "updatedAt": "آخر تحديث"
+      },
+      "empty": {
+        "title": "لا توجد flags",
+        "hint": "لم تسجّل الواجهة الخلفية أي feature flag بعد."
+      },
+      "errors": {
+        "loadFailed": "تعذّر تحميل feature flags.",
+        "patchFailed": "تعذّر تحديث الـ flag.",
+        "invalidNumber": "يجب أن تكون القيمة رقمًا صالحًا."
+      },
+      "toast": {
+        "updated": "تم تحديث الـ flag {key}."
+      },
+      "killSwitch": {
+        "cardTitle": "Kill-switch للطوارئ",
+        "cardDescription": "يجبر كل flag مُحدَّد كـ kill-switch على OFF (مثل adapters الشبكة الحيّة، استدعاءات OpenAI).",
+        "trigger": "تشغيل kill-switch",
+        "title": "تشغيل kill-switch العام؟",
+        "description": "سيتم تعطيل جميع الـ flags المحدَّدة كـ kill-switch فورًا.",
+        "reasonLabel": "السبب (مُدقَّق)",
+        "reasonPlaceholder": "لماذا تُشغِّل kill-switch؟ (10 أحرف على الأقل)",
+        "warningTitle": "إجراء تدميري",
+        "warningBody": "ستعود التكاملات الحيّة إلى stubs. تتطلّب الاستعادة تفعيل كل flag يدويًا.",
+        "confirm": "نعم، عطّل كل شيء",
+        "errors": {
+          "reasonRequired": "يجب ألّا يقلّ السبب عن 10 أحرف.",
+          "failed": "تعذّر تشغيل kill-switch."
+        },
+        "toast": {
+          "success": "{count, plural, =0 {لم تكن هناك flags نشطة} =1 {تم تعطيل flag واحد} other {تم تعطيل # flags}}."
+        }
+      }
+    },
+    "calibrator": {
+      "title": "Calibrator الـ comparator",
+      "subtitle": "الإصدار النشط، خط أنابيب التدريب، وترقية الإصدارات.",
+      "noPermission": "ليس لديك صلاحية لعرض هذا القسم.",
+      "active": "نشط",
+      "promote": "ترقية",
+      "fittedAt": "تم التدريب في",
+      "datasetSize": "Dataset",
+      "downloadArtifact": "تنزيل الـ artifact",
+      "activeTitle": "الإصدار النشط",
+      "activeSubtitle": "يُستخدم في كل استدعاء لتقييم المطابقة.",
+      "versionsTitle": "كل الإصدارات",
+      "versionsSubtitle": "التدريبات التاريخية المحفوظة في `competitor_calibrators`.",
+      "confirmPromoteTitle": "ترقية {version} إلى نشط؟",
+      "confirmPromoteDesc": "سيُعلَّم الإصدار النشط الحالي كتاريخي وستستخدم جميع الـ scores الجديدة الإصدار المُرقَّى.",
+      "empty": {
+        "activeTitle": "لا يوجد calibrator نشط",
+        "activeHint": "درّب إصدارًا ثم رقِّه لبدء استخدام scores معايَرة.",
+        "versionsTitle": "لا توجد إصدارات بعد",
+        "versionsHint": "استخدم نموذج التدريب لتسجيل أوّل إصدار."
+      },
+      "errors": {
+        "loadFailed": "تعذّر تحميل إصدارات الـ calibrator.",
+        "trainFailed": "تعذّر وضع التدريب في الطابور.",
+        "promoteFailed": "تعذّرت ترقية الإصدار.",
+        "datasetPathRequired": "Dataset path مطلوب.",
+        "versionRequired": "الإصدار مطلوب.",
+        "versionFormat": "استخدم الصيغة vN أو vN.N (مثل v3, v3.1)."
+      },
+      "toast": {
+        "trainQueued": "تم وضع التدريب في الطابور (task {task}).",
+        "promoted": "تمت ترقية الإصدار {version} إلى نشط."
+      },
+      "train": {
+        "title": "تدريب إصدار جديد",
+        "subtitle": "يضع مهمة Celery تدرّب isotonic calibrator.",
+        "datasetPath": "Dataset path",
+        "version": "الإصدار الهدف",
+        "submit": "تدريب"
+      }
+    }
+  },
+  "costsDashboard": {
+    "title": "تغطية التكاليف",
+    "subtitle": "تغطية التكاليف النشطة حسب نظام البيع.",
+    "noPermission": "ليس لديك صلاحية لعرض هذا القسم.",
+    "schemeKpiLabel": "تغطية {scheme}",
+    "coveredOfTotal": "{covered}/{total} SKUs مغطّاة",
+    "missingCount": "{count, plural, =0 {مكتمل} =1 {1 ناقص} other {# ناقصة}}",
+    "complete": "مكتمل",
+    "name": "الاسم",
+    "actions": "الإجراءات",
+    "addCost": "إضافة تكلفة",
+    "noMissing": "جميع الأكواد SKU لديها تكلفة نشطة لهذا النظام.",
+    "missingCapped": "عرض {shown} من {total}.",
+    "schemesDetailTitle": "التفاصيل حسب النظام",
+    "schemesDetailSubtitle": "إجمالي المنتجات: {total} · حُسب في {computedAt}",
+    "errors": {
+      "statsLoadFailed": "تعذّر تحميل إحصاءات الكتالوج.",
+      "overviewLoadFailed": "تعذّر تحميل نظرة عامة على التكاليف."
+    }
+  }
+}

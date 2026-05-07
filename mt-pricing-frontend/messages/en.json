@@ -1012,6 +1012,110 @@
         "confirmRetryTitle": "Re-run import?",
         "confirmRetryDesc": "A new ImportRun will be created using the dev fixture."
       }
+    },
+    "flags": {
+      "title": "Feature flags",
+      "subtitle": "Toggle runtime flags and trigger the global kill-switch.",
+      "noPermission": "You do not have permission to view this section.",
+      "killSwitchTag": "kill-switch",
+      "columns": {
+        "key": "Key",
+        "description": "Description",
+        "value": "Value",
+        "updatedAt": "Updated"
+      },
+      "empty": {
+        "title": "No flags",
+        "hint": "Backend has not registered any feature flag yet."
+      },
+      "errors": {
+        "loadFailed": "Could not load feature flags.",
+        "patchFailed": "Could not update flag.",
+        "invalidNumber": "Value must be a valid number."
+      },
+      "toast": {
+        "updated": "Flag {key} updated."
+      },
+      "killSwitch": {
+        "cardTitle": "Emergency kill-switch",
+        "cardDescription": "Forces every kill-switch flag to OFF (e.g. live network adapters, OpenAI calls).",
+        "trigger": "Trigger kill-switch",
+        "title": "Trigger global kill-switch?",
+        "description": "All flags marked as kill-switch will be disabled immediately.",
+        "reasonLabel": "Reason (audited)",
+        "reasonPlaceholder": "Why are you triggering the kill-switch? (min 10 characters)",
+        "warningTitle": "Destructive action",
+        "warningBody": "Live integrations will fall back to stubs. Recovery requires re-enabling each flag manually.",
+        "confirm": "Yes, kill everything",
+        "errors": {
+          "reasonRequired": "Reason must be at least 10 characters.",
+          "failed": "Could not trigger kill-switch."
+        },
+        "toast": {
+          "success": "{count, plural, =0 {No flags were active} =1 {1 flag disabled} other {# flags disabled}}."
+        }
+      }
+    },
+    "calibrator": {
+      "title": "Comparator calibrator",
+      "subtitle": "Active version, training pipeline, and version promotion.",
+      "noPermission": "You do not have permission to view this section.",
+      "active": "active",
+      "promote": "Promote",
+      "fittedAt": "Fitted at",
+      "datasetSize": "Dataset",
+      "downloadArtifact": "Download artifact",
+      "activeTitle": "Active version",
+      "activeSubtitle": "Currently used by every match scoring call.",
+      "versionsTitle": "All versions",
+      "versionsSubtitle": "Historical trainings persisted in `competitor_calibrators`.",
+      "confirmPromoteTitle": "Promote {version} to active?",
+      "confirmPromoteDesc": "The current active version will be marked as historical and every new score will use the promoted version.",
+      "empty": {
+        "activeTitle": "No active calibrator",
+        "activeHint": "Train a version and promote it to start using calibrated scores.",
+        "versionsTitle": "No versions yet",
+        "versionsHint": "Use the train form to register the first version."
+      },
+      "errors": {
+        "loadFailed": "Could not load calibrator versions.",
+        "trainFailed": "Could not enqueue training.",
+        "promoteFailed": "Could not promote version.",
+        "datasetPathRequired": "Dataset path is required.",
+        "versionRequired": "Version is required.",
+        "versionFormat": "Use the format vN or vN.N (e.g. v3, v3.1)."
+      },
+      "toast": {
+        "trainQueued": "Training queued (task {task}).",
+        "promoted": "Version {version} promoted to active."
+      },
+      "train": {
+        "title": "Train new version",
+        "subtitle": "Enqueues a Celery task that trains an isotonic calibrator.",
+        "datasetPath": "Dataset path",
+        "version": "Target version",
+        "submit": "Train"
+      }
+    }
+  },
+  "costsDashboard": {
+    "title": "Cost coverage",
+    "subtitle": "Coverage of active costs by sales scheme.",
+    "noPermission": "You do not have permission to view this section.",
+    "schemeKpiLabel": "{scheme} coverage",
+    "coveredOfTotal": "{covered}/{total} SKUs covered",
+    "missingCount": "{count, plural, =0 {complete} =1 {1 missing} other {# missing}}",
+    "complete": "complete",
+    "name": "Name",
+    "actions": "Actions",
+    "addCost": "Add cost",
+    "noMissing": "All SKUs have an active cost for this scheme.",
+    "missingCapped": "Showing {shown} of {total}.",
+    "schemesDetailTitle": "Detail by scheme",
+    "schemesDetailSubtitle": "Total products: {total} · computed at {computedAt}",
+    "errors": {
+      "statsLoadFailed": "Could not load catalog stats.",
+      "overviewLoadFailed": "Could not load cost coverage overview."
     }
   }
 }

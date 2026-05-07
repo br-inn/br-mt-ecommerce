@@ -1013,6 +1013,110 @@
         "confirmRetryTitle": "¿Re-ejecutar import?",
         "confirmRetryDesc": "Se creará un nuevo ImportRun usando el fixture de dev."
       }
+    },
+    "flags": {
+      "title": "Feature flags",
+      "subtitle": "Activa/desactiva flags en runtime y dispara el kill-switch global.",
+      "noPermission": "No tienes permiso para ver esta sección.",
+      "killSwitchTag": "kill-switch",
+      "columns": {
+        "key": "Clave",
+        "description": "Descripción",
+        "value": "Valor",
+        "updatedAt": "Actualizado"
+      },
+      "empty": {
+        "title": "Sin flags",
+        "hint": "El backend aún no ha registrado ningún feature flag."
+      },
+      "errors": {
+        "loadFailed": "No se pudieron cargar los feature flags.",
+        "patchFailed": "No se pudo actualizar el flag.",
+        "invalidNumber": "El valor debe ser un número válido."
+      },
+      "toast": {
+        "updated": "Flag {key} actualizado."
+      },
+      "killSwitch": {
+        "cardTitle": "Kill-switch de emergencia",
+        "cardDescription": "Fuerza todos los flags marcados como kill-switch a OFF (e.g. adapters de red real, llamadas a OpenAI).",
+        "trigger": "Disparar kill-switch",
+        "title": "¿Disparar kill-switch global?",
+        "description": "Todos los flags marcados como kill-switch quedarán deshabilitados inmediatamente.",
+        "reasonLabel": "Motivo (auditado)",
+        "reasonPlaceholder": "¿Por qué disparas el kill-switch? (mínimo 10 caracteres)",
+        "warningTitle": "Acción destructiva",
+        "warningBody": "Las integraciones live caerán a stubs. La recuperación requiere reactivar cada flag manualmente.",
+        "confirm": "Sí, deshabilitar todo",
+        "errors": {
+          "reasonRequired": "El motivo debe tener al menos 10 caracteres.",
+          "failed": "No se pudo disparar el kill-switch."
+        },
+        "toast": {
+          "success": "{count, plural, =0 {No había flags activos} =1 {1 flag deshabilitado} other {# flags deshabilitados}}."
+        }
+      }
+    },
+    "calibrator": {
+      "title": "Calibrator del comparator",
+      "subtitle": "Versión activa, pipeline de entrenamiento y promoción de versiones.",
+      "noPermission": "No tienes permiso para ver esta sección.",
+      "active": "activa",
+      "promote": "Promover",
+      "fittedAt": "Entrenado el",
+      "datasetSize": "Dataset",
+      "downloadArtifact": "Descargar artefacto",
+      "activeTitle": "Versión activa",
+      "activeSubtitle": "Usada por todas las llamadas de match scoring.",
+      "versionsTitle": "Todas las versiones",
+      "versionsSubtitle": "Entrenamientos históricos persistidos en `competitor_calibrators`.",
+      "confirmPromoteTitle": "¿Promover {version} a activa?",
+      "confirmPromoteDesc": "La versión activa actual quedará marcada como histórica y todos los nuevos scores usarán la versión promovida.",
+      "empty": {
+        "activeTitle": "Sin calibrator activo",
+        "activeHint": "Entrena una versión y promuévela para empezar a usar scores calibrados.",
+        "versionsTitle": "Aún no hay versiones",
+        "versionsHint": "Usa el formulario de entrenamiento para registrar la primera versión."
+      },
+      "errors": {
+        "loadFailed": "No se pudieron cargar las versiones del calibrator.",
+        "trainFailed": "No se pudo encolar el entrenamiento.",
+        "promoteFailed": "No se pudo promover la versión.",
+        "datasetPathRequired": "El dataset path es obligatorio.",
+        "versionRequired": "La versión es obligatoria.",
+        "versionFormat": "Usa el formato vN o vN.N (e.g. v3, v3.1)."
+      },
+      "toast": {
+        "trainQueued": "Entrenamiento encolado (task {task}).",
+        "promoted": "Versión {version} promovida a activa."
+      },
+      "train": {
+        "title": "Entrenar nueva versión",
+        "subtitle": "Encola una task Celery que entrena un isotonic calibrator.",
+        "datasetPath": "Dataset path",
+        "version": "Versión objetivo",
+        "submit": "Entrenar"
+      }
+    }
+  },
+  "costsDashboard": {
+    "title": "Cobertura de costes",
+    "subtitle": "Cobertura de costes activos por esquema de venta.",
+    "noPermission": "No tienes permiso para ver esta sección.",
+    "schemeKpiLabel": "Cobertura {scheme}",
+    "coveredOfTotal": "{covered}/{total} SKUs cubiertos",
+    "missingCount": "{count, plural, =0 {completo} =1 {1 faltante} other {# faltantes}}",
+    "complete": "completo",
+    "name": "Nombre",
+    "actions": "Acciones",
+    "addCost": "Añadir coste",
+    "noMissing": "Todos los SKUs tienen coste activo para este esquema.",
+    "missingCapped": "Mostrando {shown} de {total}.",
+    "schemesDetailTitle": "Detalle por esquema",
+    "schemesDetailSubtitle": "Productos totales: {total} · calculado a las {computedAt}",
+    "errors": {
+      "statsLoadFailed": "No se pudieron cargar las estadísticas del catálogo.",
+      "overviewLoadFailed": "No se pudo cargar el overview de costes."
     }
   }
 }
