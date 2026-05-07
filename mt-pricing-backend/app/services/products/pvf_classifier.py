@@ -180,6 +180,84 @@ def _imperial_key(whole: str | None, num: str, den: str) -> str:
 # ---------------------------------------------------------------------------
 _PN_RE = re.compile(r"\bpn\s*0*(\d{1,3})\b", re.IGNORECASE)
 
+# ANSI flange class → PN equivalence (ASME B16.5 / EN 1759). Common ratings:
+_ANSI_TO_PN_RE = re.compile(r"\bansi\s*(150|300|600|900)\b", re.IGNORECASE)
+_ANSI_TO_PN: dict[str, str] = {
+    "150": "20",
+    "300": "50",
+    "600": "100",
+    "900": "150",
+}
+
+# ---------------------------------------------------------------------------
+# PN heuristic — fallback cuando no aparece explícito en el nombre.
+#
+# Estándar PVF UAE/EU para distribución: la PN nominal se deriva de
+# (family, material, connection_hint) según prácticas BS/EN/ANSI:
+#
+# - mt-press / press fittings: PN10 working pressure (cumple EN 1057)
+# - galvanised threaded fittings: PN10 (gas/agua residencial)
+# - brass threaded fittings: PN10
+# - stainless steel threaded fittings: PN16
+# - stainless steel ball valve: PN30-40 (asumimos PN30, conservador)
+# - brass ball valve: PN16
+# - cast iron butterfly/gate valve: PN10
+# - multilayer/PEX press: PN10
+#
+# Familias sin PN aplicable (gauge, hardware, hose, actuator, etc.): None.
+# ---------------------------------------------------------------------------
+_NO_PN_FAMILIES: frozenset[str] = frozenset({
+    "gauge", "actuator", "hardware", "hose", "pipe", "nipple", "nut", "plug",
+    "adaptor",
+})
+
+
+def _infer_pn_heuristic(name: str, family: str | None, material: str | None) -> str | None:
+    """Devuelve PN inferido por convención industrial; None si no aplica.
+
+    El caller debe registrar en audit que viene de heurística (no del nombre).
+    """
+    if family is None or family in _NO_PN_FAMILIES:
+        return None
+
+    is_press = "mt-press" in name or "press fitting" in name or family == "press_fitting"
+    is_ansi = "ansi" in name
+    if is_ansi:
+        # Si el ANSI estaba presente _ANSI_TO_PN_RE ya lo capturó (prioridad mayor).
+        # Si llegamos aquí con ANSI sin PN → no inferimos heurísticamente.
+        return None
+
+    is_ss = material is not None and material.startswith("stainless_steel")
+    is_brass = material == "brass"
+    is_galv = material == "galvanised_steel"
+    is_ci = material == "cast_iron"
+    is_multilayer_or_pex = material in {"multilayer", "pe_xa", "polyethylene"}
+
+    if family == "valve":
+        if "ball" in name and is_ss:
+            return "30"
+        if is_brass:
+            return "16"
+        if is_ci:
+            return "10"
+        if is_ss:
+            return "16"
+        return "10"
+
+    if family == "flange":
+        # Threaded/pressed flanges sin ANSI explícito → PN16 (BS/EN default).
+        return "16"
+
+    # Fittings genéricos (elbow, tee, coupling, reducer, press_fitting, fitting):
+    if is_press or is_multilayer_or_pex:
+        return "10"
+    if is_ss:
+        return "16"
+    if is_brass or is_galv:
+        return "10"
+
+    return None
+
 
 @dataclass(frozen=True, slots=True)
 class ClassifyResult:
@@ -189,6 +267,7 @@ class ClassifyResult:
     material: str | None
     dn: str | None  # mm como string (ej. "50")
     pn: str | None  # bar como string (ej. "16")
+    pn_source: str | None  # "explicit" | "ansi" | "heuristic" | None
     confidence_notes: tuple[str, ...]  # diagnóstico para audit
 
 
@@ -240,21 +319,33 @@ def _extract_dn(text: str) -> str | None:
     return None
 
 
-def _extract_pn(text: str) -> str | None:
+def _extract_pn(text: str) -> tuple[str | None, str | None]:
+    """Extrae PN explícito + indica fuente.
+
+    Returns:
+        ``(pn_value, source)`` — source es ``"explicit"`` (pn<num>),
+        ``"ansi"`` (ANSI clase derivada), o ``None``.
+    """
     matches = _PN_RE.findall(text)
-    if not matches:
-        return None
-    # Si hay múltiples (ej. "pn10/pn16"), tomamos el menor (rating efectivo).
-    return str(min(int(m) for m in matches))
+    if matches:
+        return str(min(int(m) for m in matches)), "explicit"
+    m = _ANSI_TO_PN_RE.search(text)
+    if m:
+        return _ANSI_TO_PN[m.group(1)], "ansi"
+    return None, None
 
 
-def classify(name_en: str) -> ClassifyResult:
+def classify(name_en: str, *, allow_pn_heuristic: bool = True) -> ClassifyResult:
     """Clasifica un nombre PVF.
+
+    Args:
+        name_en: nombre EN del producto.
+        allow_pn_heuristic: si ``True`` y el PN no se extrajo del nombre,
+            aplicamos heurística family+material → PN industrial estándar.
 
     Returns:
         ClassifyResult con los 4 campos + notas. Cualquier campo puede ser None
-        si no se infiere del nombre (caller decide si persistir o dejar como
-        está).
+        si no se infiere ni explícitamente ni por heurística.
     """
     text = _normalize(name_en)
     notes: list[str] = []
@@ -268,7 +359,13 @@ def classify(name_en: str) -> ClassifyResult:
     dn = _extract_dn(text)
     if dn is None:
         notes.append("dn:no-match")
-    pn = _extract_pn(text)
+
+    pn, pn_source = _extract_pn(text)
+    if pn is None and allow_pn_heuristic:
+        pn = _infer_pn_heuristic(text, family, material)
+        if pn is not None:
+            pn_source = "heuristic"
+            notes.append(f"pn:heuristic({family}/{material})")
     if pn is None:
         notes.append("pn:no-match")
 
@@ -277,5 +374,6 @@ def classify(name_en: str) -> ClassifyResult:
         material=material,
         dn=dn,
         pn=pn,
+        pn_source=pn_source,
         confidence_notes=tuple(notes),
     )

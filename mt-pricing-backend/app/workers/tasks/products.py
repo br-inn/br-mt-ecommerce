@@ -54,9 +54,17 @@ async def _run_async(
     only_partial: bool,
     promote: bool,
 ) -> dict[str, Any]:
+    """Implementación bulk-SQL.
+
+    El trigger ``audit_events_hash_chain`` serializa por-row → 5085 audits
+    individuales toman >30 min. Para un backfill one-shot preferimos:
+      1. Read-pass en Python (clasifica y agrupa por field).
+      2. Bulk UPDATE SQL por campo (5 statements en total).
+      3. Un solo audit ``classifier.run.completed`` con counters resumen.
+    """
     from uuid import UUID as _UUID
 
-    from sqlalchemy import select, update
+    from sqlalchemy import select, text
 
     from app.db.engine import get_sessionmaker
     from app.db.models.product import Product
@@ -66,7 +74,7 @@ async def _run_async(
     actor_uuid = _UUID(actor_id) if actor_id else None
     SessionFactory = get_sessionmaker()
 
-    counters = {
+    counters: dict[str, Any] = {
         "scanned": 0,
         "field_updates": {"family": 0, "material": 0, "dn": 0, "pn": 0},
         "rows_changed": 0,
@@ -76,131 +84,187 @@ async def _run_async(
     }
     sample_errors: list[str] = []
 
+    # Acumuladores: sku → valor a setear (solo si el actual es vacío/unclassified).
+    fam_updates: dict[str, str] = {}
+    mat_updates: dict[str, str] = {}
+    dn_updates: dict[str, str] = {}
+    pn_updates: dict[str, str] = {}
+    promote_skus: list[str] = []
+
     async with SessionFactory() as session:
-        audit = AuditRepository(session)
-        # Fetch en lotes para no cargar 5085 productos a memoria de golpe.
-        BATCH_SIZE = 500
-        offset = 0
-        while True:
-            stmt = select(Product).where(Product.deleted_at.is_(None))
-            if only_partial:
-                stmt = stmt.where(Product.data_quality == "partial")
-            stmt = stmt.order_by(Product.sku).offset(offset).limit(BATCH_SIZE)
-            result = await session.execute(stmt)
-            batch = list(result.scalars().all())
-            if not batch:
-                break
+        # ---------- Pass 1: read + classify in memory ----------
+        stmt = select(
+            Product.sku,
+            Product.name_en,
+            Product.family,
+            Product.material,
+            Product.dn,
+            Product.pn,
+            Product.data_quality,
+            Product.manual_locked_fields,
+        ).where(Product.deleted_at.is_(None))
+        if only_partial:
+            stmt = stmt.where(Product.data_quality == "partial")
+        result = await session.execute(stmt)
 
-            for prod in batch:
-                counters["scanned"] += 1
-                # Skip placeholders — no hay info útil para extraer del nombre.
-                if prod.name_en and prod.name_en.startswith("[Producto sin nombre"):
-                    counters["skipped_placeholder_name"] += 1
-                    continue
-                if not prod.name_en:
-                    continue
+        for sku, name_en, family, material, dn, pn, dq, locked_raw in result.all():
+            counters["scanned"] += 1
+            if not name_en or name_en.startswith("[Producto sin nombre"):
+                counters["skipped_placeholder_name"] += 1
+                continue
+            try:
+                r = classify(name_en)
+            except Exception as exc:  # noqa: BLE001 — defensivo
+                counters["errors"] += 1
+                if len(sample_errors) < 20:
+                    sample_errors.append(f"{sku}: {exc!s}")
+                continue
 
-                try:
-                    res = classify(prod.name_en)
-                except Exception as exc:  # noqa: BLE001 — defensivo
-                    counters["errors"] += 1
-                    if len(sample_errors) < 20:
-                        sample_errors.append(f"{prod.sku}: {exc!s}")
-                    continue
+            locked = set(locked_raw or [])
+            row_changed = False
 
-                changed_fields: dict[str, dict[str, str | None]] = {}
+            new_family = family
+            if r.family and "family" not in locked and family in (None, "", "unclassified"):
+                fam_updates[sku] = r.family
+                counters["field_updates"]["family"] += 1
+                new_family = r.family
+                row_changed = True
 
-                # Solo persistimos si el campo está vacío o `unclassified`.
-                # Respetamos manual_locked_fields (no override de ediciones humanas).
-                locked = set(prod.manual_locked_fields or [])
+            new_material = material
+            if r.material and "material" not in locked and material in (None, ""):
+                mat_updates[sku] = r.material
+                counters["field_updates"]["material"] += 1
+                new_material = r.material
+                row_changed = True
 
-                if (
-                    res.family
-                    and "family" not in locked
-                    and (prod.family in (None, "", "unclassified"))
-                ):
-                    changed_fields["family"] = {"from": prod.family, "to": res.family}
-                    prod.family = res.family
-                    counters["field_updates"]["family"] += 1
+            new_dn = dn
+            if r.dn and "dn" not in locked and dn in (None, ""):
+                dn_updates[sku] = r.dn
+                counters["field_updates"]["dn"] += 1
+                new_dn = r.dn
+                row_changed = True
 
-                if (
-                    res.material
-                    and "material" not in locked
-                    and prod.material in (None, "")
-                ):
-                    changed_fields["material"] = {"from": prod.material, "to": res.material}
-                    prod.material = res.material
-                    counters["field_updates"]["material"] += 1
+            new_pn = pn
+            if r.pn and "pn" not in locked and pn in (None, ""):
+                pn_updates[sku] = r.pn
+                counters["field_updates"]["pn"] += 1
+                new_pn = r.pn
+                row_changed = True
 
-                if res.dn and "dn" not in locked and prod.dn in (None, ""):
-                    changed_fields["dn"] = {"from": prod.dn, "to": res.dn}
-                    prod.dn = res.dn
-                    counters["field_updates"]["dn"] += 1
-
-                if res.pn and "pn" not in locked and prod.pn in (None, ""):
-                    changed_fields["pn"] = {"from": prod.pn, "to": res.pn}
-                    prod.pn = res.pn
-                    counters["field_updates"]["pn"] += 1
-
-                if not changed_fields:
-                    continue
-
+            if row_changed:
                 counters["rows_changed"] += 1
-                prod.updated_by = actor_uuid
-                prod.updated_at = datetime.now(tz=timezone.utc)
+                if (
+                    promote
+                    and dq == "partial"
+                    and new_family
+                    and new_family != "unclassified"
+                    and new_material
+                    and new_dn
+                    and new_pn
+                ):
+                    promote_skus.append(sku)
 
-                # Promote to complete if eligible.
-                if promote and prod.data_quality == "partial":
-                    eligible = (
-                        prod.name_en
-                        and not prod.name_en.startswith("[Producto sin nombre")
-                        and prod.family
-                        and prod.family != "unclassified"
-                        and prod.material
-                        and prod.dn
-                        and prod.pn
-                    )
-                    if eligible:
-                        prev = prod.data_quality
-                        prod.data_quality = "complete"
-                        counters["promoted_to_complete"] += 1
-                        await audit.record(
-                            entity_type="product",
-                            entity_id=prod.sku,
-                            action="product.data_quality.transition",
-                            actor_id=actor_uuid,
-                            actor_email="system@mtme.local",
-                            actor_role="system",
-                            before={"data_quality": prev},
-                            after={"data_quality": "complete"},
-                            payload_diff={"data_quality": {"from": prev, "to": "complete"}},
-                            reason="classify_pim_batch — auto-promotion",
-                        )
-
-                await audit.record(
-                    entity_type="product",
-                    entity_id=prod.sku,
-                    action="product.classified",
-                    actor_id=actor_uuid,
-                    actor_email="system@mtme.local",
-                    actor_role="system",
-                    before=None,
-                    after=None,
-                    payload_diff=changed_fields,
-                    reason="pvf_classifier rule-based pass",
-                )
-
-            await session.flush()
-            await session.commit()
-            offset += BATCH_SIZE
-            logger.info(
-                "classify_pim_batch progreso",
-                extra={
-                    "scanned": counters["scanned"],
-                    "rows_changed": counters["rows_changed"],
-                    "promoted": counters["promoted_to_complete"],
+        # ---------- Pass 2: bulk UPDATE por campo via UNNEST ----------
+        # 4 UPDATE statements + 1 promotion + 1 audit summary.
+        if fam_updates:
+            await session.execute(
+                text("""
+                    UPDATE public.products AS p
+                    SET family = u.val, updated_at = NOW(), updated_by = :uid
+                    FROM unnest(CAST(:skus AS text[]), CAST(:vals AS text[])) AS u(sku, val)
+                    WHERE p.sku = u.sku AND p.family IN ('unclassified', '')
+                """),
+                {
+                    "skus": list(fam_updates.keys()),
+                    "vals": list(fam_updates.values()),
+                    "uid": actor_uuid,
                 },
             )
+        if mat_updates:
+            await session.execute(
+                text("""
+                    UPDATE public.products AS p
+                    SET material = u.val, updated_at = NOW(), updated_by = :uid
+                    FROM unnest(CAST(:skus AS text[]), CAST(:vals AS text[])) AS u(sku, val)
+                    WHERE p.sku = u.sku AND (p.material IS NULL OR p.material = '')
+                """),
+                {
+                    "skus": list(mat_updates.keys()),
+                    "vals": list(mat_updates.values()),
+                    "uid": actor_uuid,
+                },
+            )
+        if dn_updates:
+            await session.execute(
+                text("""
+                    UPDATE public.products AS p
+                    SET dn = u.val, updated_at = NOW(), updated_by = :uid
+                    FROM unnest(CAST(:skus AS text[]), CAST(:vals AS text[])) AS u(sku, val)
+                    WHERE p.sku = u.sku AND (p.dn IS NULL OR p.dn = '')
+                """),
+                {
+                    "skus": list(dn_updates.keys()),
+                    "vals": list(dn_updates.values()),
+                    "uid": actor_uuid,
+                },
+            )
+        if pn_updates:
+            await session.execute(
+                text("""
+                    UPDATE public.products AS p
+                    SET pn = u.val, updated_at = NOW(), updated_by = :uid
+                    FROM unnest(CAST(:skus AS text[]), CAST(:vals AS text[])) AS u(sku, val)
+                    WHERE p.sku = u.sku AND (p.pn IS NULL OR p.pn = '')
+                """),
+                {
+                    "skus": list(pn_updates.keys()),
+                    "vals": list(pn_updates.values()),
+                    "uid": actor_uuid,
+                },
+            )
+        if promote and promote_skus:
+            await session.execute(
+                text("""
+                    UPDATE public.products
+                    SET data_quality = 'complete', updated_at = NOW(), updated_by = :uid
+                    WHERE sku = ANY(CAST(:skus AS text[])) AND data_quality = 'partial'
+                """),
+                {"skus": promote_skus, "uid": actor_uuid},
+            )
+            counters["promoted_to_complete"] = len(promote_skus)
+
+        # Single audit summary (en lugar de 5085 — el trigger hash chain solo
+        # corre una vez aquí).
+        audit = AuditRepository(session)
+        await audit.record(
+            entity_type="system",
+            entity_id="classifier",
+            action="classifier.run.completed",
+            actor_id=actor_uuid,
+            actor_email="system@mtme.local",
+            actor_role="system",
+            payload_diff={
+                "field_updates": counters["field_updates"],
+                "rows_changed": counters["rows_changed"],
+                "promoted_to_complete": counters["promoted_to_complete"],
+                "scanned": counters["scanned"],
+                "skipped_placeholder_name": counters["skipped_placeholder_name"],
+                "errors": counters["errors"],
+                "only_partial": only_partial,
+                "promote_to_complete": promote,
+            },
+            reason="pvf_classifier bulk run",
+        )
+        await session.commit()
+
+    logger.info(
+        "classify_pim_batch completed",
+        extra={
+            "scanned": counters["scanned"],
+            "rows_changed": counters["rows_changed"],
+            "promoted": counters["promoted_to_complete"],
+        },
+    )
 
     counters["errors_sample"] = sample_errors
     return counters

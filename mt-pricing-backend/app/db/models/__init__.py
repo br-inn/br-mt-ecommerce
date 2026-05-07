@@ -7,10 +7,12 @@ no los descubre y las migraciones autogenerate los ignoran.
 from __future__ import annotations
 
 from app.db.models.audit import AuditEvent
+from app.db.models.cdc_event import CdcEvent
 from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
 from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
 from app.db.models.cost_scheme import CostScheme
 from app.db.models.currency import Currency
+from app.db.models.datasheet_import_run import ProductDatasheet
 from app.db.models.import_run import ImportRun
 from app.db.models.job import JobDefinition, JobRun
 from app.db.models.match_candidate import MatchCandidate
@@ -61,4 +63,8 @@ __all__ = [
     "ChannelSyncEvent",
     # importer materials (Sprint 3 — US-1A-06-03)
     "MaterialCompatibility",
+    # importer datasheets PDF (Sprint 4 — US-1A-06-04)
+    "ProductDatasheet",
+    # graphrag CDC outbox (Sprint 4 — US-RND-01-11)
+    "CdcEvent",
 ]

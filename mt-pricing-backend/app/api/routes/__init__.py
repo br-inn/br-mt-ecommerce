@@ -9,18 +9,22 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     audit,
+    audit_query,
     auth,
     channels_mirror,
     costs,
     currencies,
     dashboard,
     fx_rates,
+    graphrag,
     imports,
     imports_costs,
+    imports_datasheets,
     imports_materials,
     jobs,
     matches,
     pricing,
+    pricing_engine,
     products,
     roles,
     suppliers,
@@ -50,3 +54,7 @@ router.include_router(imports_costs.router)
 router.include_router(imports_materials.router)
 router.include_router(translations_workflow.router)
 router.include_router(products_costs_router)
+router.include_router(audit_query.router)
+router.include_router(pricing_engine.router)
+router.include_router(imports_datasheets.router)
+router.include_router(graphrag.router)

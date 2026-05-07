@@ -57,6 +57,8 @@ def make_celery() -> Celery:
             "app.workers.tasks.comparator",
             "app.workers.tasks.notifications",
             "app.workers.tasks.audit",
+            # S4 — graphrag CDC processor (US-RND-01-11)
+            "app.workers.tasks.graphrag",
             # Observabilidad: heartbeat publisher (signal + task periódica)
             "app.workers.heartbeat",
             # Mantenimiento DB: particiones audit_events (R-S2-08, US-1A-07-01)
@@ -97,6 +99,7 @@ def make_celery() -> Celery:
             "mt.comparator.*": {"queue": "comparator"},
             "mt.notifications.*": {"queue": "notifications"},
             "mt.audit.*": {"queue": "audit"},
+            "mt.graphrag.*": {"queue": "comparator"},
         },
         # --- Beat (ADR-046 — scheduler custom sobre job_definitions) ---
         beat_scheduler="app.scheduler.database_scheduler:DatabaseScheduler",
