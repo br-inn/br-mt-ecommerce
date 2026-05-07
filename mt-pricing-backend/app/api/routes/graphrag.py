@@ -63,6 +63,12 @@ def get_cdc_dispatcher(
     "/health",
     response_model=GraphRagHealthResponse,
     summary="Health del scaffold GraphRAG (graph store + CDC outbox)",
+    description=(
+        "Devuelve diagnóstico del scaffold GraphRAG: backend del graph "
+        "store (Neo4jStub/in-memory Sprint 4), nodes/edges count y "
+        "estados del CDC outbox."
+    ),
+    operation_id="graphragGetHealth",
 )
 async def health(
     session: Annotated[AsyncSession, Depends(get_db_session)],
@@ -85,6 +91,12 @@ async def health(
     response_model=GraphRagReplayResponse,
     status_code=status.HTTP_200_OK,
     summary="Resetea rows cdc_events a `pending` (admin only — graphrag:admin)",
+    description=(
+        "Resetea filas en `cdc_events` a status `pending` para forzar "
+        "re-procesamiento. Soporta filtrado por entity_type y modo "
+        "`only_dead_letter`. Admin only."
+    ),
+    operation_id="graphragReplayCdc",
 )
 async def replay(
     payload: GraphRagReplayRequest | None = None,

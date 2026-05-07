@@ -106,6 +106,12 @@ def _summary_to_samples(diffs: list[Any], limit: int = 50) -> list[DatasheetsDif
     "/preview",
     response_model=ImportDatasheetsPreviewResponse,
     summary="Preview de PDFs datasheet — parsea filename + specs y reporta orphans",
+    description=(
+        "Sube uno o varios PDFs datasheet (MTFT_*/MTCE_*/MTMAN_*), parsea "
+        "filename + specs (DN/PN/material/seal). Reporta orphan_files y "
+        "orphan_skus. No persiste."
+    ),
+    operation_id="importDatasheetsPreview",
     responses={
         413: {"model": ProblemDetails, "description": "Archivo > 10 MB"},
         422: {"model": ProblemDetails},
@@ -154,6 +160,12 @@ async def preview_datasheets_import(
     "/{run_id}/apply",
     response_model=ImportDatasheetsRunStatusResponse,
     summary="Aplica la asociación de datasheets a productos",
+    description=(
+        "Confirma el run y asocia los PDFs a sus productos vía "
+        "`ProductService.attach_datasheet`. Sube los archivos a Supabase "
+        "Storage `product-images`."
+    ),
+    operation_id="importDatasheetsApply",
     responses={
         404: {"model": ProblemDetails},
         409: {"model": ProblemDetails, "description": "Run en estado inválido"},
@@ -190,6 +202,11 @@ async def apply_datasheets_import(
     "/{run_id}/status",
     response_model=ImportDatasheetsRunStatusResponse,
     summary="Estado del run de datasheets",
+    description=(
+        "Devuelve el estado in-memory del run de datasheets (preview_ready, "
+        "applying, completed, completed_with_errors, failed)."
+    ),
+    operation_id="importDatasheetsGetStatus",
     responses={404: {"model": ProblemDetails}},
 )
 async def get_status(

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.product import Product, ProductImage, ProductTranslation
@@ -699,5 +700,102 @@ class ProductService:
             actor_id=actor.id,
             actor_email=actor.email,
             after={"sku": product_sku, "lang": lang, "status": "approved"},
+        )
+        return existing
+
+    # ----------------------------------------------------------- Datasheets
+    async def attach_datasheet(
+        self,
+        *,
+        product_sku: str,
+        kind: str,
+        storage_path: str,
+        original_filename: str,
+        specs: dict[str, Any],
+        actor: User,
+        _import_run_id: str | None = None,
+    ) -> Any:
+        """Asocia un PDF (ya subido a Storage) a un SKU en `product_datasheets`.
+
+        Idempotente por ``storage_path``: si la fila ya existe, agrega el SKU
+        al ``sku_list`` JSONB (sin duplicar). Audit emitido en cada creación
+        o append.
+        """
+        from sqlalchemy import select
+
+        from app.db.models.datasheet_import_run import ProductDatasheet
+
+        prod = await self.products.get_by_sku(product_sku)
+        if prod is None or prod.deleted_at is not None:
+            raise ProductNotFoundError(product_sku)
+
+        stmt = select(ProductDatasheet).where(
+            ProductDatasheet.storage_path == storage_path
+        )
+        existing = (await self.session.execute(stmt)).scalar_one_or_none()
+
+        run_uuid: UUID | None = None
+        if _import_run_id:
+            try:
+                candidate = UUID(_import_run_id)
+            except (ValueError, TypeError):
+                candidate = None
+            # FK a import_runs.id — solo lo asignamos si la fila existe; la
+            # pipeline in-memory de ImporterDatasheetsService genera UUIDs sin
+            # registrar import_runs (out of scope Sprint 4).
+            if candidate is not None:
+                exists = await self.session.execute(
+                    text("SELECT 1 FROM public.import_runs WHERE id = :rid"),
+                    {"rid": candidate},
+                )
+                if exists.scalar() is not None:
+                    run_uuid = candidate
+
+        if existing is None:
+            ds = ProductDatasheet(
+                kind=kind,
+                storage_path=storage_path,
+                original_filename=original_filename,
+                file_size_bytes=specs.get("file_size_bytes", 0) if isinstance(specs, dict) else 0,
+                sku_list=[product_sku],
+                specs_extracted=specs or {},
+                import_run_id=run_uuid,
+                uploaded_by=actor.id,
+            )
+            self.session.add(ds)
+            await self.session.flush()
+            await self.audit.record(
+                entity_type="product_datasheet",
+                entity_id=str(ds.id),
+                action="product.datasheet.attached",
+                actor_id=actor.id,
+                actor_email=actor.email,
+                after={
+                    "sku": product_sku,
+                    "kind": kind,
+                    "storage_path": storage_path,
+                    "original_filename": original_filename,
+                },
+            )
+            return ds
+
+        # Idempotente: solo append si el SKU no estaba ya en sku_list.
+        skus = list(existing.sku_list or [])
+        if product_sku in skus:
+            return existing
+        skus.append(product_sku)
+        existing.sku_list = skus
+        await self.session.flush()
+        await self.audit.record(
+            entity_type="product_datasheet",
+            entity_id=str(existing.id),
+            action="product.datasheet.sku_appended",
+            actor_id=actor.id,
+            actor_email=actor.email,
+            after={
+                "sku": product_sku,
+                "storage_path": storage_path,
+                "sku_list_size": len(skus),
+            },
         )
         return existing

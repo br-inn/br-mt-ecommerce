@@ -80,6 +80,9 @@ class DatasheetsRunState:
     summary: dict[str, Any] = field(default_factory=dict)
     apply_result: ApplyDatasheetsResult | None = None
     error: str | None = None
+    # Payloads in-memory para que `apply` pueda subir cada PDF al bucket.
+    # Se descartan tras el apply para no retener bytes innecesarios.
+    payloads: dict[str, bytes] = field(default_factory=dict)
 
 
 _RUN_STORE: dict[str, DatasheetsRunState] = {}
@@ -191,6 +194,14 @@ class ImporterDatasheetsService:
             "orphan_files": len(orphan_files),
             "orphan_skus": len(orphan_suffixes),
         }
+        # Mantenemos los binarios solo de los archivos que tendrán al menos un
+        # diff — los orphans no se suben.
+        matched_filenames = {d.filename for d in diffs}
+        payloads_to_keep = {
+            filename: payload
+            for (filename, payload, *_rest) in per_file_meta
+            if filename in matched_filenames
+        }
         state = DatasheetsRunState(
             run_id=run_id,
             kind="datasheets",
@@ -201,6 +212,7 @@ class ImporterDatasheetsService:
             orphan_files=orphan_files,
             orphan_skus=orphan_suffixes,
             summary=summary,
+            payloads=payloads_to_keep,
         )
         _RUN_STORE[run_id] = state
         _RUN_LOCKS[run_id] = asyncio.Lock()
@@ -230,6 +242,12 @@ class ImporterDatasheetsService:
         async with lock:
             state.status = "applying"
             try:
+                # Sube cada filename único al bucket Supabase product-datasheets.
+                # Una sola vez por archivo aunque mapee a N SKUs.
+                upload_summary = await self._upload_payloads_to_storage(state)
+                state.summary["uploaded_files"] = upload_summary["uploaded"]
+                state.summary["upload_errors"] = upload_summary["errors"]
+
                 result = await apply_datasheet_diffs(
                     state.diffs,
                     actor,
@@ -240,12 +258,79 @@ class ImporterDatasheetsService:
                 state.status = "completed_with_errors" if result.errors > 0 else "completed"
                 state.summary["applied_attached"] = result.attached
                 state.summary["applied_errors"] = result.errors
+                # Liberamos los binarios — ya están en Storage.
+                state.payloads = {}
             except Exception as exc:  # noqa: BLE001
                 logger.exception("datasheets apply failed run_id=%s", run_id)
                 state.status = "failed"
                 state.error = f"{type(exc).__name__}: {exc!s}"
                 raise
         return state
+
+    async def _upload_payloads_to_storage(
+        self, state: DatasheetsRunState
+    ) -> dict[str, int]:
+        """Sube cada PDF único al bucket Supabase. Idempotente (upsert=True).
+
+        Importante: supabase-py es sync (HTTP bloqueante). Si nuestra
+        AsyncSession DB tiene una transacción abierta, el pooler la cancela
+        por idle-tx mientras esperamos los uploads. Solución:
+        1. ``session.commit()`` antes — libera cualquier txn idle.
+        2. ``asyncio.to_thread`` por upload — no bloqueamos el event loop.
+        """
+        from app.core.config import settings
+        from app.services.storage import upload_bytes
+
+        # Libera cualquier txn pending para que el pooler no la mate.
+        try:
+            await self.session.commit()
+        except Exception:  # noqa: BLE001  — sesión sin txn activa
+            pass
+
+        uploaded = 0
+        errors = 0
+        seen: set[str] = set()
+        bucket = settings.SUPABASE_STORAGE_BUCKET_DATASHEETS
+
+        async def _upload_one(object_path: str, payload: bytes) -> bool:
+            def _sync() -> None:
+                upload_bytes(
+                    object_path,
+                    payload,
+                    content_type="application/pdf",
+                    bucket=bucket,
+                    upsert=True,
+                )
+            try:
+                await asyncio.to_thread(_sync)
+                return True
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "datasheets storage upload failed path=%s err=%s",
+                    object_path,
+                    exc,
+                )
+                return False
+
+        for d in state.diffs:
+            if d.storage_path in seen:
+                continue
+            seen.add(d.storage_path)
+            payload = state.payloads.get(d.filename)
+            if payload is None:
+                errors += 1
+                continue
+            # storage_path = 'product-datasheets/<filename>'; el prefijo bucket
+            # se descarta porque ya estamos subiendo al bucket.
+            object_path = d.storage_path
+            if object_path.startswith(f"{bucket}/"):
+                object_path = object_path[len(bucket) + 1:]
+            ok = await _upload_one(object_path, payload)
+            if ok:
+                uploaded += 1
+            else:
+                errors += 1
+        return {"uploaded": uploaded, "errors": errors}
 
     # ----------------------------------------------------------------- status
     @staticmethod

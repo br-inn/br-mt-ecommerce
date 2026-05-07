@@ -8,6 +8,8 @@ expone `router: APIRouter` y aquí se incluye con `router.include_router(...)`.
 from fastapi import APIRouter
 
 from app.api.routes import (
+    admin_calibrator,
+    admin_flags,
     audit,
     audit_query,
     auth,
@@ -24,6 +26,7 @@ from app.api.routes import (
     jobs,
     matches,
     pricing,
+    pricing_admin,
     pricing_engine,
     products,
     roles,
@@ -58,3 +61,6 @@ router.include_router(audit_query.router)
 router.include_router(pricing_engine.router)
 router.include_router(imports_datasheets.router)
 router.include_router(graphrag.router)
+router.include_router(admin_flags.router)
+router.include_router(admin_calibrator.router)
+router.include_router(pricing_admin.router)

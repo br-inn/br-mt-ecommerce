@@ -32,6 +32,20 @@ BEAT_SCHEDULE: dict[str, dict] = {
         "kwargs": {"months_ahead": 2},
         "options": {"queue": "audit"},
     },
+    # ----- Pricing bulk recalc nocturno (US-1B-01-07, Sprint 5) -----
+    # Recalcula precios de todo el catálogo activo. Idempotente — el batch
+    # graba un audit_event ('nightly_recalc_batch') con el summary del run.
+    # Cron: diario 02:00 Asia/Dubai (TIMEZONE settings.TIMEZONE) — el seed
+    # de `job_definitions` (DatabaseScheduler) usa la misma cron expression
+    # con timezone='Asia/Dubai'. Acá el crontab es UTC (Celery default), por
+    # lo que se mantiene 02:00 como estándar fijo del fallback.
+    "pricing_bulk_recalc_nightly": {
+        "task": "mt.pricing.bulk_recalc",
+        "schedule": crontab(hour="2", minute="0"),
+        "args": (),
+        "kwargs": {"source": "nightly_beat"},
+        "options": {"queue": "pricing"},
+    },
 }
 
 

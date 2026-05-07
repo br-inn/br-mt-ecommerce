@@ -48,6 +48,11 @@ def _raise_domain(err: FXRateDomainError) -> None:
     "",
     response_model=list[FXRateResponse],
     summary="Lista FX rates (más reciente primero)",
+    description=(
+        "Devuelve la lista de FX rates con filtros opcionales por par de "
+        "monedas y flag `only_active`. Ordenado por effective_from desc."
+    ),
+    operation_id="fxRatesList",
 )
 async def list_fx_rates(
     from_currency: Annotated[
@@ -75,6 +80,11 @@ async def list_fx_rates(
     response_model=FXRateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crea un FX rate (TI/admin) — trigger cierra el rate previo",
+    description=(
+        "Crea un nuevo FX rate. El trigger SQL cierra automáticamente el "
+        "rate previo. Permite retroactivo sólo con flag explícito."
+    ),
+    operation_id="fxRatesCreate",
     responses={
         403: {"model": ProblemDetails, "description": "Permission denied (fx:manage)"},
         422: {

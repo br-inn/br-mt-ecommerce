@@ -73,6 +73,12 @@ def _raise_domain(err: PricingDomainError) -> None:
     "/prices/bulk-publish",
     response_model=BulkPublishResponse,
     summary="Publica precios approved → exported con audit + rollback opcional",
+    description=(
+        "Transiciona un lote de precios `approved` → `exported` con "
+        "auditoría individual y opción `rollback_on_error` para abortar "
+        "ante el primer fallo de FSM."
+    ),
+    operation_id="pricingBulkPublish",
     responses={
         409: {"model": ProblemDetails},
         422: {"model": ProblemDetails},
@@ -98,6 +104,11 @@ async def bulk_publish(
     response_model=RecalcBatchResponse,
     status_code=status.HTTP_202_ACCEPTED,
     summary="Encola tasks Celery para recalcular un batch de SKUs",
+    description=(
+        "Encola un task Celery `mt.pricing.recalculate_sku` por SKU "
+        "(fan-out manual). Devuelve task_ids para poll posterior."
+    ),
+    operation_id="pricingRecalcBatch",
 )
 async def recalc_batch(
     data: RecalcBatchRequest,
@@ -133,6 +144,12 @@ async def recalc_batch(
     "/prices/{price_id}/revise-counter",
     response_model=CounterProposalResponse,
     summary="Revise con counter-proposal explícito (audit price.counter_proposed)",
+    description=(
+        "Aplica una counter-proposal sobre un precio existente con razón "
+        "obligatoria. Audit `price.counter_proposed`. Permission "
+        "`prices:override_review` (Sprint 5 RBAC fino)."
+    ),
+    operation_id="pricingReviseCounter",
     responses={
         404: {"model": ProblemDetails},
         409: {"model": ProblemDetails},
@@ -142,7 +159,11 @@ async def recalc_batch(
 async def revise_with_counter(
     price_id: UUID,
     data: CounterProposalRequest,
-    user: Annotated[User, Depends(require_permissions("prices:propose"))],
+    # `revise_with_counter` aplica una counter-proposal — distinto de un
+    # propose nuevo. Requiere `prices:override_review` (Sprint 5 RBAC fino,
+    # US-1A-07-04) para evitar que cualquier usuario con `prices:propose`
+    # pueda saltarse el flujo de review/override.
+    user: Annotated[User, Depends(require_permissions("prices:override_review"))],
     service: Annotated[ReviseService, Depends(get_revise_service)],
 ) -> CounterProposalResponse:
     try:

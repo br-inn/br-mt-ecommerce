@@ -141,6 +141,12 @@ def _to_response(cost) -> CostResponse:
     "",
     response_model=Pagination[CostResponse],
     summary="Listar costos con filtros y cursor pagination",
+    description=(
+        "Lista paginada (cursor UUID-based) de costos con filtros por "
+        "product_sku, scheme, supplier. Soporta `include_total=true` para "
+        "obtener el count global (más caro)."
+    ),
+    operation_id="costsList",
 )
 async def list_costs(
     product_sku: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
@@ -178,6 +184,11 @@ async def list_costs(
     "/missing",
     response_model=list[CostMissingSkuItem],
     summary="SKUs sin coste activo para un scheme",
+    description=(
+        "Devuelve la lista de SKUs activos que NO tienen un cost activo "
+        "para el scheme dado (FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE)."
+    ),
+    operation_id="costsListMissing",
 )
 async def missing_costs_by_scheme(
     scheme_code: Annotated[str, Query(min_length=2, max_length=32)],
@@ -197,6 +208,12 @@ async def missing_costs_by_scheme(
     response_model=CostCreatedResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear coste (versionado v1) — valida breakdown vs scheme template",
+    description=(
+        "Crea un nuevo cost (versión 1). Valida que el breakdown contenga "
+        "los campos requeridos por el `cost_components_template` del scheme. "
+        "Devuelve warnings por campos no declarados."
+    ),
+    operation_id="costsCreate",
     responses={
         404: {"model": ProblemDetails, "description": "SKU/Scheme/Supplier inexistente"},
         422: {
@@ -303,6 +320,12 @@ async def create_cost(
     "/{cost_id}",
     response_model=CostCreatedResponse,
     summary="Actualizar coste (versionado: previa → superseded, nueva v+1)",
+    description=(
+        "Actualiza un cost creando una nueva versión (v+1). La versión "
+        "anterior queda en `superseded`. Re-valida breakdown contra el "
+        "template del scheme."
+    ),
+    operation_id="costsUpdate",
     responses={
         404: {"model": ProblemDetails},
         422: {"model": ProblemDetails},
@@ -361,6 +384,8 @@ async def update_cost(
     "/{cost_id}",
     response_model=CostResponse,
     summary="Obtener coste por id",
+    description="Devuelve un cost individual por su UUID. 404 si no existe.",
+    operation_id="costsGet",
     responses={404: {"model": ProblemDetails}},
 )
 async def get_cost(
@@ -387,6 +412,12 @@ async def get_cost(
     "/{cost_id}",
     response_model=CostResponse,
     summary="[DEPRECATED] PATCH parcial — usa PUT /costs/{id} versionado",
+    description=(
+        "DEPRECATED — mantiene compat con tests Sprint 2. Internamente "
+        "delega a `update_cost` (versionado). El frontend debe migrar a "
+        "PUT /costs/{id}."
+    ),
+    operation_id="costsPatch",
     responses={404: {"model": ProblemDetails}, 422: {"model": ProblemDetails}},
     deprecated=True,
 )
@@ -445,6 +476,11 @@ async def patch_cost(
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
     summary="Borrar coste (hard delete — sólo compat tests S2)",
+    description=(
+        "Hard delete de un cost. Sólo expuesto para compat con tests S2. "
+        "En producción usar versionado (PUT)."
+    ),
+    operation_id="costsDelete",
     responses={404: {"model": ProblemDetails}},
 )
 async def delete_cost(
@@ -495,6 +531,12 @@ products_costs_router = APIRouter(prefix="/products", tags=["costs"])
     "/{sku}/costs",
     response_model=list[CostResponse],
     summary="Costes activos del SKU agrupados por scheme",
+    description=(
+        "Devuelve todos los costs activos del SKU agrupados por scheme "
+        "(FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE) con breakdown "
+        "desglosado."
+    ),
+    operation_id="productsListCosts",
 )
 async def list_costs_for_sku(
     sku: str,

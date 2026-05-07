@@ -59,6 +59,11 @@ def _raise_domain(err: ProductDomainError) -> None:
     "/{sku}/translations/{lang}/request-review",
     response_model=TranslationWorkflowResponse,
     summary="Marcar traducción como `pending_review` (autor pide revisión).",
+    description=(
+        "Transiciona la traducción a `pending_review` para que un revisor "
+        "(translation owner) la apruebe o rechace. FSM enforced."
+    ),
+    operation_id="translationsRequestReview",
     responses={
         404: {"model": ProblemDetails, "description": "SKU/translation no encontrado"},
         409: {"model": ProblemDetails, "description": "Transición inválida"},
@@ -83,6 +88,11 @@ async def request_review(
     "/{sku}/translations/{lang}/reject",
     response_model=TranslationWorkflowResponse,
     summary="Rechazar traducción `pending_review` con motivo (vuelve a `draft`).",
+    description=(
+        "Rechaza una traducción en `pending_review` con un motivo "
+        "obligatorio. Devuelve a estado `draft` para que el autor reedite."
+    ),
+    operation_id="translationsReject",
     responses={
         403: {"model": ProblemDetails},
         404: {"model": ProblemDetails},
@@ -113,6 +123,12 @@ async def reject_translation(
         "Marcar traducciones aprobadas no-EN como `stale` "
         "(replica el efecto del trigger DB; pensado para soporte/TI)."
     ),
+    description=(
+        "Replica manualmente el efecto del trigger DB que marca como "
+        "`stale` las traducciones AR/ES aprobadas cuando cambia el master "
+        "EN. Útil para soporte/TI."
+    ),
+    operation_id="translationsMarkStale",
     responses={404: {"model": ProblemDetails}},
 )
 async def mark_stale(

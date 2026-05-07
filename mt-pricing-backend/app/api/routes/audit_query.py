@@ -91,6 +91,12 @@ def _encode_cursor(value: tuple[datetime, int] | None) -> str | None:
     "",
     response_model=AuditQueryResponse,
     summary="Audit timeline multi-entidad (tab Auditoría SKU detail)",
+    description=(
+        "Query unificada del log de auditoría con filtros multi-entidad "
+        "(entity_type, entity_id, related_sku, actor, action, rango "
+        "temporal). Cursor-based pagination. Permission `audit:read`."
+    ),
+    operation_id="auditQueryList",
 )
 async def list_audit_events_multi(
     session: Annotated[AsyncSession, Depends(get_db_session)],

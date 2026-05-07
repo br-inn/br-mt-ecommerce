@@ -131,6 +131,12 @@ def _to_detail(row: Any) -> MatchCandidateDetail:
     "",
     response_model=Pagination[MatchCandidateResponse],
     summary="Listar candidatos de matching con filtros",
+    description=(
+        "Lista paginada (cursor UUID-based) de match candidates con filtros "
+        "opcionales por SKU, status (pending/validated/discarded) y canal "
+        "(amazon_uae/noon_uae)."
+    ),
+    operation_id="matchesList",
 )
 async def list_matches(
     sku: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
@@ -143,7 +149,7 @@ async def list_matches(
     ] = None,
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
-    _user: User = Depends(require_permissions("products:read")),
+    _user: User = Depends(require_permissions("matches:read")),
     service: MatchService = Depends(get_match_service),
 ) -> Pagination[MatchCandidateResponse]:
     cursor_uuid = _decode_id_cursor(cursor)
@@ -165,11 +171,16 @@ async def list_matches(
     "/{candidate_id}",
     response_model=MatchCandidateDetail,
     summary="Detalle de un match candidate (incluye scoring breakdown)",
+    description=(
+        "Devuelve un match candidate por ID con su scoring breakdown "
+        "(specs jsonb._scoring) para inspección desde la UI."
+    ),
+    operation_id="matchesGet",
     responses={404: {"model": ProblemDetails}},
 )
 async def get_match(
     candidate_id: UUID,
-    _user: User = Depends(require_permissions("products:read")),
+    _user: User = Depends(require_permissions("matches:read")),
     service: MatchService = Depends(get_match_service),
 ) -> MatchCandidateDetail:
     try:
@@ -183,11 +194,17 @@ async def get_match(
     "/{sku}/refresh",
     response_model=MatchRefreshResponse,
     summary="Refrescar candidatos del SKU (stubs Sprint 3) — persiste en match_candidates",
+    description=(
+        "Re-corre el pipeline de matching para el SKU (stub Sprint 3) y "
+        "persiste los candidates en `match_candidates`. Devuelve el set "
+        "completo refrescado."
+    ),
+    operation_id="matchesRefresh",
     responses={404: {"model": ProblemDetails}},
 )
 async def refresh_matches(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
-    _user: User = Depends(require_permissions("products:write")),
+    _user: User = Depends(require_permissions("matches:write")),
     service: MatchService = Depends(get_match_service),
 ) -> MatchRefreshResponse:
     try:
@@ -205,6 +222,11 @@ async def refresh_matches(
     "/{candidate_id}/validate",
     response_model=MatchCandidateResponse,
     summary="Marcar candidate como `validated`",
+    description=(
+        "Transiciona un match candidate a estado `validated` (asociación "
+        "humana confirmada). 409 si la transición FSM es ilegal."
+    ),
+    operation_id="matchesValidate",
     responses={
         404: {"model": ProblemDetails},
         409: {"model": ProblemDetails, "description": "Transición ilegal"},
@@ -212,7 +234,7 @@ async def refresh_matches(
 )
 async def validate_match(
     candidate_id: UUID,
-    user: Annotated[User, Depends(require_permissions("products:write"))],
+    user: Annotated[User, Depends(require_permissions("matches:write"))],
     service: Annotated[MatchService, Depends(get_match_service)],
 ) -> MatchCandidateResponse:
     try:
@@ -226,6 +248,11 @@ async def validate_match(
     "/{candidate_id}/discard",
     response_model=MatchCandidateResponse,
     summary="Marcar candidate como `discarded`",
+    description=(
+        "Transiciona un match candidate a estado `discarded` con razón "
+        "opcional. 409 si la transición FSM es ilegal."
+    ),
+    operation_id="matchesDiscard",
     responses={
         404: {"model": ProblemDetails},
         409: {"model": ProblemDetails, "description": "Transición ilegal"},
@@ -233,7 +260,7 @@ async def validate_match(
 )
 async def discard_match(
     candidate_id: UUID,
-    user: Annotated[User, Depends(require_permissions("products:write"))],
+    user: Annotated[User, Depends(require_permissions("matches:write"))],
     service: Annotated[MatchService, Depends(get_match_service)],
     payload: MatchDiscardRequest | None = None,
 ) -> MatchCandidateResponse:

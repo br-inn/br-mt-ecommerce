@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     SUPABASE_STORAGE_BUCKET_IMAGES: str = "product-images"
     SUPABASE_STORAGE_BUCKET_IMPORTS: str = "imports-raw"
     SUPABASE_STORAGE_BUCKET_EXPORTS: str = "exports"
+    SUPABASE_STORAGE_BUCKET_DATASHEETS: str = "product-datasheets"
 
     # --- Sentry ---
     SENTRY_DSN: str = ""

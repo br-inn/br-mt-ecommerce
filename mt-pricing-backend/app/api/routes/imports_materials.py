@@ -111,6 +111,11 @@ def _raise_domain(err: ImporterDomainError) -> None:
     "/preview",
     response_model=ImportMaterialsPreviewResponse,
     summary="Preview xlsx compatibilidades materiales",
+    description=(
+        "Sube un xlsx con compatibilidades material × temperatura, parsea "
+        "y devuelve `run_id` + summary + samples. No persiste."
+    ),
+    operation_id="importMaterialsPreview",
     responses={
         413: {"model": ProblemDetails, "description": "Archivo demasiado grande"},
         422: {"model": ProblemDetails, "description": "Header mismatch o parse error"},
@@ -186,6 +191,11 @@ async def preview_materials_import(
     "/{run_id}/apply",
     response_model=ImportMaterialsApplyResponse,
     summary="Aplicar import (replace TRUNCATE+INSERT o append)",
+    description=(
+        "Confirma y aplica el run en modo `replace` (TRUNCATE + INSERT) o "
+        "`append` (INSERT-only). Idempotente — un run sólo se aplica una vez."
+    ),
+    operation_id="importMaterialsApply",
     responses={
         404: {"model": ProblemDetails},
         409: {"model": ProblemDetails, "description": "Run en estado inválido"},
@@ -248,6 +258,11 @@ async def apply_materials_import(
     "/{run_id}/status",
     response_model=ImportMaterialsApplyResponse,
     summary="Estado actual del run de materiales",
+    description=(
+        "Devuelve el estado in-memory del run de materiales (preview_ready, "
+        "applying, completed, completed_with_errors, failed)."
+    ),
+    operation_id="importMaterialsGetStatus",
     responses={404: {"model": ProblemDetails}},
 )
 async def get_status(

@@ -43,6 +43,11 @@ def _raise_domain(err: CurrencyDomainError) -> None:
     "",
     response_model=list[CurrencyResponse],
     summary="Listar todas las currencies (incluye inactivas)",
+    description=(
+        "Devuelve todas las currencies registradas, con flag `active`. "
+        "Permission `fx:read`."
+    ),
+    operation_id="currenciesList",
 )
 async def list_currencies(
     _user: User = Depends(require_permissions("fx:read")),
@@ -56,6 +61,11 @@ async def list_currencies(
     "/{code}/active",
     response_model=CurrencyResponse,
     summary="Activar/desactivar una moneda (RBAC currencies:manage)",
+    description=(
+        "Cambia el flag `active` de una currency con auditoría. No se puede "
+        "desactivar la moneda base (AED) — devuelve 422."
+    ),
+    operation_id="currenciesPatchActive",
     responses={
         404: {"model": ProblemDetails},
         422: {

@@ -169,6 +169,11 @@ def _raise_400(detail: str, *, code: str = "invalid_channel") -> None:
     "/{channel_code}/listings",
     response_model=Pagination[ChannelListingResponse],
     summary="Listar listings sincronizados de un canal (paginado por SKU)",
+    description=(
+        "Lista paginada (cursor SKU-based) de listings espejados desde el "
+        "canal externo. Filtro opcional por status del diff_summary."
+    ),
+    operation_id="channelMirrorListListings",
 )
 async def list_channel_listings(
     channel_code: Annotated[ChannelCodeStr, Path()],
@@ -207,6 +212,12 @@ async def list_channel_listings(
     "/{channel_code}/{sku}/diff",
     response_model=DiffResponse,
     summary="Diff field-by-field MT canonical vs canal externo",
+    description=(
+        "Calcula y devuelve el diff field-by-field entre el producto "
+        "canónico MT y el listing del canal externo (Amazon UAE / Noon UAE). "
+        "Incluye summary agregado (match/drift/missing/queued)."
+    ),
+    operation_id="channelMirrorGetDiff",
     responses={404: {"model": ProblemDetails}},
 )
 async def get_channel_diff(
@@ -243,6 +254,11 @@ async def get_channel_diff(
     "/{channel_code}/{sku}/sync",
     response_model=DiffResponse,
     summary="Pull on-demand del canal + recalcular diff (stub Sprint 3)",
+    description=(
+        "Dispara un pull on-demand al canal externo (stub Sprint 3) y "
+        "recomputa el diff. Devuelve el DiffResponse actualizado."
+    ),
+    operation_id="channelMirrorSyncListing",
     responses={404: {"model": ProblemDetails}, 400: {"model": ProblemDetails}},
 )
 async def sync_channel_listing(
@@ -277,6 +293,11 @@ async def sync_channel_listing(
     "/{channel_code}/{sku}/publish",
     response_model=PublishResponseModel,
     summary="Empujar diferencias al canal (stub Sprint 3 — solo persiste intento)",
+    description=(
+        "Empuja las diferencias (campos especificados o todas) al canal "
+        "externo. Stub Sprint 3 — sólo persiste el intento + summary."
+    ),
+    operation_id="channelMirrorPublishDiff",
     responses={404: {"model": ProblemDetails}, 400: {"model": ProblemDetails}},
 )
 async def publish_channel_diff(
@@ -310,6 +331,11 @@ async def publish_channel_diff(
     "/{channel_code}/sync-log",
     response_model=list[SyncLogEntry],
     summary="Últimas N entradas del log de sync (pull/push/diff)",
+    description=(
+        "Devuelve las últimas N entradas (default 20, max 200) del log de "
+        "sincronización del canal — eventos pull, push, diff y errores."
+    ),
+    operation_id="channelMirrorGetSyncLog",
 )
 async def get_channel_sync_log(
     channel_code: Annotated[ChannelCodeStr, Path()],

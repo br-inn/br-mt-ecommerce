@@ -13,6 +13,8 @@ from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
 from app.db.models.cost_scheme import CostScheme
 from app.db.models.currency import Currency
 from app.db.models.datasheet_import_run import ProductDatasheet
+from app.db.models.feature_flag import FeatureFlag
+from app.db.models.golden_label import CalibratorVersion, GoldenLabel
 from app.db.models.import_run import ImportRun
 from app.db.models.job import JobDefinition, JobRun
 from app.db.models.match_candidate import MatchCandidate
@@ -67,4 +69,9 @@ __all__ = [
     "ProductDatasheet",
     # graphrag CDC outbox (Sprint 4 — US-RND-01-11)
     "CdcEvent",
+    # feature flags + kill-switch (Sprint 5 — US-1A-09-08)
+    "FeatureFlag",
+    # calibrator training pipeline (Sprint 5 — US-1A-09-07)
+    "GoldenLabel",
+    "CalibratorVersion",
 ]

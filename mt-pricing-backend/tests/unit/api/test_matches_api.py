@@ -191,7 +191,17 @@ class _FakeUser:
         self.email = "tester@mt.ae"
         self.is_active = True
         # `permissions_snapshot` cubre el path de `require_permissions`.
-        self.role = _FakeRole(["products:read", "products:write"])
+        # Sprint 5 (US-1A-07-04): rutas migradas a permisos dedicados
+        # `matches:read|write`. Mantenemos `products:*` por si futuros tests
+        # cubren rutas legacy.
+        self.role = _FakeRole(
+            [
+                "products:read",
+                "products:write",
+                "matches:read",
+                "matches:write",
+            ]
+        )
 
 
 # ---------------------------------------------------------------------------
