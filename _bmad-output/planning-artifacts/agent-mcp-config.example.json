@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "Plantilla del bloque mcpServers para ~/.claude.json (o el archivo de config",
+    "Claude Code en tu OS). Copiá la sección 'mcpServers' a tu config existente.",
+    "NO COMMITEÁS este archivo CON TOKENS reales — está en .gitignore como ejemplo.",
+    "",
+    "Setup:",
+    "  1. Generar Supabase access token:",
+    "     https://supabase.com/dashboard/account/tokens",
+    "     Scopes mínimos: read project, write database, read auth, manage storage.",
+    "  2. Reemplazar 'sbp_REPLACE_ME' abajo con el token real (en tu config local).",
+    "  3. Reiniciar Claude Code completamente.",
+    "  4. Antes de usar chrome-devtools, ejecutar scripts/launch-chrome-debug.ps1.",
+    "  5. Verificar setup con scripts/verify-mcp.ps1."
+  ],
+  "mcpServers": {
+    "chrome-devtools": {
+      "_comment": "Control del Chrome real (TUS cookies, sesión, DevTools).",
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
+    "supabase": {
+      "_comment": "DB Postgres + Auth + Storage del proyecto Supabase (read-only por default).",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=vayatmweveoaskyejzba"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_REPLACE_ME_with_personal_access_token"
+      }
+    }
+  }
+}

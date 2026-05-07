@@ -1,0 +1,2490 @@
+---
+title: "MT Middle East MDM + Pricing API — OpenAPI 3.1 Contract"
+status: "draft"
+version: "1.0"
+created: "2026-05-06"
+project_name: "mt-pricing-mdm-phase1"
+related: ["prd-mt-pricing-mdm-phase1.md", "architecture-mt-pricing-mdm-phase1.md", "mt-users-module-design.md", "mt-jobs-module-design.md"]
+---
+
+# Notas (en español)
+# Esta especificación OpenAPI 3.1 cubre Fase 1 (1a Datos Maestros + 1b Pricing).
+# Convención: snake_case en JSON (alineado con columnas SQLAlchemy / DDL Postgres).
+# Identificadores de entidad: SKU = TEXT (PK natural products); UUID = surrogate keys.
+# Errores: RFC 7807 (application/problem+json) en todas las respuestas 4xx/5xx.
+# Paginación: cursor-based (next_cursor) excepto endpoints admin pequeños (page/size).
+
+openapi: 3.1.0
+
+info:
+  title: MT Middle East MDM + Pricing API
+  version: 0.1.0
+  summary: API REST para datos maestros (PIM), costes, pricing, importaciones, jobs y comparador competitivo de MT Middle East.
+  description: |
+    API backend FastAPI + SQLAlchemy 2.0 async + Supabase (Auth/Storage/Postgres).
+    Cubre Fase 1: catálogo de productos, suppliers, costos por SKU×esquema, pricing
+    con workflow de aprobación, canales (Amazon UAE / Noon / B2C / B2B), FX as-of,
+    importadores con preview/apply, scheduler de jobs (Celery + DatabaseScheduler),
+    audit trail particionado, RBAC por rol, KB hooks (Fase 1.5+ flag) y comparador
+    de productos (research workstream).
+  contact:
+    name: BR Innovation — MT Platform Team
+    email: psierra@br-innovation.com
+    url: https://br-innovation.com
+  license:
+    name: Proprietary
+    url: https://br-innovation.com/license
+  x-related-adrs:
+    - ADR-031 Supabase + uuidv7 + RLS
+    - ADR-045 Persistencia híbrida SQLAlchemy + supabase-py
+    - ADR-046 DatabaseScheduler para Celery beat editable
+
+servers:
+  - url: https://api.dev.mtme.ae/v1
+    description: Development (Hetzner staging)
+  - url: https://api.staging.mtme.ae/v1
+    description: Staging
+  - url: https://api.mtme.ae/v1
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Login / logout / magic link (delegan en Supabase Auth, expuestos para SDK).
+  - name: Users
+    description: Gestión de usuarios y perfil.
+  - name: RolesPermissions
+    description: Roles y catálogo de permisos.
+  - name: Products
+    description: Catálogo PIM.
+  - name: ProductTranslations
+    description: Traducciones ES/AR.
+  - name: ProductImages
+    description: Imágenes de producto en Supabase Storage.
+  - name: Suppliers
+    description: Proveedores y términos de contrato.
+  - name: Costs
+    description: Costos por SKU × esquema con FX as-of.
+  - name: Prices
+    description: Precios y workflow de aprobación.
+  - name: Channels
+    description: Canales de venta (Amazon UAE, Noon, B2C, B2B) y máquina de estados.
+  - name: Schemes
+    description: Esquemas de venta (FBA, FBM, DIRECT_B2C, DIRECT_B2B, MARKETPLACE).
+  - name: Currencies
+    description: Catálogo ISO 4217 + FX rates.
+  - name: ExceptionRules
+    description: Reglas de excepción (margin tolerance, FX swing, min margin floor, ...).
+  - name: Approvals
+    description: Cola y digest del Gerente Comercial.
+  - name: Imports
+    description: Importadores PIM / costos / fichas / traducciones (preview + apply).
+  - name: MaterialCompatibility
+    description: Tabla de compatibilidades de materiales × fluidos × T °C.
+  - name: Jobs
+    description: Job definitions (DatabaseScheduler) y job runs.
+  - name: Audit
+    description: Audit events (particionado mensual).
+  - name: Knowledge
+    description: KB hooks Fase 1 (sources + chunks). Búsqueda activa Fase 1.5+.
+  - name: Comparator
+    description: Comparador competitivo (research workstream).
+  - name: Health
+    description: Healthchecks live / ready / deep.
+
+paths:
+
+  # ────────────────────────────────────────────────────────────
+  # AUTH
+  # ────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login con email + password (delega en Supabase Auth)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            examples:
+              default:
+                value: { email: "psierra@br-innovation.com", password: "S3cur3-P4ss!" }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (revoca refresh token)
+      responses:
+        '204': { description: No Content }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/magic-link:
+    post:
+      tags: [Auth]
+      summary: Solicitar magic link (Supabase Auth OTP por email)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                redirect_to: { type: string, format: uri }
+            examples:
+              default:
+                value: { email: "user@mt.com", redirect_to: "https://mtme.ae/auth/callback" }
+      responses:
+        '202': { description: Accepted — magic link enviado }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  # ────────────────────────────────────────────────────────────
+  # USERS
+  # ────────────────────────────────────────────────────────────
+  /me:
+    get:
+      tags: [Users]
+      summary: Perfil del usuario autenticado + rol + permisos resueltos
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Users]
+      summary: Actualizar preferencias propias (locale, full_name, avatar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MeUpdate' }
+            examples:
+              change-locale:
+                value: { locale: "en", full_name: "Pablo Sierra" }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+
+  /users:
+    get:
+      tags: [Users]
+      summary: Listar usuarios (admin)
+      parameters:
+        - { in: query, name: role, schema: { type: string }, description: filtrar por código de rol }
+        - { in: query, name: active, schema: { type: boolean } }
+        - { in: query, name: q, schema: { type: string, maxLength: 100 }, description: búsqueda por nombre o email }
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPage' }
+    post:
+      tags: [Users]
+      summary: Invitar usuario (admin/ti_integracion). Envía magic link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserCreate' }
+            examples:
+              invite-comercial:
+                value:
+                  email: "comercial1@mt.com"
+                  full_name: "Ana Comercial"
+                  role_code: "comercial"
+                  send_magic_link: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Users]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/UserDetail' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Users]
+      summary: Modificar usuario (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserPatch' }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/UserDetail' } } }
+
+  /users/{id}/roles:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Users]
+      summary: Asignar rol a usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_code]
+              properties:
+                role_code: { type: string, example: "gerente_comercial" }
+      responses:
+        '204': { description: Asignado }
+
+  /users/{id}/roles/{role_code}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      - { in: path, name: role_code, required: true, schema: { type: string } }
+    delete:
+      tags: [Users]
+      summary: Revocar rol de usuario
+      responses:
+        '204': { description: Revocado }
+
+  /users/{id}/force-logout:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Users]
+      summary: Forzar logout (revoca todas las sessions del usuario en Supabase)
+      responses:
+        '204': { description: Logout forzado }
+
+  # ────────────────────────────────────────────────────────────
+  # ROLES & PERMISSIONS
+  # ────────────────────────────────────────────────────────────
+  /roles:
+    get:
+      tags: [RolesPermissions]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Role' }
+
+  /roles/{id}/permissions:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [RolesPermissions]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Permission' }
+
+  /permissions:
+    get:
+      tags: [RolesPermissions]
+      summary: Catálogo completo de permisos (code + description)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Permission' }
+
+  # ────────────────────────────────────────────────────────────
+  # PRODUCTS (PIM)
+  # ────────────────────────────────────────────────────────────
+  /products:
+    get:
+      tags: [Products]
+      summary: Listar productos con filtros y cursor pagination
+      parameters:
+        - { in: query, name: family, schema: { type: string } }
+        - { in: query, name: brand, schema: { type: string } }
+        - { in: query, name: data_quality, schema: { $ref: '#/components/schemas/DataQuality' } }
+        - { in: query, name: translation_status, schema: { type: string, enum: [pending, draft, approved] } }
+        - { in: query, name: lang, schema: { type: string, enum: [es, ar] }, description: lengua para filtrar translation_status }
+        - { in: query, name: active, schema: { type: boolean } }
+        - { in: query, name: search, schema: { type: string }, description: búsqueda full-text en name_en + sku }
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductPage' }
+    post:
+      tags: [Products]
+      summary: Crear producto (PIM)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCreate' }
+            examples:
+              minimal:
+                value:
+                  sku: "MT-V-038"
+                  name_en: "Brass ball valve DN15 PN16"
+                  family: "valves_ball"
+                  brand: "Pegler"
+                  material: "brass"
+                  dn: "DN15"
+                  pn: "PN16"
+                  specs: { thread_standard: "BSP", body_material: "brass_cw617n" }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProductDetail' } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /products/search:
+    get:
+      tags: [Products]
+      summary: Búsqueda rápida tipo Cmd-K (trigram name_en + sku prefix)
+      parameters:
+        - { in: query, name: q, required: true, schema: { type: string, minLength: 2 } }
+        - { in: query, name: limit, schema: { type: integer, default: 10, maximum: 50 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Product' }
+
+  /products/{sku}:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    get:
+      tags: [Products]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProductDetail' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Products]
+      summary: Modificar producto (respeta manual_locked_fields)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductPatch' }
+            examples:
+              update-specs:
+                value:
+                  marketing_copy_en: "Premium DN15 brass ball valve, full-bore"
+                  manual_locked_fields: ["marketing_copy_en"]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProductDetail' } } }
+    delete:
+      tags: [Products]
+      summary: Soft-delete (active=false)
+      responses:
+        '204': { description: Borrado lógico }
+
+  /products/{sku}/translations:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    get:
+      tags: [ProductTranslations]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProductTranslation' }
+
+  /products/{sku}/translations/{lang}:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+      - { in: path, name: lang, required: true, schema: { type: string, enum: [es, ar] } }
+    patch:
+      tags: [ProductTranslations]
+      summary: Crear o actualizar traducción
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductTranslationPatch' }
+            examples:
+              ar:
+                value:
+                  name: "صمام كروي نحاسي DN15"
+                  description: "صمام كروي مصنوع من النحاس الأصفر"
+                  status: "draft"
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProductTranslation' } } }
+
+  /products/{sku}/images:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    post:
+      tags: [ProductImages]
+      summary: Subir imagen (multipart) o solicitar signed URL
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, role]
+              properties:
+                file: { type: string, format: binary }
+                role: { type: string, example: "main" }
+                alt_text: { type: string }
+          application/json:
+            schema:
+              type: object
+              required: [role, filename]
+              properties:
+                role: { type: string }
+                filename: { type: string }
+                content_type: { type: string }
+            examples:
+              signed-url:
+                value: { role: "main", filename: "MT-V-038.jpg", content_type: "image/jpeg" }
+      responses:
+        '201':
+          description: Imagen creada o signed URL devuelta
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProductImage' } } }
+
+  # ────────────────────────────────────────────────────────────
+  # SUPPLIERS
+  # ────────────────────────────────────────────────────────────
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      parameters:
+        - { in: query, name: active, schema: { type: boolean } }
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupplierPage' }
+    post:
+      tags: [Suppliers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupplierCreate' }
+            examples:
+              pegler:
+                value:
+                  code: "PEGLER"
+                  name: "Pegler Yorkshire"
+                  contact_email: "sales@pegler.com"
+                  contract_currency: "EUR"
+                  lead_time_days: 21
+                  payment_terms: "30 days net"
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Supplier' } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /suppliers/{code}:
+    parameters:
+      - { in: path, name: code, required: true, schema: { type: string } }
+    get:
+      tags: [Suppliers]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Supplier' } } }
+    patch:
+      tags: [Suppliers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupplierPatch' }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Supplier' } } }
+    delete:
+      tags: [Suppliers]
+      responses:
+        '204': { description: Soft-delete (active=false) }
+
+  /suppliers/{code}/products:
+    parameters:
+      - { in: path, name: code, required: true, schema: { type: string } }
+    get:
+      tags: [Suppliers]
+      summary: Productos suministrados (vía costs.supplier_code)
+      parameters:
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductPage' }
+
+  # ────────────────────────────────────────────────────────────
+  # COSTS
+  # ────────────────────────────────────────────────────────────
+  /products/{sku}/costs:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    get:
+      tags: [Costs]
+      parameters:
+        - { in: query, name: scheme, schema: { $ref: '#/components/schemas/Scheme' } }
+        - { in: query, name: as_of, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Cost' }
+    post:
+      tags: [Costs]
+      summary: Registrar coste (FX as-of stamping automático)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CostCreate' }
+            examples:
+              fba-pegler:
+                value:
+                  scheme: "FBA"
+                  supplier_code: "PEGLER"
+                  fob: 12.40
+                  freight: 1.80
+                  customs: 2.10
+                  fba_fees: 8.50
+                  payment_fees: 0.62
+                  marketing_fees: 0.00
+                  currency: "EUR"
+                  effective_from: "2026-05-06T00:00:00Z"
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Cost' } } }
+
+  /costs/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [Costs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CostPatch' }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Cost' } } }
+
+  /costs/recalculate-batch:
+    post:
+      tags: [Costs]
+      summary: Disparar recálculo masivo (FX o cambio coste). Devuelve job_run_id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger: { type: string, enum: [fx_change, cost_change, manual] }
+                from_currency: { type: string, minLength: 3, maxLength: 3 }
+                to_currency: { type: string, minLength: 3, maxLength: 3 }
+                supplier_code: { type: string }
+                scheme: { $ref: '#/components/schemas/Scheme' }
+                reason: { type: string }
+            examples:
+              fx-eur-aed:
+                value: { trigger: "fx_change", from_currency: "EUR", to_currency: "AED", reason: "ECB rate update" }
+      responses:
+        '202':
+          description: Accepted — job encolado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_run_id: { type: string, format: uuid }
+                  estimated_skus: { type: integer }
+
+  # ────────────────────────────────────────────────────────────
+  # PRICES
+  # ────────────────────────────────────────────────────────────
+  /products/{sku}/prices:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    get:
+      tags: [Prices]
+      parameters:
+        - { in: query, name: channel_code, schema: { type: string } }
+        - { in: query, name: scheme, schema: { $ref: '#/components/schemas/Scheme' } }
+        - { in: query, name: status, schema: { $ref: '#/components/schemas/PriceState' } }
+        - { in: query, name: as_of, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Price' }
+
+  /products/{sku}/prices/propose:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    post:
+      tags: [Prices]
+      summary: Proponer precio (rol comercial). Evalúa rules → auto_approved | pending_review.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PriceProposal' }
+            examples:
+              amazon-uae-fba:
+                value:
+                  channel_code: "amazon_uae"
+                  scheme: "FBA"
+                  amount: 89.50
+                  currency: "AED"
+                  pvp_min: 75.00
+                  rule_applied: "FBA_DEFAULT_MARGIN_22"
+                  valid_from: "2026-05-10T00:00:00Z"
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Price' } } }
+
+  /prices/{id}/approve:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Prices]
+      summary: Aprobar precio (rol gerente_comercial)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment: { type: string }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Price' } } }
+
+  /prices/{id}/reject:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Prices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 5 }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Price' } } }
+
+  /prices/{id}/revise:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Prices]
+      summary: Revisar (devolver al comercial con sugerencia)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                suggested_amount: { type: number, format: double }
+                comment: { type: string }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Price' } } }
+
+  /prices/bulk-approve:
+    post:
+      tags: [Prices]
+      summary: Aprobación en bulk (digest del Gerente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PriceBulkApprove' }
+            examples:
+              digest-monday:
+                value:
+                  price_ids: ["...uuid1...", "...uuid2..."]
+                  comment: "Approved from Monday digest"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approved_ids: { type: array, items: { type: string, format: uuid } }
+                  failed: { type: array, items: { $ref: '#/components/schemas/BulkFailure' } }
+
+  /prices/simulate-what-if:
+    post:
+      tags: [Prices]
+      summary: Simulación what-if sin persistencia
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WhatIfRequest' }
+            examples:
+              fx-shock:
+                value:
+                  scope: "channel_scheme"
+                  channel_code: "amazon_uae"
+                  scheme: "FBA"
+                  fx_override: { from: "EUR", to: "AED", rate: 4.10 }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/WhatIfResult' } } }
+
+  # ────────────────────────────────────────────────────────────
+  # CHANNELS / SCHEMES
+  # ────────────────────────────────────────────────────────────
+  /channels:
+    get:
+      tags: [Channels]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Channel' }
+
+  /channels/{code}/state:
+    parameters:
+      - { in: path, name: code, required: true, schema: { type: string } }
+    patch:
+      tags: [Channels]
+      summary: Transición de estado (RBAC gerente_comercial / ti_integracion)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to_state]
+              properties:
+                to_state: { $ref: '#/components/schemas/ChannelState' }
+                reason: { type: string }
+            examples:
+              go-live:
+                value: { to_state: "live", reason: "Sponsor sign-off, GST 2026-06-01" }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Channel' } } }
+
+  /schemes:
+    get:
+      tags: [Schemes]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SchemeDef' }
+
+  # ────────────────────────────────────────────────────────────
+  # CURRENCIES & FX
+  # ────────────────────────────────────────────────────────────
+  /currencies:
+    get:
+      tags: [Currencies]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Currency' }
+
+  /fx-rates:
+    get:
+      tags: [Currencies]
+      parameters:
+        - { in: query, name: from_currency, schema: { type: string, minLength: 3, maxLength: 3 } }
+        - { in: query, name: to_currency, schema: { type: string, minLength: 3, maxLength: 3 } }
+        - { in: query, name: as_of, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/FxRate' }
+    post:
+      tags: [Currencies]
+      summary: Registrar nueva FX rate (manual o feed)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FxRateCreate' }
+            examples:
+              eur-aed:
+                value:
+                  from_currency: "EUR"
+                  to_currency: "AED"
+                  rate: 4.0123
+                  effective_from: "2026-05-06T00:00:00Z"
+                  source: "feed_ecb"
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/FxRate' } } }
+
+  /fx-rates/as-of/{date}:
+    parameters:
+      - { in: path, name: date, required: true, schema: { type: string, format: date-time } }
+    get:
+      tags: [Currencies]
+      summary: Snapshot de todas las FX vigentes a una fecha (ADR-003 FX as-of)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/FxRate' }
+
+  # ────────────────────────────────────────────────────────────
+  # EXCEPTION RULES
+  # ────────────────────────────────────────────────────────────
+  /exception-rules:
+    get:
+      tags: [ExceptionRules]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ExceptionRule' }
+    post:
+      tags: [ExceptionRules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExceptionRuleCreate' }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionRule' } } }
+
+  /exception-rules/{code}:
+    parameters:
+      - { in: path, name: code, required: true, schema: { type: string } }
+    patch:
+      tags: [ExceptionRules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExceptionRulePatch' }
+            examples:
+              tweak-margin:
+                value: { params: { threshold_pct: 7 }, enabled: true }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionRule' } } }
+    delete:
+      tags: [ExceptionRules]
+      responses:
+        '204': { description: Eliminada }
+
+  # ────────────────────────────────────────────────────────────
+  # APPROVALS QUEUE
+  # ────────────────────────────────────────────────────────────
+  /approvals/queue:
+    get:
+      tags: [Approvals]
+      summary: Cola del Gerente Comercial — precios pending_review
+      parameters:
+        - { in: query, name: channel_code, schema: { type: string } }
+        - { in: query, name: scheme, schema: { $ref: '#/components/schemas/Scheme' } }
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 50 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Price' }
+                  next_cursor: { type: string, nullable: true }
+
+  /approvals/digest/today:
+    get:
+      tags: [Approvals]
+      summary: Digest diario (8:00 GST) — auto_approved + pending + escaladas
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApprovalDigest' }
+
+  # ────────────────────────────────────────────────────────────
+  # IMPORTS
+  # ────────────────────────────────────────────────────────────
+  /imports:
+    get:
+      tags: [Imports]
+      parameters:
+        - { in: query, name: type, schema: { $ref: '#/components/schemas/ImportType' } }
+        - { in: query, name: status, schema: { $ref: '#/components/schemas/ImportStatus' } }
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 50 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ImportBatch' }
+                  next_cursor: { type: string, nullable: true }
+
+  /imports/pim:
+    post:
+      tags: [Imports]
+      summary: Subir PIM (XLSX/CSV). Crea import_run y enqueue.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                idempotency_key: { type: string }
+                notes: { type: string }
+      responses:
+        '202':
+          description: Accepted
+          content: { application/json: { schema: { $ref: '#/components/schemas/ImportBatch' } } }
+
+  /imports/costs:
+    post:
+      tags: [Imports]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                idempotency_key: { type: string }
+      responses:
+        '202':
+          description: Accepted
+          content: { application/json: { schema: { $ref: '#/components/schemas/ImportBatch' } } }
+
+  /imports/datasheets:
+    post:
+      tags: [Imports]
+      summary: Subir lote de fichas técnicas (PDF zip o multi-file)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  items: { type: string, format: binary }
+      responses:
+        '202':
+          description: Accepted
+          content: { application/json: { schema: { $ref: '#/components/schemas/ImportBatch' } } }
+
+  /imports/{batch_id}/preview:
+    parameters:
+      - { in: path, name: batch_id, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Imports]
+      summary: Diff preview (creates / updates / errors / locked)
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ImportPreview' } } }
+
+  /imports/{batch_id}/apply:
+    parameters:
+      - { in: path, name: batch_id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Imports]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportApplyRequest' }
+            examples:
+              apply-all:
+                value: { row_indices: null, comment: "Apply full preview after Gerente review" }
+      responses:
+        '202':
+          description: Accepted
+          content: { application/json: { schema: { $ref: '#/components/schemas/ImportBatch' } } }
+
+  /imports/{batch_id}/cancel:
+    parameters:
+      - { in: path, name: batch_id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Imports]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ImportBatch' } } }
+
+  # ────────────────────────────────────────────────────────────
+  # MATERIAL COMPATIBILITIES
+  # ────────────────────────────────────────────────────────────
+  /material-compatibilities:
+    get:
+      tags: [MaterialCompatibility]
+      parameters:
+        - { in: query, name: fluid, schema: { type: string } }
+        - { in: query, name: temperature_c, schema: { type: integer } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MaterialCompatibility' }
+
+  /material-compatibilities/import:
+    post:
+      tags: [MaterialCompatibility]
+      summary: Importar `Copia de Compatibilidad de Materiales MT V4.xlsx`
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '202':
+          description: Accepted
+          content: { application/json: { schema: { $ref: '#/components/schemas/ImportBatch' } } }
+
+  # ────────────────────────────────────────────────────────────
+  # JOBS (DatabaseScheduler — ADR-046)
+  # ────────────────────────────────────────────────────────────
+  /jobs:
+    get:
+      tags: [Jobs]
+      parameters:
+        - { in: query, name: owner, schema: { type: string, enum: [infra, business] } }
+        - { in: query, name: enabled, schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JobDefinition' }
+    post:
+      tags: [Jobs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobDefinitionCreate' }
+            examples:
+              custom-digest:
+                value:
+                  code: "custom_weekly_digest"
+                  task_name: "mt.notifications.send_custom_digest"
+                  schedule_type: "cron"
+                  cron_expression: "0 8 * * 1"
+                  timezone: "Asia/Dubai"
+                  queue: "notifications"
+                  owner: "business"
+                  enabled: true
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/JobDefinition' } } }
+
+  /jobs/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [Jobs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobDefinitionPatch' }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/JobDefinition' } } }
+    delete:
+      tags: [Jobs]
+      responses:
+        '204': { description: Eliminado }
+
+  /jobs/{id}/run-now:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Jobs]
+      summary: Disparar job ad-hoc (no afecta schedule)
+      responses:
+        '202':
+          description: Accepted
+          content: { application/json: { schema: { $ref: '#/components/schemas/JobRun' } } }
+
+  # ────────────────────────────────────────────────────────────
+  # AUDIT
+  # ────────────────────────────────────────────────────────────
+  /audit/events:
+    get:
+      tags: [Audit]
+      parameters:
+        - { in: query, name: entity_type, schema: { type: string } }
+        - { in: query, name: entity_id, schema: { type: string } }
+        - { in: query, name: actor_id, schema: { type: string, format: uuid } }
+        - { in: query, name: action, schema: { type: string } }
+        - { in: query, name: from, schema: { type: string, format: date-time } }
+        - { in: query, name: to, schema: { type: string, format: date-time } }
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 100, maximum: 1000 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditEventPage' }
+
+  /audit/events/{entity_type}/{entity_id}:
+    parameters:
+      - { in: path, name: entity_type, required: true, schema: { type: string } }
+      - { in: path, name: entity_id, required: true, schema: { type: string } }
+    get:
+      tags: [Audit]
+      summary: Trail completo de una entidad
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AuditEvent' }
+
+  # ────────────────────────────────────────────────────────────
+  # KB (Knowledge Base) — Fase 1 hooks; búsqueda Fase 1.5+
+  # ────────────────────────────────────────────────────────────
+  /kb/sources:
+    post:
+      tags: [Knowledge]
+      summary: Registrar fuente KB (datasheet, standard, manual)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KbSourceCreate' }
+            examples:
+              api-598:
+                value:
+                  type: "standard"
+                  code: "API_598"
+                  title: "API 598 — Valves Inspection and Testing"
+                  storage_path: "standards/API_598_Valves_Inspection_and_Testing.pdf"
+                  language: "en"
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/KbSource' } } }
+
+  /kb/search:
+    get:
+      tags: [Knowledge]
+      summary: Búsqueda KB (Fase 1 lexical full-text; Fase 1.5+ vector + hybrid)
+      parameters:
+        - { in: query, name: q, required: true, schema: { type: string, minLength: 2 } }
+        - { in: query, name: source_type, schema: { type: string, enum: [datasheet, standard, manual] } }
+        - { in: query, name: limit, schema: { type: integer, default: 10, maximum: 50 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/KbSearchResult' }
+
+  /kb/extract-specs/{sku}:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    post:
+      tags: [Knowledge]
+      summary: Extraer specs desde fichas técnicas (Fase 1.5+ — feature flag)
+      x-feature-flag: feature.datasheet_indexing_enabled
+      responses:
+        '202':
+          description: Job encolado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_run_id: { type: string, format: uuid }
+        '503':
+          description: Feature disabled in Fase 1
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+
+  # ────────────────────────────────────────────────────────────
+  # COMPARATOR (research workstream)
+  # ────────────────────────────────────────────────────────────
+  /comparator/search-candidates/{sku}:
+    parameters:
+      - { in: path, name: sku, required: true, schema: { type: string } }
+    post:
+      tags: [Comparator]
+      summary: Lanzar pipeline de búsqueda de candidatos competidores
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sources: { type: array, items: { type: string, enum: [bright_data, playwright, dataforseo] } }
+                max_candidates: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '202':
+          description: Pipeline encolado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_run_id: { type: string, format: uuid }
+
+  /comparator/match-decisions:
+    get:
+      tags: [Comparator]
+      parameters:
+        - { in: query, name: sku, schema: { type: string } }
+        - { in: query, name: status, schema: { $ref: '#/components/schemas/MatchStatus' } }
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, default: 50 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/MatchDecision' }
+                  next_cursor: { type: string, nullable: true }
+
+  /comparator/match-decisions/{id}/human-vote:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Comparator]
+      summary: Voto humano sobre match (confirma o rechaza)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [verdict]
+              properties:
+                verdict: { type: string, enum: [match, no_match, uncertain] }
+                comment: { type: string }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/MatchDecision' } } }
+
+  # ────────────────────────────────────────────────────────────
+  # HEALTH
+  # ────────────────────────────────────────────────────────────
+  /health/live:
+    get:
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthCheck' } } }
+
+  /health/ready:
+    get:
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthCheck' } } }
+        '503':
+          description: Not ready
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthCheck' } } }
+
+  /health/db:
+    get:
+      tags: [Health]
+      security: [{ BasicAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthCheck' } } }
+
+  /health/redis:
+    get:
+      tags: [Health]
+      security: [{ BasicAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthCheck' } } }
+
+  /health/storage:
+    get:
+      tags: [Health]
+      security: [{ BasicAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthCheck' } } }
+
+  /health/celery:
+    get:
+      tags: [Health]
+      security: [{ BasicAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthCheck' } } }
+
+# ──────────────────────────────────────────────────────────────
+# COMPONENTS
+# ──────────────────────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT firmado por Supabase Auth (HS256). `app_metadata.role` y `app_metadata.permissions` resueltos en JWT.
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: Reservado para deep healthchecks (`/health/db`, `/health/redis`, ...).
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Forbidden:
+      description: Forbidden (RBAC)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Conflict:
+      description: Conflict (UNIQUE / FK)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    UnprocessableEntity:
+      description: Validation error
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ValidationError' }
+
+  schemas:
+
+    # ─── Common ────────────────────────────────────────────
+    ProblemDetails:
+      type: object
+      description: RFC 7807
+      properties:
+        type: { type: string, format: uri, default: "about:blank" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+        request_id: { type: string }
+        code: { type: string, description: "Internal error code (e.g. PRICE_VALIDATION_FAILED)" }
+      required: [title, status]
+
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+                  code: { type: string }
+
+    Pagination:
+      type: object
+      description: Cursor-based pagination envelope
+      properties:
+        next_cursor: { type: string, nullable: true }
+        prev_cursor: { type: string, nullable: true }
+        limit: { type: integer }
+
+    BulkFailure:
+      type: object
+      properties:
+        id: { type: string }
+        reason: { type: string }
+        code: { type: string }
+
+    # ─── Enums ─────────────────────────────────────────────
+    DataQuality:
+      type: string
+      enum: [complete, partial, blocked, migrated_demo]
+
+    TranslationStatus:
+      type: string
+      enum: [pending, draft, approved]
+
+    ChannelState:
+      type: string
+      enum: [inactive, pre_launch, pilot, live, paused, deprecated]
+
+    PriceState:
+      type: string
+      enum: [draft, pending_review, auto_approved, approved, rejected, revised, exported, superseded, migrated]
+
+    CostStatus:
+      type: string
+      enum: [draft, approved, superseded, migrated]
+
+    Scheme:
+      type: string
+      enum: [FBA, FBM, DIRECT_B2C, DIRECT_B2B, MARKETPLACE]
+
+    FxSource:
+      type: string
+      enum: [manual, feed_xe, feed_oanda, feed_ecb, migrated_inferred]
+
+    ImportType:
+      type: string
+      enum: [pim_real, costs_real, excel_demo, translations, fx, datasheets, material_compatibility]
+
+    ImportStatus:
+      type: string
+      enum: [queued, parsing, validating, preview_ready, applying, completed, failed, cancelled]
+
+    JobStatus:
+      type: string
+      enum: [idle, running, success, failure, cancelled]
+
+    JobOwner:
+      type: string
+      enum: [infra, business]
+
+    ScheduleType:
+      type: string
+      enum: [cron, interval]
+
+    MatchStatus:
+      type: string
+      enum: [unmatched, candidate, confirmed, rejected]
+
+    CompatT:
+      type: string
+      enum: [A, B, C, D, SIN_DATO]
+
+    # ─── Auth ──────────────────────────────────────────────
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    AuthSession:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string, default: "bearer" }
+        expires_in: { type: integer }
+        user: { $ref: '#/components/schemas/UserDetail' }
+
+    # ─── Users / Roles / Permissions ───────────────────────
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        full_name: { type: string, nullable: true }
+        avatar_url: { type: string, format: uri, nullable: true }
+        locale: { type: string, default: "es", description: "ISO 639-1" }
+        is_active: { type: boolean }
+        role_id: { type: string, format: uuid, nullable: true }
+        last_login_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [id, email, is_active, locale, created_at, updated_at]
+
+    UserDetail:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            role: { $ref: '#/components/schemas/Role' }
+            permissions:
+              type: array
+              items: { type: string, description: "permission code, e.g. products:write" }
+
+    UserCreate:
+      type: object
+      required: [email, full_name, role_code]
+      properties:
+        email: { type: string, format: email }
+        full_name: { type: string, minLength: 2, maxLength: 200 }
+        role_code: { type: string }
+        locale: { type: string, default: "es" }
+        send_magic_link: { type: boolean, default: true }
+
+    UserPatch:
+      type: object
+      properties:
+        full_name: { type: string }
+        locale: { type: string }
+        is_active: { type: boolean }
+        role_code: { type: string, nullable: true }
+
+    MeUpdate:
+      type: object
+      properties:
+        full_name: { type: string }
+        locale: { type: string }
+        avatar_url: { type: string, format: uri }
+
+    UserPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/UserDetail' } }
+        next_cursor: { type: string, nullable: true }
+
+    Role:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: "comercial" }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        is_system: { type: boolean }
+      required: [id, code, name, is_system]
+
+    Permission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: "products:write" }
+        description: { type: string, nullable: true }
+      required: [id, code]
+
+    # ─── Products ──────────────────────────────────────────
+    Product:
+      type: object
+      properties:
+        sku: { type: string, maxLength: 64 }
+        internal_id: { type: string, format: uuid }
+        name_en: { type: string }
+        family: { type: string }
+        subfamily: { type: string, nullable: true }
+        type: { type: string, nullable: true, description: "valve type" }
+        material: { type: string, nullable: true }
+        dn: { type: string, nullable: true }
+        pn: { type: string, nullable: true }
+        connection: { type: string, nullable: true }
+        brand: { type: string, nullable: true }
+        data_quality: { $ref: '#/components/schemas/DataQuality' }
+        active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [sku, internal_id, name_en, family, data_quality, active]
+
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            description_en: { type: string, nullable: true }
+            marketing_copy_en: { type: string, nullable: true }
+            specs: { $ref: '#/components/schemas/ProductSpecsPayload' }
+            manual_locked_fields:
+              type: array
+              items: { type: string }
+            translations:
+              type: array
+              items: { $ref: '#/components/schemas/ProductTranslation' }
+            images:
+              type: array
+              items: { $ref: '#/components/schemas/ProductImage' }
+            embedding_model: { type: string, nullable: true }
+            embedding_at: { type: string, format: date-time, nullable: true }
+            created_by: { type: string, format: uuid, nullable: true }
+            updated_by: { type: string, format: uuid, nullable: true }
+
+    ProductCreate:
+      type: object
+      required: [sku, name_en, family]
+      properties:
+        sku: { type: string, maxLength: 64 }
+        name_en: { type: string, minLength: 2 }
+        description_en: { type: string }
+        marketing_copy_en: { type: string }
+        family: { type: string }
+        subfamily: { type: string }
+        type: { type: string }
+        material: { type: string }
+        dn: { type: string }
+        pn: { type: string }
+        connection: { type: string }
+        brand: { type: string }
+        specs: { $ref: '#/components/schemas/ProductSpecsPayload' }
+        data_quality: { $ref: '#/components/schemas/DataQuality' }
+
+    ProductPatch:
+      type: object
+      properties:
+        name_en: { type: string }
+        description_en: { type: string }
+        marketing_copy_en: { type: string }
+        family: { type: string }
+        subfamily: { type: string }
+        type: { type: string }
+        material: { type: string }
+        dn: { type: string }
+        pn: { type: string }
+        connection: { type: string }
+        brand: { type: string }
+        specs: { $ref: '#/components/schemas/ProductSpecsPayload' }
+        data_quality: { $ref: '#/components/schemas/DataQuality' }
+        manual_locked_fields:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+
+    ProductPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Product' } }
+        next_cursor: { type: string, nullable: true }
+        total_count_estimate: { type: integer, nullable: true }
+
+    ProductSpecsPayload:
+      type: object
+      additionalProperties: true
+      description: |
+        JSONB con specs estructuradas (mirror Pydantic en backend).
+      properties:
+        thread_standard: { type: string, enum: [BSP, NPT, ISO_228, ISO_7_1, NONE], nullable: true }
+        body_material: { type: string, nullable: true }
+        seat_material: { type: string, nullable: true }
+        max_temperature_c: { type: integer, nullable: true }
+        max_pressure_bar: { type: number, nullable: true }
+        certification:
+          type: array
+          items: { type: string }
+        weight_kg: { type: number, nullable: true }
+
+    ProductTranslation:
+      type: object
+      properties:
+        sku: { type: string }
+        lang: { type: string, enum: [es, ar] }
+        name: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        marketing_copy: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/TranslationStatus' }
+        translated_by: { type: string, format: uuid, nullable: true }
+        translated_at: { type: string, format: date-time, nullable: true }
+        reviewed_by: { type: string, format: uuid, nullable: true }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [sku, lang, status]
+
+    ProductTranslationPatch:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        marketing_copy: { type: string }
+        status: { $ref: '#/components/schemas/TranslationStatus' }
+
+    ProductImage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sku: { type: string }
+        role: { type: string, example: "main" }
+        storage_path: { type: string }
+        signed_url: { type: string, format: uri, nullable: true }
+        upload_url: { type: string, format: uri, nullable: true, description: "presigned URL si flujo signed" }
+        alt_text: { type: string, nullable: true }
+        width: { type: integer, nullable: true }
+        height: { type: integer, nullable: true }
+        hash_sha256: { type: string, nullable: true }
+        status: { type: string, enum: [active, archived, broken] }
+        created_at: { type: string, format: date-time }
+      required: [id, sku, role, storage_path, status]
+
+    # ─── Suppliers ─────────────────────────────────────────
+    Supplier:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        contact_email: { type: string, format: email, nullable: true }
+        contact_phone: { type: string, nullable: true }
+        contract_currency: { type: string, minLength: 3, maxLength: 3 }
+        lead_time_days: { type: integer, nullable: true }
+        payment_terms: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [code, name, contract_currency, active]
+
+    SupplierCreate:
+      type: object
+      required: [code, name, contract_currency]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        contact_email: { type: string, format: email }
+        contact_phone: { type: string }
+        contract_currency: { type: string, minLength: 3, maxLength: 3 }
+        lead_time_days: { type: integer, minimum: 0 }
+        payment_terms: { type: string }
+        notes: { type: string }
+
+    SupplierPatch:
+      type: object
+      properties:
+        name: { type: string }
+        contact_email: { type: string, format: email }
+        contact_phone: { type: string }
+        contract_currency: { type: string, minLength: 3, maxLength: 3 }
+        lead_time_days: { type: integer }
+        payment_terms: { type: string }
+        notes: { type: string }
+        active: { type: boolean }
+
+    SupplierPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Supplier' } }
+        next_cursor: { type: string, nullable: true }
+
+    # ─── Costs ─────────────────────────────────────────────
+    CostBreakdown:
+      type: object
+      description: Mirror tipado de la fila costs (subset breakdown)
+      properties:
+        fob: { type: number, format: double }
+        freight: { type: number, format: double }
+        customs: { type: number, format: double }
+        fba_fees: { type: number, format: double }
+        fbm_fees: { type: number, format: double }
+        payment_fees: { type: number, format: double }
+        marketing_fees: { type: number, format: double }
+        other_fees: { type: object, additionalProperties: { type: number } }
+
+    Cost:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sku: { type: string }
+        scheme: { $ref: '#/components/schemas/Scheme' }
+        supplier_code: { type: string }
+        breakdown: { $ref: '#/components/schemas/CostBreakdown' }
+        total: { type: number, format: double }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        fx_at: { type: string, format: date-time }
+        fx_rate_to_base: { type: number, format: double }
+        total_in_base: { type: number, format: double }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: string, format: date-time, nullable: true }
+        status: { $ref: '#/components/schemas/CostStatus' }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+        approved_by: { type: string, format: uuid, nullable: true }
+      required: [id, sku, scheme, supplier_code, total, currency, fx_at, fx_rate_to_base, total_in_base, effective_from, status, created_at]
+
+    CostCreate:
+      type: object
+      required: [scheme, supplier_code, currency, effective_from]
+      properties:
+        scheme: { $ref: '#/components/schemas/Scheme' }
+        supplier_code: { type: string }
+        fob: { type: number, default: 0 }
+        freight: { type: number, default: 0 }
+        customs: { type: number, default: 0 }
+        fba_fees: { type: number, default: 0 }
+        fbm_fees: { type: number, default: 0 }
+        payment_fees: { type: number, default: 0 }
+        marketing_fees: { type: number, default: 0 }
+        other_fees: { type: object, additionalProperties: { type: number } }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: string, format: date-time, nullable: true }
+
+    CostPatch:
+      type: object
+      properties:
+        fob: { type: number }
+        freight: { type: number }
+        customs: { type: number }
+        fba_fees: { type: number }
+        fbm_fees: { type: number }
+        payment_fees: { type: number }
+        marketing_fees: { type: number }
+        other_fees: { type: object, additionalProperties: { type: number } }
+        effective_to: { type: string, format: date-time, nullable: true }
+        status: { $ref: '#/components/schemas/CostStatus' }
+
+    # ─── Prices ────────────────────────────────────────────
+    PriceBreakdown:
+      type: object
+      properties:
+        cost_in_base: { type: number, format: double }
+        margin_abs: { type: number, format: double }
+        margin_pct: { type: number, format: double }
+        fees_breakdown: { type: object, additionalProperties: { type: number } }
+        fx_rate_used: { type: number, format: double }
+
+    AlertPayload:
+      type: object
+      properties:
+        critical:
+          type: array
+          items: { type: object, properties: { code: { type: string }, message: { type: string } } }
+        warnings:
+          type: array
+          items: { type: object, properties: { code: { type: string }, message: { type: string } } }
+
+    Price:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sku: { type: string }
+        channel_code: { type: string }
+        scheme: { $ref: '#/components/schemas/Scheme' }
+        amount: { type: number, format: double }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        pvp_min: { type: number, format: double, nullable: true }
+        margin_pct: { type: number, format: double, nullable: true }
+        rule_applied: { type: string, nullable: true }
+        breakdown: { $ref: '#/components/schemas/PriceBreakdown' }
+        alerts: { $ref: '#/components/schemas/AlertPayload' }
+        fx_at: { type: string, format: date-time }
+        fx_rate_to_base: { type: number, format: double }
+        amount_in_base: { type: number, format: double }
+        status: { $ref: '#/components/schemas/PriceState' }
+        auto_approve_reason: { type: object, additionalProperties: true, nullable: true }
+        rejection_reason: { type: string, nullable: true }
+        proposed_by: { type: string, format: uuid, nullable: true }
+        proposed_at: { type: string, format: date-time, nullable: true }
+        approved_by: { type: string, format: uuid, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+        exported_at: { type: string, format: date-time, nullable: true }
+        supersedes_id: { type: string, format: uuid, nullable: true }
+        supersedes_chain: { type: integer }
+        valid_from: { type: string, format: date-time }
+        valid_to: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [id, sku, channel_code, scheme, amount, currency, status, valid_from, created_at]
+
+    PriceProposal:
+      type: object
+      required: [channel_code, scheme, amount, currency, valid_from]
+      properties:
+        channel_code: { type: string }
+        scheme: { $ref: '#/components/schemas/Scheme' }
+        amount: { type: number, format: double, minimum: 0 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        pvp_min: { type: number, format: double, nullable: true }
+        rule_applied: { type: string }
+        valid_from: { type: string, format: date-time }
+        valid_to: { type: string, format: date-time, nullable: true }
+        comment: { type: string }
+
+    PriceBulkApprove:
+      type: object
+      required: [price_ids]
+      properties:
+        price_ids:
+          type: array
+          items: { type: string, format: uuid }
+          minItems: 1
+          maxItems: 500
+        comment: { type: string }
+
+    WhatIfRequest:
+      type: object
+      properties:
+        scope: { type: string, enum: [global, channel, scheme, channel_scheme, sku] }
+        sku: { type: string }
+        channel_code: { type: string }
+        scheme: { $ref: '#/components/schemas/Scheme' }
+        fx_override:
+          type: object
+          properties:
+            from: { type: string }
+            to: { type: string }
+            rate: { type: number }
+        cost_override:
+          type: object
+          properties:
+            supplier_code: { type: string }
+            delta_pct: { type: number }
+
+    WhatIfResult:
+      type: object
+      properties:
+        scenarios:
+          type: array
+          items:
+            type: object
+            properties:
+              sku: { type: string }
+              channel_code: { type: string }
+              scheme: { $ref: '#/components/schemas/Scheme' }
+              current_amount: { type: number }
+              simulated_amount: { type: number }
+              delta_pct: { type: number }
+              would_trigger_review: { type: boolean }
+
+    # ─── Channels / Schemes ────────────────────────────────
+    Channel:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        state: { $ref: '#/components/schemas/ChannelState' }
+        schemes_supported:
+          type: array
+          items: { $ref: '#/components/schemas/Scheme' }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        requires_translations:
+          type: array
+          items: { type: string, enum: [es, ar] }
+        go_live_target: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [code, name, state, currency]
+
+    SchemeDef:
+      type: object
+      properties:
+        code: { $ref: '#/components/schemas/Scheme' }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        cost_components_template: { type: object, additionalProperties: true }
+        active: { type: boolean }
+      required: [code, name, active]
+
+    # ─── Currencies / FX ───────────────────────────────────
+    Currency:
+      type: object
+      properties:
+        code: { type: string, minLength: 3, maxLength: 3 }
+        name: { type: string }
+        symbol: { type: string, nullable: true }
+        decimals: { type: integer, minimum: 0, maximum: 8 }
+        is_base: { type: boolean }
+        active: { type: boolean }
+      required: [code, name, decimals, is_base, active]
+
+    FxRate:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        from_currency: { type: string, minLength: 3, maxLength: 3 }
+        to_currency: { type: string, minLength: 3, maxLength: 3 }
+        rate: { type: number, format: double }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: string, format: date-time, nullable: true }
+        source: { $ref: '#/components/schemas/FxSource' }
+        entered_by: { type: string, format: uuid, nullable: true }
+        notes: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+      required: [id, from_currency, to_currency, rate, effective_from, source, created_at]
+
+    FxRateCreate:
+      type: object
+      required: [from_currency, to_currency, rate, effective_from]
+      properties:
+        from_currency: { type: string, minLength: 3, maxLength: 3 }
+        to_currency: { type: string, minLength: 3, maxLength: 3 }
+        rate: { type: number, exclusiveMinimum: 0 }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: string, format: date-time, nullable: true }
+        source: { $ref: '#/components/schemas/FxSource' }
+        notes: { type: string }
+
+    # ─── Exception rules ───────────────────────────────────
+    ExceptionRule:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        scope: { type: string, enum: [global, per_channel, per_scheme, per_channel_scheme] }
+        channel_code: { type: string, nullable: true }
+        scheme: { $ref: '#/components/schemas/Scheme', nullable: true }
+        params: { type: object, additionalProperties: true }
+        enabled: { type: boolean }
+        updated_by: { type: string, format: uuid, nullable: true }
+        updated_at: { type: string, format: date-time }
+      required: [code, name, scope, params, enabled]
+
+    ExceptionRuleCreate:
+      type: object
+      required: [code, name, scope, params]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        scope: { type: string, enum: [global, per_channel, per_scheme, per_channel_scheme] }
+        channel_code: { type: string }
+        scheme: { $ref: '#/components/schemas/Scheme' }
+        params: { type: object, additionalProperties: true }
+        enabled: { type: boolean, default: true }
+
+    ExceptionRulePatch:
+      type: object
+      properties:
+        name: { type: string }
+        scope: { type: string, enum: [global, per_channel, per_scheme, per_channel_scheme] }
+        channel_code: { type: string }
+        scheme: { $ref: '#/components/schemas/Scheme' }
+        params: { type: object, additionalProperties: true }
+        enabled: { type: boolean }
+
+    ApprovalAction:
+      type: object
+      properties:
+        action: { type: string, enum: [approve, reject, revise] }
+        comment: { type: string }
+        suggested_amount: { type: number, format: double }
+
+    ApprovalDigest:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        auto_approved_count: { type: integer }
+        pending_count: { type: integer }
+        escalated_count: { type: integer }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Price' }
+
+    # ─── Imports ───────────────────────────────────────────
+    ImportBatch:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/ImportType' }
+        file_url: { type: string, format: uri }
+        file_hash_sha256: { type: string }
+        idempotency_key: { type: string }
+        uploaded_by: { type: string, format: uuid, nullable: true }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+        summary: { type: object, additionalProperties: true, nullable: true }
+        error_log: { type: object, additionalProperties: true, nullable: true }
+        applied_by: { type: string, format: uuid, nullable: true }
+        started_at: { type: string, format: date-time }
+        preview_ready_at: { type: string, format: date-time, nullable: true }
+        applied_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+      required: [id, type, file_url, file_hash_sha256, idempotency_key, status, started_at]
+
+    ImportPreview:
+      type: object
+      properties:
+        batch_id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+        counts:
+          type: object
+          properties:
+            create: { type: integer }
+            update: { type: integer }
+            skip_locked: { type: integer }
+            no_change: { type: integer }
+            error: { type: integer }
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              row_index: { type: integer }
+              entity_type: { type: string }
+              entity_id: { type: string, nullable: true }
+              action: { type: string, enum: [create, update, skip_locked, no_change, error] }
+              status: { type: string, enum: [pending, applied, failed] }
+              error: { type: string, nullable: true }
+              data: { type: object, additionalProperties: true }
+              diff: { type: object, additionalProperties: true, nullable: true }
+
+    ImportApplyRequest:
+      type: object
+      properties:
+        row_indices:
+          type: array
+          items: { type: integer }
+          nullable: true
+          description: "null = aplicar todo; lista = aplicar subset"
+        comment: { type: string }
+
+    # ─── Material compatibility ────────────────────────────
+    MaterialCompatibility:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        fluid: { type: string }
+        temperature_c: { type: integer, nullable: true }
+        laton: { $ref: '#/components/schemas/CompatT' }
+        acero_carbono: { $ref: '#/components/schemas/CompatT' }
+        fundicion: { $ref: '#/components/schemas/CompatT' }
+        ss304: { $ref: '#/components/schemas/CompatT' }
+        ss316: { $ref: '#/components/schemas/CompatT' }
+        epdm: { $ref: '#/components/schemas/CompatT' }
+        nbr: { $ref: '#/components/schemas/CompatT' }
+        fkm: { $ref: '#/components/schemas/CompatT' }
+        ptfe: { $ref: '#/components/schemas/CompatT' }
+        rptfe_fg15: { $ref: '#/components/schemas/CompatT' }
+        rptfe_gr15: { $ref: '#/components/schemas/CompatT' }
+        source_row: { type: integer, nullable: true }
+        source_file: { type: string }
+        imported_at: { type: string, format: date-time }
+      required: [id, fluid, source_file, imported_at]
+
+    # ─── Jobs ──────────────────────────────────────────────
+    JobDefinition:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        task_name: { type: string }
+        description: { type: string, nullable: true }
+        owner: { $ref: '#/components/schemas/JobOwner' }
+        schedule_type: { $ref: '#/components/schemas/ScheduleType' }
+        cron_expression: { type: string, nullable: true }
+        interval_seconds: { type: integer, nullable: true }
+        timezone: { type: string, default: "Asia/Dubai" }
+        queue: { type: string }
+        args: { type: array, items: {} }
+        kwargs: { type: object, additionalProperties: true }
+        enabled: { type: boolean }
+        last_run_at: { type: string, format: date-time, nullable: true }
+        last_status: { $ref: '#/components/schemas/JobStatus', nullable: true }
+        last_error: { type: string, nullable: true }
+        last_celery_task_id: { type: string, nullable: true }
+        edited_by: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [id, code, task_name, owner, schedule_type, timezone, queue, enabled]
+
+    JobDefinitionCreate:
+      type: object
+      required: [code, task_name, schedule_type, timezone, queue]
+      properties:
+        code: { type: string }
+        task_name: { type: string }
+        description: { type: string }
+        owner: { $ref: '#/components/schemas/JobOwner' }
+        schedule_type: { $ref: '#/components/schemas/ScheduleType' }
+        cron_expression: { type: string }
+        interval_seconds: { type: integer, minimum: 1 }
+        timezone: { type: string }
+        queue: { type: string }
+        args: { type: array, items: {} }
+        kwargs: { type: object, additionalProperties: true }
+        enabled: { type: boolean, default: true }
+
+    JobDefinitionPatch:
+      type: object
+      properties:
+        description: { type: string }
+        cron_expression: { type: string }
+        interval_seconds: { type: integer }
+        timezone: { type: string }
+        queue: { type: string }
+        args: { type: array, items: {} }
+        kwargs: { type: object, additionalProperties: true }
+        enabled: { type: boolean }
+
+    JobRun:
+      type: object
+      properties:
+        run_id: { type: string, format: uuid }
+        job_code: { type: string }
+        status: { $ref: '#/components/schemas/JobStatus' }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+        retries: { type: integer }
+        celery_task_id: { type: string, nullable: true }
+        result: { type: object, additionalProperties: true, nullable: true }
+        error: { type: string, nullable: true }
+      required: [run_id, job_code, status]
+
+    # ─── Audit ─────────────────────────────────────────────
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        occurred_at: { type: string, format: date-time }
+        actor_id: { type: string, format: uuid, nullable: true }
+        actor_email: { type: string, format: email, nullable: true }
+        actor_role: { type: string, nullable: true }
+        entity_type: { type: string }
+        entity_id: { type: string }
+        action: { type: string }
+        before: { type: object, additionalProperties: true, nullable: true }
+        after: { type: object, additionalProperties: true, nullable: true }
+        diff: { type: object, additionalProperties: true, nullable: true }
+        reason: { type: string, nullable: true }
+        rules_evaluated: { type: object, additionalProperties: true, nullable: true }
+        request_id: { type: string, format: uuid, nullable: true }
+        ip: { type: string, nullable: true }
+        user_agent: { type: string, nullable: true }
+      required: [id, occurred_at, entity_type, entity_id, action]
+
+    AuditEventPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AuditEvent' } }
+        next_cursor: { type: string, nullable: true }
+
+    # ─── KB ────────────────────────────────────────────────
+    KbSource:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [datasheet, standard, manual, catalog] }
+        code: { type: string, nullable: true }
+        title: { type: string }
+        storage_path: { type: string }
+        language: { type: string }
+        version: { type: string, nullable: true }
+        sku_links: { type: array, items: { type: string } }
+        indexed: { type: boolean, description: "Fase 1: false; Fase 1.5+: true cuando se indexe" }
+        created_at: { type: string, format: date-time }
+      required: [id, type, title, storage_path, language, indexed]
+
+    KbSourceCreate:
+      type: object
+      required: [type, title, storage_path, language]
+      properties:
+        type: { type: string, enum: [datasheet, standard, manual, catalog] }
+        code: { type: string }
+        title: { type: string }
+        storage_path: { type: string }
+        language: { type: string }
+        version: { type: string }
+        sku_links: { type: array, items: { type: string } }
+
+    KbChunk:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        source_id: { type: string, format: uuid }
+        chunk_index: { type: integer }
+        text: { type: string }
+        page: { type: integer, nullable: true }
+        metadata: { type: object, additionalProperties: true }
+        embedding_model: { type: string, nullable: true }
+        embedding_at: { type: string, format: date-time, nullable: true }
+      required: [id, source_id, chunk_index, text]
+
+    KbSearchResult:
+      type: object
+      properties:
+        chunk: { $ref: '#/components/schemas/KbChunk' }
+        source: { $ref: '#/components/schemas/KbSource' }
+        score: { type: number }
+
+    # ─── Comparator ────────────────────────────────────────
+    MatchCandidate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sku: { type: string }
+        listing_id: { type: string, format: uuid }
+        score_image: { type: number, nullable: true }
+        score_text: { type: number, nullable: true }
+        score_specs: { type: number, nullable: true }
+        score_combined: { type: number }
+        threshold_band: { type: string, enum: [auto_match, human_queue, discard] }
+      required: [id, sku, listing_id, score_combined, threshold_band]
+
+    MatchDecision:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sku: { type: string }
+        listing_id: { type: string, format: uuid }
+        verdict: { type: string, enum: [match, no_match, uncertain] }
+        decided_by: { type: string, enum: [auto, human, judge] }
+        decided_by_user_id: { type: string, format: uuid, nullable: true }
+        score_combined: { type: number, nullable: true }
+        judge_rationale: { type: string, nullable: true }
+        judge_image_regions: { type: array, items: { type: object }, nullable: true }
+        deal_breakers_triggered: { type: array, items: { type: string } }
+        decided_at: { type: string, format: date-time }
+      required: [id, sku, listing_id, verdict, decided_by, decided_at]
+
+    # ─── Health ────────────────────────────────────────────
+    HealthCheck:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded, fail] }
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status: { type: string, enum: [ok, degraded, fail] }
+              latency_ms: { type: number }
+              detail: { type: string }
+        version: { type: string }
+        commit: { type: string }
+        timestamp: { type: string, format: date-time }
+      required: [status, timestamp]
+
+    ErrorResponse:
+      $ref: '#/components/schemas/ProblemDetails'
