@@ -61,7 +61,11 @@ def postgres_container() -> Iterator[str]:
     """
     from testcontainers.postgres import PostgresContainer
 
-    with PostgresContainer("postgres:16-alpine") as pg:
+    # `pgvector/pgvector:pg16` trae la extensión `vector` preinstalada que
+    # necesita la migración base 001 (`CREATE EXTENSION IF NOT EXISTS vector`).
+    # `postgres:16-alpine` no la incluye → integration suites fallaban con
+    # "extension vector is not available".
+    with PostgresContainer("pgvector/pgvector:pg16") as pg:
         url = pg.get_connection_url().replace("psycopg2", "asyncpg")
         os.environ["DATABASE_URL"] = url
         os.environ["ALEMBIC_DATABASE_URL"] = pg.get_connection_url().replace(

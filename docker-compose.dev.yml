@@ -71,6 +71,12 @@ services:
       # Alembic migrations — bind mount para que nuevas revisiones se vean
       # sin rebuild de imagen (dev only).
       - ./mt-pricing-backend/alembic:/app/alembic
+      # pyproject.toml — para que pytest pille `asyncio_mode=auto` y custom marks
+      # sin necesidad de `-o asyncio_mode=auto` cada vez (config dentro del container).
+      - ./mt-pricing-backend/pyproject.toml:/app/pyproject.toml:ro
+      # Tests bind mount — permite correr `docker exec mt-backend pytest` sin
+      # `docker cp tests/. mt-backend:/app/tests/` previo.
+      - ./mt-pricing-backend/tests:/app/tests:ro
       # Fixtures dev-only — montaje read-only para `/imports/pim/run-from-fixture`.
       - "./Documentos referencia de articulos:/fixtures:ro"
     command:
