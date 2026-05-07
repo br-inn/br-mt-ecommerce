@@ -234,6 +234,7 @@
         "images": "Images",
         "translations": "Translations",
         "costs": "Costs",
+        "datasheets": "Documents",
         "audit": "Audit"
       },
       "fields": {

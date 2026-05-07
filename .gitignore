@@ -187,3 +187,6 @@ mt_logo.png
 # Claude Code per-dev runtime + locally-installed skills (not source)
 .claude/scheduled_tasks.lock
 .claude/skills/
+
+# TypeScript incremental build artifact (auto-regenerated)
+*.tsbuildinfo

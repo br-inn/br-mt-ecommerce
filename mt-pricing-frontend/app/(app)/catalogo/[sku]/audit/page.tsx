@@ -1,25 +1,16 @@
-import { getTranslations } from "next-intl/server";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AuditTimeline } from "@/components/domain/audit-timeline";
+import { AuditTabClient } from "./_client";
 
 interface PageProps {
   params: Promise<{ sku: string }>;
 }
 
+/**
+ * Tab "Auditoría" del SKU detail (US-1A-07-03-FE Sprint 4).
+ *
+ * Server Component fino: resuelve `params` y delega a la island cliente.
+ * La UI completa (tabla + timeline + filtros) vive en `_client.tsx`.
+ */
 export default async function ProductAuditPage({ params }: PageProps) {
   const { sku } = await params;
-  const t = await getTranslations("catalog.audit");
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {t("title")} — <span className="font-mono">{sku}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <AuditTimeline entityType="product" entityId={sku} />
-      </CardContent>
-    </Card>
-  );
+  return <AuditTabClient sku={decodeURIComponent(sku)} />;
 }

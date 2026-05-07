@@ -36,6 +36,11 @@ export function ProductTabs({ sku }: Props) {
       match: (p: string) => p.startsWith(`/catalogo/${sku}/costos`),
     },
     {
+      href: `/catalogo/${sku}/datasheets`,
+      label: t("datasheets"),
+      match: (p: string) => p.startsWith(`/catalogo/${sku}/datasheets`),
+    },
+    {
       href: `/catalogo/${sku}/audit`,
       label: t("audit"),
       match: (p: string) => p.startsWith(`/catalogo/${sku}/audit`),
