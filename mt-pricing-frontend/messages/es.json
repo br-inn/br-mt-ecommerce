@@ -1,0 +1,1017 @@
+{
+  "app": {
+    "name": "MT Pricing",
+    "tagline": "Pricing & MDM"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "catalog": "Catálogo",
+    "suppliers": "Proveedores",
+    "proveedores": "Proveedores",
+    "prices": "Precios",
+    "imports": "Importaciones",
+    "audit": "Auditoría",
+    "settings": "Ajustes",
+    "admin": "Admin",
+    "adminFx": "Divisas / FX",
+    "account": "Mi cuenta"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "search": "Buscar",
+    "loading": "Cargando…",
+    "empty": "Sin resultados",
+    "error": "Ha ocurrido un error",
+    "retry": "Reintentar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "confirm": "Confirmar",
+    "close": "Cerrar",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "login": {
+    "title": "Iniciar sesión",
+    "subtitle": "Accede a MT Pricing",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "submit": "Entrar",
+    "forgot": "¿Has olvidado tu contraseña?"
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "subtitle": "Accede a MT Pricing",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Entrar",
+      "magicLink": "Enviar enlace mágico",
+      "magicLinkSent": "Te hemos enviado un enlace para iniciar sesión.",
+      "usePassword": "Usar contraseña",
+      "useMagicLink": "Usar enlace mágico",
+      "forgot": "¿Has olvidado tu contraseña?"
+    },
+    "resetPassword": {
+      "title": "Restablecer contraseña",
+      "subtitle": "Te enviaremos un enlace para restablecer tu contraseña.",
+      "email": "Correo electrónico",
+      "submit": "Enviar enlace",
+      "emailSent": "Si la cuenta existe, recibirás un correo en breve.",
+      "backToLogin": "Volver a iniciar sesión"
+    },
+    "logout": "Cerrar sesión",
+    "errors": {
+      "invalidCredentials": "Credenciales incorrectas. Inténtalo de nuevo.",
+      "sessionRevoked": "Tu sesión fue revocada por un administrador.",
+      "networkError": "No se pudo contactar con el servidor. Reinténtalo."
+    },
+    "account": {
+      "title": "Mi cuenta",
+      "loading": "Cargando…",
+      "updated": "Perfil actualizado.",
+      "profileTitle": "Perfil",
+      "profileSubtitle": "Edita tu nombre y preferencias.",
+      "fullName": "Nombre completo",
+      "locale": "Idioma",
+      "save": "Guardar cambios",
+      "permissionsTitle": "Permisos efectivos",
+      "rolePrefix": "Rol asignado:",
+      "noRole": "Sin rol asignado. Contacta con TI Integración.",
+      "noPermissions": "Aún no tienes permisos asignados.",
+      "signOut": "Cerrar sesión"
+    }
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Vista general de MT Pricing",
+    "welcome": "Bienvenido a MT Pricing",
+    "placeholder": "El panel se rellenará con KPIs en próximas iteraciones.",
+    "asOf": "Actualizado a las {time}",
+    "kpis": {
+      "products": "Productos",
+      "productsSubtext": "{active} activos · {complete} completos",
+      "translations": "Traducciones",
+      "translationsSubtext": "Cobertura ES {es}% · AR {ar}%",
+      "users": "Usuarios",
+      "usersSubtext": "{withRole} con rol asignado",
+      "activity24h": "Actividad 24h",
+      "activitySubtext": "{runs} jobs · {failures} fallos"
+    },
+    "recentActivity": {
+      "title": "Actividad reciente",
+      "subtitle": "Últimos 10 eventos del sistema",
+      "empty": "Sin actividad reciente."
+    },
+    "dataQuality": {
+      "title": "Calidad de datos",
+      "subtitle": "Distribución de SKUs por estado de calidad",
+      "complete": "Completos",
+      "partial": "Parciales",
+      "blocked": "Bloqueados",
+      "empty": "Aún no hay productos cargados."
+    },
+    "error": {
+      "title": "No se pudieron cargar los KPIs",
+      "description": "Verifica la conexión al backend y vuelve a intentarlo.",
+      "retry": "Reintentar"
+    }
+  },
+  "command": {
+    "placeholder": "Buscar comandos, productos, usuarios…",
+    "noResults": "Sin resultados",
+    "loading": "Buscando…",
+    "actions": "Acciones",
+    "products": "Productos",
+    "users": "Usuarios",
+    "newSku": "Nuevo SKU",
+    "searchSku": "Buscar SKU…",
+    "goCatalog": "Ir al catálogo",
+    "goDashboard": "Ir al panel",
+    "goImports": "Ir a importaciones"
+  },
+  "audit": {
+    "loading": "Cargando…",
+    "loadMore": "Cargar más",
+    "loadError": "No se pudo cargar el historial.",
+    "empty": "Aún no hay eventos registrados para esta entidad.",
+    "system": "Sistema",
+    "showDiff": "Ver cambios",
+    "hideDiff": "Ocultar cambios",
+    "diff": "Diff",
+    "before": "Antes",
+    "after": "Después"
+  },
+  "shell": {
+    "userMenu": "Cuenta",
+    "signOut": "Cerrar sesión",
+    "myAccount": "Mi cuenta",
+    "toggleSidebar": "Alternar barra lateral",
+    "openCommand": "Abrir paleta de comandos",
+    "locale": "Idioma"
+  },
+  "errors": {
+    "boundaryTitle": "Algo ha fallado",
+    "boundaryDescription": "Estamos trabajando en ello. Inténtalo de nuevo.",
+    "notFoundTitle": "Página no encontrada",
+    "notFoundDescription": "La página que buscas no existe o ha sido movida."
+  },
+  "catalog": {
+    "title": "Catálogo",
+    "subtitle": "Gestión de SKUs y traducciones",
+    "newSku": "Nuevo SKU",
+    "importPim": "Importar PIM",
+    "search": "Buscar SKU, nombre, DN, PN…",
+    "loading": "Cargando productos…",
+    "loadMore": "Cargar más",
+    "totalCount": "{count, plural, =0 {Sin productos} =1 {1 producto} other {# productos}}",
+    "filters": {
+      "title": "Filtros",
+      "family": "Familia",
+      "anyFamily": "Cualquier familia",
+      "dataQuality": "Calidad de datos",
+      "anyQuality": "Cualquier calidad",
+      "translationStatus": "Traducción",
+      "anyTranslation": "Cualquier estado",
+      "active": "Activos",
+      "inactive": "Inactivos",
+      "all": "Todos",
+      "clear": "Limpiar filtros",
+      "more": "Más filtros",
+      "advancedHint": "Filtros adicionales que persisten en la URL.",
+      "apply": "Aplicar",
+      "remove": "Quitar filtro",
+      "dn": "DN",
+      "pn": "PN",
+      "material": "Material",
+      "status": "Estado",
+      "anyStatus": "Cualquier estado",
+      "createdAfter": "Creado desde",
+      "createdBefore": "Creado hasta"
+    },
+    "columns": {
+      "sku": "SKU",
+      "name": "Nombre EN",
+      "family": "Familia",
+      "dn": "DN",
+      "pn": "PN",
+      "material": "Material",
+      "dataQuality": "Calidad",
+      "active": "Activo",
+      "actions": "Acciones"
+    },
+    "empty": {
+      "title": "Sin productos",
+      "description": "Aún no hay SKUs cargados. Crea uno o importa desde PIM.",
+      "create": "Crear el primer SKU"
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los productos.",
+      "saveFailed": "No se pudo guardar.",
+      "deleteFailed": "No se pudo eliminar.",
+      "notFound": "SKU no encontrado."
+    },
+    "actions": {
+      "view": "Ver detalle",
+      "edit": "Editar",
+      "archive": "Archivar",
+      "unarchive": "Reactivar",
+      "delete": "Eliminar",
+      "menu": "Acciones del SKU",
+      "deleteConfirm": "¿Eliminar este SKU? La operación es reversible (soft delete).",
+      "deleted": "SKU eliminado.",
+      "archived": "SKU archivado.",
+      "unarchived": "SKU reactivado.",
+      "activated": "SKU activado.",
+      "deactivated": "SKU desactivado."
+    },
+    "product": {
+      "tabs": {
+        "specs": "Ficha técnica",
+        "images": "Imágenes",
+        "translations": "Traducciones",
+        "costs": "Costos",
+        "audit": "Auditoría"
+      },
+      "fields": {
+        "sku": "SKU",
+        "name_en": "Nombre (EN)",
+        "description_en": "Descripción (EN)",
+        "family": "Familia",
+        "dn": "Diámetro nominal (DN)",
+        "pn": "Presión nominal (PN)",
+        "material": "Material",
+        "type": "Tipo",
+        "connection": "Conexión",
+        "weight_kg": "Peso (kg)",
+        "dimensions": "Dimensiones",
+        "length": "Largo",
+        "width": "Ancho",
+        "height": "Alto",
+        "unit": "Unidad",
+        "packaging": "Packaging",
+        "qty_x_box": "Unidades por caja",
+        "ean_unit": "EAN unidad",
+        "ean_box": "EAN caja",
+        "moq": "MOQ",
+        "intrastat": "Intrastat",
+        "hs_code": "Código HS",
+        "origin_country": "País de origen",
+        "net_weight_kg": "Peso neto (kg)",
+        "active": "Activo"
+      },
+      "specs": {
+        "title": "Especificaciones técnicas",
+        "subtitle": "Datos canónicos del SKU."
+      },
+      "packaging": {
+        "title": "Packaging e Intrastat",
+        "subtitle": "Datos logísticos y aduaneros."
+      }
+    },
+    "create": {
+      "title": "Nuevo SKU",
+      "subtitle": "Carga un producto al catálogo en 4 pasos.",
+      "stepLabel": "Paso {current} de {total}",
+      "step1": "Identificación",
+      "step2": "Especificaciones técnicas",
+      "step3": "Packaging e Intrastat",
+      "step4": "Confirmación",
+      "step1Description": "Datos básicos del SKU.",
+      "step2Description": "DN, PN, material y dimensiones.",
+      "step3Description": "Cajas, EANs e Intrastat.",
+      "step4Description": "Revisa y confirma.",
+      "submit": "Crear SKU",
+      "creating": "Creando…",
+      "success": "SKU creado correctamente.",
+      "validation": {
+        "skuRequired": "El SKU es obligatorio.",
+        "skuFormat": "Sólo se permiten mayúsculas, dígitos, guión y guión bajo.",
+        "nameRequired": "El nombre en inglés es obligatorio.",
+        "nameMin": "El nombre debe tener al menos 3 caracteres.",
+        "familyRequired": "Selecciona una familia.",
+        "weightInvalid": "El peso debe ser positivo.",
+        "moqInvalid": "El MOQ debe ser un entero positivo.",
+        "qtyInvalid": "Las unidades por caja deben ser un entero positivo.",
+        "eanFormat": "Formato EAN inválido (12-14 dígitos)."
+      }
+    },
+    "edit": {
+      "title": "Editar SKU",
+      "subtitle": "Modifica los datos del producto.",
+      "editButton": "Editar",
+      "submit": "Guardar cambios",
+      "success": "SKU actualizado.",
+      "saving": "Guardando…",
+      "conflict": "Conflicto: el SKU se ha modificado en otro lado. Recarga.",
+      "diffSubtitle": "{count, plural, =0 {Sin cambios pendientes} =1 {1 campo modificado} other {# campos modificados}}",
+      "noChanges": "No hay cambios respecto al estado actual.",
+      "validation": {
+        "nameMin": "El nombre debe tener al menos 3 caracteres.",
+        "weightInvalid": "El peso debe ser positivo."
+      }
+    },
+    "translations": {
+      "title": "Traducciones",
+      "subtitle": "EN canónico + traducciones ES y AR.",
+      "canonical": "Canónico (EN)",
+      "languages": {
+        "es": "Español",
+        "ar": "العربية"
+      },
+      "fields": {
+        "name": "Nombre",
+        "description": "Descripción"
+      },
+      "status": {
+        "draft": "Borrador",
+        "pending": "Pendiente de aprobación",
+        "approved": "Aprobada",
+        "missing": "Sin traducción"
+      },
+      "actions": {
+        "saveDraft": "Guardar borrador",
+        "requestApproval": "Solicitar aprobación",
+        "approve": "Aprobar"
+      },
+      "feedback": {
+        "saved": "Borrador guardado.",
+        "requested": "Aprobación solicitada.",
+        "approved": "Traducción aprobada.",
+        "saveFailed": "No se pudo guardar la traducción."
+      },
+      "rtlNote": "Edición RTL activa para árabe."
+    },
+    "images": {
+      "title": "Imágenes",
+      "subtitle": "Galería del SKU. Marca una como principal.",
+      "primary": "Principal",
+      "setPrimary": "Marcar como principal",
+      "delete": "Eliminar imagen",
+      "deleteConfirm": "¿Eliminar esta imagen?",
+      "noImages": "Aún no hay imágenes para este SKU.",
+      "upload": "Subir imagen",
+      "uploadHint": "Arrastra y suelta o haz clic para seleccionar (JPG, PNG, WebP).",
+      "uploadDisabled": "La subida directa estará disponible en Sprint 2.",
+      "selectFile": "Seleccionar archivo",
+      "limits": "Máximo 5 MB. JPG, PNG, WebP o AVIF.",
+      "errors": {
+        "tooLarge": "El archivo supera el tamaño permitido (5 MB).",
+        "invalidFormat": "Formato no válido. Usa JPG, PNG, WebP o AVIF."
+      },
+      "feedback": {
+        "primarySet": "Imagen marcada como principal.",
+        "deleted": "Imagen eliminada.",
+        "uploaded": "Imagen subida."
+      }
+    },
+    "audit": {
+      "title": "Historial de cambios",
+      "placeholder": "El timeline de cambios estará disponible en Sprint 2 (US-1A-07-XX). Los eventos ya se están registrando.",
+      "subtitle": "Eventos registrados sobre este SKU."
+    }
+  },
+  "proveedores": {
+    "title": "Proveedores",
+    "subtitle": "Master de proveedores con moneda contractual y lead time.",
+    "newButton": "Nuevo proveedor",
+    "search": "Buscar por código o nombre…",
+    "loadMore": "Cargar más",
+    "totalCount": "{count, plural, =0 {Sin proveedores} =1 {1 proveedor} other {# proveedores}}",
+    "filters": {
+      "currency": "Moneda contractual",
+      "anyCurrency": "Cualquier moneda",
+      "status": "Estado",
+      "anyStatus": "Cualquier estado",
+      "active": "Activos",
+      "inactive": "Inactivos",
+      "clear": "Limpiar filtros"
+    },
+    "columns": {
+      "code": "Código",
+      "name": "Nombre",
+      "currency": "Moneda",
+      "leadTime": "Lead time",
+      "paymentTerms": "Pago",
+      "active": "Activo",
+      "actions": "Acciones"
+    },
+    "tabs": {
+      "data": "Datos",
+      "costs": "Costos asociados",
+      "audit": "Auditoría"
+    },
+    "actions": {
+      "edit": "Editar",
+      "archive": "Archivar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Archivar este proveedor? Mantendrá los costes históricos.",
+      "menu": "Acciones",
+      "view": "Ver detalle",
+      "activated": "Proveedor activado.",
+      "deactivated": "Proveedor archivado."
+    },
+    "fields": {
+      "code": "Código",
+      "name": "Nombre",
+      "legal_name": "Razón social",
+      "country": "País",
+      "contact_email": "Email",
+      "contact_phone": "Teléfono",
+      "payment_terms_days": "Días pago",
+      "contract_currency": "Moneda contractual",
+      "lead_time_days": "Lead time (días)",
+      "notes": "Notas",
+      "active": "Activo"
+    },
+    "empty": {
+      "title": "Sin proveedores",
+      "description": "Aún no hay proveedores. Crea el primero."
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los proveedores.",
+      "notFound": "Proveedor no encontrado."
+    },
+    "newPage": {
+      "title": "Nuevo proveedor",
+      "subtitle": "Alta de un proveedor maestro."
+    },
+    "editPage": {
+      "title": "Editar proveedor",
+      "subtitle": "Modifica los datos y guarda."
+    }
+  },
+  "costs": {
+    "title": "Costos",
+    "subtitle": "Costos por esquema de venta.",
+    "newButton": "Agregar coste",
+    "loading": "Cargando costos…",
+    "empty": "Sin costos para este SKU. Crea uno para empezar.",
+    "fields": {
+      "scheme": "Esquema",
+      "supplier": "Proveedor",
+      "total": "Total",
+      "currency": "Moneda",
+      "fob": "FOB",
+      "freight": "Freight",
+      "customs": "Customs",
+      "fba_fee": "Fee FBA",
+      "fbm_fee": "Fee FBM",
+      "payment_fee": "Fee pago",
+      "marketing": "Marketing",
+      "valid_from": "Vigente desde",
+      "valid_to": "Vigente hasta"
+    },
+    "status": {
+      "current": "Vigente",
+      "expired": "Caducado"
+    },
+    "breakdown": "Desglose",
+    "form": {
+      "title": "Nuevo coste",
+      "editTitle": "Editar coste",
+      "create": "Crear coste",
+      "save": "Guardar cambios",
+      "cancel": "Cancelar"
+    },
+    "actions": {
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar este coste? La acción no es reversible."
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los costos.",
+      "saveFailed": "No se pudo guardar el coste.",
+      "deleteFailed": "No se pudo eliminar."
+    }
+  },
+  "fx": {
+    "title": "Divisas y tasas FX",
+    "subtitle": "Tabla de tasas de cambio versionada.",
+    "currenciesTitle": "Monedas configuradas",
+    "currenciesSubtitle": "Read-only en Sprint 1 — gestionadas desde DB.",
+    "ratesTitle": "Histórico de tasas",
+    "ratesSubtitle": "Cada nueva tasa cierra automáticamente la vigente del par.",
+    "newRateButton": "Nueva tasa",
+    "current": "Vigente",
+    "expired": "Caducada",
+    "filters": {
+      "from": "De",
+      "to": "A",
+      "anyCurrency": "Cualquier moneda",
+      "clear": "Limpiar filtros"
+    },
+    "columns": {
+      "code": "Código",
+      "name": "Nombre",
+      "symbol": "Símbolo",
+      "decimals": "Decimales",
+      "isBase": "Base",
+      "from_currency": "De",
+      "to_currency": "A",
+      "rate": "Tasa",
+      "effective_from": "Vigente desde",
+      "effective_to": "Vigente hasta",
+      "source": "Fuente",
+      "status": "Estado"
+    },
+    "fields": {
+      "from": "De",
+      "to": "A",
+      "rate": "Tasa",
+      "effective_from": "Vigente desde",
+      "effective_to": "Vigente hasta",
+      "source": "Fuente"
+    },
+    "sources": {
+      "manual": "Manual",
+      "ecb": "ECB",
+      "fixer": "Fixer",
+      "cbuae": "CBUAE"
+    },
+    "empty": {
+      "rates": "Sin tasas registradas para los filtros aplicados.",
+      "currencies": "No hay monedas activas."
+    },
+    "form": {
+      "create": "Crear tasa",
+      "createTitle": "Nueva tasa de cambio",
+      "createSubtitle": "Cerrará automáticamente la tasa vigente del par."
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar las tasas FX.",
+      "saveFailed": "No se pudo guardar la tasa FX.",
+      "samePair": "De y A deben ser monedas distintas.",
+      "rateInvalid": "La tasa debe ser positiva."
+    },
+    "feedback": {
+      "created": "Tasa creada."
+    }
+  },
+  "suppliers": {
+    "title": "Proveedores",
+    "subtitle": "Maestro de proveedores. Crear, editar y desactivar.",
+    "search": "Buscar por nombre o código…",
+    "loadMore": "Cargar más",
+    "totalCount": "{count, plural, =0 {Sin proveedores} =1 {1 proveedor} other {# proveedores}}",
+    "daysShort": "{count, plural, =1 {1 día} other {# días}}",
+    "infoTitle": "Información",
+    "infoSubtitle": "Datos del proveedor.",
+    "editTitle": "Editar proveedor",
+    "editSubtitle": "Modifica los datos y guarda.",
+    "filters": {
+      "country": "País",
+      "anyCountry": "Cualquier país",
+      "currency": "Moneda",
+      "anyCurrency": "Cualquier moneda",
+      "status": "Estado",
+      "anyStatus": "Cualquier estado",
+      "active": "Activos",
+      "inactive": "Inactivos",
+      "clear": "Limpiar filtros"
+    },
+    "columns": {
+      "code": "Código",
+      "name": "Nombre",
+      "country": "País",
+      "currency": "Moneda",
+      "leadTime": "Lead time",
+      "email": "Email",
+      "active": "Activo",
+      "actions": "Acciones"
+    },
+    "empty": {
+      "title": "Sin proveedores",
+      "description": "Aún no hay proveedores. Crea el primero."
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los proveedores.",
+      "notFound": "Proveedor no encontrado."
+    },
+    "actions": {
+      "view": "Ver detalle",
+      "edit": "Editar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "deactivateConfirm": "Esto ocultará el proveedor pero mantendrá costes históricos. ¿Continuar?",
+      "menu": "Acciones del proveedor",
+      "activated": "Proveedor activado.",
+      "deactivated": "Proveedor desactivado."
+    },
+    "new": "Nuevo proveedor",
+    "newPage": {
+      "title": "Nuevo proveedor",
+      "subtitle": "Alta de un proveedor maestro."
+    },
+    "form": {
+      "submitCreate": "Crear proveedor",
+      "submitEdit": "Guardar cambios",
+      "created": "Proveedor creado.",
+      "updated": "Proveedor actualizado.",
+      "errors": {
+        "duplicateCode": "Ya existe un proveedor con ese código."
+      },
+      "fields": {
+        "code": "Código",
+        "name": "Nombre",
+        "country": "País",
+        "currency": "Moneda",
+        "contractCurrency": "Moneda contractual",
+        "leadTimeDays": "Lead time (días)",
+        "email": "Email de contacto",
+        "phone": "Teléfono",
+        "paymentTerms": "Términos de pago",
+        "notes": "Notas",
+        "active": "Activo"
+      },
+      "validation": {
+        "codeRequired": "El código es obligatorio.",
+        "codeFormat": "Sólo mayúsculas, dígitos, guión y guión bajo.",
+        "nameRequired": "El nombre es obligatorio.",
+        "nameMin": "El nombre debe tener al menos 2 caracteres.",
+        "emailInvalid": "Email no válido.",
+        "leadTimeInvalid": "Debe ser ≥ 0.",
+        "currencyRequired": "Selecciona una moneda contractual."
+      }
+    }
+  },
+  "imports": {
+    "title": "Importaciones",
+    "subtitle": "Carga masiva del PIM (xlsx). Vista previa antes de aplicar.",
+    "noPermission": "No tienes permisos para ejecutar importaciones.",
+    "wizard": {
+      "step1": "Subir archivo",
+      "step2": "Vista previa",
+      "step3": "Confirmar",
+      "step4": "Aplicar y reporte"
+    },
+    "upload": {
+      "title": "Sube el archivo PIM",
+      "hint": "Arrastra y suelta el .xlsx o haz clic para seleccionar.",
+      "limits": "Hasta 50 MB. Formato XLSX.",
+      "dropLabel": "Zona de carga",
+      "remove": "Quitar archivo",
+      "startPreview": "Generar vista previa",
+      "uploading": "Subiendo…",
+      "errors": {
+        "tooLarge": "El archivo supera 50 MB.",
+        "invalidFormat": "Sólo XLSX está permitido."
+      }
+    },
+    "preview": {
+      "title": "Resumen del diff",
+      "confirm": "Confirmar y aplicar",
+      "emptyBucket": "No hay filas en esta categoría.",
+      "summary": {
+        "creates": "Nuevos",
+        "updates": "Modificados",
+        "skipped": "Omitidos",
+        "errors": "Errores"
+      },
+      "tabs": {
+        "creates": "Nuevos",
+        "updates": "Modificados",
+        "skipped": "Omitidos",
+        "errors": "Errores"
+      }
+    },
+    "apply": {
+      "starting": "Iniciando aplicación…",
+      "waiting": "Esperando progreso del worker…",
+      "chunks": "Chunk {done} de {total}",
+      "rowsDone": "{count, plural, =1 {1 fila aplicada} other {# filas aplicadas}}",
+      "status": {
+        "queued": "En cola",
+        "parsing": "Procesando archivo",
+        "preview_ready": "Vista previa lista",
+        "applying": "Aplicando cambios…",
+        "completed": "Aplicación completada",
+        "failed": "La aplicación falló",
+        "cancelled": "Cancelada"
+      }
+    },
+    "report": {
+      "titleSuccess": "Import completado",
+      "titleFailed": "Import con incidencias",
+      "creates": "Nuevos",
+      "updates": "Modificados",
+      "skipped": "Omitidos",
+      "errors": "Errores",
+      "newImport": "Nueva importación",
+      "goProducts": "Ir al catálogo"
+    }
+  },
+  "pricing": {
+    "title": "Precios",
+    "subtitle": "Motor v5.1 — propuestas, aprobaciones y trazabilidad",
+    "empty": "Sin precios para los filtros aplicados",
+    "filters": {
+      "channel": "Canal",
+      "status": "Estado",
+      "all": "Todos",
+      "refresh": "Refrescar"
+    },
+    "columns": {
+      "scheme": "Esquema",
+      "amount": "Importe",
+      "margin": "Margen",
+      "rule": "Regla",
+      "status": "Estado",
+      "actions": "Acciones",
+      "view": "Ver",
+      "alerts": "Alertas"
+    },
+    "actions": {
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "revise": "Revisar",
+      "export": "Exportar",
+      "approvedToast": "Precio aprobado",
+      "rejectedToast": "Precio rechazado",
+      "revisedToast": "Precio revisado"
+    },
+    "approvals": {
+      "cta": "Cola de aprobación",
+      "title": "Aprobaciones pendientes",
+      "subtitle": "Precios que requieren revisión manual antes de auto-aprobarse",
+      "empty": "No hay precios pendientes",
+      "approveSelected": "Aprobar seleccionados",
+      "review": "Revisar",
+      "bulkApprovedToast": "Precios aprobados en lote"
+    },
+    "detail": {
+      "created": "Creado",
+      "amounts": "Importes",
+      "alerts": "Alertas",
+      "noAlerts": "Sin alertas",
+      "breakdown": "Desglose",
+      "history": "Historial de aprobación",
+      "noEvents": "Sin eventos",
+      "actions": "Acciones",
+      "reason": "Razón",
+      "reasonPlaceholder": "Motivo del cambio (obligatorio para rechazar/revisar)",
+      "newAmount": "Nuevo importe",
+      "formula": "Fórmula"
+    },
+    "simulate": {
+      "cta": "Simulador",
+      "title": "Simulador what-if",
+      "subtitle": "Prueba el motor v5.1 con overrides arbitrarios sin persistir",
+      "inputs": "Inputs",
+      "result": "Resultado",
+      "run": "Calcular"
+    },
+    "errors": {
+      "loadFailed": "Error cargando precios",
+      "actionFailed": "La acción falló"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Usuarios",
+      "subtitle": "Gestiona usuarios, roles y permisos efectivos.",
+      "inviteCta": "Invitar usuario",
+      "inviteTitle": "Invitar usuario",
+      "inviteSubtitle": "Genera un Magic Link de Supabase y asigna rol inicial.",
+      "detailTitle": "Detalle de usuario",
+      "backToList": "Volver al listado",
+      "noPermission": "No tienes permiso para ver esta sección.",
+      "empty": "Sin usuarios para los filtros aplicados.",
+      "columns": {
+        "email": "Email",
+        "fullName": "Nombre",
+        "role": "Rol",
+        "lastSignIn": "Último acceso",
+        "active": "Activo",
+        "actions": "Acciones",
+        "view": "Ver",
+        "yes": "Sí",
+        "no": "No"
+      },
+      "filters": {
+        "search": "Buscar",
+        "searchPlaceholder": "Email o nombre…",
+        "role": "Rol",
+        "anyRole": "Todos",
+        "active": "Activo",
+        "any": "Todos",
+        "yes": "Sí",
+        "no": "No"
+      },
+      "detail": {
+        "profileTitle": "Perfil",
+        "fullName": "Nombre completo",
+        "locale": "Idioma",
+        "active": "Activo",
+        "lastSignIn": "Último acceso",
+        "rolesTitle": "Roles asignados",
+        "rolesSubtitle": "El rol determina los permisos efectivos.",
+        "noRole": "Sin rol asignado.",
+        "assignRole": "Asignar rol",
+        "pickRole": "Selecciona un rol…",
+        "assign": "Asignar",
+        "revoke": "Revocar",
+        "roleAssigned": "Rol asignado.",
+        "roleAssignFailed": "No se pudo asignar el rol.",
+        "roleRevoked": "Rol revocado.",
+        "roleRevokeFailed": "No se pudo revocar el rol.",
+        "permsTitle": "Permisos efectivos",
+        "permsSubtitle": "Derivados del rol asignado.",
+        "noPerms": "Sin permisos efectivos.",
+        "auditTitle": "Auditoría",
+        "auditSubtitle": "Eventos relevantes del usuario.",
+        "auditPlaceholder": "Timeline disponible en Sprint 2.",
+        "dangerTitle": "Acciones",
+        "forceLogout": "Forzar cierre de sesión",
+        "forceLogoutOk": "Sesiones revocadas.",
+        "forceLogoutFailed": "No se pudo forzar el cierre de sesión.",
+        "archive": "Archivar",
+        "archived": "Usuario archivado.",
+        "archiveFailed": "No se pudo archivar.",
+        "confirmForceLogoutTitle": "¿Forzar cierre de sesión?",
+        "confirmForceLogoutDesc": "Se revocarán todas las sesiones activas en Supabase.",
+        "confirmArchiveTitle": "¿Archivar usuario?",
+        "confirmArchiveDesc": "El usuario quedará inactivo y no podrá iniciar sesión.",
+        "confirmRevokeTitle": "¿Revocar rol?",
+        "confirmRevokeDesc": "El usuario perderá los permisos asociados al rol y se forzará logout."
+      },
+      "invite": {
+        "formTitle": "Datos de invitación",
+        "formSubtitle": "Tras invitar, el usuario recibe un Magic Link de Supabase.",
+        "email": "Email",
+        "fullName": "Nombre completo",
+        "role": "Rol inicial",
+        "locale": "Idioma",
+        "submit": "Enviar invitación",
+        "success": "Invitación enviada.",
+        "errors": {
+          "email": "Email inválido.",
+          "fullName": "Nombre demasiado corto.",
+          "failed": "No se pudo invitar."
+        }
+      },
+      "errors": {
+        "loadFailed": "Error cargando usuarios."
+      }
+    },
+    "jobs": {
+      "title": "Jobs",
+      "subtitle": "DatabaseScheduler — Celery Beat editable.",
+      "createCta": "Crear job",
+      "createTitle": "Crear job",
+      "createSubtitle": "Define un nuevo job_definition con cron o interval.",
+      "detailTitle": "Detalle de job",
+      "backToList": "Volver al listado",
+      "noPermission": "No tienes permiso para ver esta sección.",
+      "empty": "No hay jobs registrados.",
+      "toast": {
+        "enabled": "Job activado.",
+        "disabled": "Job desactivado."
+      },
+      "columns": {
+        "code": "Código",
+        "description": "Descripción",
+        "cron": "Cron / Intervalo",
+        "queue": "Cola",
+        "lastRun": "Última ejecución",
+        "lastStatus": "Estado",
+        "nextRun": "Próxima ejecución",
+        "enabled": "Activo",
+        "actions": "Acciones",
+        "on": "ON",
+        "off": "OFF",
+        "enable": "Activar",
+        "disable": "Desactivar"
+      },
+      "detail": {
+        "editTitle": "Editar configuración",
+        "editSubtitle": "Cambios se aplican al siguiente tick del scheduler.",
+        "cronExpression": "Expresión cron (m h dom mes dow)",
+        "cronPreview": "Próximas 5 ejecuciones",
+        "queue": "Cola Celery",
+        "args": "Args (JSON array)",
+        "kwargs": "Kwargs (JSON object)",
+        "enabled": "Activo",
+        "savedToast": "Job actualizado.",
+        "runNow": "Ejecutar ahora",
+        "runNowQueued": "Ejecución encolada.",
+        "runsTitle": "Historial de ejecuciones",
+        "runsSubtitle": "Últimos JobRun del job.",
+        "noRuns": "Aún no hay ejecuciones.",
+        "startedAt": "Inicio",
+        "finishedAt": "Fin",
+        "status": "Estado",
+        "durationMs": "Duración (ms)",
+        "error": "Error",
+        "confirmRunTitle": "¿Ejecutar ahora?",
+        "confirmRunDesc": "Se encolará una ejecución ad-hoc en Celery sin esperar al próximo tick.",
+        "errors": {
+          "save": "No se pudo guardar.",
+          "runNow": "No se pudo ejecutar.",
+          "argsJson": "Debe ser un array JSON válido.",
+          "kwargsJson": "Debe ser un objeto JSON válido."
+        }
+      },
+      "create": {
+        "formTitle": "Datos del job",
+        "formSubtitle": "El task_name debe coincidir con un Celery task registrado.",
+        "code": "Código",
+        "taskName": "Task name (Celery)",
+        "description": "Descripción",
+        "owner": "Owner",
+        "scheduleType": "Tipo de schedule",
+        "cronExpression": "Expresión cron",
+        "intervalSeconds": "Intervalo (segundos)",
+        "timezone": "Timezone",
+        "queue": "Cola",
+        "enabled": "Activo al crear",
+        "submit": "Crear job",
+        "success": "Job creado.",
+        "errors": {
+          "scheduleRequired": "cron requiere expresión; interval requiere segundos > 0.",
+          "failed": "No se pudo crear el job."
+        }
+      },
+      "errors": {
+        "loadFailed": "Error cargando jobs.",
+        "toggle": "No se pudo cambiar el estado."
+      }
+    },
+    "imports": {
+      "title": "Importaciones",
+      "subtitle": "Histórico de runs (PIM, costs, datasheets).",
+      "uploadCta": "Importar PIM",
+      "detailTitle": "Detalle de import",
+      "backToList": "Volver al listado",
+      "noPermission": "No tienes permiso para ver esta sección.",
+      "empty": "Sin runs para los filtros aplicados.",
+      "errors": {
+        "loadFailed": "Error cargando runs."
+      },
+      "columns": {
+        "type": "Tipo",
+        "filename": "Archivo",
+        "status": "Estado",
+        "total": "Total",
+        "inserted": "Insertados",
+        "updated": "Actualizados",
+        "errors": "Errores",
+        "startedAt": "Inicio",
+        "finishedAt": "Fin",
+        "actions": "Acciones"
+      },
+      "filters": {
+        "importType": "Tipo",
+        "status": "Estado",
+        "any": "Todos"
+      },
+      "upload": {
+        "title": "Importar PIM",
+        "subtitle": "Sube un xlsx o ejecuta el fixture de dev.",
+        "dropHere": "Arrastra el archivo aquí o usa el botón.",
+        "pickFile": "Seleccionar archivo",
+        "upload": "Subir y ejecutar",
+        "uploadOk": "Import encolado.",
+        "uploadFailed": "No se pudo subir.",
+        "runFixture": "Ejecutar fixture (dev)",
+        "fixtureOk": "Fixture encolado.",
+        "fixtureFailed": "No se pudo ejecutar fixture."
+      },
+      "detail": {
+        "loadFailed": "Error cargando run.",
+        "type": "Tipo",
+        "filename": "Archivo",
+        "duration": "Duración",
+        "startedAt": "Inicio",
+        "finishedAt": "Fin",
+        "celeryTaskId": "Celery task id",
+        "countersTitle": "Contadores",
+        "totalRows": "Total filas",
+        "inserted": "Insertados",
+        "updated": "Actualizados",
+        "skipped": "Omitidos",
+        "errors": "Errores",
+        "errorsTitle": "Errores",
+        "errorsSubtitle": "Listado paginado de errores capturados durante el run.",
+        "errorRow": "Fila",
+        "errorSku": "SKU",
+        "errorField": "Campo",
+        "errorMessage": "Mensaje",
+        "errorsCapped": "Mostrando {shown} de {total}.",
+        "summaryTitle": "Summary (JSONB)",
+        "retryTitle": "Re-ejecutar",
+        "retrySubtitle": "Sólo disponible para runs failed (admin).",
+        "retryAction": "Re-ejecutar",
+        "retryQueued": "Re-ejecución encolada.",
+        "retryFailed": "No se pudo re-ejecutar.",
+        "confirmRetryTitle": "¿Re-ejecutar import?",
+        "confirmRetryDesc": "Se creará un nuevo ImportRun usando el fixture de dev."
+      }
+    }
+  }
+}

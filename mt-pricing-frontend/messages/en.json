@@ -1,0 +1,1016 @@
+{
+  "app": {
+    "name": "MT Pricing",
+    "tagline": "Pricing & MDM"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "catalog": "Catalog",
+    "suppliers": "Suppliers",
+    "proveedores": "Suppliers",
+    "prices": "Prices",
+    "imports": "Imports",
+    "audit": "Audit",
+    "settings": "Settings",
+    "admin": "Admin",
+    "adminFx": "Currencies / FX",
+    "account": "My account"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "search": "Search",
+    "loading": "Loading…",
+    "empty": "No results",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "confirm": "Confirm",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Access MT Pricing",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "forgot": "Forgot your password?"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Access MT Pricing",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "magicLink": "Send magic link",
+      "magicLinkSent": "We sent you a sign-in link.",
+      "usePassword": "Use password",
+      "useMagicLink": "Use magic link",
+      "forgot": "Forgot your password?"
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "subtitle": "We will send you a link to reset your password.",
+      "email": "Email",
+      "submit": "Send link",
+      "emailSent": "If the account exists, you will receive an email shortly.",
+      "backToLogin": "Back to sign in"
+    },
+    "logout": "Sign out",
+    "errors": {
+      "invalidCredentials": "Invalid credentials. Please try again.",
+      "sessionRevoked": "Your session was revoked by an administrator.",
+      "networkError": "Could not reach the server. Please retry."
+    },
+    "account": {
+      "title": "My account",
+      "loading": "Loading…",
+      "updated": "Profile updated.",
+      "profileTitle": "Profile",
+      "profileSubtitle": "Edit your name and preferences.",
+      "fullName": "Full name",
+      "locale": "Language",
+      "save": "Save changes",
+      "permissionsTitle": "Effective permissions",
+      "rolePrefix": "Assigned role:",
+      "noRole": "No role assigned. Contact IT Integration.",
+      "noPermissions": "You do not have any permissions yet.",
+      "signOut": "Sign out"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "MT Pricing overview",
+    "welcome": "Welcome to MT Pricing",
+    "placeholder": "Dashboard KPIs will be added in upcoming iterations.",
+    "asOf": "Updated at {time}",
+    "kpis": {
+      "products": "Products",
+      "productsSubtext": "{active} active · {complete} complete",
+      "translations": "Translations",
+      "translationsSubtext": "Coverage ES {es}% · AR {ar}%",
+      "users": "Users",
+      "usersSubtext": "{withRole} with assigned role",
+      "activity24h": "Activity 24h",
+      "activitySubtext": "{runs} jobs · {failures} failures"
+    },
+    "recentActivity": {
+      "title": "Recent activity",
+      "subtitle": "Last 10 system events",
+      "empty": "No recent activity."
+    },
+    "dataQuality": {
+      "title": "Data quality",
+      "subtitle": "SKU distribution by quality state",
+      "complete": "Complete",
+      "partial": "Partial",
+      "blocked": "Blocked",
+      "empty": "No products loaded yet."
+    },
+    "error": {
+      "title": "Could not load KPIs",
+      "description": "Check the backend connection and try again.",
+      "retry": "Retry"
+    }
+  },
+  "command": {
+    "placeholder": "Search commands, products, users…",
+    "noResults": "No results",
+    "loading": "Searching…",
+    "actions": "Actions",
+    "products": "Products",
+    "users": "Users",
+    "newSku": "New SKU",
+    "searchSku": "Search SKU…",
+    "goCatalog": "Go to catalog",
+    "goDashboard": "Go to dashboard",
+    "goImports": "Go to imports"
+  },
+  "audit": {
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "loadError": "Could not load history.",
+    "empty": "No events recorded for this entity yet.",
+    "system": "System",
+    "showDiff": "Show changes",
+    "hideDiff": "Hide changes",
+    "diff": "Diff",
+    "before": "Before",
+    "after": "After"
+  },
+  "shell": {
+    "userMenu": "Account",
+    "signOut": "Sign out",
+    "myAccount": "My account",
+    "toggleSidebar": "Toggle sidebar",
+    "openCommand": "Open command palette",
+    "locale": "Language"
+  },
+  "errors": {
+    "boundaryTitle": "Something went wrong",
+    "boundaryDescription": "We are on it. Please try again.",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The page you are looking for does not exist or has been moved."
+  },
+  "catalog": {
+    "title": "Catalog",
+    "subtitle": "SKU master and translations",
+    "newSku": "New SKU",
+    "importPim": "Import from PIM",
+    "search": "Search SKU, name, DN, PN…",
+    "loading": "Loading products…",
+    "loadMore": "Load more",
+    "totalCount": "{count, plural, =0 {No products} =1 {1 product} other {# products}}",
+    "filters": {
+      "title": "Filters",
+      "family": "Family",
+      "anyFamily": "Any family",
+      "dataQuality": "Data quality",
+      "anyQuality": "Any quality",
+      "translationStatus": "Translation",
+      "anyTranslation": "Any status",
+      "active": "Active only",
+      "inactive": "Inactive only",
+      "all": "All",
+      "clear": "Clear filters",
+      "more": "More filters",
+      "advancedHint": "Extra filters that persist in the URL.",
+      "apply": "Apply",
+      "remove": "Remove filter",
+      "dn": "DN",
+      "pn": "PN",
+      "material": "Material",
+      "status": "Status",
+      "anyStatus": "Any status",
+      "createdAfter": "Created after",
+      "createdBefore": "Created before"
+    },
+    "columns": {
+      "sku": "SKU",
+      "name": "Name (EN)",
+      "family": "Family",
+      "dn": "DN",
+      "pn": "PN",
+      "material": "Material",
+      "dataQuality": "Quality",
+      "active": "Active",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No products",
+      "description": "There are no SKUs yet. Create one or import from PIM.",
+      "create": "Create the first SKU"
+    },
+    "errors": {
+      "loadFailed": "Could not load products.",
+      "saveFailed": "Could not save.",
+      "deleteFailed": "Could not delete.",
+      "notFound": "SKU not found."
+    },
+    "actions": {
+      "view": "View detail",
+      "edit": "Edit",
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "delete": "Delete",
+      "menu": "SKU actions",
+      "deleteConfirm": "Delete this SKU? This is reversible (soft delete).",
+      "deleted": "SKU deleted.",
+      "archived": "SKU archived.",
+      "unarchived": "SKU restored.",
+      "activated": "SKU activated.",
+      "deactivated": "SKU deactivated."
+    },
+    "product": {
+      "tabs": {
+        "specs": "Specs",
+        "images": "Images",
+        "translations": "Translations",
+        "costs": "Costs",
+        "audit": "Audit"
+      },
+      "fields": {
+        "sku": "SKU",
+        "name_en": "Name (EN)",
+        "description_en": "Description (EN)",
+        "family": "Family",
+        "dn": "Nominal diameter (DN)",
+        "pn": "Nominal pressure (PN)",
+        "material": "Material",
+        "type": "Type",
+        "connection": "Connection",
+        "weight_kg": "Weight (kg)",
+        "dimensions": "Dimensions",
+        "length": "Length",
+        "width": "Width",
+        "height": "Height",
+        "unit": "Unit",
+        "packaging": "Packaging",
+        "qty_x_box": "Units per box",
+        "ean_unit": "EAN unit",
+        "ean_box": "EAN box",
+        "moq": "MOQ",
+        "intrastat": "Intrastat",
+        "hs_code": "HS code",
+        "origin_country": "Country of origin",
+        "net_weight_kg": "Net weight (kg)",
+        "active": "Active"
+      },
+      "specs": {
+        "title": "Technical specs",
+        "subtitle": "Canonical SKU data."
+      },
+      "packaging": {
+        "title": "Packaging & Intrastat",
+        "subtitle": "Logistics and customs data."
+      }
+    },
+    "create": {
+      "title": "New SKU",
+      "subtitle": "Add a product to the catalog in 4 steps.",
+      "stepLabel": "Step {current} of {total}",
+      "step1": "Identification",
+      "step2": "Technical specs",
+      "step3": "Packaging & Intrastat",
+      "step4": "Confirmation",
+      "step1Description": "Basic SKU data.",
+      "step2Description": "DN, PN, material, dimensions.",
+      "step3Description": "Boxes, EANs, Intrastat.",
+      "step4Description": "Review and confirm.",
+      "submit": "Create SKU",
+      "creating": "Creating…",
+      "success": "SKU created.",
+      "validation": {
+        "skuRequired": "SKU is required.",
+        "skuFormat": "Only uppercase letters, digits, dash and underscore allowed.",
+        "nameRequired": "English name is required.",
+        "nameMin": "Name must be at least 3 characters.",
+        "familyRequired": "Select a family.",
+        "weightInvalid": "Weight must be positive.",
+        "moqInvalid": "MOQ must be a positive integer.",
+        "qtyInvalid": "Units per box must be a positive integer.",
+        "eanFormat": "Invalid EAN format (12-14 digits)."
+      }
+    },
+    "edit": {
+      "title": "Edit SKU",
+      "subtitle": "Modify product data.",
+      "editButton": "Edit",
+      "submit": "Save changes",
+      "success": "SKU updated.",
+      "saving": "Saving…",
+      "conflict": "Conflict: this SKU was modified elsewhere. Reload.",
+      "diffSubtitle": "{count, plural, =0 {No pending changes} =1 {1 field modified} other {# fields modified}}",
+      "noChanges": "No changes versus current state.",
+      "validation": {
+        "nameMin": "Name must be at least 3 characters.",
+        "weightInvalid": "Weight must be positive."
+      }
+    },
+    "translations": {
+      "title": "Translations",
+      "subtitle": "EN canonical + ES and AR translations.",
+      "canonical": "Canonical (EN)",
+      "languages": {
+        "es": "Spanish",
+        "ar": "Arabic"
+      },
+      "fields": {
+        "name": "Name",
+        "description": "Description"
+      },
+      "status": {
+        "draft": "Draft",
+        "pending": "Pending approval",
+        "approved": "Approved",
+        "missing": "Not translated"
+      },
+      "actions": {
+        "saveDraft": "Save draft",
+        "requestApproval": "Request approval",
+        "approve": "Approve"
+      },
+      "feedback": {
+        "saved": "Draft saved.",
+        "requested": "Approval requested.",
+        "approved": "Translation approved.",
+        "saveFailed": "Could not save translation."
+      },
+      "rtlNote": "RTL editing enabled for Arabic."
+    },
+    "images": {
+      "title": "Images",
+      "subtitle": "SKU gallery. Pick one as primary.",
+      "primary": "Primary",
+      "setPrimary": "Set as primary",
+      "delete": "Delete image",
+      "deleteConfirm": "Delete this image?",
+      "noImages": "No images for this SKU yet.",
+      "upload": "Upload image",
+      "uploadHint": "Drag and drop or click to select (JPG, PNG, WebP).",
+      "uploadDisabled": "Direct upload will ship in Sprint 2.",
+      "selectFile": "Select file",
+      "limits": "Up to 5 MB. JPG, PNG, WebP or AVIF.",
+      "errors": {
+        "tooLarge": "File exceeds the 5 MB limit.",
+        "invalidFormat": "Invalid format. Use JPG, PNG, WebP or AVIF."
+      },
+      "feedback": {
+        "primarySet": "Image set as primary.",
+        "deleted": "Image deleted.",
+        "uploaded": "Image uploaded."
+      }
+    },
+    "audit": {
+      "title": "Change history",
+      "placeholder": "Change timeline ships in Sprint 2 (US-1A-07-XX). Audit events are already being recorded."
+    }
+  },
+  "proveedores": {
+    "title": "Suppliers",
+    "subtitle": "Supplier master with contract currency and lead time.",
+    "newButton": "New supplier",
+    "search": "Search by code or name…",
+    "loadMore": "Load more",
+    "totalCount": "{count, plural, =0 {No suppliers} =1 {1 supplier} other {# suppliers}}",
+    "filters": {
+      "currency": "Contract currency",
+      "anyCurrency": "Any currency",
+      "status": "Status",
+      "anyStatus": "Any status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "currency": "Currency",
+      "leadTime": "Lead time",
+      "paymentTerms": "Payment",
+      "active": "Active",
+      "actions": "Actions"
+    },
+    "tabs": {
+      "data": "Data",
+      "costs": "Associated costs",
+      "audit": "Audit"
+    },
+    "actions": {
+      "edit": "Edit",
+      "archive": "Archive",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "deleteConfirm": "Archive this supplier? Historical costs are preserved.",
+      "menu": "Actions",
+      "view": "View detail",
+      "activated": "Supplier activated.",
+      "deactivated": "Supplier archived."
+    },
+    "fields": {
+      "code": "Code",
+      "name": "Name",
+      "legal_name": "Legal name",
+      "country": "Country",
+      "contact_email": "Email",
+      "contact_phone": "Phone",
+      "payment_terms_days": "Payment days",
+      "contract_currency": "Contract currency",
+      "lead_time_days": "Lead time (days)",
+      "notes": "Notes",
+      "active": "Active"
+    },
+    "empty": {
+      "title": "No suppliers",
+      "description": "No suppliers yet. Create the first one."
+    },
+    "errors": {
+      "loadFailed": "Could not load suppliers.",
+      "notFound": "Supplier not found."
+    },
+    "newPage": {
+      "title": "New supplier",
+      "subtitle": "Create a master supplier."
+    },
+    "editPage": {
+      "title": "Edit supplier",
+      "subtitle": "Modify the data and save."
+    }
+  },
+  "costs": {
+    "title": "Costs",
+    "subtitle": "Costs by sales scheme.",
+    "newButton": "Add cost",
+    "loading": "Loading costs…",
+    "empty": "No costs for this SKU yet. Create one to get started.",
+    "fields": {
+      "scheme": "Scheme",
+      "supplier": "Supplier",
+      "total": "Total",
+      "currency": "Currency",
+      "fob": "FOB",
+      "freight": "Freight",
+      "customs": "Customs",
+      "fba_fee": "FBA fee",
+      "fbm_fee": "FBM fee",
+      "payment_fee": "Payment fee",
+      "marketing": "Marketing",
+      "valid_from": "Valid from",
+      "valid_to": "Valid to"
+    },
+    "status": {
+      "current": "Current",
+      "expired": "Expired"
+    },
+    "breakdown": "Breakdown",
+    "form": {
+      "title": "New cost",
+      "editTitle": "Edit cost",
+      "create": "Create cost",
+      "save": "Save changes",
+      "cancel": "Cancel"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this cost? This is not reversible."
+    },
+    "errors": {
+      "loadFailed": "Could not load costs.",
+      "saveFailed": "Could not save the cost.",
+      "deleteFailed": "Could not delete."
+    }
+  },
+  "fx": {
+    "title": "Currencies and FX rates",
+    "subtitle": "Versioned exchange rate table.",
+    "currenciesTitle": "Configured currencies",
+    "currenciesSubtitle": "Read-only in Sprint 1 — managed via DB.",
+    "ratesTitle": "Rate history",
+    "ratesSubtitle": "Each new rate automatically closes the current rate for the pair.",
+    "newRateButton": "New rate",
+    "current": "Current",
+    "expired": "Expired",
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "anyCurrency": "Any currency",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "symbol": "Symbol",
+      "decimals": "Decimals",
+      "isBase": "Base",
+      "from_currency": "From",
+      "to_currency": "To",
+      "rate": "Rate",
+      "effective_from": "Effective from",
+      "effective_to": "Effective to",
+      "source": "Source",
+      "status": "Status"
+    },
+    "fields": {
+      "from": "From",
+      "to": "To",
+      "rate": "Rate",
+      "effective_from": "Effective from",
+      "effective_to": "Effective to",
+      "source": "Source"
+    },
+    "sources": {
+      "manual": "Manual",
+      "ecb": "ECB",
+      "fixer": "Fixer",
+      "cbuae": "CBUAE"
+    },
+    "empty": {
+      "rates": "No rates for the applied filters.",
+      "currencies": "No active currencies."
+    },
+    "form": {
+      "create": "Create rate",
+      "createTitle": "New exchange rate",
+      "createSubtitle": "Will automatically close the active rate for the pair."
+    },
+    "errors": {
+      "loadFailed": "Could not load FX rates.",
+      "saveFailed": "Could not save FX rate.",
+      "samePair": "From and To must be different currencies.",
+      "rateInvalid": "Rate must be positive."
+    },
+    "feedback": {
+      "created": "Rate created."
+    }
+  },
+  "suppliers": {
+    "title": "Suppliers",
+    "subtitle": "Supplier master. Create, edit, deactivate.",
+    "search": "Search by name or code…",
+    "loadMore": "Load more",
+    "totalCount": "{count, plural, =0 {No suppliers} =1 {1 supplier} other {# suppliers}}",
+    "daysShort": "{count, plural, =1 {1 day} other {# days}}",
+    "infoTitle": "Information",
+    "infoSubtitle": "Supplier data.",
+    "editTitle": "Edit supplier",
+    "editSubtitle": "Modify the data and save.",
+    "filters": {
+      "country": "Country",
+      "anyCountry": "Any country",
+      "currency": "Currency",
+      "anyCurrency": "Any currency",
+      "status": "Status",
+      "anyStatus": "Any status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "country": "Country",
+      "currency": "Currency",
+      "leadTime": "Lead time",
+      "email": "Email",
+      "active": "Active",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No suppliers",
+      "description": "No suppliers yet. Create the first one."
+    },
+    "errors": {
+      "loadFailed": "Could not load suppliers.",
+      "notFound": "Supplier not found."
+    },
+    "actions": {
+      "view": "View detail",
+      "edit": "Edit",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "deactivateConfirm": "This hides the supplier but keeps historical costs. Continue?",
+      "menu": "Supplier actions",
+      "activated": "Supplier activated.",
+      "deactivated": "Supplier deactivated."
+    },
+    "new": "New supplier",
+    "newPage": {
+      "title": "New supplier",
+      "subtitle": "Create a master supplier."
+    },
+    "form": {
+      "submitCreate": "Create supplier",
+      "submitEdit": "Save changes",
+      "created": "Supplier created.",
+      "updated": "Supplier updated.",
+      "errors": {
+        "duplicateCode": "A supplier with that code already exists."
+      },
+      "fields": {
+        "code": "Code",
+        "name": "Name",
+        "country": "Country",
+        "currency": "Currency",
+        "contractCurrency": "Contract currency",
+        "leadTimeDays": "Lead time (days)",
+        "email": "Contact email",
+        "phone": "Phone",
+        "paymentTerms": "Payment terms",
+        "notes": "Notes",
+        "active": "Active"
+      },
+      "validation": {
+        "codeRequired": "Code is required.",
+        "codeFormat": "Only uppercase letters, digits, dash and underscore.",
+        "nameRequired": "Name is required.",
+        "nameMin": "Name must be at least 2 characters.",
+        "emailInvalid": "Invalid email.",
+        "leadTimeInvalid": "Must be ≥ 0.",
+        "currencyRequired": "Select a contract currency."
+      }
+    }
+  },
+  "imports": {
+    "title": "Imports",
+    "subtitle": "Bulk PIM upload (xlsx). Preview before applying.",
+    "noPermission": "You do not have permission to run imports.",
+    "wizard": {
+      "step1": "Upload file",
+      "step2": "Preview",
+      "step3": "Confirm",
+      "step4": "Apply & report"
+    },
+    "upload": {
+      "title": "Upload the PIM file",
+      "hint": "Drag and drop the .xlsx or click to select.",
+      "limits": "Up to 50 MB. XLSX format.",
+      "dropLabel": "Upload area",
+      "remove": "Remove file",
+      "startPreview": "Generate preview",
+      "uploading": "Uploading…",
+      "errors": {
+        "tooLarge": "File exceeds 50 MB.",
+        "invalidFormat": "Only XLSX is allowed."
+      }
+    },
+    "preview": {
+      "title": "Diff summary",
+      "confirm": "Confirm and apply",
+      "emptyBucket": "No rows in this bucket.",
+      "summary": {
+        "creates": "Created",
+        "updates": "Updated",
+        "skipped": "Skipped",
+        "errors": "Errors"
+      },
+      "tabs": {
+        "creates": "Created",
+        "updates": "Updated",
+        "skipped": "Skipped",
+        "errors": "Errors"
+      }
+    },
+    "apply": {
+      "starting": "Starting apply…",
+      "waiting": "Waiting for worker progress…",
+      "chunks": "Chunk {done} of {total}",
+      "rowsDone": "{count, plural, =1 {1 row applied} other {# rows applied}}",
+      "status": {
+        "queued": "Queued",
+        "parsing": "Parsing file",
+        "preview_ready": "Preview ready",
+        "applying": "Applying changes…",
+        "completed": "Apply completed",
+        "failed": "Apply failed",
+        "cancelled": "Cancelled"
+      }
+    },
+    "report": {
+      "titleSuccess": "Import completed",
+      "titleFailed": "Import with issues",
+      "creates": "Created",
+      "updates": "Updated",
+      "skipped": "Skipped",
+      "errors": "Errors",
+      "newImport": "New import",
+      "goProducts": "Go to catalog"
+    }
+  },
+  "pricing": {
+    "title": "Prices",
+    "subtitle": "v5.1 engine — proposals, approvals and traceability",
+    "empty": "No prices for the selected filters",
+    "filters": {
+      "channel": "Channel",
+      "status": "Status",
+      "all": "All",
+      "refresh": "Refresh"
+    },
+    "columns": {
+      "scheme": "Scheme",
+      "amount": "Amount",
+      "margin": "Margin",
+      "rule": "Rule",
+      "status": "Status",
+      "actions": "Actions",
+      "view": "View",
+      "alerts": "Alerts"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "revise": "Revise",
+      "export": "Export",
+      "approvedToast": "Price approved",
+      "rejectedToast": "Price rejected",
+      "revisedToast": "Price revised"
+    },
+    "approvals": {
+      "cta": "Approval queue",
+      "title": "Pending approvals",
+      "subtitle": "Prices needing manual review before auto-approval",
+      "empty": "No pending prices",
+      "approveSelected": "Approve selected",
+      "review": "Review",
+      "bulkApprovedToast": "Prices approved in bulk"
+    },
+    "detail": {
+      "created": "Created",
+      "amounts": "Amounts",
+      "alerts": "Alerts",
+      "noAlerts": "No alerts",
+      "breakdown": "Breakdown",
+      "history": "Approval history",
+      "noEvents": "No events",
+      "actions": "Actions",
+      "reason": "Reason",
+      "reasonPlaceholder": "Reason for the change (required for reject/revise)",
+      "newAmount": "New amount",
+      "formula": "Formula"
+    },
+    "simulate": {
+      "cta": "Simulator",
+      "title": "What-if simulator",
+      "subtitle": "Test the v5.1 engine with arbitrary overrides without persisting",
+      "inputs": "Inputs",
+      "result": "Result",
+      "run": "Calculate"
+    },
+    "errors": {
+      "loadFailed": "Error loading prices",
+      "actionFailed": "Action failed"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage users, roles and effective permissions.",
+      "inviteCta": "Invite user",
+      "inviteTitle": "Invite user",
+      "inviteSubtitle": "Generates a Supabase Magic Link and assigns initial role.",
+      "detailTitle": "User detail",
+      "backToList": "Back to list",
+      "noPermission": "You do not have permission to view this section.",
+      "empty": "No users for the applied filters.",
+      "columns": {
+        "email": "Email",
+        "fullName": "Name",
+        "role": "Role",
+        "lastSignIn": "Last sign-in",
+        "active": "Active",
+        "actions": "Actions",
+        "view": "View",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Email or name…",
+        "role": "Role",
+        "anyRole": "Any",
+        "active": "Active",
+        "any": "Any",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "detail": {
+        "profileTitle": "Profile",
+        "fullName": "Full name",
+        "locale": "Locale",
+        "active": "Active",
+        "lastSignIn": "Last sign-in",
+        "rolesTitle": "Assigned roles",
+        "rolesSubtitle": "The role determines effective permissions.",
+        "noRole": "No role assigned.",
+        "assignRole": "Assign role",
+        "pickRole": "Pick a role…",
+        "assign": "Assign",
+        "revoke": "Revoke",
+        "roleAssigned": "Role assigned.",
+        "roleAssignFailed": "Could not assign role.",
+        "roleRevoked": "Role revoked.",
+        "roleRevokeFailed": "Could not revoke role.",
+        "permsTitle": "Effective permissions",
+        "permsSubtitle": "Derived from the assigned role.",
+        "noPerms": "No effective permissions.",
+        "auditTitle": "Audit",
+        "auditSubtitle": "Relevant events for the user.",
+        "auditPlaceholder": "Timeline available in Sprint 2.",
+        "dangerTitle": "Actions",
+        "forceLogout": "Force logout",
+        "forceLogoutOk": "Sessions revoked.",
+        "forceLogoutFailed": "Could not force logout.",
+        "archive": "Archive",
+        "archived": "User archived.",
+        "archiveFailed": "Could not archive.",
+        "confirmForceLogoutTitle": "Force logout?",
+        "confirmForceLogoutDesc": "All active Supabase sessions will be revoked.",
+        "confirmArchiveTitle": "Archive user?",
+        "confirmArchiveDesc": "User will be inactive and unable to sign in.",
+        "confirmRevokeTitle": "Revoke role?",
+        "confirmRevokeDesc": "User will lose role-derived permissions and be force-logged out."
+      },
+      "invite": {
+        "formTitle": "Invitation data",
+        "formSubtitle": "After inviting, the user receives a Supabase Magic Link.",
+        "email": "Email",
+        "fullName": "Full name",
+        "role": "Initial role",
+        "locale": "Locale",
+        "submit": "Send invite",
+        "success": "Invite sent.",
+        "errors": {
+          "email": "Invalid email.",
+          "fullName": "Name too short.",
+          "failed": "Could not invite."
+        }
+      },
+      "errors": {
+        "loadFailed": "Error loading users."
+      }
+    },
+    "jobs": {
+      "title": "Jobs",
+      "subtitle": "DatabaseScheduler — editable Celery Beat.",
+      "createCta": "Create job",
+      "createTitle": "Create job",
+      "createSubtitle": "Define a new job_definition with cron or interval.",
+      "detailTitle": "Job detail",
+      "backToList": "Back to list",
+      "noPermission": "You do not have permission to view this section.",
+      "empty": "No jobs registered.",
+      "toast": {
+        "enabled": "Job enabled.",
+        "disabled": "Job disabled."
+      },
+      "columns": {
+        "code": "Code",
+        "description": "Description",
+        "cron": "Cron / Interval",
+        "queue": "Queue",
+        "lastRun": "Last run",
+        "lastStatus": "Status",
+        "nextRun": "Next run",
+        "enabled": "Enabled",
+        "actions": "Actions",
+        "on": "ON",
+        "off": "OFF",
+        "enable": "Enable",
+        "disable": "Disable"
+      },
+      "detail": {
+        "editTitle": "Edit configuration",
+        "editSubtitle": "Changes apply on next scheduler tick.",
+        "cronExpression": "Cron expression (m h dom mon dow)",
+        "cronPreview": "Next 5 executions",
+        "queue": "Celery queue",
+        "args": "Args (JSON array)",
+        "kwargs": "Kwargs (JSON object)",
+        "enabled": "Enabled",
+        "savedToast": "Job updated.",
+        "runNow": "Run now",
+        "runNowQueued": "Execution queued.",
+        "runsTitle": "Run history",
+        "runsSubtitle": "Latest JobRuns for this job.",
+        "noRuns": "No runs yet.",
+        "startedAt": "Started",
+        "finishedAt": "Finished",
+        "status": "Status",
+        "durationMs": "Duration (ms)",
+        "error": "Error",
+        "confirmRunTitle": "Run now?",
+        "confirmRunDesc": "An ad-hoc execution will be queued in Celery without waiting for the next tick.",
+        "errors": {
+          "save": "Could not save.",
+          "runNow": "Could not run.",
+          "argsJson": "Must be a valid JSON array.",
+          "kwargsJson": "Must be a valid JSON object."
+        }
+      },
+      "create": {
+        "formTitle": "Job data",
+        "formSubtitle": "task_name must match a registered Celery task.",
+        "code": "Code",
+        "taskName": "Task name (Celery)",
+        "description": "Description",
+        "owner": "Owner",
+        "scheduleType": "Schedule type",
+        "cronExpression": "Cron expression",
+        "intervalSeconds": "Interval (seconds)",
+        "timezone": "Timezone",
+        "queue": "Queue",
+        "enabled": "Enabled on create",
+        "submit": "Create job",
+        "success": "Job created.",
+        "errors": {
+          "scheduleRequired": "cron requires expression; interval requires seconds > 0.",
+          "failed": "Could not create job."
+        }
+      },
+      "errors": {
+        "loadFailed": "Error loading jobs.",
+        "toggle": "Could not toggle state."
+      }
+    },
+    "imports": {
+      "title": "Imports",
+      "subtitle": "Run history (PIM, costs, datasheets).",
+      "uploadCta": "Import PIM",
+      "detailTitle": "Import detail",
+      "backToList": "Back to list",
+      "noPermission": "You do not have permission to view this section.",
+      "empty": "No runs for the applied filters.",
+      "errors": {
+        "loadFailed": "Error loading runs."
+      },
+      "columns": {
+        "type": "Type",
+        "filename": "File",
+        "status": "Status",
+        "total": "Total",
+        "inserted": "Inserted",
+        "updated": "Updated",
+        "errors": "Errors",
+        "startedAt": "Started",
+        "finishedAt": "Finished",
+        "actions": "Actions"
+      },
+      "filters": {
+        "importType": "Type",
+        "status": "Status",
+        "any": "Any"
+      },
+      "upload": {
+        "title": "Import PIM",
+        "subtitle": "Upload an xlsx or run the dev fixture.",
+        "dropHere": "Drop the file here or use the button.",
+        "pickFile": "Pick file",
+        "upload": "Upload and run",
+        "uploadOk": "Import queued.",
+        "uploadFailed": "Could not upload.",
+        "runFixture": "Run fixture (dev)",
+        "fixtureOk": "Fixture queued.",
+        "fixtureFailed": "Could not run fixture."
+      },
+      "detail": {
+        "loadFailed": "Error loading run.",
+        "type": "Type",
+        "filename": "File",
+        "duration": "Duration",
+        "startedAt": "Started",
+        "finishedAt": "Finished",
+        "celeryTaskId": "Celery task id",
+        "countersTitle": "Counters",
+        "totalRows": "Total rows",
+        "inserted": "Inserted",
+        "updated": "Updated",
+        "skipped": "Skipped",
+        "errors": "Errors",
+        "errorsTitle": "Errors",
+        "errorsSubtitle": "Paginated list of errors captured during the run.",
+        "errorRow": "Row",
+        "errorSku": "SKU",
+        "errorField": "Field",
+        "errorMessage": "Message",
+        "errorsCapped": "Showing {shown} of {total}.",
+        "summaryTitle": "Summary (JSONB)",
+        "retryTitle": "Re-run",
+        "retrySubtitle": "Available only for failed runs (admin).",
+        "retryAction": "Re-run",
+        "retryQueued": "Re-run queued.",
+        "retryFailed": "Could not re-run.",
+        "confirmRetryTitle": "Re-run import?",
+        "confirmRetryDesc": "A new ImportRun will be created using the dev fixture."
+      }
+    }
+  }
+}

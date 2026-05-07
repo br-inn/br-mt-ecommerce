@@ -1,0 +1,180 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Naskh+Arabic:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* MT corporate palette — derived from the MT logo (royal/cobalt blue gradient). */
+    --mt-brand: #1f4fe0;
+    --mt-brand-light: #5c8bff;
+    --mt-brand-deep: #143aab;
+    --mt-brand-soft: #eef3ff;
+    --mt-brand-softer: #f6f8ff;
+    --mt-brand-border: #cfdbfa;
+
+    --mt-bg: #f7f8fa;
+    --mt-surface: #ffffff;
+    --mt-surface-2: #fafbfc;
+    --mt-surface-3: #f2f4f7;
+    --mt-border: #e5e8ec;
+    --mt-border-strong: #d2d6dc;
+
+    --mt-ink: #0f172a;
+    --mt-ink-2: #334155;
+    --mt-ink-3: #64748b;
+    --mt-ink-4: #94a3b8;
+
+    --mt-success: #0e9f6e;
+    --mt-success-soft: #e8f5ee;
+    --mt-success-border: #c7e8d7;
+    --mt-warning: #b26a00;
+    --mt-warning-soft: #fcf3dd;
+    --mt-warning-border: #f1dda7;
+    --mt-danger: #c8341b;
+    --mt-danger-soft: #fbe9e5;
+    --mt-danger-border: #f2c8bf;
+
+    --font-mt-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mt-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-mt-arabic: "Noto Naskh Arabic", "Amiri", serif;
+
+    /* shadcn neutral baseline mapped onto MT cool grays. */
+    --background: 220 14% 97%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 224 76% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 224 100% 97%;
+    --accent-foreground: 224 76% 50%;
+    --destructive: 9 76% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 76% 50%;
+    --radius: 0.5rem;
+
+    --brand: var(--mt-brand);
+    --brand-foreground: #ffffff;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 0 0% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 224 100% 70%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 222 30% 14%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 222 30% 14%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 9 76% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 224 100% 70%;
+    --brand: #5c8bff;
+    --brand-foreground: #ffffff;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    font-family: var(--font-mt-sans);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* Tabular figures for monetary / numeric columns. */
+  .mt-tnum {
+    font-feature-settings: "tnum" 1;
+  }
+
+  .mt-mono {
+    font-family: var(--font-mt-mono);
+  }
+
+  .mt-sans {
+    font-family: var(--font-mt-sans);
+  }
+
+  .mt-arabic {
+    font-family: var(--font-mt-arabic);
+    direction: rtl;
+  }
+
+  /* MT brand gradient stripe — reused on top of the sidebar and topbar. */
+  .mt-brand-stripe {
+    background: linear-gradient(
+      90deg,
+      var(--mt-brand-deep) 0%,
+      var(--mt-brand) 50%,
+      var(--mt-brand-light) 100%
+    );
+  }
+
+  .mt-brand-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--mt-brand-deep) 0%,
+      var(--mt-brand) 60%,
+      var(--mt-brand-light) 100%
+    );
+  }
+
+  /* Subtle card lift used across every screen (matches the design package). */
+  .mt-card-lift {
+    box-shadow:
+      0 1px 0 rgba(15, 23, 42, 0.02),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+}
+
+@layer components {
+  /* Density-first row hover for data tables. Targets data rows only — header
+     stays flat. Lives outside utilities so :hover composes with row-level
+     status backgrounds (drift, selected, validated, etc.) without overriding. */
+  table.mt-data-table tbody tr:hover td {
+    background-color: color-mix(in oklab, var(--mt-brand-soft) 30%, transparent);
+  }
+
+  /* Thin webkit scrollbar — gives heavy data screens a more polished feel. */
+  .mt-thin-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .mt-thin-scroll::-webkit-scrollbar-thumb {
+    background: var(--mt-border-strong);
+    border: 2px solid var(--mt-surface);
+    border-radius: 8px;
+  }
+  .mt-thin-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--mt-ink-4);
+  }
+  .mt-thin-scroll::-webkit-scrollbar-track {
+    background: var(--mt-surface);
+  }
+}
