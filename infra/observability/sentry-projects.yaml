@@ -1,0 +1,129 @@
+# =============================================================================
+# Sentry — declarative project config (US-1A-OBS-01, ADR-077)
+# =============================================================================
+# Esta config se materializa via `infra/terraform/observability.tf` con el
+# provider `jianyuan/sentry`. Los DSNs reales NUNCA viven aquí — se inyectan
+# desde Doppler workspace MT (`SENTRY_DSN_BACKEND`, etc.).
+# Editar este YAML cambia la propuesta declarativa que TF aplica.
+# =============================================================================
+
+organization: mt-middle-east
+team:
+  slug: mt-pricing
+  name: "MT Pricing Platform"
+
+projects:
+  # ---------------------------------------------------------------------------
+  # Backend FastAPI — el grueso del tráfico API + RPC interno
+  # ---------------------------------------------------------------------------
+  - slug: mt-pricing-backend
+    name: "MT Pricing Backend"
+    platform: python-fastapi
+    environments: [development, staging, production]
+    sample_rates:
+      # Trace sampling: arrancamos al 10% en staging para observar comportamiento
+      # real. Producción: 5% sustained, 100% para errors (Sentry transactions
+      # tied a errors auto-suben).
+      traces_sample_rate:
+        development: 1.0
+        staging: 0.10
+        production: 0.05
+      profiles_sample_rate:
+        development: 0.0
+        staging: 0.0
+        production: 0.0  # Tier paid Sentry — opt-in posterior
+    pii:
+      send_default_pii: false
+      scrub_data: true
+      scrub_ip_addresses: true
+    alerts:
+      - slug: backend-availability
+        name: "Backend p99 error rate > 0.5%"
+        severity: SEV1
+        conditions:
+          - "event.type:error AND environment:production"
+        threshold:
+          rate: 0.005
+          window_minutes: 5
+        targets: ["#mt-alerts", "oncall@br-innovation.com"]
+      - slug: backend-latency-p95
+        name: "Backend p95 latency > 1s"
+        severity: SEV2
+        conditions:
+          - "transaction.duration:>1000ms environment:production"
+        threshold:
+          percentile: 95
+          window_minutes: 10
+        targets: ["#mt-alerts"]
+
+  # ---------------------------------------------------------------------------
+  # Worker Celery — jobs background (matching, importer, FX refresh, recalc)
+  # ---------------------------------------------------------------------------
+  - slug: mt-pricing-worker
+    name: "MT Pricing Celery Worker"
+    platform: python-celery
+    environments: [development, staging, production]
+    sample_rates:
+      traces_sample_rate:
+        development: 1.0
+        staging: 0.20  # workers más interesantes para ver latencias batch
+        production: 0.10
+    pii:
+      send_default_pii: false
+      scrub_data: true
+    alerts:
+      - slug: worker-task-failures
+        name: "Celery task failure rate > 1%"
+        severity: SEV2
+        conditions:
+          - "event.type:error tag:task_name:*"
+        threshold:
+          rate: 0.01
+          window_minutes: 15
+        targets: ["#mt-alerts"]
+
+  # ---------------------------------------------------------------------------
+  # Frontend Next.js — UI errors + replay sample 1%
+  # ---------------------------------------------------------------------------
+  - slug: mt-pricing-frontend
+    name: "MT Pricing Frontend"
+    platform: javascript-nextjs
+    environments: [development, staging, production]
+    sample_rates:
+      traces_sample_rate:
+        development: 1.0
+        staging: 0.10
+        production: 0.05
+      replays_session_sample_rate:
+        production: 0.01
+      replays_on_error_sample_rate:
+        production: 1.0
+    pii:
+      send_default_pii: false
+      scrub_data: true
+    alerts:
+      - slug: frontend-js-errors
+        name: "Frontend JS error rate > 1%"
+        severity: SEV2
+        conditions:
+          - "event.type:error environment:production"
+        threshold:
+          rate: 0.01
+          window_minutes: 10
+        targets: ["#mt-alerts"]
+
+# =============================================================================
+# Cost ceiling (Sentry quota guard) — alarma cuando se consume > 80% mensual
+# =============================================================================
+quota_alerts:
+  errors_monthly_ceiling: 100000
+  transactions_monthly_ceiling: 200000
+  alert_at_pct: 0.80
+
+# =============================================================================
+# On-call rotation — referenciar PagerDuty / Better Stack on-call schedule
+# =============================================================================
+oncall:
+  primary_schedule: "mt-pricing-primary"
+  secondary_schedule: "mt-pricing-secondary"
+  escalation_minutes: 10

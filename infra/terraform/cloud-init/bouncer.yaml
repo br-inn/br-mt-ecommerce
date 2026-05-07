@@ -1,0 +1,44 @@
+#cloud-config
+# =============================================================================
+# Cloud-init — pgbouncer server
+# =============================================================================
+hostname: mt-bouncer
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - pgbouncer
+  - postgresql-client
+  - ufw
+  - fail2ban
+
+users:
+  - name: mt-deploy
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys: []
+
+write_files:
+  - path: /etc/pgbouncer/pgbouncer.ini.template
+    permissions: '0640'
+    content: |
+      [databases]
+      mt_pricing = host=$DB_HOST port=$DB_PORT dbname=$DB_NAME
+
+      [pgbouncer]
+      listen_addr = 10.0.1.30
+      listen_port = 6432
+      auth_type   = md5
+      auth_file   = /etc/pgbouncer/userlist.txt
+      pool_mode   = transaction
+      max_client_conn = 200
+      default_pool_size = 25
+
+runcmd:
+  - ufw allow from 10.0.1.0/24 to any port 6432 proto tcp
+  - ufw allow 22/tcp
+  - ufw --force enable
+
+final_message: "MT bouncer server ready"

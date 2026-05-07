@@ -1,0 +1,64 @@
+#cloud-config
+# =============================================================================
+# Cloud-init — App server (FastAPI + Caddy + frontend SSR)
+# =============================================================================
+hostname: mt-app
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - ufw
+  - fail2ban
+  - jq
+  - rsync
+
+users:
+  - name: mt-deploy
+    groups: docker
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys: []  # populated via Terraform hcloud_ssh_key resource
+
+write_files:
+  - path: /etc/systemd/journald.conf.d/00-mt-pricing.conf
+    permissions: '0644'
+    content: |
+      [Journal]
+      SystemMaxUse=2G
+      RuntimeMaxUse=200M
+
+runcmd:
+  # Docker engine + compose plugin (oficial)
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  - chmod a+r /etc/apt/keyrings/docker.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+
+  # Doppler CLI
+  - curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sh
+
+  # UFW firewall (defense in depth, complementa hcloud_firewall)
+  - ufw allow 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+
+  # Caddy install — TLS auto Let's Encrypt
+  - apt-get install -y debian-keyring debian-archive-keyring apt-transport-https
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+  - apt-get update
+  - apt-get install -y caddy
+
+  # Pull deploy repo (placeholder — populate vía hetzner-deploy.sh real)
+  - mkdir -p /home/mt-deploy/mt-deploy
+  - chown -R mt-deploy:mt-deploy /home/mt-deploy
+
+final_message: "MT app server ready — provisioned at $TIMESTAMP"

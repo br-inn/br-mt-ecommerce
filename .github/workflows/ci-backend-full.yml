@@ -1,0 +1,194 @@
+# =============================================================================
+# CI - Backend FULL — pytest unit + integration + alembic + ruff + mypy
+# =============================================================================
+# Workflow nuevo S5 (US-1A-CICD-01). Coexiste con `ci-backend.yml` que sigue
+# siendo el gate base para PRs. Este workflow corre suite completa con
+# integration tests sobre Postgres+Redis+pgvector y verifica migraciones
+# Alembic en DB efímera.
+# =============================================================================
+---
+name: ci-backend-full
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mt-pricing-backend/**"
+      - ".github/workflows/ci-backend-full.yml"
+  pull_request:
+    paths:
+      - "mt-pricing-backend/**"
+      - ".github/workflows/ci-backend-full.yml"
+
+concurrency:
+  group: ci-backend-full-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+  UV_VERSION: "0.4.18"
+  WORKDIR: mt-pricing-backend
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint + format + typecheck (espejo de ci-backend.yml — fail-fast)
+  # ---------------------------------------------------------------------------
+  lint-typecheck:
+    name: Lint + typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+      - name: Install deps
+        run: uv sync --frozen
+      - name: Ruff check
+        run: uv run ruff check .
+      - name: Ruff format --check
+        run: uv run ruff format --check .
+      - name: mypy
+        run: uv run mypy app/
+
+  # ---------------------------------------------------------------------------
+  # Unit tests — sin services
+  # ---------------------------------------------------------------------------
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    env:
+      ENV: development
+      LOG_LEVEL: WARNING
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+      - name: Install deps
+        run: uv sync --frozen
+      - name: pytest unit
+        run: uv run pytest tests/unit -q --no-cov
+
+  # ---------------------------------------------------------------------------
+  # Integration tests — Postgres+pgvector + Redis
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integration tests (pgvector + redis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [lint-typecheck]
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    services:
+      postgres:
+        # pgvector image — required after US-1A-INFRA-01
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: mt_pricing_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:testpassword@localhost:5432/mt_pricing_test
+      REDIS_URL: redis://localhost:6379/0
+      ENV: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+      - name: Install deps
+        run: uv sync --frozen
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_test \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      - name: pytest integration
+        run: uv run pytest tests/integration -q --no-cov
+
+  # ---------------------------------------------------------------------------
+  # Alembic check — migrations apply clean + autogenerate diff vacío
+  # ---------------------------------------------------------------------------
+  alembic-check:
+    name: Alembic migrations check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint-typecheck]
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: mt_pricing_alembic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:testpassword@localhost:5432/mt_pricing_alembic
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+      - name: Install deps
+        run: uv sync --frozen
+      - name: Enable pgvector
+        run: |
+          PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_alembic \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      - name: alembic upgrade head
+        run: uv run alembic upgrade head
+      - name: alembic check (no pending diff)
+        # Falla si el modelo declara columnas no migradas (drift).
+        run: uv run alembic check

@@ -1,0 +1,140 @@
+# =============================================================================
+# CI - Frontend FULL — tsc + eslint + vitest + playwright (opcional)
+# =============================================================================
+# Workflow nuevo S5 (US-1A-CICD-01). Coexiste con `ci-frontend.yml` (gate base).
+# Playwright corre detrás de env flag `RUN_PLAYWRIGHT=true` (default false en S5,
+# se enciende en S6 cuando spec set sea estable).
+# =============================================================================
+---
+name: ci-frontend-full
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mt-pricing-frontend/**"
+      - ".github/workflows/ci-frontend-full.yml"
+  pull_request:
+    paths:
+      - "mt-pricing-frontend/**"
+      - ".github/workflows/ci-frontend-full.yml"
+
+concurrency:
+  group: ci-frontend-full-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9.12.0"
+  WORKDIR: mt-pricing-frontend
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static checks (typecheck strict + eslint + format check)
+  # ---------------------------------------------------------------------------
+  static:
+    name: Static checks (tsc + eslint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
+      - name: Install deps
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
+      - name: Typecheck (strict)
+        run: pnpm typecheck
+      - name: ESLint
+        run: pnpm lint
+
+  # ---------------------------------------------------------------------------
+  # Unit tests (vitest)
+  # ---------------------------------------------------------------------------
+  unit:
+    name: Unit tests (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
+      - name: Install deps
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
+      - name: Vitest
+        run: pnpm test -- --reporter=default --coverage
+
+  # ---------------------------------------------------------------------------
+  # Playwright E2E — opt-in via env (RUN_PLAYWRIGHT=true)
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: Playwright (opt-in)
+    if: ${{ vars.RUN_PLAYWRIGHT == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [static, unit]
+    defaults:
+      run:
+        working-directory: ${{ env.WORKDIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
+      - name: Install deps
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build (preview)
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Run Playwright
+        run: pnpm test:e2e
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: ${{ env.WORKDIR }}/playwright-report
+          retention-days: 7

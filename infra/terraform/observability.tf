@@ -1,0 +1,150 @@
+# =============================================================================
+# Sentry + Better Stack — providers + recursos (US-1A-OBS-01)
+# =============================================================================
+# Provider Sentry: jianyuan/sentry — gestiona team/project/keys/alert rules.
+# Provider Better Stack: BetterStackHQ/better-stack — gestiona sources/dashboards.
+# Tokens API se inyectan vía Doppler (`SENTRY_AUTH_TOKEN`, `BETTER_STACK_API_TOKEN`).
+# =============================================================================
+
+terraform {
+  required_providers {
+    sentry = {
+      source  = "jianyuan/sentry"
+      version = "~> 0.13"
+    }
+    better-stack = {
+      source  = "BetterStackHQ/better-stack"
+      version = "~> 0.4"
+    }
+  }
+}
+
+variable "sentry_auth_token" {
+  description = "Sentry auth token con scope `project:write,team:read` (Doppler)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "sentry_organization_slug" {
+  description = "Slug de la organización Sentry MT."
+  type        = string
+  default     = "mt-middle-east"
+}
+
+variable "better_stack_api_token" {
+  description = "Better Stack API token (Doppler)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+provider "sentry" {
+  token = var.sentry_auth_token != "" ? var.sentry_auth_token : null
+}
+
+provider "better-stack" {
+  api_token = var.better_stack_api_token != "" ? var.better_stack_api_token : null
+}
+
+# -----------------------------------------------------------------------------
+# Sentry team — `mt-pricing`
+# -----------------------------------------------------------------------------
+resource "sentry_team" "mt_pricing" {
+  count        = var.sentry_auth_token != "" ? 1 : 0
+  organization = var.sentry_organization_slug
+  name         = "MT Pricing Platform"
+  slug         = "mt-pricing"
+}
+
+# -----------------------------------------------------------------------------
+# Sentry projects — backend / worker / frontend
+# Sample rates leídos de `infra/observability/sentry-projects.yaml` (declarativo);
+# aquí codificamos los 3 proyectos con sample por ambiente.
+# -----------------------------------------------------------------------------
+locals {
+  sentry_traces_sample_rate = {
+    development = 1.0
+    staging     = 0.10
+    production  = 0.05
+  }
+}
+
+resource "sentry_project" "backend" {
+  count        = var.sentry_auth_token != "" ? 1 : 0
+  organization = var.sentry_organization_slug
+  teams        = [sentry_team.mt_pricing[0].slug]
+  name         = "MT Pricing Backend"
+  slug         = "mt-pricing-backend"
+  platform     = "python-fastapi"
+}
+
+resource "sentry_project" "worker" {
+  count        = var.sentry_auth_token != "" ? 1 : 0
+  organization = var.sentry_organization_slug
+  teams        = [sentry_team.mt_pricing[0].slug]
+  name         = "MT Pricing Worker"
+  slug         = "mt-pricing-worker"
+  platform     = "python-celery"
+}
+
+resource "sentry_project" "frontend" {
+  count        = var.sentry_auth_token != "" ? 1 : 0
+  organization = var.sentry_organization_slug
+  teams        = [sentry_team.mt_pricing[0].slug]
+  name         = "MT Pricing Frontend"
+  slug         = "mt-pricing-frontend"
+  platform     = "javascript-nextjs"
+}
+
+# -----------------------------------------------------------------------------
+# Better Stack sources — uno por servicio + ambiente
+# -----------------------------------------------------------------------------
+resource "better-stack_source" "backend_staging" {
+  count        = var.better_stack_api_token != "" ? 1 : 0
+  name         = "mt-backend-staging"
+  platform     = "docker"
+  retention_days = 14
+}
+
+resource "better-stack_source" "backend_production" {
+  count        = var.better_stack_api_token != "" ? 1 : 0
+  name         = "mt-backend-production"
+  platform     = "docker"
+  retention_days = 30
+}
+
+resource "better-stack_source" "worker_staging" {
+  count        = var.better_stack_api_token != "" ? 1 : 0
+  name         = "mt-worker-staging"
+  platform     = "docker"
+  retention_days = 14
+}
+
+resource "better-stack_source" "worker_production" {
+  count        = var.better_stack_api_token != "" ? 1 : 0
+  name         = "mt-worker-production"
+  platform     = "docker"
+  retention_days = 30
+}
+
+# -----------------------------------------------------------------------------
+# Outputs — DSNs y source tokens (sensitive) para inyectar en Doppler
+# -----------------------------------------------------------------------------
+output "sentry_backend_dsn" {
+  description = "Sentry DSN backend project."
+  value       = var.sentry_auth_token != "" ? sentry_project.backend[0].dsn_public : ""
+  sensitive   = true
+}
+
+output "sentry_worker_dsn" {
+  description = "Sentry DSN worker project."
+  value       = var.sentry_auth_token != "" ? sentry_project.worker[0].dsn_public : ""
+  sensitive   = true
+}
+
+output "sentry_frontend_dsn" {
+  description = "Sentry DSN frontend project."
+  value       = var.sentry_auth_token != "" ? sentry_project.frontend[0].dsn_public : ""
+  sensitive   = true
+}

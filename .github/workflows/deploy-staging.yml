@@ -1,0 +1,121 @@
+# =============================================================================
+# Deploy staging — SSH a Hetzner + docker compose pull/up (US-1A-CICD-01)
+# =============================================================================
+# Trigger: workflow_run completed success de `release-images.yml`.
+# También se puede disparar manualmente via workflow_dispatch con `tag` input
+# para rollback rápido a un release anterior.
+# =============================================================================
+---
+name: deploy-staging
+
+on:
+  workflow_run:
+    workflows: ["release-images"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag a deployar (e.g. v0.5.0). Default: latest del último release."
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH deploy + healthcheck
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: https://${{ secrets.STAGING_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "TAG=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            # workflow_run trigger — usar latest (aliased en release-images)
+            echo "TAG=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Snapshot current tag (rollback safety)
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "cd /home/mt-deploy/mt-deploy && \
+             cp state.json state.previous.json 2>/dev/null || true"
+
+      - name: Pull + redeploy
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "cd /home/mt-deploy/mt-deploy && \
+             export IMAGE_TAG=${{ steps.tag.outputs.TAG }} && \
+             docker compose pull && \
+             docker compose up -d --remove-orphans"
+
+      - name: Healthcheck
+        id: healthcheck
+        run: |
+          set -e
+          HOST="${{ secrets.STAGING_PUBLIC_URL }}"
+          for i in $(seq 1 18); do
+            if curl -sfk "https://$HOST/health/ready" >/dev/null; then
+              echo "Healthcheck OK after $((i*5))s"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Healthcheck FAILED after 90s — triggering rollback"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure() && steps.healthcheck.outcome == 'failure'
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "cd /home/mt-deploy/mt-deploy && \
+             PREV=\$(jq -r '.current_tag // \"latest\"' state.previous.json 2>/dev/null) && \
+             echo Rolling back to: \$PREV && \
+             IMAGE_TAG=\$PREV docker compose up -d"
+
+      - name: Persist current tag
+        if: success()
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "cd /home/mt-deploy/mt-deploy && \
+             jq -n --arg tag '${{ steps.tag.outputs.TAG }}' --arg ts '$(date -u +%FT%TZ)' \
+                '{current_tag: \$tag, deployed_at: \$ts, previous_tag: (input.current_tag // \"latest\")}' \
+                < state.json > state.new.json && mv state.new.json state.json || \
+             jq -n --arg tag '${{ steps.tag.outputs.TAG }}' --arg ts '$(date -u +%FT%TZ)' \
+                '{current_tag: \$tag, deployed_at: \$ts}' > state.json"
+
+      - name: Slack notify
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: ${{ job.status }}
+          TAG: ${{ steps.tag.outputs.TAG }}
+        run: |
+          curl -X POST -H 'Content-Type: application/json' \
+            --data "{\"text\":\"deploy-staging finished: status=$STATUS tag=$TAG\"}" \
+            "$SLACK_WEBHOOK_URL"
