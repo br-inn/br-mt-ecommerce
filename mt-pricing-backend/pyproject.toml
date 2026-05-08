@@ -44,6 +44,8 @@ dependencies = [
     "requests-aws4auth>=1.2",
     # Wave 1 — asset unification: blurhash computation for photo thumbnails
     "blurhash-python>=1.2",
+    # Wave 9 — specs JSON Schema validation
+    "jsonschema[format]>=4.21",
 ]
 
 [dependency-groups]

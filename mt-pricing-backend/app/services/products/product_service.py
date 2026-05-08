@@ -22,6 +22,7 @@ from app.repositories.product import (
     ProductRepository,
     ProductTranslationRepository,
 )
+from app.services.specs.specs_validator import FieldError, SpecsValidationError, SpecsValidator
 
 
 class ProductDomainError(Exception):
@@ -151,12 +152,17 @@ def _diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
 class ProductService:
     """Orquesta CRUD + búsqueda + traducciones + imágenes (set_primary)."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        specs_validator: SpecsValidator | None = None,
+    ) -> None:
         self.session = session
         self.products = ProductRepository(session)
         self.translations = ProductTranslationRepository(session)
         self.images = ProductImageRepository(session)
         self.audit = AuditRepository(session)
+        self.specs_validator = specs_validator
 
     # ------------------------------------------------------------------ Lookup
     async def get_product_by_id(self, sku: str) -> Product:
@@ -215,6 +221,15 @@ class ProductService:
         existing = await self.products.get_by_sku(sku)
         if existing is not None:
             raise ProductAlreadyExistsError(sku)
+        # Validate specs before persisting (Wave 9 — BR-specs-validation-01).
+        if self.specs_validator is not None:
+            result = self.specs_validator.validate(
+                data.get("specs") or {},
+                data.get("family", ""),
+                data.get("subfamily"),
+            )
+            if not result.valid:
+                raise SpecsValidationError(result.errors)
         prod = await self.products.create(
             **data,
             created_by=actor.id,
@@ -249,6 +264,17 @@ class ProductService:
                 violated.append(f)
         if violated:
             raise ProductLockedFieldError(violated)
+
+        # Validate merged specs before flushing (Wave 9 — BR-specs-validation-01).
+        if self.specs_validator is not None and "specs" in data:
+            merged_specs: dict[str, Any] = {**(prod.specs or {}), **data["specs"]}
+            effective_family: str = data.get("family") or prod.family or ""
+            effective_subfamily: str | None = data.get("subfamily") or prod.subfamily
+            result = self.specs_validator.validate(
+                merged_specs, effective_family, effective_subfamily
+            )
+            if not result.valid:
+                raise SpecsValidationError(result.errors)
 
         before = _snapshot(prod)
         for k, v in data.items():

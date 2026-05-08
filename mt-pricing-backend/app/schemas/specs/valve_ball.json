@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtme-api/schemas/specs/v1/valve_ball",
+  "title": "Ball Valve Specs",
+  "description": "Technical specifications schema for ball valves (Válvula Bola). 40 fields from PIM catalog.",
+  "type": "object",
+  "required": ["dn", "dn_real", "size", "materials_body", "materials_closure", "materials_seats", "materials_gaskets"],
+  "properties": {
+    "dn": {
+      "type": "string",
+      "title": "DN (Nominal Diameter)",
+      "description": "Diámetro nominal — e.g. DN15, DN25, DN50",
+      "minLength": 1,
+      "maxLength": 16
+    },
+    "dn_real": {
+      "type": "string",
+      "title": "DN Real (Internal Bore Diameter)",
+      "description": "Diámetro agujero interno — actual internal bore diameter",
+      "minLength": 1,
+      "maxLength": 16
+    },
+    "size": {
+      "type": "string",
+      "title": "Size (Flange or Thread)",
+      "description": "Size designation for flange or thread connections — e.g. 1/2\", 3/4\", DN50",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "materials_body": {
+      "type": "string",
+      "title": "Body Material",
+      "description": "Materiales Cuerpo — body casting material (e.g. brass, stainless steel 316, carbon steel)",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "materials_closure": {
+      "type": "string",
+      "title": "Closure / Ball Material",
+      "description": "Material Cierre — ball/plug material (e.g. chrome-plated brass, PTFE-coated)",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "materials_seats": {
+      "type": "string",
+      "title": "Seat Material",
+      "description": "Materiales Asientos — seat ring material (e.g. PTFE, RPTFE)",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "materials_gaskets": {
+      "type": "string",
+      "title": "Gasket / Seal Material",
+      "description": "Materiales Juntas — gasket and stem packing material (e.g. PTFE, NBR, EPDM)",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "fabrication_method": {
+      "type": "string",
+      "title": "Fabrication Method",
+      "description": "Método de fabricación — e.g. casting, forging",
+      "maxLength": 64
+    },
+    "actuator": {
+      "type": "string",
+      "title": "Actuator Type",
+      "description": "Accionador — actuation mechanism",
+      "enum": ["lever", "handwheel", "electric", "pneumatic", "hydraulic", "gear"]
+    },
+    "connections": {
+      "type": "array",
+      "title": "Connection Ends",
+      "description": "Conexión 1/2/3 — up to 3 connection ends with position, type, DN and optional threading",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["position", "type"],
+        "properties": {
+          "position": {
+            "type": "integer",
+            "title": "Connection Position",
+            "description": "1 = end 1, 2 = end 2, 3 = end 3 (3-way valves)",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "type": {
+            "type": "string",
+            "title": "Connection Type",
+            "description": "Connection end type",
+            "enum": ["threaded", "flanged", "butt_weld", "socket_weld", "compression", "push_fit"]
+          },
+          "dn": {
+            "type": "string",
+            "title": "Connection DN",
+            "description": "Nominal diameter of this connection end",
+            "maxLength": 16
+          },
+          "threading": {
+            "type": "string",
+            "title": "Thread Standard",
+            "description": "Thread designation — e.g. BSP, NPT, ISO",
+            "maxLength": 32
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dim_L": {
+      "type": "number",
+      "title": "Dimension L (Face-to-Face)",
+      "description": "Dimensión L — face-to-face length in mm (Entre caras)",
+      "exclusiveMinimum": 0
+    },
+    "dim_H": {
+      "type": "number",
+      "title": "Dimension H (Axis to Lever Top)",
+      "description": "Dimension H — height from axis to top of lever/handwheel in mm (Desde eje a maneta)",
+      "exclusiveMinimum": 0
+    },
+    "dim_H1": {
+      "type": "number",
+      "title": "Dimension H1 (Axis to ISO5211 Platform)",
+      "description": "Dimensión H1 — height from axis to ISO5211 mounting platform base in mm",
+      "exclusiveMinimum": 0
+    },
+    "dim_W": {
+      "type": "number",
+      "title": "Dimension W (Lever / Handwheel Length)",
+      "description": "Dimension W — lever or handwheel length in mm (Longitud maneta, volante)",
+      "exclusiveMinimum": 0
+    },
+    "dim_T1": {
+      "type": "number",
+      "title": "Dimension T1 (Thread Length End 1)",
+      "description": "Dimensión T1 — thread engagement length end 1 in mm (Longitud rosca 1)",
+      "exclusiveMinimum": 0
+    },
+    "dim_T2": {
+      "type": "number",
+      "title": "Dimension T2 (Thread Length End 2)",
+      "description": "Dimensión T2 — thread engagement length end 2 in mm (Longitud rosca 2)",
+      "exclusiveMinimum": 0
+    },
+    "dim_T3": {
+      "type": "number",
+      "title": "Dimension T3 (Thread Length End 3)",
+      "description": "Dimensión T3 — thread engagement length end 3 in mm for 3-way valves (Longitud rosca 3)",
+      "exclusiveMinimum": 0
+    },
+    "dim_S": {
+      "type": "number",
+      "title": "Dimension S (Stem Square)",
+      "description": "Dimensión S — stem square drive size in mm (Cuadradillo eje)",
+      "exclusiveMinimum": 0
+    },
+    "dim_h": {
+      "type": "number",
+      "title": "Dimension h (Stem Height above ISO5211)",
+      "description": "Dimensión h — stem protrusion height above ISO 5211 platform in mm (Altura eje sobre plataforma ISO 5211)",
+      "exclusiveMinimum": 0
+    },
+    "iso5211_face": {
+      "type": "string",
+      "title": "ISO 5211 Mounting Face",
+      "description": "Dimensión ISO 5211 — mounting flange face designation(s)",
+      "enum": ["F03", "F05", "F07", "F10", "F12", "F14", "F03/F05", "F05/F07", "F07/F10", "F10/F12", "F12/F14"]
+    },
+    "dim_SCH": {
+      "type": "string",
+      "title": "Dimension SCH (Weld Pipe Schedule)",
+      "description": "Dimensión SCH — pipe schedule for butt-weld ends (e.g. SCH40, SCH80)",
+      "maxLength": 16
+    },
+    "dim_D": {
+      "type": "number",
+      "title": "Dimension D (Flange OD)",
+      "description": "Dimensión D — flange outer diameter in mm (Diámetro exterior brida)",
+      "exclusiveMinimum": 0
+    },
+    "dim_K": {
+      "type": "number",
+      "title": "Dimension K (Bolt Circle Diameter)",
+      "description": "Dimensión K — bolt hole pitch circle diameter in mm (Diametro agujeros brida)",
+      "exclusiveMinimum": 0
+    },
+    "kv": {
+      "type": "number",
+      "title": "Flow Coefficient Kv",
+      "description": "Kv — flow coefficient (m³/h at 1 bar ΔP with water)",
+      "exclusiveMinimum": 0
+    },
+    "torque_nm": {
+      "type": "number",
+      "title": "Operating Torque (N·m)",
+      "description": "Torque — valve operating torque in Newton-metres at rated pressure",
+      "exclusiveMinimum": 0
+    }
+  },
+  "additionalProperties": false
+}

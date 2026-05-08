@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtme-api/schemas/specs/v1/_default",
+  "title": "Default Product Specs",
+  "description": "Catch-all schema for products without a specific family schema. Permissive — allows any additional properties.",
+  "type": "object",
+  "properties": {
+    "fabrication_method": {
+      "type": "string",
+      "title": "Fabrication Method",
+      "description": "Manufacturing / fabrication method (e.g., casting, forging)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "description": "Free-form technical notes"
+    }
+  },
+  "additionalProperties": true
+}
