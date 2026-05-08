@@ -62,6 +62,18 @@ ALLOWED_TRANSLATION_STATUS: frozenset[str] = frozenset({"pending", "draft", "app
 ALLOWED_IMAGE_MIME: frozenset[str] = frozenset(
     {"image/jpeg", "image/png", "image/webp", "image/avif"}
 )
+# Wave 2 — vocabulario controlado de lifecycle.
+ALLOWED_LIFECYCLE_STATUS: frozenset[str] = frozenset(
+    {"draft", "active", "deprecated", "replaced", "discontinued"}
+)
+# Wave 2 — métodos de fabricación más comunes (no exhaustivo, validación blanda).
+ALLOWED_MANUFACTURING_METHOD: frozenset[str] = frozenset(
+    {"forged", "cast", "machined", "welded", "molded", "extruded", "stamped", "sintered"}
+)
+# Wave 2 — tipos de accionador.
+ALLOWED_ACTUATOR: frozenset[str] = frozenset(
+    {"lever", "handwheel", "electric", "pneumatic", "hydraulic", "gear", "manual"}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +118,75 @@ class ProductBase(BaseModel):
     image_url: str | None = Field(default=None, max_length=2048)
     data_quality: str = Field(default="partial")
     active: bool = True
+
+    # ---- Wave 2: lifecycle / identity --------------------------------------
+    lifecycle_status: str = Field(default="active")
+    revision: str | None = Field(default=None, max_length=32)
+    series: str | None = Field(default=None, max_length=64)
+    parent_sku: str | None = Field(default=None, max_length=64)
+    is_parent: bool = False
+    is_variant: bool = False
+
+    # ---- Wave 2: technical scalars -----------------------------------------
+    dn_real: str | None = Field(default=None, max_length=16)
+    size: str | None = Field(default=None, max_length=64)
+    temp_min_c: int | None = Field(default=None, ge=-273, le=2000)
+    temp_max_c: int | None = Field(default=None, ge=-273, le=2000)
+    pressure_max_bar: Decimal | None = Field(default=None, ge=0, le=Decimal("9999.99"))
+    manufacturing_method: str | None = Field(default=None, max_length=32)
+    actuator: str | None = Field(default=None, max_length=32)
+    kv: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
+    kv2: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
+    torque_nm: Decimal | None = Field(default=None, ge=0, le=Decimal("99999.99"))
+    iso5211_interface: str | None = Field(default=None, max_length=16)
+
+    # ---- Wave 2: editorial / SEO -------------------------------------------
+    tags: list[str] = Field(default_factory=list)
+    video_url: str | None = Field(default=None, max_length=2048)
+    external_url: str | None = Field(default=None, max_length=2048)
+
+    @field_validator("lifecycle_status")
+    @classmethod
+    def _validate_lifecycle(cls, v: str) -> str:
+        if v not in ALLOWED_LIFECYCLE_STATUS:
+            raise ValueError(
+                f"lifecycle_status inválido: {v}; permitidos: {sorted(ALLOWED_LIFECYCLE_STATUS)}"
+            )
+        return v
+
+    @field_validator("manufacturing_method")
+    @classmethod
+    def _validate_manufacturing_method(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.lower()
+        if v not in ALLOWED_MANUFACTURING_METHOD:
+            raise ValueError(
+                f"manufacturing_method inválido: {v}; permitidos: {sorted(ALLOWED_MANUFACTURING_METHOD)}"
+            )
+        return v
+
+    @field_validator("actuator")
+    @classmethod
+    def _validate_actuator(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.lower()
+        if v not in ALLOWED_ACTUATOR:
+            raise ValueError(
+                f"actuator inválido: {v}; permitidos: {sorted(ALLOWED_ACTUATOR)}"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def _validate_temp_range(self) -> "ProductBase":
+        if (
+            self.temp_min_c is not None
+            and self.temp_max_c is not None
+            and self.temp_max_c < self.temp_min_c
+        ):
+            raise ValueError("temp_max_c debe ser >= temp_min_c")
+        return self
 
     @field_validator("dn")
     @classmethod
@@ -180,6 +261,32 @@ class ProductPatch(BaseModel):
     manual_locked_fields: list[str] | None = None
     active: bool | None = None
 
+    # ---- Wave 2: lifecycle / identity (PATCH) ------------------------------
+    lifecycle_status: str | None = None
+    revision: str | None = Field(default=None, max_length=32)
+    series: str | None = Field(default=None, max_length=64)
+    parent_sku: str | None = Field(default=None, max_length=64)
+    is_parent: bool | None = None
+    is_variant: bool | None = None
+
+    # ---- Wave 2: technical scalars (PATCH) --------------------------------
+    dn_real: str | None = Field(default=None, max_length=16)
+    size: str | None = Field(default=None, max_length=64)
+    temp_min_c: int | None = Field(default=None, ge=-273, le=2000)
+    temp_max_c: int | None = Field(default=None, ge=-273, le=2000)
+    pressure_max_bar: Decimal | None = Field(default=None, ge=0, le=Decimal("9999.99"))
+    manufacturing_method: str | None = Field(default=None, max_length=32)
+    actuator: str | None = Field(default=None, max_length=32)
+    kv: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
+    kv2: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
+    torque_nm: Decimal | None = Field(default=None, ge=0, le=Decimal("99999.99"))
+    iso5211_interface: str | None = Field(default=None, max_length=16)
+
+    # ---- Wave 2: editorial / SEO (PATCH) ----------------------------------
+    tags: list[str] | None = None
+    video_url: str | None = Field(default=None, max_length=2048)
+    external_url: str | None = Field(default=None, max_length=2048)
+
     @field_validator("dn")
     @classmethod
     def _validate_dn(cls, v: str | None) -> str | None:
@@ -218,10 +325,48 @@ class ProductPatch(BaseModel):
             raise ValueError(f"data_quality inválido: {v}")
         return v
 
+    @field_validator("lifecycle_status")
+    @classmethod
+    def _validate_lifecycle(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if v not in ALLOWED_LIFECYCLE_STATUS:
+            raise ValueError(
+                f"lifecycle_status inválido: {v}; permitidos: {sorted(ALLOWED_LIFECYCLE_STATUS)}"
+            )
+        return v
+
+    @field_validator("manufacturing_method")
+    @classmethod
+    def _validate_manufacturing_method(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.lower()
+        if v not in ALLOWED_MANUFACTURING_METHOD:
+            raise ValueError(f"manufacturing_method inválido: {v}")
+        return v
+
+    @field_validator("actuator")
+    @classmethod
+    def _validate_actuator(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.lower()
+        if v not in ALLOWED_ACTUATOR:
+            raise ValueError(f"actuator inválido: {v}")
+        return v
+
     @model_validator(mode="after")
     def _at_least_one_field(self) -> ProductPatch:
         if not self.model_dump(exclude_unset=True):
             raise ValueError("PATCH payload vacío — al menos un campo requerido.")
+        # Validar rango de temperatura cuando ambos se proveen.
+        if (
+            self.temp_min_c is not None
+            and self.temp_max_c is not None
+            and self.temp_max_c < self.temp_min_c
+        ):
+            raise ValueError("temp_max_c debe ser >= temp_min_c")
         return self
 
 
@@ -292,6 +437,29 @@ class ProductResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    # ---- Wave 2: lifecycle / identity --------------------------------------
+    lifecycle_status: str = "active"
+    revision: str | None = None
+    series: str | None = None
+    parent_sku: str | None = None
+    is_parent: bool = False
+    is_variant: bool = False
+    # ---- Wave 2: technical scalars -----------------------------------------
+    dn_real: str | None = None
+    size: str | None = None
+    temp_min_c: int | None = None
+    temp_max_c: int | None = None
+    pressure_max_bar: Decimal | None = None
+    manufacturing_method: str | None = None
+    actuator: str | None = None
+    kv: Decimal | None = None
+    kv2: Decimal | None = None
+    torque_nm: Decimal | None = None
+    iso5211_interface: str | None = None
+    # ---- Wave 2: editorial / SEO -------------------------------------------
+    tags: list[str] = Field(default_factory=list)
+    video_url: str | None = None
+    external_url: str | None = None
     # Agregados denormalizados — sólo poblados por el listado (`GET /products`).
     translation_status_es: str | None = None
     translation_status_ar: str | None = None

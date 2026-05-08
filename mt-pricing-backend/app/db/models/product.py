@@ -105,6 +105,43 @@ class Product(Base):
         Boolean, nullable=False, server_default=text("true")
     )
 
+    # ---- Wave 2 ----------------------------------------------------------
+    # Lifecycle / identity
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'active'::lifecycle_status")
+    )
+    revision: Mapped[str | None] = mapped_column(Text)
+    series: Mapped[str | None] = mapped_column(Text)
+    parent_sku: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("products.sku", ondelete="SET NULL", name="fk_products_parent_sku")
+    )
+    is_parent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    is_variant: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
+    # Technical scalars
+    dn_real: Mapped[str | None] = mapped_column(Text)
+    size: Mapped[str | None] = mapped_column(Text)
+    temp_min_c: Mapped[int | None] = mapped_column(Integer)
+    temp_max_c: Mapped[int | None] = mapped_column(Integer)
+    pressure_max_bar: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    manufacturing_method: Mapped[str | None] = mapped_column(Text)
+    actuator: Mapped[str | None] = mapped_column(Text)
+    kv: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    kv2: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    torque_nm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    iso5211_interface: Mapped[str | None] = mapped_column(Text)
+
+    # Editorial / SEO
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'::text[]")
+    )
+    video_url: Mapped[str | None] = mapped_column(Text)
+    external_url: Mapped[str | None] = mapped_column(Text)
+
     # Embeddings (Sprint 2+) — nullable, sin índice HNSW por ahora.
     embedding_text: Mapped[Any] = mapped_column(_EMBEDDING_TYPE, nullable=True)
     embedding_image: Mapped[Any] = mapped_column(_EMBEDDING_TYPE, nullable=True)
