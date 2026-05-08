@@ -33,8 +33,10 @@ from app.api.routes import (
     suppliers,
     translations_workflow,
     users,
+    vocabularies,
 )
 from app.api.routes.costs import products_costs_router
+from app.api.routes.vocabularies import admin_vocab_router, products_vocab_router
 
 router = APIRouter()
 
@@ -64,3 +66,6 @@ router.include_router(graphrag.router)
 router.include_router(admin_flags.router)
 router.include_router(admin_calibrator.router)
 router.include_router(pricing_admin.router)
+router.include_router(vocabularies.router)
+router.include_router(admin_vocab_router)
+router.include_router(products_vocab_router, prefix="/products")
