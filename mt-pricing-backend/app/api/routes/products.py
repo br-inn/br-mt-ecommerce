@@ -1425,3 +1425,116 @@ async def set_parent(
     # Sync flags after persistence.
     await resolver.recompute_parent_flags(sku)
     return {"sku": sku, "parent_sku": parent_sku}
+
+
+# ==========================================================================
+# Wave 6 — Tech tables (read + manual upsert; importer-driven for PDFs)
+# ==========================================================================
+from sqlalchemy import select as _sa_select  # noqa: E402
+
+from app.db.models.tech_tables import ProductTechTable  # noqa: E402
+from app.schemas.tech_tables import (  # noqa: E402
+    ProductTechTableCreate,
+    ProductTechTablePatch,
+    ProductTechTableResponse,
+)
+
+
+@router.get(
+    "/{sku}/tech-tables",
+    response_model=list[ProductTechTableResponse],
+    summary="Listar tablas técnicas (matrix, dimensions, pressure-temperature)",
+)
+async def list_tech_tables(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    kind: Annotated[str | None, Query(max_length=32)] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> list[ProductTechTableResponse]:
+    stmt = _sa_select(ProductTechTable).where(ProductTechTable.product_sku == sku)
+    if kind:
+        stmt = stmt.where(ProductTechTable.kind == kind)
+    stmt = stmt.order_by(ProductTechTable.kind)
+    rows = (await session.execute(stmt)).scalars().all()
+    return [ProductTechTableResponse.model_validate(r) for r in rows]
+
+
+@router.put(
+    "/{sku}/tech-tables/{kind}",
+    response_model=ProductTechTableResponse,
+    summary="Crear/actualizar la tabla técnica de un kind (upsert por (sku,kind))",
+)
+async def upsert_tech_table(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    kind: Annotated[str, Path(pattern=r"^(materials_matrix|dimensions_by_dn|pressure_temperature)$")],
+    data: ProductTechTableCreate,
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> ProductTechTableResponse:
+    if data.kind != kind:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "kind_mismatch",
+                "title": f"path kind={kind!r} does not match body kind={data.kind!r}",
+            },
+        )
+    existing = (
+        await session.execute(
+            _sa_select(ProductTechTable).where(
+                ProductTechTable.product_sku == sku,
+                ProductTechTable.kind == kind,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing:
+        existing.schema_version = data.schema_version
+        existing.source = data.source
+        existing.data = data.data
+        existing.source_asset_id = data.source_asset_id
+        existing.notes = data.notes
+        await session.flush()
+        return ProductTechTableResponse.model_validate(existing)
+    row = ProductTechTable(
+        product_sku=sku,
+        kind=kind,
+        schema_version=data.schema_version,
+        source=data.source,
+        data=data.data,
+        source_asset_id=data.source_asset_id,
+        notes=data.notes,
+    )
+    session.add(row)
+    await session.flush()
+    return ProductTechTableResponse.model_validate(row)
+
+
+@router.delete(
+    "/{sku}/tech-tables/{kind}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar una tabla técnica de un kind",
+)
+async def delete_tech_table(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    kind: Annotated[str, Path(pattern=r"^(materials_matrix|dimensions_by_dn|pressure_temperature)$")],
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> Response:
+    existing = (
+        await session.execute(
+            _sa_select(ProductTechTable).where(
+                ProductTechTable.product_sku == sku,
+                ProductTechTable.kind == kind,
+            )
+        )
+    ).scalar_one_or_none()
+    if not existing:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "tech_table_not_found",
+                "title": f"tech-table kind={kind!r} not found for sku={sku!r}",
+            },
+        )
+    await session.delete(existing)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

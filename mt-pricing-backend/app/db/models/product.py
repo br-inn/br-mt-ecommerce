@@ -209,6 +209,14 @@ class Product(Base):
         lazy="selectin",
     )
 
+    # Wave 6 — tech tables (P/T, materials matrix, dimensions by DN).
+    tech_tables: Mapped[list["ProductTechTable"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "ProductTechTable",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     # Wave 7 — compatibilidades M:N (recambios/accesorios).
     # outgoing: enlaces donde este producto es el "origen".
     # incoming: enlaces donde este producto es el "destino" (viewonly — no mutamos desde aquí).
