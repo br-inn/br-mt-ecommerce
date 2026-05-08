@@ -36,6 +36,7 @@ import {
 import { MtEmpty, MtError, MtSkeleton } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import { useProducts } from "@/lib/hooks/products/use-products";
+import { useFacets, type FacetsFilters } from "@/lib/hooks/products/use-facets";
 import {
   type DataQuality,
   type ProductFilters,
@@ -43,6 +44,10 @@ import {
   type TranslationStatus,
 } from "@/lib/api/endpoints/products";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { FacetSidebar } from "./_components/facet-sidebar";
+import { ActiveFiltersBar } from "./_components/active-filters-bar";
+import { SavedViewsBar, SYSTEM_VIEWS } from "./_components/saved-views-bar";
+import { Paginator } from "./_components/paginator";
 
 const QUALITY_VALUES = ["complete", "partial", "blocked"] as const;
 const TRANSLATION_VALUES = ["draft", "pending", "approved"] as const;
@@ -158,8 +163,80 @@ export default function CatalogPage() {
     void setMaterial(null);
   }, [setFamily, setQuality, setTranslationStatus, setDn, setPn, setMaterial]);
 
+  // ---- Wave 10 facets sidebar wiring ---------------------------------------
+  const facetFilters: FacetsFilters = React.useMemo(
+    () => ({
+      family: family ?? null,
+      data_quality: quality ?? null,
+      translation_status: translationStatus ?? null,
+      active: active ?? null,
+      dn: dn ?? null,
+      pn: pn ?? null,
+      material: material ?? null,
+      q: debouncedSearch || null,
+    }),
+    [family, quality, translationStatus, active, dn, pn, material, debouncedSearch],
+  );
+
+  const setFacetFilter = React.useCallback(
+    (key: keyof FacetsFilters, value: string | boolean | null) => {
+      switch (key) {
+        case "family":
+          void setFamily(value as string | null);
+          break;
+        case "material":
+          void setMaterial(value as string | null);
+          break;
+        case "dn":
+          void setDn(value as string | null);
+          break;
+        case "pn":
+          void setPn(value as string | null);
+          break;
+        case "data_quality":
+          void setQuality(value as DataQuality | null);
+          break;
+        case "translation_status":
+          void setTranslationStatus(value as TranslationStatus | null);
+          break;
+      }
+    },
+    [setFamily, setMaterial, setDn, setPn, setQuality, setTranslationStatus],
+  );
+
+  const { data: facetsData } = useFacets(facetFilters);
+  const totalUnfiltered = facetsData?.total_unfiltered ?? null;
+  const totalFiltered = facetsData?.total ?? total ?? null;
+
+  const activeChips = React.useMemo(() => {
+    const out: { key: string; label: string }[] = [];
+    if (family) out.push({ key: "family", label: `family: ${family}` });
+    if (material) out.push({ key: "material", label: `material: ${material}` });
+    if (dn) out.push({ key: "dn", label: `DN: ${dn}` });
+    if (pn) out.push({ key: "pn", label: `PN: ${pn}` });
+    if (quality) out.push({ key: "data_quality", label: `quality: ${quality}` });
+    if (translationStatus)
+      out.push({ key: "translation_status", label: `traducción: ${translationStatus}` });
+    return out;
+  }, [family, material, dn, pn, quality, translationStatus]);
+
+  const removeChip = React.useCallback(
+    (key: string) => setFacetFilter(key as keyof FacetsFilters, null),
+    [setFacetFilter],
+  );
+
+  const activeViewId = React.useMemo(() => {
+    // Detect which system view matches the current filters (best-effort).
+    if (activeChips.length === 0 && active === true) return "active-only";
+    if (family === "unclassified" && activeChips.length === 1) return "unclassified";
+    if (translationStatus === "pending" && activeChips.length === 1) return "pending-es";
+    if (activeChips.length === 0) return "all";
+    return "";
+  }, [activeChips, active, family, translationStatus]);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full"><FacetSidebar filters={facetFilters} setFilter={setFacetFilter} />
+    <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Page header */}
       <div
         className="flex items-center justify-between border-b bg-mt-surface px-6 py-3.5"
@@ -196,6 +273,45 @@ export default function CatalogPage() {
           </MtButton>
         </div>
       </div>
+
+      {/* Wave 10 — saved views row + active filters chips */}
+      <SavedViewsBar
+        views={SYSTEM_VIEWS.map((v) => ({
+          ...v,
+          count:
+            v.id === "all"
+              ? totalUnfiltered ?? null
+              : v.id === "unclassified"
+                ? facetsData?.family.find((b) => b.value === "unclassified")?.count ?? null
+                : v.id === "no-image"
+                  ? facetsData?.has_image?.without ?? null
+                  : v.id === "pending-es"
+                    ? facetsData?.translation_status?.es?.pending ?? null
+                    : v.id === "active-only"
+                      ? facetsData?.active?.True ?? null
+                      : null,
+        }))}
+        activeId={activeViewId}
+        onSelect={(view) => {
+          // Apply view filters and clear non-view filters.
+          clearAllFilters();
+          if (view.filters.family !== undefined) void setFamily(view.filters.family ?? null);
+          if (view.filters.material !== undefined) void setMaterial(view.filters.material ?? null);
+          if (view.filters.dn !== undefined) void setDn(view.filters.dn ?? null);
+          if (view.filters.pn !== undefined) void setPn(view.filters.pn ?? null);
+          if (view.filters.translation_status !== undefined)
+            void setTranslationStatus(view.filters.translation_status ?? null);
+          if (view.filters.data_quality !== undefined)
+            void setQuality((view.filters.data_quality as DataQuality | undefined) ?? null);
+        }}
+      />
+      <ActiveFiltersBar
+        chips={activeChips}
+        total={totalFiltered}
+        totalUnfiltered={totalUnfiltered}
+        onRemove={removeChip}
+        onClearAll={clearAllFilters}
+      />
 
       {/* Toolbar */}
       <div
@@ -431,7 +547,7 @@ export default function CatalogPage() {
                   const tAr = statusToVal(r.translation_status_ar);
                   return (
                     <tr
-                      key={r.id}
+                      key={r.sku}
                       style={{
                         background: i % 2 ? MT.surface : MT.surface2,
                       }}
@@ -443,7 +559,7 @@ export default function CatalogPage() {
                         <Link href={`/catalogo/${r.sku}`}>{r.sku}</Link>
                       </MtTd>
                       <MtTd>
-                        <Thumb />
+                        <Thumb src={r.primary_image_url} alt={r.name_en} />
                       </MtTd>
                       <MtTd className="font-medium" style={{ color: MT.ink }}>
                         <Link href={`/catalogo/${r.sku}`}>{r.name_en}</Link>
@@ -496,33 +612,29 @@ export default function CatalogPage() {
         ) : null}
       </div>
 
-      {/* Footer */}
+      {/* Paginator (Wave 10) replaces the legacy "cargar más" footer */}
+      <Paginator
+        loaded={items.length}
+        total={totalFiltered}
+        pageSize={50}
+        onPageSize={(_size) => {
+          // Page size changes require refetch with new limit; useProducts
+          // hook only takes filters today, so this is a no-op for now.
+        }}
+        hasNext={Boolean(hasNextPage)}
+        onNext={() => void fetchNextPage()}
+        isFetching={isFetchingNextPage}
+      />
+
       <div
-        className="flex items-center justify-between border-t bg-mt-surface px-6 py-2 text-[11.5px]"
+        className="flex items-center justify-end gap-1.5 border-t bg-mt-surface px-6 py-1.5 text-[11px]"
         style={{ borderColor: MT.border, color: MT.ink3 }}
       >
-        <span className="flex items-center gap-2">
-          {total !== null
-            ? `Mostrando ${items.length} de ${total}`
-            : `Mostrando ${items.length}`}
-          {hasNextPage ? (
-            <MtButton
-              size="sm"
-              tone="ghost"
-              onClick={() => void fetchNextPage()}
-              disabled={isFetchingNextPage}
-              icon={<RefreshCcw className="size-3.5" />}
-            >
-              {isFetchingNextPage ? "Cargando…" : "Cargar más"}
-            </MtButton>
-          ) : null}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Kbd>/</Kbd> buscar · <Kbd>j</Kbd>
-          <Kbd>k</Kbd> nav · <Kbd>e</Kbd> editar · <Kbd>↵</Kbd> detalle ·{" "}
-          <Kbd>?</Kbd> atajos
-        </span>
+        <Kbd>/</Kbd> buscar · <Kbd>j</Kbd>
+        <Kbd>k</Kbd> nav · <Kbd>e</Kbd> editar · <Kbd>↵</Kbd> detalle ·{" "}
+        <Kbd>?</Kbd> atajos
       </div>
+    </div>
     </div>
   );
 }

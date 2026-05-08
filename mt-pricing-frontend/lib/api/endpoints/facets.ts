@@ -76,5 +76,7 @@ async function authedFetch<T>(path: string): Promise<T> {
 
 export const facetsApi = {
   get: (filters: FacetsFilters = {}): Promise<FacetsResponse> =>
-    authedFetch<FacetsResponse>(`/api/v1/products/facets${buildQuery(filters)}`),
+    authedFetch<FacetsResponse>(
+      `/api/v1/products/facets${buildQuery(filters as Record<string, unknown>)}`,
+    ),
 };

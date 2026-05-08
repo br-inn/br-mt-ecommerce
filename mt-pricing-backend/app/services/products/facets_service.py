@@ -18,8 +18,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
+from app.db.engine import get_engine
 from app.db.models.product import Product, ProductTranslation
 from app.schemas.facets import FacetBucket, FacetsResponse, TranslationLangFacet
 
@@ -119,7 +120,7 @@ def build_product_clauses(
 # Per-dimension count queries (each excludes its own filter)
 # ---------------------------------------------------------------------------
 async def _count_by_column(
-    session: AsyncSession,
+    session: AsyncSession | AsyncConnection,
     column: Any,
     filters: ProductFilters,
     *,
@@ -143,7 +144,7 @@ async def _count_by_column(
 
 
 async def _enum_counts(
-    session: AsyncSession,
+    session: AsyncSession | AsyncConnection,
     column: Any,
     filters: ProductFilters,
     *,
@@ -160,7 +161,7 @@ async def _enum_counts(
 
 
 async def _has_image_counts(
-    session: AsyncSession, filters: ProductFilters
+    session: AsyncSession | AsyncConnection, filters: ProductFilters
 ) -> dict[str, int]:
     clauses = build_product_clauses(filters, exclude={"has_image", "image_status"})
     with_clause = and_(*clauses, Product.image_status != "missing")
@@ -174,7 +175,7 @@ async def _has_image_counts(
 
 
 async def _translation_status_counts(
-    session: AsyncSession, filters: ProductFilters, lang: str
+    session: AsyncSession | AsyncConnection, filters: ProductFilters, lang: str
 ) -> TranslationLangFacet:
     base_clauses = build_product_clauses(filters, exclude={"translation_status"})
     base_total_stmt = select(func.count()).where(and_(*base_clauses))
@@ -211,13 +212,13 @@ async def _translation_status_counts(
     )
 
 
-async def _total(session: AsyncSession, filters: ProductFilters) -> int:
+async def _total(session: AsyncSession | AsyncConnection, filters: ProductFilters) -> int:
     clauses = build_product_clauses(filters)
     stmt = select(func.count()).where(and_(*clauses))
     return int((await session.execute(stmt)).scalar_one() or 0)
 
 
-async def _total_unfiltered(session: AsyncSession) -> int:
+async def _total_unfiltered(session: AsyncSession | AsyncConnection) -> int:
     stmt = select(func.count()).where(Product.deleted_at.is_(None))
     return int((await session.execute(stmt)).scalar_one() or 0)
 
@@ -228,39 +229,51 @@ async def _total_unfiltered(session: AsyncSession) -> int:
 async def compute_facets(
     session: AsyncSession, filters: ProductFilters
 ) -> FacetsResponse:
-    """Compute all dimensions sequentially with non-destructive refinements.
+    """Compute all dimensions in parallel with non-destructive refinements.
 
-    Ejecutado secuencialmente porque ``AsyncSession`` no soporta concurrencia
-    interna (one connection / one txn at a time). Para 5K-50K rows con índices
-    de la migration 041, ~12 queries × ~5ms = ~60ms total. Si crece el volumen,
-    parallelizamos via ``async with engine.connect()`` por dimensión.
+    Cada dimensión corre en una **conexión propia** del pool (``engine.connect``)
+    para sortear la limitación de ``AsyncSession`` de 1 conexión simultánea.
+    El ``session`` argumento queda como API estable; sólo se usa el engine.
+    Para 5K-50K rows con los índices migration 041 esto reduce el wall clock
+    de ~12×RTT secuencial a ~max(RTT) paralelo.
+
+    Si el connection pool del backend está saturado (concurrencia muy alta),
+    el ``async with engine.connect()`` espera al pool y degrada a serial sin
+    romper.
     """
-    family = await _count_by_column(
-        session, Product.family, filters, exclude_field="family", limit=50
+    engine = get_engine()
+
+    async def _on_conn(coro_factory: Any) -> Any:
+        async with engine.connect() as conn:
+            return await coro_factory(conn)
+
+    (
+        family,
+        material,
+        dn,
+        pn,
+        data_quality,
+        active,
+        image_status,
+        has_image,
+        tr_es,
+        tr_ar,
+        total,
+        total_unfiltered,
+    ) = await asyncio.gather(
+        _on_conn(lambda c: _count_by_column(c, Product.family, filters, exclude_field="family", limit=50)),
+        _on_conn(lambda c: _count_by_column(c, Product.material, filters, exclude_field="material", limit=50)),
+        _on_conn(lambda c: _count_by_column(c, Product.dn, filters, exclude_field="dn", limit=50)),
+        _on_conn(lambda c: _count_by_column(c, Product.pn, filters, exclude_field="pn", limit=20)),
+        _on_conn(lambda c: _enum_counts(c, Product.data_quality, filters, exclude_field="data_quality")),
+        _on_conn(lambda c: _enum_counts(c, Product.active, filters, exclude_field="active")),
+        _on_conn(lambda c: _enum_counts(c, Product.image_status, filters, exclude_field="image_status")),
+        _on_conn(lambda c: _has_image_counts(c, filters)),
+        _on_conn(lambda c: _translation_status_counts(c, filters, "es")),
+        _on_conn(lambda c: _translation_status_counts(c, filters, "ar")),
+        _on_conn(lambda c: _total(c, filters)),
+        _on_conn(lambda c: _total_unfiltered(c)),
     )
-    material = await _count_by_column(
-        session, Product.material, filters, exclude_field="material", limit=50
-    )
-    dn = await _count_by_column(
-        session, Product.dn, filters, exclude_field="dn", limit=50
-    )
-    pn = await _count_by_column(
-        session, Product.pn, filters, exclude_field="pn", limit=20
-    )
-    data_quality = await _enum_counts(
-        session, Product.data_quality, filters, exclude_field="data_quality"
-    )
-    active = await _enum_counts(
-        session, Product.active, filters, exclude_field="active"
-    )
-    image_status = await _enum_counts(
-        session, Product.image_status, filters, exclude_field="image_status"
-    )
-    has_image = await _has_image_counts(session, filters)
-    tr_es = await _translation_status_counts(session, filters, "es")
-    tr_ar = await _translation_status_counts(session, filters, "ar")
-    total = await _total(session, filters)
-    total_unfiltered = await _total_unfiltered(session)
 
     # Sort dn/pn numerically when possible (ascending), else lexicographic.
     def _num_sort(buckets: Sequence[FacetBucket]) -> list[FacetBucket]:

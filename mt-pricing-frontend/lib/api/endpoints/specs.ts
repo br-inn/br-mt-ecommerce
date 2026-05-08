@@ -7,7 +7,8 @@
  * Full UI integration ships in Wave 10 (dynamic form rendering per family).
  */
 
-import { apiClient } from "@/lib/api/client";
+import env from "@/lib/env";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,14 +64,26 @@ export interface SpecsSchemaProperty {
  */
 export async function getSpecsSchema(
   family: string,
-  subfamily?: string
+  subfamily?: string,
 ): Promise<SpecsSchema> {
   const params = new URLSearchParams({ family });
   if (subfamily) {
     params.set("subfamily", subfamily);
   }
-  const response = await apiClient.get<SpecsSchema>(
-    `/products/specs/schema?${params.toString()}`
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const headers = new Headers();
+  if (session?.access_token) {
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+  const res = await fetch(
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/products/specs/schema?${params.toString()}`,
+    { headers, cache: "no-store" },
   );
-  return response.data;
+  if (!res.ok) {
+    throw new Error(`specs schema fetch failed: HTTP ${res.status}`);
+  }
+  return (await res.json()) as SpecsSchema;
 }
