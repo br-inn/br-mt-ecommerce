@@ -67,6 +67,7 @@ from app.services.compatibility import (
     CompatibilityDomainError,
     CompatibilityService,
 )
+from app.services.components import ComponentsDomainError, ComponentsService
 from app.services.products import ImageService, ProductService
 from app.services.products.product_service import ProductDomainError
 from app.services.specs.specs_registry import SpecsRegistry
@@ -104,6 +105,12 @@ def get_compatibility_service(
     return CompatibilityService(session)
 
 
+def get_components_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ComponentsService:
+    return ComponentsService(session)
+
+
 # --------------------------------------------------------------------------
 # Error helper — traduce ProductDomainError → ProblemDetails / HTTPException.
 # --------------------------------------------------------------------------
@@ -129,6 +136,13 @@ def _raise_domain(err: ProductDomainError) -> None:
 
 
 def _raise_compat(err: CompatibilityDomainError) -> None:
+    raise HTTPException(
+        status_code=err.status_code,
+        detail={"code": err.code, "title": err.message},
+    )
+
+
+def _raise_components(err: ComponentsDomainError) -> None:
     raise HTTPException(
         status_code=err.status_code,
         detail={"code": err.code, "title": err.message},
@@ -1154,3 +1168,186 @@ async def replace_compatibility(
     except CompatibilityDomainError as e:
         _raise_compat(e)
     return [_build_compat_response(r) for r in created]
+
+
+# ==========================================================================
+# Wave 3 — Components (materials + connections)
+# ==========================================================================
+from app.schemas.components import (  # noqa: E402
+    ProductConnectionCreate,
+    ProductConnectionPatch,
+    ProductConnectionResponse,
+    ProductConnectionsReplaceRequest,
+    ProductMaterialCreate,
+    ProductMaterialPatch,
+    ProductMaterialResponse,
+    ProductMaterialsReplaceRequest,
+)
+
+
+# ---- Materials -----------------------------------------------------------
+@router.get(
+    "/{sku}/materials",
+    response_model=list[ProductMaterialResponse],
+    summary="Listar materiales por componente",
+)
+async def list_materials(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _user: User = Depends(require_permissions("products:read")),
+    service: ComponentsService = Depends(get_components_service),
+) -> list[ProductMaterialResponse]:
+    try:
+        rows = await service.list_materials(sku)
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return [ProductMaterialResponse.model_validate(r) for r in rows]
+
+
+@router.post(
+    "/{sku}/materials",
+    response_model=ProductMaterialResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Añadir/actualizar un material por componente (upsert por PK)",
+)
+async def upsert_material(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: ProductMaterialCreate,
+    _user: User = Depends(require_permissions("products:write")),
+    service: ComponentsService = Depends(get_components_service),
+) -> ProductMaterialResponse:
+    try:
+        row = await service.add_material(
+            sku,
+            component=data.component,
+            position=data.position,
+            material=data.material,
+            observations=data.observations,
+        )
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return ProductMaterialResponse.model_validate(row)
+
+
+@router.delete(
+    "/{sku}/materials/{component}/{position}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar un material específico (component+position)",
+)
+async def delete_material(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    component: Annotated[str, Path(min_length=1, max_length=32)],
+    position: Annotated[int, Path(ge=0, le=99)],
+    _user: User = Depends(require_permissions("products:write")),
+    service: ComponentsService = Depends(get_components_service),
+) -> Response:
+    try:
+        await service.delete_material(sku, component, position)
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{sku}/materials",
+    response_model=list[ProductMaterialResponse],
+    summary="Reemplazar TODA la lista de materiales del producto",
+)
+async def replace_materials(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: ProductMaterialsReplaceRequest,
+    _user: User = Depends(require_permissions("products:write")),
+    service: ComponentsService = Depends(get_components_service),
+) -> list[ProductMaterialResponse]:
+    try:
+        rows = await service.replace_materials(
+            sku,
+            [item.model_dump() for item in data.items],
+        )
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return [ProductMaterialResponse.model_validate(r) for r in rows]
+
+
+# ---- Connections ---------------------------------------------------------
+@router.get(
+    "/{sku}/connections",
+    response_model=list[ProductConnectionResponse],
+    summary="Listar conexiones del producto (puertos físicos)",
+)
+async def list_connections(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _user: User = Depends(require_permissions("products:read")),
+    service: ComponentsService = Depends(get_components_service),
+) -> list[ProductConnectionResponse]:
+    try:
+        rows = await service.list_connections(sku)
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return [ProductConnectionResponse.model_validate(r) for r in rows]
+
+
+@router.post(
+    "/{sku}/connections",
+    response_model=ProductConnectionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Añadir/actualizar una conexión (upsert por position)",
+)
+async def upsert_connection(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: ProductConnectionCreate,
+    _user: User = Depends(require_permissions("products:write")),
+    service: ComponentsService = Depends(get_components_service),
+) -> ProductConnectionResponse:
+    try:
+        row = await service.add_connection(
+            sku,
+            position=data.position,
+            connection_type=data.connection_type,
+            dn=data.dn,
+            dn_real=data.dn_real,
+            size=data.size,
+            threading=data.threading,
+            notes=data.notes,
+        )
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return ProductConnectionResponse.model_validate(row)
+
+
+@router.delete(
+    "/{sku}/connections/{position}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar una conexión específica (por position)",
+)
+async def delete_connection(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    position: Annotated[int, Path(ge=1, le=8)],
+    _user: User = Depends(require_permissions("products:write")),
+    service: ComponentsService = Depends(get_components_service),
+) -> Response:
+    try:
+        await service.delete_connection(sku, position)
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{sku}/connections",
+    response_model=list[ProductConnectionResponse],
+    summary="Reemplazar TODA la lista de conexiones del producto",
+)
+async def replace_connections(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: ProductConnectionsReplaceRequest,
+    _user: User = Depends(require_permissions("products:write")),
+    service: ComponentsService = Depends(get_components_service),
+) -> list[ProductConnectionResponse]:
+    try:
+        rows = await service.replace_connections(
+            sku,
+            [item.model_dump() for item in data.items],
+        )
+    except ComponentsDomainError as e:
+        _raise_components(e)
+    return [ProductConnectionResponse.model_validate(r) for r in rows]

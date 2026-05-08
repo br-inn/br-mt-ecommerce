@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from app.db.models.audit import AuditEvent
 from app.db.models.compatibility import ProductCompatibility
+from app.db.models.components import ProductConnection, ProductMaterial
 from app.db.models.cdc_event import CdcEvent
 from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
 from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
@@ -91,4 +92,7 @@ __all__ = [
     "ProductApplication",
     # Wave 7 — spare parts / accessories compatibility M:N
     "ProductCompatibility",
+    # Wave 3 — multi-component (materials + connections)
+    "ProductMaterial",
+    "ProductConnection",
 ]

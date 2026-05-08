@@ -195,6 +195,20 @@ class Product(Base):
         lazy="selectin",
     )
 
+    # Wave 3 — componentes (materiales por componente, conexiones múltiples).
+    materials: Mapped[list["ProductMaterial"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "ProductMaterial",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    connections: Mapped[list["ProductConnection"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "ProductConnection",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     # Wave 7 — compatibilidades M:N (recambios/accesorios).
     # outgoing: enlaces donde este producto es el "origen".
     # incoming: enlaces donde este producto es el "destino" (viewonly — no mutamos desde aquí).
