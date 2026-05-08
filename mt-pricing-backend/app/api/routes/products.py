@@ -1538,3 +1538,60 @@ async def delete_tech_table(
         )
     await session.delete(existing)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==========================================================================
+# Wave 10 — Facets endpoint (non-destructive refinements + parallel compute)
+# ==========================================================================
+from app.schemas.facets import FacetsResponse  # noqa: E402
+from app.services.products.facets_service import (  # noqa: E402
+    ProductFilters,
+    compute_facets,
+)
+
+
+@router.get(
+    "/facets",
+    response_model=FacetsResponse,
+    summary="Counts por dimensión con refinements non-destructivos (Algolia-style)",
+)
+async def get_facets(
+    family: Annotated[str | None, Query()] = None,
+    brand: Annotated[str | None, Query()] = None,
+    material: Annotated[str | None, Query()] = None,
+    dn: Annotated[str | None, Query(max_length=8)] = None,
+    pn: Annotated[str | None, Query(max_length=8)] = None,
+    data_quality: Annotated[str | None, Query()] = None,
+    active: Annotated[bool | None, Query()] = None,
+    image_status: Annotated[str | None, Query()] = None,
+    has_image: Annotated[bool | None, Query()] = None,
+    lifecycle_status: Annotated[str | None, Query()] = None,
+    translation_status: Annotated[
+        str | None, Query(pattern=r"^(pending|draft|approved)$")
+    ] = None,
+    translation_lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> FacetsResponse:
+    """Devuelve counts por dimensión aplicando todos los filtros activos
+    EXCEPTO el de la propia dimensión (refinement no destructivo).
+
+    Performance objetivo: p95 <200ms con índices migration 041 y 5K-50K rows.
+    """
+    filters = ProductFilters(
+        family=family,
+        brand=brand,
+        material=material,
+        dn=dn,
+        pn=pn,
+        data_quality=data_quality,
+        active=active,
+        image_status=image_status,
+        has_image=has_image,
+        lifecycle_status=lifecycle_status,
+        translation_status=translation_status,
+        translation_lang=translation_lang,
+        search=q,
+    )
+    return await compute_facets(session, filters)

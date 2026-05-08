@@ -47,14 +47,16 @@ ProductImageConfirmRequest = ProductAssetConfirmRequest
 SKU_REGEX = r"^[A-Z0-9][A-Z0-9\-_]{2,63}$"
 
 # DN: tamaños nominales típicos (mm). PN: presiones nominales (bar).
+# Wave 10 fix: BD guarda valor numérico ("15", "20") sin prefijo.
+# El validator acepta:
+#   - forma canónica numérica: "15", "DN15" (compat) — ambas se normalizan a "15"
+#   - mismo para PN: "16", "PN16" → "16"
+# Esto desbloquea los filtros DN/PN del catálogo que antes daban 0 resultados.
 ALLOWED_DN: frozenset[str] = frozenset(
-    {
-        "DN8", "DN10", "DN15", "DN20", "DN25", "DN32", "DN40", "DN50",
-        "DN65", "DN80", "DN100", "DN125", "DN150", "DN200", "DN250",
-        "DN300",
-    }
+    {"8", "10", "15", "20", "25", "32", "40", "50",
+     "65", "80", "100", "125", "150", "200", "250", "300"}
 )
-ALLOWED_PN: frozenset[str] = frozenset({"PN6", "PN10", "PN16", "PN25", "PN40", "PN63", "PN100"})
+ALLOWED_PN: frozenset[str] = frozenset({"6", "10", "16", "20", "25", "30", "40", "63", "100"})
 ALLOWED_WEIGHT_UNITS: frozenset[str] = frozenset({"kg", "g", "lb"})
 ALLOWED_LANGS: frozenset[str] = frozenset({"es", "ar"})  # `en` es base, no se traduce
 ALLOWED_DATA_QUALITY: frozenset[str] = frozenset({"complete", "partial", "blocked", "migrated_demo"})
@@ -194,6 +196,8 @@ class ProductBase(BaseModel):
         if v is None:
             return v
         v = v.upper()
+        if v.startswith("DN"):
+            v = v[2:]
         if v not in ALLOWED_DN:
             raise ValueError(f"dn inválido: {v}; permitidos: {sorted(ALLOWED_DN)}")
         return v
@@ -204,6 +208,8 @@ class ProductBase(BaseModel):
         if v is None:
             return v
         v = v.upper()
+        if v.startswith("PN"):
+            v = v[2:]
         if v not in ALLOWED_PN:
             raise ValueError(f"pn inválido: {v}; permitidos: {sorted(ALLOWED_PN)}")
         return v
@@ -293,6 +299,8 @@ class ProductPatch(BaseModel):
         if v is None:
             return v
         v = v.upper()
+        if v.startswith("DN"):
+            v = v[2:]
         if v not in ALLOWED_DN:
             raise ValueError(f"dn inválido: {v}")
         return v
@@ -303,6 +311,8 @@ class ProductPatch(BaseModel):
         if v is None:
             return v
         v = v.upper()
+        if v.startswith("PN"):
+            v = v[2:]
         if v not in ALLOWED_PN:
             raise ValueError(f"pn inválido: {v}")
         return v
