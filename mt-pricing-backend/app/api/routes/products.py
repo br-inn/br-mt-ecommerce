@@ -249,8 +249,64 @@ async def list_products(
         limit=limit,
         include_total=include_total,
     )
+    # Batch fetch de agregados para el listado: translation_status (es/ar) +
+    # primary photo URL. Mantiene la lista cursor-based eficiente con N+0
+    # round trips: 1 query Products + 1 translations + 1 assets.
+    skus = [r.sku for r in rows]
+    xlate_map: dict[tuple[str, str], str] = {}
+    primary_photo_map: dict[str, str] = {}
+    if skus:
+        from sqlalchemy import select as _select
+
+        from app.db.models.product import ProductAsset, ProductTranslation
+
+        session = service.session
+        xlate_rows = await session.execute(
+            _select(
+                ProductTranslation.sku,
+                ProductTranslation.lang,
+                ProductTranslation.status,
+            ).where(
+                ProductTranslation.sku.in_(skus),
+                ProductTranslation.lang.in_(("es", "ar")),
+            )
+        )
+        for sku, lang_code, status_code in xlate_rows.all():
+            xlate_map[(sku, lang_code)] = status_code
+        # Primary photo (kind='photo', is_primary=true, status='active') for each sku.
+        photo_rows = await session.execute(
+            _select(
+                ProductAsset.sku,
+                ProductAsset.variants,
+                ProductAsset.bucket,
+                ProductAsset.storage_path,
+            ).where(
+                ProductAsset.sku.in_(skus),
+                ProductAsset.kind == "photo",
+                ProductAsset.is_primary.is_(True),
+                ProductAsset.status == "active",
+            )
+        )
+        from app.core.config import settings as _settings
+
+        sb_url = str(getattr(_settings, "SUPABASE_URL", "") or "").rstrip("/")
+        for sku, variants, bucket, storage_path in photo_rows.all():
+            # Prefer thumb_400 if present, else original.
+            thumb_path = (variants or {}).get("webp_400") or storage_path
+            if sb_url and bucket and thumb_path:
+                primary_photo_map[sku] = (
+                    f"{sb_url}/storage/v1/object/public/{bucket}/{thumb_path}"
+                )
+
+    items: list[ProductResponse] = []
+    for r in rows:
+        item = ProductResponse.model_validate(r)
+        item.translation_status_es = xlate_map.get((r.sku, "es"))
+        item.translation_status_ar = xlate_map.get((r.sku, "ar"))
+        item.primary_image_url = primary_photo_map.get(r.sku)
+        items.append(item)
     return Pagination[ProductResponse](
-        items=[ProductResponse.model_validate(r) for r in rows],
+        items=items,
         cursor=Cursor(next=encode_sku_cursor(next_sku)),
         page_size=limit,
         total=total,

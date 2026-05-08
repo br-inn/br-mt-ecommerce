@@ -292,6 +292,10 @@ class ProductResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    # Agregados denormalizados — sólo poblados por el listado (`GET /products`).
+    translation_status_es: str | None = None
+    translation_status_ar: str | None = None
+    primary_image_url: str | None = None
 
 
 class ProductDetail(ProductResponse):
