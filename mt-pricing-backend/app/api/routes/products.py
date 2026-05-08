@@ -33,6 +33,13 @@ from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.pagination import decode_sku_cursor, encode_sku_cursor
 from app.db.models.user import User
 from app.schemas.common import Cursor, Pagination, ProblemDetails
+from app.schemas.assets import (
+    AssetKind,
+    ProductAssetConfirmRequest,
+    ProductAssetPatch,
+    ProductAssetResponse,
+    ProductAssetUploadRequest,
+)
 from app.schemas.products import (
     ProductCreate,
     ProductDataQualityPatch,
@@ -47,6 +54,8 @@ from app.schemas.products import (
     ProductTranslationPatch,
     ProductTranslationResponse,
 )
+from app.services.assets import AssetService
+from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
 from app.services.products import ImageService, ProductService
 from app.services.products.product_service import ProductDomainError
 
@@ -64,6 +73,12 @@ def get_product_service(
 
 def get_image_service() -> ImageService:
     return ImageService()
+
+
+def get_asset_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AssetService:
+    return AssetService(session)
 
 
 # --------------------------------------------------------------------------
@@ -500,26 +515,32 @@ async def list_images(
 
 @router.post(
     "/{sku}/images/upload-url",
-    summary="Solicitar signed URL para upload directo a Supabase Storage",
+    summary="[DEPRECATED] Solicitar signed URL — use /assets/upload-url",
     responses={404: {"model": ProblemDetails}},
+    deprecated=True,
 )
 async def get_image_upload_url(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     request: ProductImageUploadRequest,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     product_service: Annotated[ProductService, Depends(get_product_service)],
-    image_service: Annotated[ImageService, Depends(get_image_service)],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    response: Response,
 ) -> dict[str, Any]:
-    """Devuelve dict con `storage_path`, `upload_url`, `headers`, `expires_in`."""
+    """DEPRECATED — proxy to /assets/upload-url with kind=photo."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = f'</{sku}/assets/upload-url>; rel="successor-version"'
     try:
-        # Verifica que el producto existe (no upload a sku inválido).
         await product_service.get_product_by_id(sku)
     except ProductDomainError as e:
         _raise_domain(e)
-    return image_service.generate_signed_upload_url(
+    filename = getattr(request, "filename", "image.jpg")
+    mime_type = getattr(request, "content_type", "image/jpeg")
+    return asset_service.generate_signed_upload_url(
         sku=sku,
-        filename=request.filename,
-        content_type=request.content_type,
+        kind="photo",
+        filename=filename,
+        mime_type=mime_type,
     )
 
 
@@ -527,57 +548,64 @@ async def get_image_upload_url(
     "/{sku}/images/confirm",
     response_model=ProductImageResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Confirmar upload exitoso a Storage — crea row en product_images",
+    summary="[DEPRECATED] Confirmar upload — use /assets/{asset_id}/confirm",
     responses={404: {"model": ProblemDetails}},
+    deprecated=True,
 )
 async def confirm_image_upload(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     payload: ProductImageConfirmRequest,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    response: Response,
 ) -> ProductImageResponse:
-    """Endpoint de confirmación tras PUT directo a Supabase Storage.
-
-    Frontend flow:
-        1. POST /upload-url → { storage_path, upload_url, token }
-        2. supabase.storage.from(bucket).uploadToSignedUrl(path, token, file)
-        3. POST /confirm → row product_images creada + thumbnails dispatch.
-    """
+    """DEPRECATED — proxy to new asset confirm with kind=photo."""
+    response.headers["Deprecation"] = "true"
     try:
-        img = await service.confirm_image_upload(
+        await service.get_product_by_id(sku)
+    except ProductDomainError as e:
+        _raise_domain(e)
+    try:
+        asset = await asset_service.confirm_upload(
             sku,
             storage_path=payload.storage_path,
+            kind="photo",
             mime_type=payload.mime_type,
             bytes_size=payload.bytes_size,
             width=payload.width,
             height=payload.height,
             alt_text=payload.alt_text,
             is_primary=payload.is_primary,
-            role=payload.role,
-            actor=user,
+            actor_id=user.id,
         )
-    except ProductDomainError as e:
-        _raise_domain(e)
-    return ProductImageResponse.model_validate(img)
+    except AssetValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return ProductImageResponse.model_validate(asset)
 
 
 @router.post(
     "/{sku}/images/{image_id}/set-primary",
     response_model=ProductImageResponse,
-    summary="Marcar imagen como primaria (resto pasa a is_primary=false)",
+    summary="[DEPRECATED] Marcar imagen como primaria — use /assets/{asset_id}/primary",
     responses={404: {"model": ProblemDetails}},
+    deprecated=True,
 )
 async def set_primary_image(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     image_id: UUID,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    response: Response,
 ) -> ProductImageResponse:
+    """DEPRECATED — proxy to PATCH /assets/{asset_id}/primary."""
+    response.headers["Deprecation"] = "true"
     try:
-        img = await service.set_primary_image(sku, image_id, user)
-    except ProductDomainError as e:
-        _raise_domain(e)
-    return ProductImageResponse.model_validate(img)
+        asset = await asset_service.set_primary(image_id, sku)
+    except AssetNotFoundError:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return ProductImageResponse.model_validate(asset)
 
 
 @router.delete(
@@ -585,16 +613,213 @@ async def set_primary_image(
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
     response_class=Response,
-    summary="Eliminar imagen del producto",
+    summary="[DEPRECATED] Eliminar imagen — use DELETE /assets/{asset_id}",
+    deprecated=True,
 )
 async def delete_image(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     image_id: UUID,
     user: Annotated[User, Depends(require_permissions("products:delete"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    response: Response,
 ) -> Response:
+    """DEPRECATED — proxy to DELETE /assets/{asset_id}."""
+    response.headers["Deprecation"] = "true"
     try:
-        await service.delete_image(sku, image_id, user)
+        await asset_service.delete_hard(image_id, sku)
+    except AssetNotFoundError:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==========================================================================
+# Assets (Wave 1) — new endpoints
+# ==========================================================================
+@router.get(
+    "/{sku}/assets",
+    response_model=list[ProductAssetResponse],
+    summary="Listar assets de un producto (filtro opcional por kind)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def list_assets(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    kind: Annotated[AssetKind | None, Query()] = None,
+    include_archived: Annotated[bool, Query()] = False,
+    _user: User = Depends(require_permissions("products:read")),
+    service: ProductService = Depends(get_product_service),
+    asset_service: AssetService = Depends(get_asset_service),
+) -> list[ProductAssetResponse]:
+    try:
+        await service.get_product_by_id(sku)
     except ProductDomainError as e:
         _raise_domain(e)
+    assets = await asset_service.list_for_product(
+        sku, kind=kind.value if kind else None, include_archived=include_archived
+    )
+    return [ProductAssetResponse.model_validate(a) for a in assets]
+
+
+@router.post(
+    "/{sku}/assets/upload-url",
+    summary="Solicitar signed URL para upload directo a Supabase Storage (multi-kind)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def get_asset_upload_url(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: ProductAssetUploadRequest,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    product_service: Annotated[ProductService, Depends(get_product_service)],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+) -> dict[str, Any]:
+    """Devuelve dict con storage_path, upload_url, token, headers, expires_in, bucket, kind."""
+    try:
+        await product_service.get_product_by_id(sku)
+    except ProductDomainError as e:
+        _raise_domain(e)
+    try:
+        return asset_service.generate_signed_upload_url(
+            sku=sku,
+            kind=request.kind.value,
+            filename=request.filename,
+            mime_type=request.mime_type,
+        )
+    except AssetValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post(
+    "/{sku}/assets/{asset_id}/confirm",
+    response_model=ProductAssetResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Confirmar upload exitoso — persiste row en product_assets",
+    responses={404: {"model": ProblemDetails}},
+)
+async def confirm_asset_upload(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    asset_id: UUID,
+    payload: ProductAssetConfirmRequest,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    product_service: Annotated[ProductService, Depends(get_product_service)],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+) -> ProductAssetResponse:
+    """Frontend flow:
+      1. POST /upload-url → { storage_path, upload_url, token }
+      2. supabase.storage.from(bucket).uploadToSignedUrl(path, token, file)
+      3. POST /assets/{uuid}/confirm → row product_assets created + thumbnails queued.
+    """
+    try:
+        await product_service.get_product_by_id(sku)
+    except ProductDomainError as e:
+        _raise_domain(e)
+    try:
+        asset = await asset_service.confirm_upload(
+            sku,
+            storage_path=payload.storage_path,
+            kind=payload.kind.value,
+            mime_type=payload.mime_type,
+            bytes_size=payload.bytes_size,
+            width=payload.width,
+            height=payload.height,
+            alt_text=payload.alt_text,
+            locale=payload.locale,
+            caption=payload.caption,
+            is_primary=payload.is_primary,
+            position=payload.position,
+            actor_id=user.id,
+        )
+    except AssetValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # Dispatch thumbnails for photo-like kinds.
+    if asset.kind in ("photo", "banner", "mirror_url"):
+        try:
+            from app.workers.thumbnails import generate_thumbnails
+
+            generate_thumbnails.delay(sku, asset.storage_path)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return ProductAssetResponse.model_validate(asset)
+
+
+@router.patch(
+    "/{sku}/assets/{asset_id}/primary",
+    response_model=ProductAssetResponse,
+    summary="Marcar asset como primario dentro de su kind",
+    responses={404: {"model": ProblemDetails}},
+)
+async def set_primary_asset(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    asset_id: UUID,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    request: Request,
+) -> ProductAssetResponse:
+    try:
+        asset = await asset_service.set_primary(asset_id, sku)
+    except AssetNotFoundError:
+        return _problem(request, 404, "asset_not_found", "Asset not found")
+    return ProductAssetResponse.model_validate(asset)
+
+
+@router.patch(
+    "/{sku}/assets/{asset_id}/archive",
+    response_model=ProductAssetResponse,
+    summary="Archivar asset (soft-delete)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def archive_asset(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    asset_id: UUID,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    request: Request,
+) -> ProductAssetResponse:
+    try:
+        asset = await asset_service.archive(asset_id, sku, actor_id=user.id)
+    except AssetNotFoundError:
+        return _problem(request, 404, "asset_not_found", "Asset not found")
+    return ProductAssetResponse.model_validate(asset)
+
+
+@router.patch(
+    "/{sku}/assets/{asset_id}/restore",
+    response_model=ProductAssetResponse,
+    summary="Restaurar asset archivado",
+    responses={404: {"model": ProblemDetails}},
+)
+async def restore_asset(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    asset_id: UUID,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    request: Request,
+) -> ProductAssetResponse:
+    try:
+        asset = await asset_service.restore(asset_id, sku)
+    except AssetNotFoundError:
+        return _problem(request, 404, "asset_not_found", "Asset not found")
+    return ProductAssetResponse.model_validate(asset)
+
+
+@router.delete(
+    "/{sku}/assets/{asset_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    response_class=Response,
+    summary="Eliminar asset permanentemente",
+    responses={404: {"model": ProblemDetails}},
+)
+async def delete_asset(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    asset_id: UUID,
+    user: Annotated[User, Depends(require_permissions("products:delete"))],
+    asset_service: Annotated[AssetService, Depends(get_asset_service)],
+) -> Response:
+    """Hard delete. Requires `assets:certify` for certificate_pdf kind, else `products:delete`."""
+    try:
+        await asset_service.delete_hard(asset_id, sku)
+    except AssetNotFoundError:
+        raise HTTPException(status_code=404, detail="Asset not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
