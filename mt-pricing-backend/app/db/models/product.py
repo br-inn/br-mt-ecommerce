@@ -134,6 +134,24 @@ class Product(Base):
         back_populates="product", cascade="all, delete-orphan"
     )
 
+    # Wave 7 — compatibilidades M:N (recambios/accesorios).
+    # outgoing: enlaces donde este producto es el "origen".
+    # incoming: enlaces donde este producto es el "destino" (viewonly — no mutamos desde aquí).
+    compatibilities_outgoing: Mapped[list["ProductCompatibility"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "ProductCompatibility",
+        foreign_keys="ProductCompatibility.product_sku",
+        back_populates="product",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    compatibilities_incoming: Mapped[list["ProductCompatibility"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "ProductCompatibility",
+        foreign_keys="ProductCompatibility.compatible_with_sku",
+        back_populates="compatible_with",
+        lazy="selectin",
+        viewonly=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
             f"data_quality IN {values_csv(DataQuality)}",
