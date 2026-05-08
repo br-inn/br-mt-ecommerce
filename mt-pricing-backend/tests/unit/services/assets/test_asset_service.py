@@ -127,7 +127,13 @@ def _svc(assets: list[_FakeAsset] | None = None) -> tuple[AssetService, Any]:
 # ---------------------------------------------------------------------------
 # Tests: generate_signed_upload_url
 # ---------------------------------------------------------------------------
-def test_signed_url_returns_fake_in_placeholder_env() -> None:
+def test_signed_url_returns_fake_in_placeholder_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Force placeholder mode: clear Supabase settings so AssetService returns
+    # the fake-storage.local stub instead of calling the real Storage API.
+    from app.core import config as _config
+
+    monkeypatch.setattr(_config.settings, "SUPABASE_URL", "", raising=False)
+    monkeypatch.setattr(_config.settings, "SUPABASE_SERVICE_ROLE_KEY", None, raising=False)
     svc, _ = _svc()
     result = svc.generate_signed_upload_url(
         sku="MT-V-038",
