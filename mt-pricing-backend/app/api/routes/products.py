@@ -69,6 +69,7 @@ from app.services.compatibility import (
 )
 from app.services.components import ComponentsDomainError, ComponentsService
 from app.services.products import ImageService, ProductService
+from app.services.products.parent_resolver import ParentResolver, ParentResolverError
 from app.services.products.product_service import ProductDomainError
 from app.services.specs.specs_registry import SpecsRegistry
 from app.services.specs.specs_validator import SpecsValidationError, SpecsValidator
@@ -111,6 +112,12 @@ def get_components_service(
     return ComponentsService(session)
 
 
+def get_parent_resolver(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ParentResolver:
+    return ParentResolver(session)
+
+
 # --------------------------------------------------------------------------
 # Error helper — traduce ProductDomainError → ProblemDetails / HTTPException.
 # --------------------------------------------------------------------------
@@ -143,6 +150,13 @@ def _raise_compat(err: CompatibilityDomainError) -> None:
 
 
 def _raise_components(err: ComponentsDomainError) -> None:
+    raise HTTPException(
+        status_code=err.status_code,
+        detail={"code": err.code, "title": err.message},
+    )
+
+
+def _raise_parent(err: ParentResolverError) -> None:
     raise HTTPException(
         status_code=err.status_code,
         detail={"code": err.code, "title": err.message},
@@ -1351,3 +1365,63 @@ async def replace_connections(
     except ComponentsDomainError as e:
         _raise_components(e)
     return [ProductConnectionResponse.model_validate(r) for r in rows]
+
+
+# ==========================================================================
+# Wave 5 — Parent / variant resolution (inheritance with fallback)
+# ==========================================================================
+@router.get(
+    "/{sku}/resolved",
+    summary="Devuelve specs+assets+translations resueltos con fallback al padre",
+)
+async def get_resolved_view(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _user: User = Depends(require_permissions("products:read")),
+    resolver: ParentResolver = Depends(get_parent_resolver),
+) -> dict[str, Any]:
+    """Para variantes, devuelve campos heredados del padre cuando faltan localmente.
+
+    Útil para vistas de detalle: el frontend pinta una badge "heredado de PARENT_SKU"
+    cuando ``inherited_from`` no es null.
+    """
+    specs, specs_inherited = await resolver.resolve_specs(sku)
+    assets, assets_inherited = await resolver.resolve_assets(sku)
+    translations, tr_inherited = await resolver.resolve_translations(sku)
+    return {
+        "sku": sku,
+        "specs": specs,
+        "specs_inherited_from": specs_inherited,
+        "assets_count": len(list(assets)),
+        "assets_inherited_from": assets_inherited,
+        "translations_count": len(list(translations)),
+        "translations_inherited_from": tr_inherited,
+    }
+
+
+@router.post(
+    "/{sku}/parent",
+    summary="Asignar/cambiar el parent_sku de una variante (valida ciclos y profundidad)",
+)
+async def set_parent(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    parent_sku: Annotated[str | None, Query(max_length=64)] = None,
+    user: User = Depends(require_permissions("products:write")),
+    service: ProductService = Depends(get_product_service),
+    resolver: ParentResolver = Depends(get_parent_resolver),
+) -> dict[str, Any]:
+    """Asigna ``parent_sku`` a un producto. ``null`` lo desasocia.
+
+    Valida ciclo, existencia del padre, y profundidad máxima 1.
+    """
+    try:
+        await resolver.validate_parent_link(sku, parent_sku)
+    except ParentResolverError as e:
+        _raise_parent(e)
+    # Update product.
+    try:
+        await service.update_product(sku, {"parent_sku": parent_sku}, user)
+    except ProductDomainError as e:
+        _raise_domain(e)
+    # Sync flags after persistence.
+    await resolver.recompute_parent_flags(sku)
+    return {"sku": sku, "parent_sku": parent_sku}
