@@ -7,6 +7,7 @@ no los descubre y las migraciones autogenerate los ignoran.
 from __future__ import annotations
 
 from app.db.models.audit import AuditEvent
+from app.db.models.compatibility import ProductCompatibility
 from app.db.models.cdc_event import CdcEvent
 from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
 from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
@@ -88,4 +89,6 @@ __all__ = [
     "Application",
     "ProductCertification",
     "ProductApplication",
+    # Wave 7 — spare parts / accessories compatibility M:N
+    "ProductCompatibility",
 ]

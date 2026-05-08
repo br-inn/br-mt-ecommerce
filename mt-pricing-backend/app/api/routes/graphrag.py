@@ -28,10 +28,8 @@ from app.schemas.graphrag import (
     GraphRagReplayRequest,
     GraphRagReplayResponse,
 )
-from app.services.graphrag.adapters.neo4j_stub import (
-    Neo4jStubGraphStore,
-    get_default_graph_store,
-)
+from app.services.graphrag.adapters import get_default_graph_store
+from app.services.graphrag.adapters.neo4j_stub import Neo4jStubGraphStore
 from app.services.graphrag.cdc_dispatcher import CdcDispatcher
 from app.services.graphrag.ports import GraphStorePort
 
@@ -42,9 +40,11 @@ router = APIRouter(prefix="/graphrag", tags=["graphrag"])
 # DI
 # ---------------------------------------------------------------------------
 def get_graph_store() -> GraphStorePort:
-    """Devuelve la instancia singleton (in-memory stub Fase 1).
+    """Devuelve la instancia singleton activa (stub o Neo4j real según
+    ``settings.GRAPHRAG_BACKEND``).
 
-    Tests overridean esta dependency con una `Neo4jStubGraphStore()` fresca.
+    Tests overridean esta dependency con una instancia fresca via
+    ``app.dependency_overrides``.
     """
     return get_default_graph_store()
 

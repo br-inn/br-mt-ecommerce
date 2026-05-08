@@ -6,8 +6,8 @@ Patrón:
   o desde ``apply()`` sincrónico en tests.
 - Construye un `AsyncSession` propio (las tasks Celery no comparten la
   request scope de FastAPI) y delega en `CdcDispatcher.process_batch`.
-- El graph store usado es el singleton in-memory (Fase 1). En Fase 2+
-  se inyecta el adapter Neo4j real via factory por settings.
+- El graph store se resuelve via :func:`get_default_graph_store` del
+  factory — stub in-memory o Neo4j real según ``GRAPHRAG_BACKEND``.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Any
 
 import structlog
 
-from app.services.graphrag.adapters.neo4j_stub import get_default_graph_store
+from app.services.graphrag.adapters import get_default_graph_store
 from app.services.graphrag.cdc_dispatcher import CdcDispatcher
 from app.workers.worker import celery_app
 

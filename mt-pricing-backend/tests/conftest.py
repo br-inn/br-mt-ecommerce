@@ -97,6 +97,66 @@ def redis_container() -> Iterator[str]:
         yield url
 
 
+@pytest.fixture(scope="session")
+def neo4j_container() -> Iterator[str]:
+    """Levanta un Neo4j efímero (5.x community) via testcontainers.
+
+    Bypass para entornos sin Docker-in-Docker: si ``NEO4J_TEST_URI`` está
+    definida, reusamos esa instancia (típicamente el servicio `neo4j` del
+    docker-compose dev). Útil para correr el suite desde dentro del
+    container backend sin montar `/var/run/docker.sock`.
+
+    Devuelve la Bolt URI y resetea el singleton del driver al terminar.
+    """
+    external = os.environ.get("NEO4J_TEST_URI")
+    user = os.environ.get("NEO4J_TEST_USER", "neo4j")
+    password = os.environ.get("NEO4J_TEST_PASSWORD", "devpassword")
+
+    if external:
+        os.environ["NEO4J_URI"] = external
+        os.environ["NEO4J_USER"] = user
+        os.environ["NEO4J_PASSWORD"] = password
+        os.environ["NEO4J_DATABASE"] = "neo4j"
+        os.environ["GRAPHRAG_BACKEND"] = "neo4j"
+
+        from app.core import config as _cfg
+
+        _cfg.get_settings.cache_clear()
+        _cfg.settings = _cfg.get_settings()
+
+        try:
+            yield external
+        finally:
+            from app.services.graphrag.adapters import factory as _factory
+
+            _factory.shutdown()
+        return
+
+    from testcontainers.neo4j import Neo4jContainer
+
+    with Neo4jContainer("neo4j:5.20-community").with_env(
+        "NEO4J_AUTH", f"{user}/{password}"
+    ) as neo:
+        bolt_uri = neo.get_connection_url()
+        os.environ["NEO4J_URI"] = bolt_uri
+        os.environ["NEO4J_USER"] = user
+        os.environ["NEO4J_PASSWORD"] = password
+        os.environ["NEO4J_DATABASE"] = "neo4j"
+        os.environ["GRAPHRAG_BACKEND"] = "neo4j"
+
+        from app.core import config as _cfg
+
+        _cfg.get_settings.cache_clear()
+        _cfg.settings = _cfg.get_settings()
+
+        try:
+            yield bolt_uri
+        finally:
+            from app.services.graphrag.adapters import factory as _factory
+
+            _factory.shutdown()
+
+
 # =============================================================================
 # Engine / Session (integration)
 # =============================================================================

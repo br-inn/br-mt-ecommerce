@@ -20,6 +20,7 @@ from app.core.middleware import RequestContextMiddleware
 from app.core.redis import close_redis
 from app.core.sentry import configure_sentry
 from app.db import dispose_engine
+from app.services.graphrag.adapters import shutdown as graphrag_shutdown
 
 
 @asynccontextmanager
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
     await dispose_engine()
     await close_redis()
+    graphrag_shutdown()
 
 
 app = FastAPI(

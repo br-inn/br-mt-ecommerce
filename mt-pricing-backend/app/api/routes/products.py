@@ -40,6 +40,13 @@ from app.schemas.assets import (
     ProductAssetResponse,
     ProductAssetUploadRequest,
 )
+from app.schemas.compatibility import (
+    CompatibilityKind,
+    CompatibleProductSummary,
+    ProductCompatibilityCreate,
+    ProductCompatibilityReplaceItem,
+    ProductCompatibilityResponse,
+)
 from app.schemas.products import (
     ProductCreate,
     ProductDataQualityPatch,
@@ -56,6 +63,10 @@ from app.schemas.products import (
 )
 from app.services.assets import AssetService
 from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
+from app.services.compatibility import (
+    CompatibilityDomainError,
+    CompatibilityService,
+)
 from app.services.products import ImageService, ProductService
 from app.services.products.product_service import ProductDomainError
 
@@ -81,6 +92,12 @@ def get_asset_service(
     return AssetService(session)
 
 
+def get_compatibility_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CompatibilityService:
+    return CompatibilityService(session)
+
+
 # --------------------------------------------------------------------------
 # Error helper — traduce ProductDomainError → ProblemDetails / HTTPException.
 # --------------------------------------------------------------------------
@@ -99,6 +116,13 @@ def _problem(
 
 
 def _raise_domain(err: ProductDomainError) -> None:
+    raise HTTPException(
+        status_code=err.status_code,
+        detail={"code": err.code, "title": err.message},
+    )
+
+
+def _raise_compat(err: CompatibilityDomainError) -> None:
     raise HTTPException(
         status_code=err.status_code,
         detail={"code": err.code, "title": err.message},
@@ -823,3 +847,210 @@ async def delete_asset(
     except AssetNotFoundError:
         raise HTTPException(status_code=404, detail="Asset not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==========================================================================
+# Compatibility — Wave 7 (recambios / accesorios M:N)
+# ==========================================================================
+
+def _build_compat_response(row: Any) -> ProductCompatibilityResponse:
+    """Construye el schema de respuesta desnormalizando compatible_product."""
+    compatible_product: CompatibleProductSummary | None = None
+    if row.compatible_with is not None:
+        prod = row.compatible_with
+        # primary_image_url: primer image con is_primary=True, o None.
+        primary_img = next(
+            (img.storage_path for img in getattr(prod, "images", []) if img.is_primary),
+            None,
+        )
+        compatible_product = CompatibleProductSummary(
+            sku=prod.sku,
+            name_en=prod.name_en,
+            family=prod.family,
+            primary_image_url=primary_img,
+        )
+    data = {
+        "id": row.id,
+        "product_sku": row.product_sku,
+        "compatible_with_sku": row.compatible_with_sku,
+        "kind": row.kind,
+        "notes": row.notes,
+        "position": row.position,
+        "created_at": row.created_at,
+        "created_by": row.created_by,
+        "compatible_product": compatible_product,
+    }
+    return ProductCompatibilityResponse.model_validate(data)
+
+
+@router.get(
+    "/{sku}/compatibility",
+    response_model=list[ProductCompatibilityResponse],
+    summary="Listar compatibilidades outgoing de un producto (recambios, accesorios, etc.)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def list_compatibility(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    kind: Annotated[CompatibilityKind | None, Query()] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    service: CompatibilityService = Depends(get_compatibility_service),
+) -> list[ProductCompatibilityResponse]:
+    """Devuelve los enlaces donde `sku` es el producto origen (outgoing).
+
+    Filtra opcionalmente por `kind` (spare_part, accessory, replaces, replaced_by,
+    compatible_with).
+    """
+    try:
+        rows = await service.list_for_product(sku, kind=kind.value if kind else None)
+    except CompatibilityDomainError as e:
+        _raise_compat(e)
+    return [_build_compat_response(r) for r in rows]
+
+
+@router.get(
+    "/{sku}/compatibility/inverse",
+    response_model=list[ProductCompatibilityResponse],
+    summary="Listar compatibilidades incoming (productos que apuntan a este SKU como destino)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def list_compatibility_inverse(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    kind: Annotated[CompatibilityKind | None, Query()] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    service: CompatibilityService = Depends(get_compatibility_service),
+) -> list[ProductCompatibilityResponse]:
+    """Devuelve los enlaces donde `sku` es el producto destino (incoming).
+
+    Útil para «¿qué productos tienen este SKU como recambio/accesorio?»
+    La respuesta incluye ``compatible_product`` = None (el origen está en ``product``).
+    """
+    try:
+        rows = await service.list_inverse(sku, kind=kind.value if kind else None)
+    except CompatibilityDomainError as e:
+        _raise_compat(e)
+    # Para inverse, product_sku es el origen; no desnormalizamos compatible_with
+    # (es el SKU consultado). Devolvemos los datos tal cual.
+    return [
+        ProductCompatibilityResponse(
+            id=r.id,
+            product_sku=r.product_sku,
+            compatible_with_sku=r.compatible_with_sku,
+            kind=r.kind,
+            notes=r.notes,
+            position=r.position,
+            created_at=r.created_at,
+            created_by=r.created_by,
+            compatible_product=None,
+        )
+        for r in rows
+    ]
+
+
+@router.post(
+    "/{sku}/compatibility",
+    response_model=ProductCompatibilityResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Añadir enlace de compatibilidad (spare_part, accessory, replaces, etc.)",
+    responses={
+        404: {"model": ProblemDetails, "description": "SKU no encontrado"},
+        409: {"model": ProblemDetails, "description": "Enlace duplicado"},
+        422: {"model": ProblemDetails, "description": "Self-loop o validación"},
+    },
+)
+async def add_compatibility(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: ProductCompatibilityCreate,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    service: Annotated[CompatibilityService, Depends(get_compatibility_service)],
+) -> ProductCompatibilityResponse:
+    """Crea un enlace ``sku`` → ``kind`` → ``compatible_with_sku``.
+
+    Para ``replaces``/``replaced_by`` también crea automáticamente el inverso.
+    """
+    try:
+        link = await service.add_link(
+            sku,
+            data.compatible_with_sku,
+            data.kind.value,
+            notes=data.notes,
+            position=data.position,
+            actor_id=user.id,
+            actor_email=getattr(user, "email", None),
+        )
+    except CompatibilityDomainError as e:
+        _raise_compat(e)
+    return _build_compat_response(link)
+
+
+@router.delete(
+    "/{sku}/compatibility/{compatible_with_sku}/{kind}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    response_class=Response,
+    summary="Eliminar enlace de compatibilidad",
+    responses={404: {"model": ProblemDetails}},
+)
+async def remove_compatibility(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    compatible_with_sku: Annotated[str, Path(min_length=1, max_length=64)],
+    kind: CompatibilityKind,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    service: Annotated[CompatibilityService, Depends(get_compatibility_service)],
+) -> Response:
+    """Elimina el enlace ``sku`` → ``kind`` → ``compatible_with_sku``.
+
+    Para ``replaces``/``replaced_by`` también elimina el inverso.
+    """
+    try:
+        await service.remove_link(
+            sku,
+            compatible_with_sku,
+            kind.value,
+            actor_id=user.id,
+            actor_email=getattr(user, "email", None),
+        )
+    except CompatibilityDomainError as e:
+        _raise_compat(e)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{sku}/compatibility",
+    response_model=list[ProductCompatibilityResponse],
+    summary="Reemplazar todos los enlaces de compatibilidad de un producto (bulk replace)",
+    responses={
+        404: {"model": ProblemDetails},
+        409: {"model": ProblemDetails, "description": "Conflicto de integridad"},
+        422: {"model": ProblemDetails, "description": "Self-loop o validación"},
+    },
+)
+async def replace_compatibility(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: list[ProductCompatibilityReplaceItem],
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    service: Annotated[CompatibilityService, Depends(get_compatibility_service)],
+) -> list[ProductCompatibilityResponse]:
+    """Reemplaza TODOS los enlaces outgoing de ``sku`` con la lista del body.
+
+    Body: array de ``{compatible_with_sku, kind, notes?, position?}``.
+    Array vacío ``[]`` elimina todas las compatibilidades.
+    """
+    links = [
+        {
+            "compatible_with_sku": item.compatible_with_sku,
+            "kind": item.kind.value,
+            "notes": item.notes,
+            "position": item.position,
+        }
+        for item in data
+    ]
+    try:
+        created = await service.replace_all_for_product(
+            sku,
+            links,
+            actor_id=user.id,
+            actor_email=getattr(user, "email", None),
+        )
+    except CompatibilityDomainError as e:
+        _raise_compat(e)
+    return [_build_compat_response(r) for r in created]

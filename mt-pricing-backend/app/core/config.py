@@ -110,6 +110,17 @@ class Settings(BaseSettings):
     FEATURE_COMPARATOR_ENABLED: bool = False
     FEATURE_OCR_ENABLED: bool = False
 
+    # --- GraphRAG (Sprint 6) ---
+    # Backend del graph store. `stub` = Neo4jStubGraphStore in-memory (default
+    # Fase 1). `neo4j` = driver real contra Neo4j 5 (Docker local o managed).
+    GRAPHRAG_BACKEND: Literal["stub", "neo4j"] = "stub"
+    NEO4J_URI: str = "bolt://neo4j:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: SecretStr = SecretStr("devpassword")
+    NEO4J_DATABASE: str = "neo4j"
+    NEO4J_CONNECTION_TIMEOUT_S: float = 10.0
+    NEO4J_MAX_CONNECTION_POOL_SIZE: int = 50
+
     # --- SSRF / image probe (ADR-055, R-022, R-044) ---
     # Permitir HTTP plano sólo en dev (e.g. fixtures locales con httpbin).
     ALLOW_HTTP_PROBE: bool = False

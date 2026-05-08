@@ -30,6 +30,22 @@ COPY app ./app
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 
+# --- Stage 1b: dev-builder (builder + dev deps) ------------------------------
+# Sólo se usa para la imagen dev — añade pytest + testcontainers + ruff/mypy
+# encima del builder base. NO se incluye en runtime.
+FROM builder AS dev-builder
+RUN uv pip install --system --no-cache \
+    pytest>=8 \
+    pytest-asyncio>=0.23 \
+    pytest-cov>=4 \
+    "testcontainers[postgresql,redis,neo4j]>=4" \
+    respx>=0.20 \
+    ruff>=0.3 \
+    mypy>=1.9 \
+    types-PyYAML \
+    schemathesis>=3.27 \
+    pip-audit
+
 # --- Stage 2: dev (slim Python, hot-reload friendly) -------------------------
 # Para docker-compose.dev.yml. Mantiene shell + tools + libpython compartido.
 FROM python:3.11-slim AS dev
@@ -46,11 +62,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-COPY --from=builder /build/app /app/app
-COPY --from=builder /build/alembic /app/alembic
-COPY --from=builder /build/alembic.ini /app/alembic.ini
+COPY --from=dev-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=dev-builder /usr/local/bin /usr/local/bin
+COPY --from=dev-builder /build/app /app/app
+COPY --from=dev-builder /build/alembic /app/alembic
+COPY --from=dev-builder /build/alembic.ini /app/alembic.ini
 
 EXPOSE 8000
 
