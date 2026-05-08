@@ -30,6 +30,12 @@ from app.db.models.pricing import (
 from app.db.models.product import Product, ProductImage, ProductTranslation
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
+from app.db.models.vocabularies import (
+    Application,
+    Certification,
+    ProductApplication,
+    ProductCertification,
+)
 
 __all__ = [
     # users / auth
@@ -77,4 +83,9 @@ __all__ = [
     "CalibratorVersion",
     # notifications inbox (Sprint 6 — US-1B-02-08)
     "Notification",
+    # Wave 4 — vocabularios M:N
+    "Certification",
+    "Application",
+    "ProductCertification",
+    "ProductApplication",
 ]

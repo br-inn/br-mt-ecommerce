@@ -144,6 +144,20 @@ class Product(Base):
         """Backward-compat: returns only photo-kind assets."""
         return [a for a in self.assets if a.kind == "photo"]
 
+    # Wave 4 — vocabularios M:N (selectin para incluir en ProductDetail)
+    product_certifications: Mapped[list["ProductCertification"]] = relationship(  # type: ignore[name-defined]
+        "ProductCertification",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    product_applications: Mapped[list["ProductApplication"]] = relationship(  # type: ignore[name-defined]
+        "ProductApplication",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     __table_args__ = (
         CheckConstraint(
             f"data_quality IN {values_csv(DataQuality)}",
