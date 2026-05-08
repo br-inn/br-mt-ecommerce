@@ -27,6 +27,18 @@ from pydantic import (
     model_validator,
 )
 
+# Wave 1: import asset schemas — must be before ProductDetail definition.
+from app.schemas.assets import (
+    ProductAssetConfirmRequest,
+    ProductAssetResponse,
+    ProductAssetUploadRequest,
+)
+
+# Backward-compat aliases — deprecated, will be removed in Wave 2.
+ProductImageResponse = ProductAssetResponse
+ProductImageUploadRequest = ProductAssetUploadRequest
+ProductImageConfirmRequest = ProductAssetConfirmRequest
+
 # ---------------------------------------------------------------------------
 # Constants — reglas de validación
 # ---------------------------------------------------------------------------
@@ -283,10 +295,10 @@ class ProductResponse(BaseModel):
 
 
 class ProductDetail(ProductResponse):
-    """Response extendida — incluye full translations + images."""
+    """Response extendida — incluye full translations + assets (photos via images)."""
 
     translations: list[ProductTranslationResponse] = Field(default_factory=list)
-    images: list[ProductImageResponse] = Field(default_factory=list)
+    images: list[ProductAssetResponse] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -335,99 +347,6 @@ class ProductTranslationResponse(BaseModel):
     reviewed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-
-
-# ---------------------------------------------------------------------------
-# Images
-# ---------------------------------------------------------------------------
-class ProductImageUploadRequest(BaseModel):
-    """Request para `/images/upload-url` — devuelve signed URL Supabase Storage."""
-
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-    role: str = Field(min_length=1, max_length=32, default="main")
-    filename: str = Field(min_length=1, max_length=256)
-    content_type: str = Field(default="image/jpeg")
-    alt_text: str | None = Field(default=None, max_length=256)
-
-    @field_validator("content_type")
-    @classmethod
-    def _validate_mime(cls, v: str) -> str:
-        v = v.lower()
-        if v not in ALLOWED_IMAGE_MIME:
-            raise ValueError(
-                f"content_type inválido: {v}; permitidos: {sorted(ALLOWED_IMAGE_MIME)}"
-            )
-        return v
-
-    @field_validator("filename")
-    @classmethod
-    def _validate_filename(cls, v: str) -> str:
-        # No permitimos paths ni caracteres raros — el storage_path lo construimos
-        # nosotros a partir del SKU + uuid.
-        if "/" in v or "\\" in v or ".." in v:
-            raise ValueError("filename no puede contener separadores de ruta")
-        if not re.match(r"^[A-Za-z0-9._\-]{1,256}$", v):
-            raise ValueError("filename con caracteres inválidos")
-        return v
-
-
-class ProductImageConfirmRequest(BaseModel):
-    """Request para `/images/confirm` — POST tras upload directo a Storage.
-
-    El frontend llama a este endpoint después de subir el archivo via signed
-    URL para que el backend persista la row en `product_images` y dispare el
-    pipeline (thumbnails). Bytes y dimensiones son opcionales — el worker los
-    re-descubre del archivo si no llegan.
-    """
-
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-    storage_path: str = Field(min_length=1, max_length=512)
-    role: str = Field(min_length=1, max_length=32, default="main")
-    mime_type: str = Field(default="image/jpeg")
-    bytes_size: int | None = Field(default=None, ge=0, le=50 * 1024 * 1024)
-    width: int | None = Field(default=None, ge=1, le=20000)
-    height: int | None = Field(default=None, ge=1, le=20000)
-    alt_text: str | None = Field(default=None, max_length=256)
-    is_primary: bool = Field(default=False)
-
-    @field_validator("mime_type")
-    @classmethod
-    def _validate_mime(cls, v: str) -> str:
-        v = v.lower()
-        if v not in ALLOWED_IMAGE_MIME:
-            raise ValueError(
-                f"mime_type inválido: {v}; permitidos: {sorted(ALLOWED_IMAGE_MIME)}"
-            )
-        return v
-
-    @field_validator("storage_path")
-    @classmethod
-    def _validate_storage_path(cls, v: str) -> str:
-        # Defensa-en-profundidad: el backend construyó este path en /upload-url,
-        # no aceptamos paths absolutos ni traversal.
-        if v.startswith("/") or ".." in v:
-            raise ValueError("storage_path inválido")
-        return v
-
-
-class ProductImageResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
-
-    id: UUID
-    sku: str
-    role: str
-    storage_path: str
-    original_url: str | None = None
-    is_primary: bool
-    alt_text: str | None = None
-    width: int | None = None
-    height: int | None = None
-    bytes_size: int | None = None
-    mime_type: str | None = None
-    status: str
-    created_at: datetime
 
 
 # ---------------------------------------------------------------------------

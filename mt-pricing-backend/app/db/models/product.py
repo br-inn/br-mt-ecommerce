@@ -1,10 +1,11 @@
-"""Product + ProductTranslation + ProductImage.
+"""Product + ProductTranslation + ProductAsset (formerly ProductImage).
 
 Notas:
 - PK del producto es `sku` TEXT (alineado con architecture §8.4); `internal_id`
   UUID adicional para joins sintéticos (FK desde tablas que prefieran UUID).
 - `embedding` se modela placeholder ARRAY(Float) si pgvector no está disponible.
 - `data_quality` es `String(16) + CHECK` (ver `enums.py` rationale).
+- Wave 1: ProductImage → ProductAsset; ProductImage mantenida como alias deprecado.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.enums import DataQuality, ImageStatus, TranslationStatus, values_csv
+from app.db.enums import DataQuality, TranslationStatus, values_csv
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG, HAS_PGVECTOR
 
@@ -130,9 +131,18 @@ class Product(Base):
     translations: Mapped[list["ProductTranslation"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
-    images: Mapped[list["ProductImage"]] = relationship(
-        back_populates="product", cascade="all, delete-orphan"
+    # `assets` — all asset kinds; `images` — backward compat alias (kind='photo' only)
+    assets: Mapped[list["ProductAsset"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        foreign_keys="[ProductAsset.sku]",
+        primaryjoin="Product.sku == ProductAsset.sku",
     )
+
+    @property
+    def images(self) -> list[ProductAsset]:
+        """Backward-compat: returns only photo-kind assets."""
+        return [a for a in self.assets if a.kind == "photo"]
 
     __table_args__ = (
         CheckConstraint(
@@ -204,31 +214,68 @@ class ProductTranslation(Base):
     )
 
 
-class ProductImage(UuidPkMixin, Base):
-    __tablename__ = "product_images"
+class ProductAsset(UuidPkMixin, Base):
+    """Unified asset table (Wave 1) — covers photos, PDFs, drawings, videos, etc.
+
+    Replaces ``product_images`` (table renamed in migration 030).
+    ``ProductImage`` is kept as a deprecated alias below.
+    """
+
+    __tablename__ = "product_assets"
 
     sku: Mapped[str] = mapped_column(
         Text, ForeignKey("products.sku", ondelete="CASCADE"), nullable=False
     )
-    role: Mapped[str] = mapped_column(Text, nullable=False)
-    storage_path: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    # kind — one of the 10 asset types.
+    kind: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'photo'")
+    )
+    # bucket — Supabase Storage bucket name.
+    bucket: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'product-images'")
+    )
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     original_url: Mapped[str | None] = mapped_column(Text)
     is_primary: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # position — sort order within (sku, kind).
+    position: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
     alt_text: Mapped[str | None] = mapped_column(Text)
+    locale: Mapped[str | None] = mapped_column(Text)
+    caption: Mapped[str | None] = mapped_column(Text)
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
     bytes_size: Mapped[int | None] = mapped_column(BigInteger)
     mime_type: Mapped[str | None] = mapped_column(Text)
     hash_sha256: Mapped[str | None] = mapped_column(Text)
+    # variants — jsonb storing thumbnail/avif/blurhash URLs keyed by size.
+    variants: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    # asset_meta — jsonb for kind-specific metadata (dimensions, pages, etc.).
+    # Note: Python attr uses `asset_meta` because `metadata` is reserved by SA.
+    # The DB column is named `metadata` via mapped_column key param.
+    asset_meta: Mapped[dict] = mapped_column(
+        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    revision: Mapped[str | None] = mapped_column(Text)
+    # supersedes_id — self-referential FK for asset versioning.
+    supersedes_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("product_assets.id", ondelete="SET NULL"), nullable=True
+    )
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'active'")
+        String(20), nullable=False, server_default=text("'active'")
     )
-    # Estado del pipeline de mirror (US-1A-02-07 — worker probe_mirror).
-    image_status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'pending'")
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("users.id", ondelete="SET NULL")
     )
+    # role — kept nullable for backward compat (Wave 2 drops column).
+    role: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -236,16 +283,42 @@ class ProductImage(UuidPkMixin, Base):
         UUID_PG, ForeignKey("users.id", ondelete="SET NULL")
     )
 
-    product: Mapped[Product] = relationship(back_populates="images")
+    # Relationships.
+    product: Mapped[Product] = relationship(
+        back_populates="assets",
+        foreign_keys=[sku],
+        primaryjoin="ProductAsset.sku == Product.sku",
+    )
+    # Self-referential: which asset this one supersedes.
+    parent: Mapped[ProductAsset | None] = relationship(
+        "ProductAsset",
+        remote_side="ProductAsset.id",
+        foreign_keys=[supersedes_id],
+    )
 
     __table_args__ = (
         CheckConstraint(
-            "status IN ('active','archived','broken')", name="ck_images_status"
+            "status IN ('active','archived','broken','pending_upload','processing')",
+            name="ck_assets_status",
         ),
         CheckConstraint(
-            f"image_status IN {values_csv(ImageStatus)}",
-            name="ck_product_images_image_status",
+            "kind IN ("
+            "'photo','banner','datasheet_pdf','exploded_3d',"
+            "'section_drawing','dimension_drawing','certificate_pdf',"
+            "'video_link','external_url','mirror_url'"
+            ")",
+            name="ck_assets_kind",
         ),
-        Index("idx_images_sku_role", "sku", "role"),
-        Index("idx_product_images_hash", "hash_sha256"),
+        # (bucket, storage_path) must be unique.
+        # Note: unique=True on column would conflict with SA's handling when we
+        # use the table-level constraint here; we define it as an Index with unique=True.
+        Index("uq_assets_bucket_path", "bucket", "storage_path", unique=True),
+        Index("idx_product_assets_sku_kind", "sku", "kind", "position"),
+        Index("idx_product_assets_hash", "hash_sha256"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Backward-compat alias — deprecated; use ProductAsset directly.
+# ---------------------------------------------------------------------------
+ProductImage = ProductAsset  # type: ignore[misc]
