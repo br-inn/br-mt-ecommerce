@@ -39,6 +39,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 
 revision: str = "20260508_035"
@@ -48,16 +49,21 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Enum type (PostgreSQL-native).
+    # Enum type (PostgreSQL-native). Idempotent: SQLAlchemy's generic ``sa.Enum``
+    # ignores ``create_type=False`` and emits a duplicate CREATE TYPE during
+    # ``create_table`` below — we swallow that with a DO-block guard.
     op.execute(
         """
-        CREATE TYPE compatibility_kind AS ENUM (
-            'spare_part',
-            'accessory',
-            'replaces',
-            'replaced_by',
-            'compatible_with'
-        )
+        DO $$ BEGIN
+            CREATE TYPE compatibility_kind AS ENUM (
+                'spare_part',
+                'accessory',
+                'replaces',
+                'replaced_by',
+                'compatible_with'
+            );
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
         """
     )
 
@@ -84,14 +90,14 @@ def upgrade() -> None:
         ),
         sa.Column(
             "kind",
-            sa.Enum(
+            postgresql.ENUM(
                 "spare_part",
                 "accessory",
                 "replaces",
                 "replaced_by",
                 "compatible_with",
                 name="compatibility_kind",
-                create_type=False,  # ya creado arriba
+                create_type=False,  # ya creado por DO block arriba
             ),
             nullable=False,
         ),
