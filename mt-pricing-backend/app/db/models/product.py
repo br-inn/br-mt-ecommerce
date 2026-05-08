@@ -272,6 +272,13 @@ class ProductTranslation(Base):
     name: Mapped[str | None] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
     marketing_copy: Mapped[str | None] = mapped_column(Text)
+    # ---- Wave 8: SEO + editorial -----------------------------------------
+    meta_title: Mapped[str | None] = mapped_column(Text)
+    meta_description: Mapped[str | None] = mapped_column(Text)
+    applications_text: Mapped[str | None] = mapped_column(Text)
+    technical_limits: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    marketing_features: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'pending'")
     )

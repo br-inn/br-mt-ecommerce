@@ -482,6 +482,13 @@ class ProductTranslationBase(BaseModel):
     name: str | None = Field(default=None, max_length=512)
     description: str | None = Field(default=None, max_length=4000)
     marketing_copy: str | None = Field(default=None, max_length=8000)
+    # ---- Wave 8: SEO + editorial -----------------------------------------
+    meta_title: str | None = Field(default=None, max_length=70)
+    meta_description: str | None = Field(default=None, max_length=160)
+    applications_text: str | None = Field(default=None, max_length=4000)
+    technical_limits: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000)
+    marketing_features: str | None = Field(default=None, max_length=8000)
     status: Literal["pending", "draft", "approved"] = "draft"
 
 
@@ -495,6 +502,13 @@ class ProductTranslationPatch(BaseModel):
     name: str | None = Field(default=None, max_length=512)
     description: str | None = Field(default=None, max_length=4000)
     marketing_copy: str | None = Field(default=None, max_length=8000)
+    # ---- Wave 8: SEO + editorial (PATCH) ---------------------------------
+    meta_title: str | None = Field(default=None, max_length=70)
+    meta_description: str | None = Field(default=None, max_length=160)
+    applications_text: str | None = Field(default=None, max_length=4000)
+    technical_limits: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000)
+    marketing_features: str | None = Field(default=None, max_length=8000)
     status: Literal["pending", "draft", "approved"] | None = None
 
     @model_validator(mode="after")
@@ -512,6 +526,13 @@ class ProductTranslationResponse(BaseModel):
     name: str | None = None
     description: str | None = None
     marketing_copy: str | None = None
+    # ---- Wave 8: SEO + editorial -----------------------------------------
+    meta_title: str | None = None
+    meta_description: str | None = None
+    applications_text: str | None = None
+    technical_limits: str | None = None
+    notes: str | None = None
+    marketing_features: str | None = None
     status: str
     translated_by: UUID | None = None
     translated_at: datetime | None = None
