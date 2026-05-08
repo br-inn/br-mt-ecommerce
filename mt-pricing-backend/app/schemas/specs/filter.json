@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtme-api/schemas/specs/v1/filter",
+  "title": "Y-Strainer / Filter Specs",
+  "description": "Technical specifications schema for Y-strainer filters (Filtros). 35 fields from PIM catalog.",
+  "type": "object",
+  "required": ["dn", "dn_real", "size", "materials_body", "materials_screen", "materials_gaskets"],
+  "properties": {
+    "dn": {
+      "type": "string",
+      "title": "DN (Nominal Diameter)",
+      "description": "Diámetro nominal — e.g. DN15, DN25, DN50",
+      "minLength": 1,
+      "maxLength": 16
+    },
+    "dn_real": {
+      "type": "string",
+      "title": "DN Real (Internal Bore Diameter)",
+      "description": "Diámetro agujero interno — actual internal bore diameter",
+      "minLength": 1,
+      "maxLength": 16
+    },
+    "size": {
+      "type": "string",
+      "title": "Size (Flange or Thread)",
+      "description": "Size designation for flange or thread connections — e.g. 1/2\", DN50",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "materials_body": {
+      "type": "string",
+      "title": "Body Material",
+      "description": "Materiales Cuerpo — body material (e.g. brass, cast iron, stainless steel)",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "materials_screen": {
+      "type": "string",
+      "title": "Screen / Strainer Material",
+      "description": "Materiales Tamiz — screen/strainer basket material (e.g. stainless steel 304, 316)",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "materials_gaskets": {
+      "type": "string",
+      "title": "Gasket / Seal Material",
+      "description": "Materiales Juntas — gasket and sealing material (e.g. NBR, EPDM, PTFE)",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "fabrication_method": {
+      "type": "string",
+      "title": "Fabrication Method",
+      "description": "Método de fabricación — e.g. casting, forging",
+      "maxLength": 64
+    },
+    "actuator": {
+      "type": "string",
+      "title": "Actuator Type",
+      "description": "Accionador — if motorized or with indicator",
+      "enum": ["manual", "motorized", "with_indicator"]
+    },
+    "connections": {
+      "type": "array",
+      "title": "Connection Ends",
+      "description": "Conexión 1/2 — typically 2 connection ends (inlet and outlet)",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["position", "type"],
+        "properties": {
+          "position": {
+            "type": "integer",
+            "title": "Connection Position",
+            "description": "1 = inlet, 2 = outlet",
+            "minimum": 1,
+            "maximum": 2
+          },
+          "type": {
+            "type": "string",
+            "title": "Connection Type",
+            "description": "Connection end type",
+            "enum": ["threaded", "flanged", "butt_weld", "socket_weld", "compression", "push_fit"]
+          },
+          "dn": {
+            "type": "string",
+            "title": "Connection DN",
+            "description": "Nominal diameter of this connection end",
+            "maxLength": 16
+          },
+          "threading": {
+            "type": "string",
+            "title": "Thread Standard",
+            "description": "Thread designation — e.g. BSP, NPT, ISO",
+            "maxLength": 32
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dim_L": {
+      "type": "number",
+      "title": "Dimension L (Face-to-Face)",
+      "description": "Dimensión L — face-to-face length in mm (Entre caras)",
+      "exclusiveMinimum": 0
+    },
+    "dim_H": {
+      "type": "number",
+      "title": "Dimension H (Axis to Screen Plug)",
+      "description": "Dimension H — height from pipe axis to screen plug centre in mm (Desde eje a tapon tamiz)",
+      "exclusiveMinimum": 0
+    },
+    "dim_w1": {
+      "type": "number",
+      "title": "Dimension w1 (Screen 1 Hole Width)",
+      "description": "Dimensión w1 — screen 1 hole width in mm (Anchura agujero tamiz 1)",
+      "exclusiveMinimum": 0
+    },
+    "dim_d1": {
+      "type": "number",
+      "title": "Dimension d1 (Screen 1 Hole Height)",
+      "description": "Dimension d1 — screen 1 hole height in mm (Altura agujero tamiz 1)",
+      "exclusiveMinimum": 0
+    },
+    "dim_w2": {
+      "type": "number",
+      "title": "Dimension w2 (Screen 2 Hole Width)",
+      "description": "Dimensión w2 — screen 2 hole width in mm for double-screen (Anchura agujero tamiz 2)",
+      "exclusiveMinimum": 0
+    },
+    "dim_d2": {
+      "type": "number",
+      "title": "Dimension d2 (Screen 2 Hole Height)",
+      "description": "Dimension d2 — screen 2 hole height in mm for double-screen (Altura agujero tamiz 2)",
+      "exclusiveMinimum": 0
+    },
+    "dim_T1": {
+      "type": "number",
+      "title": "Dimension T1 (Thread Length End 1)",
+      "description": "Dimensión T1 — thread engagement length end 1 in mm (Longitud rosca 1)",
+      "exclusiveMinimum": 0
+    },
+    "dim_T2": {
+      "type": "number",
+      "title": "Dimension T2 (Thread Length End 2)",
+      "description": "Dimensión T2 — thread engagement length end 2 in mm (Longitud rosca 2)",
+      "exclusiveMinimum": 0
+    },
+    "dim_D": {
+      "type": "number",
+      "title": "Dimension D (Flange OD)",
+      "description": "Dimensión D — flange outer diameter in mm (Diámetro exterior brida)",
+      "exclusiveMinimum": 0
+    },
+    "dim_K": {
+      "type": "number",
+      "title": "Dimension K (Bolt Circle Diameter)",
+      "description": "Dimensión K — bolt hole pitch circle diameter in mm (Diametro agujeros brida)",
+      "exclusiveMinimum": 0
+    },
+    "kv1": {
+      "type": "number",
+      "title": "Flow Coefficient Kv1 (Screen 1)",
+      "description": "Kv1 — flow coefficient for screen 1 configuration (m³/h at 1 bar ΔP)",
+      "exclusiveMinimum": 0
+    },
+    "kv2": {
+      "type": "number",
+      "title": "Flow Coefficient Kv2 (Screen 2)",
+      "description": "Kv2 — flow coefficient for screen 2 / double-screen configuration (m³/h at 1 bar ΔP)",
+      "exclusiveMinimum": 0
+    }
+  },
+  "additionalProperties": false
+}

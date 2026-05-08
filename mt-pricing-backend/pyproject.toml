@@ -42,6 +42,8 @@ dependencies = [
     "playwright>=1.42",
     "boto3>=1.34",
     "requests-aws4auth>=1.2",
+    # Wave 9 — specs JSON Schema validation
+    "jsonschema[format]>=4.21",
 ]
 
 [dependency-groups]

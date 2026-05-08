@@ -49,8 +49,14 @@ from app.schemas.products import (
 )
 from app.services.products import ImageService, ProductService
 from app.services.products.product_service import ProductDomainError
+from app.services.specs.specs_registry import SpecsRegistry
+from app.services.specs.specs_validator import SpecsValidationError, SpecsValidator
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+# Module-level singleton — loaded once when the module is first imported.
+_specs_registry: SpecsRegistry = SpecsRegistry.get_instance()
+_specs_validator: SpecsValidator = SpecsValidator(_specs_registry)
 
 
 # --------------------------------------------------------------------------
@@ -59,7 +65,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 def get_product_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ProductService:
-    return ProductService(session)
+    return ProductService(session, specs_validator=_specs_validator)
 
 
 def get_image_service() -> ImageService:
@@ -88,6 +94,39 @@ def _raise_domain(err: ProductDomainError) -> None:
         status_code=err.status_code,
         detail={"code": err.code, "title": err.message},
     )
+
+
+def _raise_specs_error(err: SpecsValidationError) -> None:
+    """Translate SpecsValidationError → RFC 7807 422 response."""
+    raise HTTPException(
+        status_code=422,
+        detail={
+            "code": err.code,
+            "title": "specs validation failed",
+            "errors": [e.model_dump() for e in err.errors],
+        },
+    )
+
+
+# ==========================================================================
+# Specs schema endpoint (Wave 9)
+# ==========================================================================
+@router.get(
+    "/specs/schema",
+    summary="Obtener JSON Schema de specs para una familia/subfamilia",
+    response_model=dict,
+)
+async def get_specs_schema(
+    family: Annotated[str, Query(min_length=1, max_length=64, description="Product family key")],
+    subfamily: Annotated[str | None, Query(max_length=64)] = None,
+    _user: Annotated[User, Depends(require_permissions("products:read"))] = None,  # type: ignore[assignment]
+) -> dict:
+    """Return the JSON Schema governing ``specs`` for the requested family/subfamily.
+
+    Fallback chain: ``{family}_{subfamily}`` → ``{family}`` → ``_default``.
+    No auth required beyond ``products:read``.
+    """
+    return _specs_registry.get_schema(family, subfamily)
 
 
 # ==========================================================================
@@ -211,10 +250,12 @@ async def create_product(
     """Crea producto canónico + emite audit event."""
     try:
         prod = await service.create_product(data.model_dump(), user)
+    except SpecsValidationError as e:
+        _raise_specs_error(e)
     except ProductDomainError as e:
         _raise_domain(e)
     # Reload con eager translations/images (vacíos al crear).
-    full = await service.get_product_by_id(prod.sku)
+    full = await service.get_product_by_id(prod.sku)  # type: ignore[possibly-undefined]
     return ProductDetail.model_validate(full)
 
 
@@ -255,9 +296,11 @@ async def update_product(
     try:
         await service.update_product(sku, payload, user)
         prod = await service.get_product_by_id(sku)
+    except SpecsValidationError as e:
+        _raise_specs_error(e)
     except ProductDomainError as e:
         _raise_domain(e)
-    return ProductDetail.model_validate(prod)
+    return ProductDetail.model_validate(prod)  # type: ignore[possibly-undefined]
 
 
 @router.put(
