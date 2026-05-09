@@ -148,9 +148,26 @@ export const importsApi = {
       body: fd,
     });
   },
-  /** Confirma y aplica los cambios calculados en preview. */
-  apply: (runId: string): Promise<ImportRun> =>
-    authedFetch<ImportRun>(`/api/v1/imports/${runId}/apply`, { method: "POST" }),
+  /** Confirma y aplica los cambios calculados en preview.
+   *
+   * Stage 3 (Wave 11): permite override per-run de divisiones a asignar a los
+   * SKUs creados/actualizados. Si vacío, el backend usa
+   * `settings.PIM_DEFAULT_DIVISIONS`.
+   */
+  apply: (
+    runId: string,
+    options: { chunk_size?: number; division_codes?: string[] | null } = {},
+  ): Promise<ImportRun> => {
+    const body: Record<string, unknown> = {};
+    if (options.chunk_size !== undefined) body.chunk_size = options.chunk_size;
+    if (options.division_codes !== undefined && options.division_codes !== null) {
+      body.division_codes = options.division_codes;
+    }
+    return authedFetch<ImportRun>(`/api/v1/imports/${runId}/apply`, {
+      method: "POST",
+      ...(Object.keys(body).length > 0 ? { body: JSON.stringify(body) } : {}),
+    });
+  },
   /** Polling de status durante parsing/applying. */
   status: (runId: string): Promise<ImportRun> =>
     authedFetch<ImportRun>(`/api/v1/imports/${runId}/status`),

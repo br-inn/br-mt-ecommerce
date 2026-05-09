@@ -69,16 +69,20 @@ export function SavedViewsBar({ views, activeId, onSelect }: SavedViewsBarProps)
 }
 
 /**
- * 5 system views per Sally §8.7. Counts come from `useFacets` (caller wires).
+ * System views per Sally §8.7. Counts come from `useFacets` (caller wires).
+ *
+ * Stage 3 (Wave 11) — añadidas 2 vistas de división.
  */
 export const SYSTEM_VIEWS: SavedView[] = [
   { id: "all", name: "Todos", filters: {} },
   { id: "unclassified", name: "Sin clasificar", filters: { family: "unclassified" } },
-  { id: "no-image", name: "Sin imagen", filters: { has_image: false } },
   {
     id: "pending-es",
     name: "Pendientes ES",
     filters: { translation_status: "pending", translation_lang: "es" },
   },
   { id: "active-only", name: "Sólo activos", filters: { active: true } },
+  // Stage 3 — division shortcuts.
+  { id: "div-hidro", name: "Hidrosanitario", filters: { division: "hidrosanitario" } },
+  { id: "div-industrial", name: "Industrial", filters: { division: "industrial" } },
 ];

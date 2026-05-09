@@ -14,6 +14,9 @@ class ImportApplyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     chunk_size: int = Field(default=1000, ge=1, le=5000)
+    # Stage 3 (Wave 11) — override de divisiones a asignar por SKU del run.
+    # Si vacío, cae al `settings.PIM_DEFAULT_DIVISIONS` configurado.
+    division_codes: list[str] | None = Field(default=None)
 
 
 class ImportRunSummary(BaseModel):

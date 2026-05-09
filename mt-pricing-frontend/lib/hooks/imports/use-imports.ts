@@ -24,11 +24,24 @@ export function useUploadImport() {
   });
 }
 
-/** Mutación: confirmar y aplicar el run. */
+/** Mutación: confirmar y aplicar el run.
+ *
+ * Stage 3 (Wave 11): acepta `division_codes` opcional para override per-run.
+ */
+export interface ApplyVars {
+  runId: string;
+  division_codes?: string[] | null;
+}
+
 export function useApplyImport() {
   const qc = useQueryClient();
-  return useMutation<ImportRun, Error, string>({
-    mutationFn: (runId) => importsApi.apply(runId),
+  return useMutation<ImportRun, Error, ApplyVars | string>({
+    mutationFn: (vars) => {
+      if (typeof vars === "string") return importsApi.apply(vars);
+      const opts: { division_codes?: string[] | null } = {};
+      if (vars.division_codes !== undefined) opts.division_codes = vars.division_codes;
+      return importsApi.apply(vars.runId, opts);
+    },
     onSuccess: (run) => {
       qc.setQueryData(importKeys.status(run.id), run);
     },

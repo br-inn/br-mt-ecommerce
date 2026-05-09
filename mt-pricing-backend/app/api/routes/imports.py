@@ -146,8 +146,11 @@ async def apply_import(
     body: ImportApplyRequest | None = None,
 ) -> ImportRunStatusResponse:
     chunk_size = (body.chunk_size if body is not None else 1000) or 1000
+    division_codes = body.division_codes if body is not None else None
     try:
-        state = await service.apply(run_id, user, chunk_size=chunk_size)
+        state = await service.apply(
+            run_id, user, chunk_size=chunk_size, division_codes=division_codes
+        )
     except ImporterDomainError as e:
         _raise_domain(e)
     payload = service.report_json(run_id, sample_per_bucket=0)

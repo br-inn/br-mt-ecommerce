@@ -44,6 +44,7 @@ import {
 } from "@/lib/api/endpoints/products";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ActiveFiltersBar } from "./_components/active-filters-bar";
+import { FacetSidebar } from "./_components/facet-sidebar";
 import { SavedViewsBar, SYSTEM_VIEWS } from "./_components/saved-views-bar";
 import { Paginator } from "./_components/paginator";
 
@@ -183,7 +184,24 @@ export default function CatalogPage() {
     void setPn(null);
     void setMaterial(null);
     void setActive(null);
-  }, [setFamily, setQuality, setTranslationStatus, setDn, setPn, setMaterial, setActive]);
+    // Stage 3
+    void setDivision(null);
+    void setSeriesId(null);
+    void setMaterialId(null);
+    void setTierCode(null);
+  }, [
+    setFamily,
+    setQuality,
+    setTranslationStatus,
+    setDn,
+    setPn,
+    setMaterial,
+    setActive,
+    setDivision,
+    setSeriesId,
+    setMaterialId,
+    setTierCode,
+  ]);
 
   // ---- Wave 10 facets sidebar wiring ---------------------------------------
   const facetFilters: FacetsFilters = React.useMemo(
@@ -196,8 +214,26 @@ export default function CatalogPage() {
       pn: pn ?? null,
       material: material ?? null,
       q: debouncedSearch || null,
+      // Stage 3 — taxonomy
+      division: division ?? null,
+      series_id: seriesId ?? null,
+      material_id: materialId ?? null,
+      tier_code: tierCode ?? null,
     }),
-    [family, quality, translationStatus, active, dn, pn, material, debouncedSearch],
+    [
+      family,
+      quality,
+      translationStatus,
+      active,
+      dn,
+      pn,
+      material,
+      debouncedSearch,
+      division,
+      seriesId,
+      materialId,
+      tierCode,
+    ],
   );
 
   const setFacetFilter = React.useCallback(
@@ -224,9 +260,34 @@ export default function CatalogPage() {
         case "active":
           void setActive(value as boolean | null);
           break;
+        // Stage 3 (Wave 11)
+        case "division":
+          void setDivision(value as string | null);
+          break;
+        case "series_id":
+          void setSeriesId(value as string | null);
+          break;
+        case "material_id":
+          void setMaterialId(value as string | null);
+          break;
+        case "tier_code":
+          void setTierCode(value as string | null);
+          break;
       }
     },
-    [setFamily, setMaterial, setDn, setPn, setQuality, setTranslationStatus, setActive],
+    [
+      setFamily,
+      setMaterial,
+      setDn,
+      setPn,
+      setQuality,
+      setTranslationStatus,
+      setActive,
+      setDivision,
+      setSeriesId,
+      setMaterialId,
+      setTierCode,
+    ],
   );
 
   const { data: facetsData } = useFacets(facetFilters);
@@ -263,7 +324,9 @@ export default function CatalogPage() {
   }, [active, family, material, dn, pn, quality, translationStatus]);
 
   return (
-    <div className="flex h-full min-w-0 flex-1 flex-col">
+    <div className="flex h-full">
+      <FacetSidebar filters={facetFilters} setFilter={setFacetFilter} />
+      <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Page header */}
       <div
         className="flex items-center justify-between border-b bg-mt-surface px-6 py-3.5"
@@ -358,6 +421,14 @@ export default function CatalogPage() {
           if (view.filters.data_quality !== undefined)
             void setQuality((view.filters.data_quality as DataQuality | undefined) ?? null);
           if (view.filters.active !== undefined) void setActive(view.filters.active ?? null);
+          // Stage 3 — taxonomy
+          if (view.filters.division !== undefined) void setDivision(view.filters.division ?? null);
+          if (view.filters.series_id !== undefined)
+            void setSeriesId(view.filters.series_id ?? null);
+          if (view.filters.material_id !== undefined)
+            void setMaterialId(view.filters.material_id ?? null);
+          if (view.filters.tier_code !== undefined)
+            void setTierCode(view.filters.tier_code ?? null);
         }}
       />
       <ActiveFiltersBar
@@ -688,6 +759,7 @@ export default function CatalogPage() {
         <Kbd>/</Kbd> buscar · <Kbd>j</Kbd>
         <Kbd>k</Kbd> nav · <Kbd>e</Kbd> editar · <Kbd>↵</Kbd> detalle ·{" "}
         <Kbd>?</Kbd> atajos
+      </div>
       </div>
     </div>
   );

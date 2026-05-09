@@ -196,7 +196,14 @@ class ImporterService:
         return state
 
     # ------------------------------------------------------------------ apply
-    async def apply(self, run_id: str, actor: User, *, chunk_size: int = 1000) -> ImportRunState:
+    async def apply(
+        self,
+        run_id: str,
+        actor: User,
+        *,
+        chunk_size: int = 1000,
+        division_codes: list[str] | None = None,
+    ) -> ImportRunState:
         state = _RUN_STORE.get(run_id)
         if state is None:
             raise ImportRunNotFoundError(run_id)
@@ -215,6 +222,7 @@ class ImporterService:
                     actor,
                     run_id=run_id,
                     chunk_size=chunk_size,
+                    division_codes=division_codes,
                 )
                 state.apply_result = apply_result
                 state.status = "completed" if apply_result.failed_chunks == 0 else "completed_with_failures"

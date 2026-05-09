@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,6 +12,7 @@ import {
   useImportStatus,
 } from "@/lib/hooks/imports/use-imports";
 import type { ImportPreview } from "@/lib/api/endpoints/imports";
+import { divisionsApi, type Division } from "@/lib/api/endpoints/divisions";
 import { UploadStep } from "./upload-step";
 import { PreviewDiff } from "./preview-diff";
 import { ApplyProgress } from "./apply-progress";
@@ -29,6 +31,8 @@ export function ImportWizard() {
   const [step, setStep] = React.useState<Step>(0);
   const [preview, setPreview] = React.useState<ImportPreview | null>(null);
   const [applyTriggered, setApplyTriggered] = React.useState(false);
+  // Stage 3 (Wave 11) — override de divisiones a asignar por SKU del run.
+  const [divisionCodes, setDivisionCodes] = React.useState<string[]>([]);
 
   const apply = useApplyImport();
   // Polling sólo cuando el step es "applying" (3) y tenemos run_id.
@@ -54,7 +58,10 @@ export function ImportWizard() {
   const handleConfirm = async () => {
     if (!preview) return;
     try {
-      await apply.mutateAsync(preview.id);
+      await apply.mutateAsync({
+        runId: preview.id,
+        division_codes: divisionCodes.length > 0 ? divisionCodes : null,
+      });
       setApplyTriggered(true);
       setStep(3);
     } catch (err) {
@@ -89,12 +96,15 @@ export function ImportWizard() {
       ) : null}
 
       {step === 2 && preview ? (
-        <PreviewDiff
-          preview={preview}
-          onBack={() => setStep(1)}
-          onConfirm={handleConfirm}
-          isApplying={apply.isPending}
-        />
+        <div className="space-y-4">
+          <DivisionPicker selected={divisionCodes} onChange={setDivisionCodes} />
+          <PreviewDiff
+            preview={preview}
+            onBack={() => setStep(1)}
+            onConfirm={handleConfirm}
+            isApplying={apply.isPending}
+          />
+        </div>
       ) : null}
 
       {step === 3 && preview ? (
@@ -155,5 +165,70 @@ function Stepper({
         );
       })}
     </ol>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Stage 3 (Wave 11) — DivisionPicker
+// ----------------------------------------------------------------------------
+
+function DivisionPicker({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (codes: string[]) => void;
+}) {
+  const divisionsQ = useQuery({
+    queryKey: ["divisions", "public"],
+    queryFn: () => divisionsApi.listPublic(),
+    staleTime: 5 * 60_000,
+  });
+
+  const toggle = (code: string) => {
+    if (selected.includes(code)) {
+      onChange(selected.filter((c) => c !== code));
+    } else {
+      onChange([...selected, code]);
+    }
+  };
+
+  return (
+    <div className="rounded-md border bg-card p-4">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h3 className="text-sm font-semibold">Asignar a divisiones</h3>
+        <span className="text-xs text-muted-foreground">
+          {selected.length === 0 ? "default backend (PIM_DEFAULT_DIVISIONS)" : `${selected.length} seleccionada(s)`}
+        </span>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Los SKUs creados o actualizados por este run se enlazarán a las divisiones
+        seleccionadas. Si no seleccionas ninguna, se usa la configuración por defecto del servidor.
+      </p>
+      {divisionsQ.isLoading ? (
+        <div className="text-xs text-muted-foreground">Cargando divisiones…</div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {(divisionsQ.data ?? []).map((d: Division) => {
+            const isSelected = selected.includes(d.code);
+            return (
+              <button
+                key={d.code}
+                type="button"
+                onClick={() => toggle(d.code)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-accent",
+                )}
+              >
+                {d.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

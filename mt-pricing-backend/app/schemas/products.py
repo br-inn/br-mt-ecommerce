@@ -293,6 +293,11 @@ class ProductPatch(BaseModel):
     video_url: str | None = Field(default=None, max_length=2048)
     external_url: str | None = Field(default=None, max_length=2048)
 
+    # ---- Stage 3 (Wave 11): catalog hierarchy refinement (PATCH) ----------
+    series_id: UUID | None = None
+    material_id: UUID | None = None
+    display_pair_sku: str | None = Field(default=None, max_length=64)
+
     @field_validator("dn")
     @classmethod
     def _validate_dn(cls, v: str | None) -> str | None:

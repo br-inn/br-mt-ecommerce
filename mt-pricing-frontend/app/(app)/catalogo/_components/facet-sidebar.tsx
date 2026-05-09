@@ -39,6 +39,33 @@ export function FacetSidebar({ filters, setFilter }: FacetSidebarProps) {
         {isLoading ? <span style={{ color: MT.ink4 }}>…</span> : null}
       </div>
 
+      {/* Stage 3 (Wave 11) — taxonomy refinement facets */}
+      <ListSection
+        title="división"
+        buckets={facets?.division ?? []}
+        selected={filters.division ?? null}
+        onToggle={(v) => setFilter("division", filters.division === v ? null : v)}
+      />
+      <ListSection
+        title="serie"
+        buckets={facets?.series ?? []}
+        selected={filters.series_id ?? null}
+        onToggle={(v) => setFilter("series_id", filters.series_id === v ? null : v)}
+        searchable
+      />
+      <ListSection
+        title="tier"
+        buckets={facets?.tier_code ?? []}
+        selected={filters.tier_code ?? null}
+        onToggle={(v) => setFilter("tier_code", filters.tier_code === v ? null : v)}
+      />
+      <ListSection
+        title="material (curado)"
+        buckets={facets?.material_curated ?? []}
+        selected={filters.material_id ?? null}
+        onToggle={(v) => setFilter("material_id", filters.material_id === v ? null : v)}
+      />
+
       <ListSection
         title="family"
         buckets={facets?.family ?? []}
