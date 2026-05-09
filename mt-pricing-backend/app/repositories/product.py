@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
+from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.db.enums import DataQuality
 from app.db.models.product import Product, ProductImage, ProductTranslation
+from app.db.models.vocabularies import (
+    Division,
+    ProductDivision,
+    Series,
+    SeriesTier,
+)
 from app.repositories.base import BaseRepository
 
 
@@ -30,13 +37,22 @@ class ProductRepository(BaseRepository[Product]):
         return await self.get_with_translations_and_images(sku)
 
     async def get_with_translations_and_images(self, sku: str) -> Product | None:
-        """Eager load translations + images. Usado en GET /products/{sku} detail."""
+        """Eager load translations + images + Stage 3 vocab. Usado en detail.
+
+        Wave 11: añade ``product_divisions.division`` (M:N divisiones).
+        Otros campos Stage 3 (``series``, ``material``, ``display_pair``) no
+        son SA relationships en ``Product`` (los TEXT escalares ``series`` y
+        ``material`` los shadow-arían) — la capa de routes los carga aparte.
+        """
         stmt = (
             select(Product)
             .where(Product.sku == sku)
             .options(
                 selectinload(Product.translations),
-                selectinload(Product.images),
+                selectinload(Product.assets),
+                selectinload(Product.product_divisions).selectinload(
+                    ProductDivision.division
+                ),
             )
         )
         result = await self.session.execute(stmt)
@@ -61,6 +77,11 @@ class ProductRepository(BaseRepository[Product]):
         limit: int = 50,
         include_deleted: bool = False,
         include_total: bool = False,
+        # Stage 3 filters (Wave 11) — divisions M:N + series rica + material vocab.
+        division_code: str | None = None,
+        series_id: UUID | None = None,
+        material_id: UUID | None = None,
+        tier_code: str | None = None,
     ) -> tuple[Sequence[Product], str | None, int | None]:
         """Cursor-based pagination con filtros + opcional total.
 
@@ -101,6 +122,34 @@ class ProductRepository(BaseRepository[Product]):
             clauses.append(Product.created_at <= created_before)
         if not include_deleted:
             clauses.append(Product.deleted_at.is_(None))
+
+        # ---- Stage 3 filters (Wave 11) ---------------------------------------
+        if division_code is not None:
+            # EXISTS subquery sobre product_divisions JOIN divisions ON code.
+            sub = (
+                select(ProductDivision.product_sku)
+                .join(Division, Division.id == ProductDivision.division_id)
+                .where(
+                    ProductDivision.product_sku == Product.sku,
+                    Division.code == division_code,
+                )
+            )
+            clauses.append(exists(sub))
+        if series_id is not None:
+            clauses.append(Product.series_id == series_id)
+        if material_id is not None:
+            clauses.append(Product.material_id == material_id)
+        if tier_code is not None:
+            # JOIN series → series_tiers para filtrar por tier.code.
+            sub = (
+                select(Series.id)
+                .join(SeriesTier, SeriesTier.id == Series.tier_id)
+                .where(
+                    Series.id == Product.series_id,
+                    SeriesTier.code == tier_code,
+                )
+            )
+            clauses.append(exists(sub))
 
         # Translation status: requiere subquery sobre product_translations.
         if translation_status:

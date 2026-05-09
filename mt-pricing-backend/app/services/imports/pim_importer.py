@@ -27,11 +27,13 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models.import_run import ImportRun
 from app.db.models.product import Product
 from app.repositories.audit import AuditRepository
 from app.repositories.product import ProductRepository
 from app.services.importer.column_mapper import EXPECTED_HEADERS
+from app.services.imports.division_assignment import assign_divisions
 from app.services.imports.pim_row_mapper import map_pim_row_to_product
 
 logger = logging.getLogger(__name__)
@@ -69,6 +71,9 @@ class PimImporter:
         self._run: ImportRun | None = None
         self._repo = ProductRepository(session)
         self._audit = AuditRepository(session)
+        # Stage 3 Wave 11 — division mapping. Resuelto lazy en run().
+        self._division_codes: list[str] = []
+        self._division_code_cache: dict[str, UUID | None] = {}
 
     # ------------------------------------------------------------------ run
     async def run(self) -> ImportRun:
@@ -78,6 +83,22 @@ class PimImporter:
         self._run = await self.session.get(ImportRun, self.run_id)
         if self._run is None:
             raise RuntimeError(f"ImportRun {self.run_id} no existe.")
+
+        # Stage 3 Wave 11 — resolver division_codes:
+        #   1) summary.division_codes del run (preferido — TI puede setearlo
+        #      por run via el endpoint de upload o admin update).
+        #   2) settings.PIM_DEFAULT_DIVISIONS (fallback global).
+        run_summary = self._run.summary or {}
+        summary_codes = run_summary.get("division_codes")
+        if isinstance(summary_codes, list) and summary_codes:
+            self._division_codes = [str(c) for c in summary_codes if c]
+        else:
+            self._division_codes = list(settings.PIM_DEFAULT_DIVISIONS or [])
+        if self._division_codes:
+            logger.info(
+                "PimImporter run_id=%s aplicará divisions=%s a cada SKU.",
+                self.run_id, self._division_codes,
+            )
 
         if not self.source_path.exists():
             await self._mark_failed(f"Archivo no encontrado: {self.source_path}")
@@ -265,6 +286,7 @@ class PimImporter:
                 },
                 after=_safe_repr(payload),  # Decimal/datetime → str para JSONB.
             )
+            await self._maybe_assign_divisions(sku)
             return "inserted"
 
         # UPDATE — solo campos no locked. Alineado con applier sincrono.
@@ -282,6 +304,9 @@ class PimImporter:
                 changed[field] = {"from": _safe_repr(current), "to": _safe_repr(new_value)}
 
         if not changed:
+            # Aún sin cambios en el producto, las divisiones pueden faltar
+            # (e.g. backfill de un PIM previo). Idempotente, barato.
+            await self._maybe_assign_divisions(sku)
             return "skipped"
 
         if self.actor_id is not None:
@@ -297,7 +322,33 @@ class PimImporter:
                 "cast_errors": cast_errors or [],
             },
         )
+        await self._maybe_assign_divisions(sku)
         return "updated"
+
+    async def _maybe_assign_divisions(self, sku: str) -> None:
+        """Asigna divisiones (Stage 3 Wave 11) si el run las trae.
+
+        No-op si ``_division_codes`` está vacío. Tolerante: un fallo aquí no
+        debe matar el upsert (ya hecho). Por consistencia, lo loggeamos pero
+        propagamos para que el savepoint del row se rollbackee — así la fila
+        cae a errors y se re-procesa en el próximo run, mejor que dejar
+        productos sin division asignada.
+        """
+        if not self._division_codes:
+            return
+        try:
+            await assign_divisions(
+                self.session,
+                sku,
+                self._division_codes,
+                code_id_cache=self._division_code_cache,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "PimImporter assign_divisions failed sku=%s codes=%s",
+                sku, self._division_codes,
+            )
+            raise
 
     async def _audit_event(
         self,

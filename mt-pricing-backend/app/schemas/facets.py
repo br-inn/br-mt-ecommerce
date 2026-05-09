@@ -33,3 +33,8 @@ class FacetsResponse(BaseModel):
     image_status: dict[str, int] = Field(default_factory=dict)
     has_image: dict[str, int] = Field(default_factory=dict)
     translation_status: dict[str, TranslationLangFacet] = Field(default_factory=dict)
+    # ---- Stage 3 (Wave 11) — division/series/tier/material vocab ---------
+    division: list[FacetBucket] = Field(default_factory=list)
+    series: list[FacetBucket] = Field(default_factory=list)
+    tier_code: list[FacetBucket] = Field(default_factory=list)
+    material_curated: list[FacetBucket] = Field(default_factory=list)

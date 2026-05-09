@@ -474,6 +474,21 @@ class ProductResponse(BaseModel):
     translation_status_es: str | None = None
     translation_status_ar: str | None = None
     primary_image_url: str | None = None
+    # ---- Stage 3 (Wave 11) — refinamiento del catálogo --------------------
+    series_id: UUID | None = None
+    material_id: UUID | None = None
+    display_pair_sku: str | None = None
+    division_codes: list[str] = Field(default_factory=list)
+
+
+class ProductMini(BaseModel):
+    """Mini-summary de producto — usado para emparejado por color (display_pair)."""
+
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    sku: str
+    name_en: str
+    primary_image_url: str | None = None
 
 
 class ProductDetail(ProductResponse):
@@ -481,6 +496,10 @@ class ProductDetail(ProductResponse):
 
     translations: list[ProductTranslationResponse] = Field(default_factory=list)
     images: list[ProductAssetResponse] = Field(default_factory=list)
+    # ---- Stage 3 (Wave 11) — series/material/display pair eager-loaded ----
+    series: "SeriesResponse | None" = None
+    material: "MaterialResponse | None" = None
+    display_pair: ProductMini | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -570,4 +589,8 @@ class ProductSearchParams(BaseModel):
 
 
 # Re-bind forward references — ProductDetail referencia translations/images
+# Import vocabularios al final (al pie) para evitar ciclo de import al cargar
+# `app.schemas.vocabularies`. Sólo se necesitan a la hora de model_rebuild.
+from app.schemas.vocabularies import MaterialResponse, SeriesResponse  # noqa: E402
+
 ProductDetail.model_rebuild()

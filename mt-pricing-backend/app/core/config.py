@@ -110,6 +110,14 @@ class Settings(BaseSettings):
     FEATURE_COMPARATOR_ENABLED: bool = False
     FEATURE_OCR_ENABLED: bool = False
 
+    # --- PIM importer (Stage 3 Wave 11 — division mapping) ---
+    # Códigos de división por defecto que el PIM importer aplica a cada
+    # producto upserted cuando el ImportRun no lleva `division_codes` en su
+    # `summary` JSONB. Si se setea (e.g. `["hidrosanitario"]`), todos los SKUs
+    # importados quedan linkeados a esas divisiones via M:N. La metadata del
+    # run gana sobre este default. Lista vacía = no-op.
+    PIM_DEFAULT_DIVISIONS: list[str] = Field(default_factory=list)
+
     # --- GraphRAG (Sprint 6) ---
     # Backend del graph store. `stub` = Neo4jStubGraphStore in-memory (default
     # Fase 1). `neo4j` = driver real contra Neo4j 5 (Docker local o managed).

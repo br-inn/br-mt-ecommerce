@@ -36,6 +36,7 @@ from app.api.routes import (
     vocabularies,
 )
 from app.api.routes.costs import products_costs_router
+from app.api.routes.products_display import products_display_router
 from app.api.routes.taxonomy_extras import (
     admin_divisions_router,
     admin_materials_router,
@@ -93,3 +94,4 @@ router.include_router(admin_divisions_router)
 router.include_router(admin_series_router)
 router.include_router(admin_materials_router)
 router.include_router(products_divisions_router, prefix="/products")
+router.include_router(products_display_router, prefix="/products")

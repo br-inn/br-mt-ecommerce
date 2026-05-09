@@ -54,6 +54,7 @@ from app.schemas.products import (
     ProductImageConfirmRequest,
     ProductImageResponse,
     ProductImageUploadRequest,
+    ProductMini,
     ProductPatch,
     ProductReplace,
     ProductResponse,
@@ -61,6 +62,7 @@ from app.schemas.products import (
     ProductTranslationPatch,
     ProductTranslationResponse,
 )
+from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 from app.services.assets import AssetService
 from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
 from app.services.compatibility import (
@@ -175,6 +177,91 @@ def _raise_specs_error(err: SpecsValidationError) -> None:
     )
 
 
+# --------------------------------------------------------------------------
+# Stage 3 (Wave 11) — detail enrichment helper
+# --------------------------------------------------------------------------
+async def _build_product_detail(
+    prod: Any, session: AsyncSession
+) -> ProductDetail:
+    """Construye ``ProductDetail`` enriquecido con series/material/display_pair
+    (Stage 3) y ``division_codes`` derivado de ``product_divisions``.
+
+    Notas:
+    - ``Product.series`` y ``Product.material`` son columnas TEXT (Wave 2/1).
+      No se solapan con relaciones SQLAlchemy en el modelo, así que cargamos
+      los vocabularios de Stage 3 con queries directas usando ``series_id`` y
+      ``material_id``.
+    - ``display_pair`` se resuelve por ``display_pair_sku`` self-FK.
+    """
+    from sqlalchemy import select as _select
+
+    from app.db.models.product import Product as _ProdModel
+    from app.db.models.vocabularies import Material, Series
+
+    # Base — usa el TEXT `series` para no romper retro-compat de ProductResponse,
+    # pero lo descartamos al final para evitar choque con SeriesResponse.
+    base = ProductResponse.model_validate(prod).model_dump()
+    # division_codes desde product_divisions eager-loaded.
+    base["division_codes"] = [
+        pd.division.code
+        for pd in (prod.product_divisions or [])
+        if pd.division is not None
+    ]
+    # Drop el TEXT `series` y `material` para no chocar con la versión
+    # estructurada (override de tipo en ProductDetail).
+    base.pop("series", None)
+    base.pop("material", None)
+
+    detail_data: dict[str, Any] = {
+        **base,
+        "translations": [
+            ProductTranslationResponse.model_validate(t) for t in prod.translations
+        ],
+        "images": [
+            ProductImageResponse.model_validate(i)
+            for i in prod.assets
+            if i.kind == "photo"
+        ],
+        "series": None,
+        "material": None,
+        "display_pair": None,
+    }
+
+    # Cargar Series si tenemos series_id.
+    if getattr(prod, "series_id", None):
+        srow = (
+            await session.execute(
+                _select(Series).where(Series.id == prod.series_id)
+            )
+        ).scalar_one_or_none()
+        if srow is not None:
+            detail_data["series"] = SeriesResponse.model_validate(srow)
+
+    if getattr(prod, "material_id", None):
+        mrow = (
+            await session.execute(
+                _select(Material).where(Material.id == prod.material_id)
+            )
+        ).scalar_one_or_none()
+        if mrow is not None:
+            detail_data["material"] = MaterialResponse.model_validate(mrow)
+
+    if getattr(prod, "display_pair_sku", None):
+        prow = (
+            await session.execute(
+                _select(_ProdModel).where(_ProdModel.sku == prod.display_pair_sku)
+            )
+        ).scalar_one_or_none()
+        if prow is not None:
+            detail_data["display_pair"] = ProductMini(
+                sku=prow.sku,
+                name_en=prow.name_en,
+                primary_image_url=getattr(prow, "image_url", None),
+            )
+
+    return ProductDetail.model_validate(detail_data)
+
+
 # ==========================================================================
 # Specs schema endpoint (Wave 9)
 # ==========================================================================
@@ -221,6 +308,11 @@ async def list_products(
     created_before: Annotated[str | None, Query(description="ISO-8601 datetime")] = None,
     q: Annotated[str | None, Query(min_length=1, max_length=128, alias="q")] = None,
     search: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    # Stage 3 (Wave 11) — division/series/material/tier filters
+    division: Annotated[str | None, Query(max_length=64, description="division.code")] = None,
+    series_id: Annotated[UUID | None, Query(description="series.id (UUID)")] = None,
+    material_id: Annotated[UUID | None, Query(description="materials.id (UUID)")] = None,
+    tier_code: Annotated[str | None, Query(max_length=32, description="series_tiers.code")] = None,
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     include_total: Annotated[bool, Query()] = False,
@@ -276,6 +368,11 @@ async def list_products(
         cursor=sku_cursor,
         limit=limit,
         include_total=include_total,
+        # Stage 3 (Wave 11)
+        division_code=division,
+        series_id=series_id,
+        material_id=material_id,
+        tier_code=tier_code,
     )
     # Batch fetch de agregados para el listado: translation_status (es/ar) +
     # primary photo URL. Mantiene la lista cursor-based eficiente con N+0
@@ -283,10 +380,12 @@ async def list_products(
     skus = [r.sku for r in rows]
     xlate_map: dict[tuple[str, str], str] = {}
     primary_photo_map: dict[str, str] = {}
+    division_codes_map: dict[str, list[str]] = {}
     if skus:
         from sqlalchemy import select as _select
 
         from app.db.models.product import ProductAsset, ProductTranslation
+        from app.db.models.vocabularies import Division, ProductDivision
 
         session = service.session
         xlate_rows = await session.execute(
@@ -325,6 +424,14 @@ async def list_products(
                 primary_photo_map[sku] = (
                     f"{sb_url}/storage/v1/object/public/{bucket}/{thumb_path}"
                 )
+        # Stage 3 — division_codes batch fetch (M:N).
+        div_rows = await session.execute(
+            _select(ProductDivision.product_sku, Division.code)
+            .join(Division, Division.id == ProductDivision.division_id)
+            .where(ProductDivision.product_sku.in_(skus))
+        )
+        for sku, code in div_rows.all():
+            division_codes_map.setdefault(sku, []).append(code)
 
     items: list[ProductResponse] = []
     for r in rows:
@@ -332,6 +439,7 @@ async def list_products(
         item.translation_status_es = xlate_map.get((r.sku, "es"))
         item.translation_status_ar = xlate_map.get((r.sku, "ar"))
         item.primary_image_url = primary_photo_map.get(r.sku)
+        item.division_codes = division_codes_map.get(r.sku, [])
         items.append(item)
     return Pagination[ProductResponse](
         items=items,
@@ -380,7 +488,7 @@ async def create_product(
         _raise_domain(e)
     # Reload con eager translations/images (vacíos al crear).
     full = await service.get_product_by_id(prod.sku)  # type: ignore[possibly-undefined]
-    return ProductDetail.model_validate(full)
+    return await _build_product_detail(full, service.session)
 
 
 @router.get(
@@ -398,7 +506,7 @@ async def get_product(
         prod = await service.get_product_by_id(sku)
     except ProductDomainError as e:
         _raise_domain(e)
-    return ProductDetail.model_validate(prod)
+    return await _build_product_detail(prod, service.session)
 
 
 @router.patch(
@@ -424,7 +532,7 @@ async def update_product(
         _raise_specs_error(e)
     except ProductDomainError as e:
         _raise_domain(e)
-    return ProductDetail.model_validate(prod)  # type: ignore[possibly-undefined]
+    return await _build_product_detail(prod, service.session)  # type: ignore[possibly-undefined]
 
 
 @router.put(
@@ -464,7 +572,7 @@ async def replace_product(
     except ProductDomainError as e:
         _raise_domain(e)
     response.headers["ETag"] = service.etag_for(prod)
-    return ProductDetail.model_validate(full)
+    return await _build_product_detail(full, service.session)
 
 
 @router.patch(
@@ -493,7 +601,7 @@ async def patch_product_data_quality(
     except ProductDomainError as e:
         _raise_domain(e)
     response.headers["ETag"] = service.etag_for(prod)
-    return ProductDetail.model_validate(full)
+    return await _build_product_detail(full, service.session)
 
 
 @router.post(
@@ -1571,6 +1679,11 @@ async def get_facets(
     ] = None,
     translation_lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
     q: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    # Stage 3 (Wave 11)
+    division: Annotated[str | None, Query(max_length=64)] = None,
+    series_id: Annotated[UUID | None, Query()] = None,
+    material_id: Annotated[UUID | None, Query()] = None,
+    tier_code: Annotated[str | None, Query(max_length=32)] = None,
     _user: User = Depends(require_permissions("products:read")),
     session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
 ) -> FacetsResponse:
@@ -1593,5 +1706,10 @@ async def get_facets(
         translation_status=translation_status,
         translation_lang=translation_lang,
         search=q,
+        # Stage 3 (Wave 11)
+        division_code=division,
+        series_id=series_id,
+        material_id=material_id,
+        tier_code=tier_code,
     )
     return await compute_facets(session, filters)

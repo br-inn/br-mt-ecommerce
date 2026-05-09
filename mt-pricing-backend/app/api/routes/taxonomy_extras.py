@@ -430,6 +430,24 @@ async def admin_delete_series(
 
 
 # ---- Series ↔ Division links ----
+@admin_series_router.get(
+    "/series/{series_id}/divisions",
+    response_model=list[DivisionResponse],
+    summary="[Admin] Listar divisiones enlazadas a la serie",
+    responses={404: {"model": ProblemDetails}},
+)
+async def admin_list_series_divisions(
+    series_id: UUID,
+    _user: User = Depends(require_permissions("admin:taxonomy")),
+    service: SeriesService = Depends(get_series_service),
+) -> list[DivisionResponse]:
+    try:
+        links = await service.list_divisions(series_id)
+    except VocabularyDomainError as e:
+        _raise_domain(e)
+    return [DivisionResponse.model_validate(link.division) for link in links]
+
+
 @admin_series_router.post(
     "/series/{series_id}/divisions/{division_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -465,6 +483,34 @@ async def admin_unlink_series_division(
 
 
 # ---- Series ↔ Certification links (default package) ----
+@admin_series_router.get(
+    "/series/{series_id}/certifications",
+    response_model=list[dict],
+    summary="[Admin] Listar certificaciones default enlazadas a la serie",
+    responses={404: {"model": ProblemDetails}},
+)
+async def admin_list_series_certifications(
+    series_id: UUID,
+    _user: User = Depends(require_permissions("admin:taxonomy")),
+    service: SeriesService = Depends(get_series_service),
+) -> list[dict]:
+    try:
+        links = await service.list_certifications(series_id)
+    except VocabularyDomainError as e:
+        _raise_domain(e)
+    return [
+        {
+            "certification_id": link.certification_id,
+            "code": link.certification.code,
+            "name": link.certification.name,
+            "issued_by": link.certification.issued_by,
+            "scope": link.certification.scope,
+            "logo_url": link.certification.logo_url,
+        }
+        for link in links
+    ]
+
+
 @admin_series_router.post(
     "/series/{series_id}/certifications/{certification_id}",
     status_code=status.HTTP_204_NO_CONTENT,

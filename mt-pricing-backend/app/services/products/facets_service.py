@@ -17,11 +17,20 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from uuid import UUID
+
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.db.engine import get_engine
 from app.db.models.product import Product, ProductTranslation
+from app.db.models.vocabularies import (
+    Division,
+    Material,
+    ProductDivision,
+    Series,
+    SeriesTier,
+)
 from app.schemas.facets import FacetBucket, FacetsResponse, TranslationLangFacet
 
 
@@ -46,6 +55,11 @@ class ProductFilters:
     created_before: datetime | None = None
     search: str | None = None
     include_deleted: bool = False
+    # ---- Stage 3 (Wave 11) — division/series/tier/material curated ------
+    division_code: str | None = None
+    series_id: UUID | None = None
+    material_id: UUID | None = None
+    tier_code: str | None = None
     # Reserved for parent/variant filters in later iterations.
 
     @classmethod
@@ -59,6 +73,7 @@ class ProductFilters:
                 "family", "brand", "material", "dn", "pn", "data_quality",
                 "active", "image_status", "has_image", "lifecycle_status",
                 "translation_status", "created_after", "created_before", "search",
+                "division_code", "series_id", "material_id", "tier_code",
             )
         )
 
@@ -113,6 +128,31 @@ def build_product_clauses(
         if filters.translation_lang:
             sub = sub.where(ProductTranslation.lang == filters.translation_lang)
         clauses.append(Product.sku.in_(sub))
+    # Stage 3 (Wave 11) — division (M:N EXISTS), series_id, material_id, tier.
+    if filters.division_code and "division" not in exclude:
+        div_sub = (
+            select(ProductDivision.product_sku)
+            .join(Division, Division.id == ProductDivision.division_id)
+            .where(
+                ProductDivision.product_sku == Product.sku,
+                Division.code == filters.division_code,
+            )
+        )
+        clauses.append(exists(div_sub))
+    if filters.series_id and "series" not in exclude:
+        clauses.append(Product.series_id == filters.series_id)
+    if filters.material_id and "material_curated" not in exclude:
+        clauses.append(Product.material_id == filters.material_id)
+    if filters.tier_code and "tier_code" not in exclude:
+        tier_sub = (
+            select(Series.id)
+            .join(SeriesTier, SeriesTier.id == Series.tier_id)
+            .where(
+                Series.id == Product.series_id,
+                SeriesTier.code == filters.tier_code,
+            )
+        )
+        clauses.append(exists(tier_sub))
     return clauses
 
 
@@ -212,6 +252,100 @@ async def _translation_status_counts(
     )
 
 
+async def _count_division(
+    session: AsyncSession | AsyncConnection,
+    filters: ProductFilters,
+    *,
+    limit: int = 50,
+) -> list[FacetBucket]:
+    """Counts por division.code (M:N) — refinement no destructivo."""
+    clauses = build_product_clauses(filters, exclude={"division"})
+    stmt = (
+        select(Division.code.label("v"), func.count(ProductDivision.product_sku.distinct()).label("c"))
+        .select_from(Product)
+        .join(ProductDivision, ProductDivision.product_sku == Product.sku)
+        .join(Division, Division.id == ProductDivision.division_id)
+        .where(and_(*clauses))
+        .group_by(Division.code)
+        .order_by(func.count().desc())
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
+    ]
+
+
+async def _count_series(
+    session: AsyncSession | AsyncConnection,
+    filters: ProductFilters,
+    *,
+    limit: int = 50,
+) -> list[FacetBucket]:
+    """Counts por series.code — joins products → series."""
+    clauses = build_product_clauses(filters, exclude={"series"})
+    stmt = (
+        select(Series.code.label("v"), func.count().label("c"))
+        .select_from(Product)
+        .join(Series, Series.id == Product.series_id)
+        .where(and_(*clauses))
+        .group_by(Series.code)
+        .order_by(func.count().desc())
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
+    ]
+
+
+async def _count_tier(
+    session: AsyncSession | AsyncConnection,
+    filters: ProductFilters,
+    *,
+    limit: int = 20,
+) -> list[FacetBucket]:
+    """Counts por series_tiers.code (vía series.tier_id)."""
+    clauses = build_product_clauses(filters, exclude={"tier_code"})
+    stmt = (
+        select(SeriesTier.code.label("v"), func.count().label("c"))
+        .select_from(Product)
+        .join(Series, Series.id == Product.series_id)
+        .join(SeriesTier, SeriesTier.id == Series.tier_id)
+        .where(and_(*clauses))
+        .group_by(SeriesTier.code)
+        .order_by(func.count().desc())
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
+    ]
+
+
+async def _count_material_curated(
+    session: AsyncSession | AsyncConnection,
+    filters: ProductFilters,
+    *,
+    limit: int = 50,
+) -> list[FacetBucket]:
+    """Counts por material.code (vocab curado, vía material_id)."""
+    clauses = build_product_clauses(filters, exclude={"material_curated"})
+    stmt = (
+        select(Material.code.label("v"), func.count().label("c"))
+        .select_from(Product)
+        .join(Material, Material.id == Product.material_id)
+        .where(and_(*clauses))
+        .group_by(Material.code)
+        .order_by(func.count().desc())
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
+    ]
+
+
 async def _total(session: AsyncSession | AsyncConnection, filters: ProductFilters) -> int:
     clauses = build_product_clauses(filters)
     stmt = select(func.count()).where(and_(*clauses))
@@ -260,6 +394,10 @@ async def compute_facets(
         tr_ar,
         total,
         total_unfiltered,
+        division,
+        series,
+        tier_code,
+        material_curated,
     ) = await asyncio.gather(
         _on_conn(lambda c: _count_by_column(c, Product.family, filters, exclude_field="family", limit=50)),
         _on_conn(lambda c: _count_by_column(c, Product.material, filters, exclude_field="material", limit=50)),
@@ -273,6 +411,11 @@ async def compute_facets(
         _on_conn(lambda c: _translation_status_counts(c, filters, "ar")),
         _on_conn(lambda c: _total(c, filters)),
         _on_conn(lambda c: _total_unfiltered(c)),
+        # Stage 3 (Wave 11) — division/series/tier/material curated.
+        _on_conn(lambda c: _count_division(c, filters)),
+        _on_conn(lambda c: _count_series(c, filters)),
+        _on_conn(lambda c: _count_tier(c, filters)),
+        _on_conn(lambda c: _count_material_curated(c, filters)),
     )
 
     # Sort dn/pn numerically when possible (ascending), else lexicographic.
@@ -297,4 +440,8 @@ async def compute_facets(
         image_status=image_status,
         has_image=has_image,
         translation_status={"es": tr_es, "ar": tr_ar},
+        division=division,
+        series=series,
+        tier_code=tier_code,
+        material_curated=material_curated,
     )

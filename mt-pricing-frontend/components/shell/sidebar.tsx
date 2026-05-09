@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
+  Award,
+  Boxes,
   ChevronLeft,
   ChevronRight,
   Coins,
@@ -12,6 +14,7 @@ import {
   Flag,
   GitCompare,
   Home,
+  Layers,
   LayoutGrid,
   Network,
   Receipt,
@@ -20,6 +23,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Sprout,
   Tags,
   Timer,
   Truck,
@@ -60,6 +64,10 @@ const SECTION_QA: readonly NavItem[] = [
 ] as const;
 
 const SECTION_SYS: readonly NavItem[] = [
+  { href: "/admin/divisions", label: "Divisiones", icon: Layers, permissions: ["admin:taxonomy"] },
+  { href: "/admin/series", label: "Series", icon: Sprout, permissions: ["admin:taxonomy"] },
+  { href: "/admin/series-tiers", label: "Tiers", icon: Award, permissions: ["admin:taxonomy"] },
+  { href: "/admin/materials", label: "Materiales", icon: Boxes, permissions: ["admin:taxonomy"] },
   { href: "/admin/divisas", label: "Divisas", icon: Coins, permissions: ["currencies:manage"] },
   { href: "/admin/fx-rates", label: "Tasas FX", icon: Coins, permissions: ["fx:read"] },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },

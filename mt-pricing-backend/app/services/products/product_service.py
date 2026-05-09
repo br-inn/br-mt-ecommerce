@@ -192,6 +192,11 @@ class ProductService:
         cursor: str | None = None,
         limit: int = 50,
         include_total: bool = False,
+        # Stage 3 (Wave 11)
+        division_code: str | None = None,
+        series_id: UUID | None = None,
+        material_id: UUID | None = None,
+        tier_code: str | None = None,
     ) -> tuple[Sequence[Product], str | None, int | None]:
         return await self.products.list_paginated_with_filters(
             family=family,
@@ -209,6 +214,10 @@ class ProductService:
             cursor=cursor,
             limit=limit,
             include_total=include_total,
+            division_code=division_code,
+            series_id=series_id,
+            material_id=material_id,
+            tier_code=tier_code,
         )
 
     async def search_products(self, query: str, *, limit: int = 10) -> Sequence[Product]:

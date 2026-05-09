@@ -24,11 +24,13 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models.product import Product
 from app.db.models.user import User
 from app.repositories.audit import AuditRepository
 from app.repositories.product import ProductRepository
 from app.services.importer.differ import RowAction, RowDiff
+from app.services.imports.division_assignment import assign_divisions
 
 logger = logging.getLogger(__name__)
 
@@ -108,11 +110,16 @@ async def _apply_one(
     actor: User,
     *,
     run_id: str,
+    division_codes: list[str] | None = None,
+    division_code_cache: dict[str, Any] | None = None,
 ) -> str:
     """Aplica un :class:`RowDiff` y devuelve la action realizada (string).
 
     Sólo CREATE/UPDATE producen mutación + audit. SKIP_LOCKED/NO_CHANGE/ERROR
     se cuentan pero no tocan BD ni audit.
+
+    Stage 3 Wave 11: si ``division_codes`` no está vacío, asigna esas
+    divisiones al producto upserted (idempotente).
     """
     if diff.action == RowAction.CREATE:
         payload = dict(diff.payload)
@@ -129,6 +136,11 @@ async def _apply_one(
             payload_diff={"_import_run_id": run_id},
             reason=f"PIM import run {run_id}",
         )
+        if division_codes and diff.sku:
+            await assign_divisions(
+                session, diff.sku, division_codes,
+                code_id_cache=division_code_cache,
+            )
         return "created"
     if diff.action == RowAction.UPDATE:
         existing = await repo.get_by_sku(diff.sku)  # type: ignore[arg-type]
@@ -150,6 +162,11 @@ async def _apply_one(
             payload_diff=diff.diff,
             reason=f"PIM import run {run_id}",
         )
+        if division_codes and diff.sku:
+            await assign_divisions(
+                session, diff.sku, division_codes,
+                code_id_cache=division_code_cache,
+            )
         return "updated"
     if diff.action == RowAction.SKIP_LOCKED:
         return "skipped_locked"
@@ -165,6 +182,7 @@ async def apply_diffs_chunked(
     *,
     run_id: str,
     chunk_size: int = 1000,
+    division_codes: list[str] | None = None,
 ) -> ApplyResult:
     """Aplica el conjunto de diffs en chunks de ``chunk_size``.
 
@@ -172,9 +190,21 @@ async def apply_diffs_chunked(
     Si un chunk falla, se hace rollback del savepoint y el siguiente chunk
     continúa. La transacción exterior debe ser controlada por el caller
     (FastAPI dependency ``get_db_session`` hace commit-on-success).
+
+    Stage 3 Wave 11: ``division_codes`` (override per-call) o
+    ``settings.PIM_DEFAULT_DIVISIONS`` (fallback) se asignan a cada
+    producto upserted via :func:`assign_divisions` (idempotente).
     """
     repo = ProductRepository(session)
     audit = AuditRepository(session)
+
+    # Stage 3 Wave 11 — resolve division mapping una vez por apply.
+    effective_div_codes: list[str] = (
+        list(division_codes)
+        if division_codes is not None
+        else list(settings.PIM_DEFAULT_DIVISIONS or [])
+    )
+    div_code_cache: dict[str, Any] = {}
 
     result = ApplyResult(total_rows=len(diffs), started_at=datetime.now(tz=timezone.utc))
 
@@ -185,7 +215,10 @@ async def apply_diffs_chunked(
                 for d in chunk:
                     try:
                         action = await _apply_one(
-                            session, repo, audit, d, actor, run_id=run_id
+                            session, repo, audit, d, actor,
+                            run_id=run_id,
+                            division_codes=effective_div_codes,
+                            division_code_cache=div_code_cache,
                         )
                     except Exception:  # noqa: BLE001 — fila individual no debe matar chunk si controlable
                         logger.exception(
