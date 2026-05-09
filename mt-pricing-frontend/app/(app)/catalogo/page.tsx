@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   MoreHorizontal,
   Plus,
-  RefreshCcw,
   Search,
   Settings2,
   Upload,
@@ -44,7 +43,6 @@ import {
   type TranslationStatus,
 } from "@/lib/api/endpoints/products";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { FacetSidebar } from "./_components/facet-sidebar";
 import { ActiveFiltersBar } from "./_components/active-filters-bar";
 import { SavedViewsBar, SYSTEM_VIEWS } from "./_components/saved-views-bar";
 import { Paginator } from "./_components/paginator";
@@ -112,11 +110,16 @@ export default function CatalogPage() {
     "translation",
     parseAsStringEnum<TranslationStatus>([...TRANSLATION_VALUES]),
   );
-  const [active] = useQueryState("active", parseAsBoolean.withDefault(true));
+  const [active, setActive] = useQueryState("active", parseAsBoolean);
   // US-1A-02-09-FE — filtros avanzados con state en URL.
   const [dn, setDn] = useQueryState("dn", parseAsString);
   const [pn, setPn] = useQueryState("pn", parseAsString);
   const [material, setMaterial] = useQueryState("material", parseAsString);
+  // Stage 3 (Wave 11) — taxonomy filters
+  const [division, setDivision] = useQueryState("division", parseAsString);
+  const [seriesId, setSeriesId] = useQueryState("series_id", parseAsString);
+  const [materialId, setMaterialId] = useQueryState("material_id", parseAsString);
+  const [tierCode, setTierCode] = useQueryState("tier_code", parseAsString);
   const [moreFiltersOpen, setMoreFiltersOpen] = React.useState(false);
 
   const debouncedSearch = useDebouncedValue(searchInput, 300);
@@ -127,12 +130,30 @@ export default function CatalogPage() {
       ...(family ? { family } : {}),
       ...(quality ? { data_quality: quality } : {}),
       ...(translationStatus ? { translation_status: translationStatus } : {}),
-      ...(active !== undefined ? { active } : {}),
+      ...(active === true || active === false ? { active } : {}),
       ...(dn ? { dn } : {}),
       ...(pn ? { pn } : {}),
       ...(material ? { material } : {}),
+      // Stage 3 — taxonomy
+      ...(division ? { division } : {}),
+      ...(seriesId ? { series_id: seriesId } : {}),
+      ...(materialId ? { material_id: materialId } : {}),
+      ...(tierCode ? { tier_code: tierCode } : {}),
     }),
-    [debouncedSearch, family, quality, translationStatus, active, dn, pn, material],
+    [
+      debouncedSearch,
+      family,
+      quality,
+      translationStatus,
+      active,
+      dn,
+      pn,
+      material,
+      division,
+      seriesId,
+      materialId,
+      tierCode,
+    ],
   );
 
   const {
@@ -150,9 +171,9 @@ export default function CatalogPage() {
     [data],
   );
   const total = data?.pages[0]?.total ?? null;
-  const activeFiltersCount = [family, quality, translationStatus, dn, pn, material].filter(
-    Boolean,
-  ).length;
+  const activeFiltersCount =
+    [family, quality, translationStatus, dn, pn, material].filter(Boolean).length +
+    (active === null || active === undefined ? 0 : 1);
 
   const clearAllFilters = React.useCallback(() => {
     void setFamily(null);
@@ -161,7 +182,8 @@ export default function CatalogPage() {
     void setDn(null);
     void setPn(null);
     void setMaterial(null);
-  }, [setFamily, setQuality, setTranslationStatus, setDn, setPn, setMaterial]);
+    void setActive(null);
+  }, [setFamily, setQuality, setTranslationStatus, setDn, setPn, setMaterial, setActive]);
 
   // ---- Wave 10 facets sidebar wiring ---------------------------------------
   const facetFilters: FacetsFilters = React.useMemo(
@@ -199,9 +221,12 @@ export default function CatalogPage() {
         case "translation_status":
           void setTranslationStatus(value as TranslationStatus | null);
           break;
+        case "active":
+          void setActive(value as boolean | null);
+          break;
       }
     },
-    [setFamily, setMaterial, setDn, setPn, setQuality, setTranslationStatus],
+    [setFamily, setMaterial, setDn, setPn, setQuality, setTranslationStatus, setActive],
   );
 
   const { data: facetsData } = useFacets(facetFilters);
@@ -217,8 +242,10 @@ export default function CatalogPage() {
     if (quality) out.push({ key: "data_quality", label: `quality: ${quality}` });
     if (translationStatus)
       out.push({ key: "translation_status", label: `traducción: ${translationStatus}` });
+    if (active === true) out.push({ key: "active", label: "activos" });
+    if (active === false) out.push({ key: "active", label: "inactivos" });
     return out;
-  }, [family, material, dn, pn, quality, translationStatus]);
+  }, [family, material, dn, pn, quality, translationStatus, active]);
 
   const removeChip = React.useCallback(
     (key: string) => setFacetFilter(key as keyof FacetsFilters, null),
@@ -227,15 +254,15 @@ export default function CatalogPage() {
 
   const activeViewId = React.useMemo(() => {
     // Detect which system view matches the current filters (best-effort).
-    if (activeChips.length === 0 && active === true) return "active-only";
-    if (family === "unclassified" && activeChips.length === 1) return "unclassified";
-    if (translationStatus === "pending" && activeChips.length === 1) return "pending-es";
-    if (activeChips.length === 0) return "all";
+    const otherFilters = [family, material, dn, pn, quality, translationStatus].filter(Boolean).length;
+    if (otherFilters === 0 && active === true) return "active-only";
+    if (family === "unclassified" && otherFilters === 1 && active === null) return "unclassified";
+    if (translationStatus === "pending" && otherFilters === 1 && active === null) return "pending-es";
+    if (otherFilters === 0 && (active === null || active === undefined)) return "all";
     return "";
-  }, [activeChips, active, family, translationStatus]);
+  }, [active, family, material, dn, pn, quality, translationStatus]);
 
   return (
-    <div className="flex h-full"><FacetSidebar filters={facetFilters} setFilter={setFacetFilter} />
     <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Page header */}
       <div
@@ -274,6 +301,35 @@ export default function CatalogPage() {
         </div>
       </div>
 
+      {/* Stage 3 (Wave 11) — selector de división */}
+      <div
+        className="flex items-center gap-1 border-b bg-mt-surface px-6 py-2"
+        style={{ borderColor: MT.border }}
+      >
+        <span className="mr-2 text-[12px] uppercase tracking-wide" style={{ color: MT.ink4 }}>
+          División
+        </span>
+        {[
+          { code: null, label: "Todas" },
+          { code: "hidrosanitario", label: "Hidrosanitario" },
+          { code: "industrial", label: "Industrial" },
+        ].map((d) => {
+          const selected = division === d.code;
+          return (
+            <button
+              key={d.label}
+              onClick={() => void setDivision(d.code)}
+              className={`rounded-md px-2.5 py-1 text-[12.5px] transition-colors ${
+                selected ? "bg-mt-accent/15 font-semibold" : "hover:bg-mt-surface-2"
+              }`}
+              style={{ color: selected ? MT.ink : MT.ink3 }}
+            >
+              {d.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Wave 10 — saved views row + active filters chips */}
       <SavedViewsBar
         views={SYSTEM_VIEWS.map((v) => ({
@@ -283,13 +339,11 @@ export default function CatalogPage() {
               ? totalUnfiltered ?? null
               : v.id === "unclassified"
                 ? facetsData?.family.find((b) => b.value === "unclassified")?.count ?? null
-                : v.id === "no-image"
-                  ? facetsData?.has_image?.without ?? null
-                  : v.id === "pending-es"
-                    ? facetsData?.translation_status?.es?.pending ?? null
-                    : v.id === "active-only"
-                      ? facetsData?.active?.True ?? null
-                      : null,
+                : v.id === "pending-es"
+                  ? facetsData?.translation_status?.es?.pending ?? null
+                  : v.id === "active-only"
+                    ? facetsData?.active?.True ?? null
+                    : null,
         }))}
         activeId={activeViewId}
         onSelect={(view) => {
@@ -303,6 +357,7 @@ export default function CatalogPage() {
             void setTranslationStatus(view.filters.translation_status ?? null);
           if (view.filters.data_quality !== undefined)
             void setQuality((view.filters.data_quality as DataQuality | undefined) ?? null);
+          if (view.filters.active !== undefined) void setActive(view.filters.active ?? null);
         }}
       />
       <ActiveFiltersBar
@@ -634,7 +689,6 @@ export default function CatalogPage() {
         <Kbd>k</Kbd> nav · <Kbd>e</Kbd> editar · <Kbd>↵</Kbd> detalle ·{" "}
         <Kbd>?</Kbd> atajos
       </div>
-    </div>
     </div>
   );
 }

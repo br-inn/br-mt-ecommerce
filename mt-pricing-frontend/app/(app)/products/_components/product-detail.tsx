@@ -21,6 +21,9 @@ import { useProduct } from "@/lib/hooks/products/use-product";
 import { type Product } from "@/lib/api/endpoints/products";
 import { ProductEditForm } from "../[sku]/_components/product-edit-form";
 import { ImagesTab } from "../[sku]/_components/images-tab";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { effectiveDisplayApi } from "@/lib/api/endpoints/effective-display";
 
 /**
  * Pantalla 3 — Detalle SKU + tabs.
@@ -85,6 +88,9 @@ export function ProductDetail({ sku }: { sku: string }) {
         <h1 className="text-2xl font-semibold tracking-tight">{product.name_en}</h1>
       </header>
 
+      {/* Stage 3 (Wave 11) — taxonomy refinement: divisions, series, effective tags/certs, display pair */}
+      <Stage3DisplayBlock product={product} />
+
       <Tabs defaultValue="specs">
         <TabsList>
           <TabsTrigger value="specs" data-testid="tab-specs">
@@ -136,7 +142,7 @@ export function ProductDetail({ sku }: { sku: string }) {
         </TabsContent>
 
         <TabsContent value="images">
-          <ImagesTab productId={product.id} />
+          <ImagesTab productId={product.sku} />
         </TabsContent>
       </Tabs>
     </div>
@@ -237,5 +243,115 @@ function Row({
         {value === null || value === undefined || value === "" ? "—" : value}
       </dd>
     </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Stage 3 (Wave 11) — divisions + series + effective tags/certs + display pair
+// ----------------------------------------------------------------------------
+
+interface Stage3Product {
+  sku: string;
+  series_id?: string | null;
+  material_id?: string | null;
+  display_pair_sku?: string | null;
+  division_codes?: string[];
+}
+
+function Stage3DisplayBlock({ product }: { product: Product }) {
+  const p = product as Product & Stage3Product;
+  const hasStage3Data =
+    (p.division_codes && p.division_codes.length > 0) ||
+    p.series_id ||
+    p.display_pair_sku;
+
+  const effectiveQ = useQuery({
+    queryKey: ["effective-display", p.sku],
+    queryFn: () => effectiveDisplayApi.get(p.sku),
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  if (!hasStage3Data && !effectiveQ.data) return null;
+
+  const tags = effectiveQ.data?.tags ?? [];
+  const certs = effectiveQ.data?.certifications ?? [];
+
+  return (
+    <Card data-testid="product-stage3-block">
+      <CardHeader>
+        <CardTitle className="text-sm">Catálogo y certificaciones</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {p.division_codes && p.division_codes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Divisiones:
+            </span>
+            {p.division_codes.map((code) => (
+              <Badge key={code} variant="secondary" className="capitalize">
+                {code.replace("_", " ")}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {p.series_id && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Serie:
+            </span>
+            <Badge variant="outline" className="font-mono text-[11px]">
+              {p.series_id.slice(0, 8)}
+            </Badge>
+          </div>
+        )}
+        {p.display_pair_sku && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Modelo emparejado:
+            </span>
+            <Link
+              href={`/catalogo/${encodeURIComponent(p.display_pair_sku)}`}
+              className="text-sm font-medium underline-offset-2 hover:underline"
+            >
+              {p.display_pair_sku}
+            </Link>
+          </div>
+        )}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Etiquetas:
+            </span>
+            {tags.map((t) => (
+              <Badge key={t} variant="secondary" className="uppercase">
+                {t}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {certs.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Certificaciones:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {certs.map((c) => (
+                <span
+                  key={c.id}
+                  className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+                  title={c.scope ?? c.name}
+                >
+                  {c.logo_url && (
+                    <img src={c.logo_url} alt={c.code} className="size-4 object-contain" />
+                  )}
+                  <span className="font-medium">{c.code}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

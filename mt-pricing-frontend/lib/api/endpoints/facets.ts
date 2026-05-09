@@ -27,6 +27,11 @@ export interface FacetsResponse {
   image_status: Record<string, number>;
   has_image: Record<string, number>;
   translation_status: Record<string, TranslationLangFacet>;
+  // Stage 3 (Wave 11) — taxonomy refinement facets
+  division?: FacetBucket[];
+  series?: FacetBucket[];
+  tier_code?: FacetBucket[];
+  material_curated?: FacetBucket[];
 }
 
 export interface FacetsFilters {
@@ -43,6 +48,11 @@ export interface FacetsFilters {
   translation_status?: "pending" | "draft" | "approved" | null;
   translation_lang?: "es" | "ar" | null;
   q?: string | null;
+  // Stage 3 — taxonomy filters
+  division?: string | null;
+  series_id?: string | null;
+  material_id?: string | null;
+  tier_code?: string | null;
 }
 
 function buildQuery(p: Record<string, unknown>): string {

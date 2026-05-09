@@ -57,7 +57,7 @@ export interface ProductImage {
 }
 
 export interface ProductListItem {
-  id: string;
+  internal_id: string;
   sku: string;
   name_en: string;
   family: string | null;
@@ -71,6 +71,17 @@ export interface ProductListItem {
   active: boolean;
   primary_image_url: string | null;
   updated_at: string;
+  // Stage 3 (Wave 11) — taxonomy refinement
+  series_id: string | null;
+  material_id: string | null;
+  display_pair_sku: string | null;
+  division_codes: string[];
+}
+
+export interface ProductMini {
+  sku: string;
+  name_en: string;
+  primary_image_url: string | null;
 }
 
 export interface Product extends ProductListItem {
@@ -87,12 +98,14 @@ export interface ProductListResponse {
   items: ProductListItem[];
   next_cursor: string | null;
   total: number | null;
+  page_size: number;
 }
 
 export interface ProductCreatePayload {
   sku: string;
   name_en: string;
   family?: string | null;
+  subfamily?: string | null;
   dn?: string | null;
   pn?: string | null;
   material?: string | null;
@@ -104,6 +117,11 @@ export interface ProductCreatePayload {
   intrastat?: ProductIntrastat | null;
   description_en?: string | null;
   active?: boolean;
+  /**
+   * Stage 4 (Option C): structured `specs` JSONB validated by backend
+   * SpecsValidator against the family/subfamily JSON Schema.
+   */
+  specs?: Record<string, unknown> | null;
 }
 
 export type ProductUpdatePayload = Partial<ProductCreatePayload>;
@@ -171,6 +189,11 @@ export interface ProductFilters {
   created_before?: string | undefined;
   cursor?: string | null | undefined;
   limit?: number | undefined;
+  // Stage 3 (Wave 11) — taxonomy filters
+  division?: string | undefined;
+  series_id?: string | undefined;
+  material_id?: string | undefined;
+  tier_code?: string | undefined;
 }
 
 // ---- Internals ------------------------------------------------------------
@@ -248,9 +271,16 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 
 // ---- API ------------------------------------------------------------------
 
+interface BackendPagination<T> {
+  items: T[];
+  cursor: { next: string | null; prev?: string | null };
+  total: number | null;
+  page_size: number;
+}
+
 export const productsApi = {
-  list: (filters: ProductFilters = {}): Promise<ProductListResponse> =>
-    authedFetch<ProductListResponse>(
+  list: async (filters: ProductFilters = {}): Promise<ProductListResponse> => {
+    const raw = await authedFetch<BackendPagination<ProductListItem>>(
       `/api/v1/products${buildQuery({
         family: filters.family,
         data_quality: filters.data_quality,
@@ -265,10 +295,22 @@ export const productsApi = {
         material: filters.material,
         created_after: filters.created_after,
         created_before: filters.created_before,
+        // Stage 3 — taxonomy filters
+        division: filters.division,
+        series_id: filters.series_id,
+        material_id: filters.material_id,
+        tier_code: filters.tier_code,
         cursor: filters.cursor ?? undefined,
         limit: filters.limit,
       })}`,
-    ),
+    );
+    return {
+      items: raw.items,
+      next_cursor: raw.cursor?.next ?? null,
+      total: raw.total,
+      page_size: raw.page_size,
+    };
+  },
   get: (id: string): Promise<Product> => authedFetch<Product>(`/api/v1/products/${id}`),
   create: (payload: ProductCreatePayload): Promise<Product> =>
     authedFetch<Product>("/api/v1/products", {

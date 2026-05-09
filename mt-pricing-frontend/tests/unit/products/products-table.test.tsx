@@ -81,7 +81,7 @@ function renderTable() {
 const sampleResponse: ProductListResponse = {
   items: [
     {
-      id: "p1",
+      internal_id: "00000000-0000-0000-0000-000000000001",
       sku: "MTV-1004",
       name_en: "Ball valve PN16",
       family: "valves",
@@ -95,9 +95,13 @@ const sampleResponse: ProductListResponse = {
       active: true,
       primary_image_url: null,
       updated_at: "2026-05-06T12:00:00Z",
+      series_id: null,
+      material_id: null,
+      display_pair_sku: null,
+      division_codes: [],
     },
     {
-      id: "p2",
+      internal_id: "00000000-0000-0000-0000-000000000002",
       sku: "MTV-1011",
       name_en: "Gate valve PN16",
       family: "valves",
@@ -111,10 +115,15 @@ const sampleResponse: ProductListResponse = {
       active: false,
       primary_image_url: null,
       updated_at: "2026-05-05T12:00:00Z",
+      series_id: null,
+      material_id: null,
+      display_pair_sku: null,
+      division_codes: [],
     },
   ],
   next_cursor: null,
   total: 2,
+  page_size: 25,
 };
 
 describe("ProductsTable (Pantalla 2)", () => {
@@ -166,6 +175,7 @@ describe("ProductsTable (Pantalla 2)", () => {
       items: [],
       next_cursor: null,
       total: 0,
+      page_size: 25,
     });
     renderTable();
     await waitFor(() =>

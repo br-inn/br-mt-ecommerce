@@ -27,7 +27,7 @@ describe("useProducts", () => {
     const response: ProductListResponse = {
       items: [
         {
-          id: "p1",
+          internal_id: "00000000-0000-0000-0000-000000000001",
           sku: "VAL-001",
           name_en: "Valve",
           family: "valves",
@@ -41,10 +41,15 @@ describe("useProducts", () => {
           active: true,
           primary_image_url: null,
           updated_at: "2026-05-06T12:00:00Z",
+          series_id: null,
+          material_id: null,
+          display_pair_sku: null,
+          division_codes: [],
         },
       ],
       next_cursor: null,
       total: 1,
+      page_size: 25,
     };
     const spy = vi
       .spyOn(productsApi, "list")

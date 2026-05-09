@@ -54,7 +54,7 @@ const messages = {
 };
 
 const product: Product = {
-  id: "p1",
+  internal_id: "00000000-0000-0000-0000-000000000001",
   sku: "MTV-1",
   name_en: "Ball valve",
   family: "valves",
@@ -75,6 +75,10 @@ const product: Product = {
   intrastat: null,
   description_en: null,
   created_at: "2026-04-01T00:00:00Z",
+  series_id: null,
+  material_id: null,
+  display_pair_sku: null,
+  division_codes: [],
 };
 
 function renderForm(props?: Partial<React.ComponentProps<typeof ProductEditForm>>) {
