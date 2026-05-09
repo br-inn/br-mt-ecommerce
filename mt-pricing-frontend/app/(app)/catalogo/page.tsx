@@ -5,21 +5,22 @@ import Link from "next/link";
 import {
   ChevronRight,
   Download,
-  Filter,
   Image as ImageIcon,
   MoreHorizontal,
   Plus,
-  Search,
-  Settings2,
   Upload,
-  X,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import {
   parseAsString,
   parseAsStringEnum,
   parseAsBoolean,
   useQueryState,
 } from "nuqs";
+
+import { materialsApi } from "@/lib/api/endpoints/materials";
+import { seriesApi } from "@/lib/api/endpoints/series";
+import { seriesTiersApi } from "@/lib/api/endpoints/series-tiers";
 
 import {
   Kbd,
@@ -44,9 +45,9 @@ import {
 } from "@/lib/api/endpoints/products";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ActiveFiltersBar } from "./_components/active-filters-bar";
-import { FacetSidebar } from "./_components/facet-sidebar";
 import { SavedViewsBar, SYSTEM_VIEWS } from "./_components/saved-views-bar";
 import { Paginator } from "./_components/paginator";
+import { TopFilterBar } from "./_components/top-filter-bar";
 
 const QUALITY_VALUES = ["complete", "partial", "blocked"] as const;
 const TRANSLATION_VALUES = ["draft", "pending", "approved"] as const;
@@ -121,7 +122,43 @@ export default function CatalogPage() {
   const [seriesId, setSeriesId] = useQueryState("series_id", parseAsString);
   const [materialId, setMaterialId] = useQueryState("material_id", parseAsString);
   const [tierCode, setTierCode] = useQueryState("tier_code", parseAsString);
-  const [moreFiltersOpen, setMoreFiltersOpen] = React.useState(false);
+
+  // Stage 3 lookups (cached, used to render row chips).
+  const seriesListQ = useQuery({
+    queryKey: ["series", "public", "list-page"],
+    queryFn: () => seriesApi.listPublic({}),
+    staleTime: 5 * 60_000,
+  });
+  const tiersListQ = useQuery({
+    queryKey: ["series-tiers", "public", "list-page"],
+    queryFn: () => seriesTiersApi.listPublic(),
+    staleTime: 5 * 60_000,
+  });
+  const materialsListQ = useQuery({
+    queryKey: ["materials", "public", "list-page"],
+    queryFn: () => materialsApi.listPublic(),
+    staleTime: 5 * 60_000,
+  });
+
+  const seriesById = React.useMemo(() => {
+    const map: Record<string, { name_en: string; tier_id: string | null }> = {};
+    for (const s of seriesListQ.data ?? []) {
+      map[s.id] = { name_en: s.name_en, tier_id: s.tier_id };
+    }
+    return map;
+  }, [seriesListQ.data]);
+  const tierColorById = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t of tiersListQ.data ?? []) {
+      if (t.display_color) map[t.id] = t.display_color;
+    }
+    return map;
+  }, [tiersListQ.data]);
+  const materialById = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of materialsListQ.data ?? []) map[m.id] = m.name;
+    return map;
+  }, [materialsListQ.data]);
 
   const debouncedSearch = useDebouncedValue(searchInput, 300);
 
@@ -324,9 +361,7 @@ export default function CatalogPage() {
   }, [active, family, material, dn, pn, quality, translationStatus]);
 
   return (
-    <div className="flex h-full">
-      <FacetSidebar filters={facetFilters} setFilter={setFacetFilter} />
-      <div className="flex h-full min-w-0 flex-1 flex-col">
+    <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Page header */}
       <div
         className="flex items-center justify-between border-b bg-mt-surface px-6 py-3.5"
@@ -439,190 +474,17 @@ export default function CatalogPage() {
         onClearAll={clearAllFilters}
       />
 
-      {/* Toolbar */}
-      <div
-        className="flex items-center gap-2.5 border-b bg-mt-surface px-6 py-2.5"
-        style={{ borderColor: MT.border }}
-      >
-        <div
-          className="flex h-[30px] w-[320px] items-center gap-2 rounded-[5px] border px-2.5 text-[12.5px]"
-          style={{ background: MT.surface, borderColor: MT.border, color: MT.ink3 }}
-        >
-          <Search className="size-[13px]" />
-          <input
-            value={searchInput}
-            onChange={(e) => void setSearchInput(e.target.value || null)}
-            placeholder="Buscar SKU o nombre…"
-            className="flex-1 bg-transparent outline-none placeholder:text-[color:var(--mt-ink-4)]"
-            style={{ color: MT.ink }}
-          />
-          <Kbd>/</Kbd>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          {family ? (
-            <Pill tone="brand" dot>
-              <span>family: {family}</span>
-              <button
-                type="button"
-                onClick={() => void setFamily(null)}
-                className="ml-1 cursor-pointer"
-                aria-label="Quitar filtro family"
-              >
-                <X className="size-2.5" />
-              </button>
-            </Pill>
-          ) : null}
-          {quality ? (
-            <Pill
-              tone={
-                quality === "blocked" ? "danger" : quality === "partial" ? "warning" : "success"
-              }
-              dot
-            >
-              <span>quality: {quality}</span>
-              <button
-                type="button"
-                onClick={() => void setQuality(null)}
-                className="ml-1 cursor-pointer"
-                aria-label="Quitar filtro quality"
-              >
-                <X className="size-2.5" />
-              </button>
-            </Pill>
-          ) : null}
-          {translationStatus ? (
-            <Pill tone="ghost">
-              <span>translation: {translationStatus}</span>
-              <button
-                type="button"
-                onClick={() => void setTranslationStatus(null)}
-                className="ml-1 cursor-pointer"
-                aria-label="Quitar filtro translation"
-              >
-                <X className="size-2.5" />
-              </button>
-            </Pill>
-          ) : null}
-          {dn ? (
-            <Pill tone="ghost">
-              <span>DN: {dn}</span>
-              <button
-                type="button"
-                onClick={() => void setDn(null)}
-                className="ml-1 cursor-pointer"
-                aria-label="Quitar filtro DN"
-              >
-                <X className="size-2.5" />
-              </button>
-            </Pill>
-          ) : null}
-          {pn ? (
-            <Pill tone="ghost">
-              <span>PN: {pn}</span>
-              <button
-                type="button"
-                onClick={() => void setPn(null)}
-                className="ml-1 cursor-pointer"
-                aria-label="Quitar filtro PN"
-              >
-                <X className="size-2.5" />
-              </button>
-            </Pill>
-          ) : null}
-          {material ? (
-            <Pill tone="ghost">
-              <span>material: {material}</span>
-              <button
-                type="button"
-                onClick={() => void setMaterial(null)}
-                className="ml-1 cursor-pointer"
-                aria-label="Quitar filtro material"
-              >
-                <X className="size-2.5" />
-              </button>
-            </Pill>
-          ) : null}
-          {activeFiltersCount > 0 ? (
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="ml-1 cursor-pointer text-[11.5px] underline"
-              style={{ color: MT.ink3 }}
-            >
-              Limpiar todo
-            </button>
-          ) : null}
-        </div>
-        <span className="flex-1" />
-        <MtButton
-          size="sm"
-          icon={<Filter className="size-3.5" />}
-          onClick={() => setMoreFiltersOpen((v) => !v)}
-        >
-          Filtros · {activeFiltersCount}
-        </MtButton>
-        <MtButton size="sm" icon={<Settings2 className="size-3.5" />}>
-          Columnas
-        </MtButton>
-      </div>
-
-      {/* US-1A-02-09-FE — Más filtros (DN / PN / material) */}
-      {moreFiltersOpen ? (
-        <div
-          className="grid grid-cols-3 gap-3 border-b bg-mt-surface px-6 py-3"
-          style={{ borderColor: MT.border }}
-        >
-          <label className="flex flex-col gap-1 text-[11.5px]" style={{ color: MT.ink3 }}>
-            <span className="mt-mono uppercase tracking-[0.6px]">DN</span>
-            <select
-              value={dn ?? ""}
-              onChange={(e) => void setDn(e.target.value || null)}
-              className="rounded-md border bg-transparent px-2 py-1.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-mt-brand"
-              style={{ borderColor: MT.border, color: MT.ink }}
-            >
-              <option value="">— cualquiera —</option>
-              {DN_VALUES.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-[11.5px]" style={{ color: MT.ink3 }}>
-            <span className="mt-mono uppercase tracking-[0.6px]">PN</span>
-            <select
-              value={pn ?? ""}
-              onChange={(e) => void setPn(e.target.value || null)}
-              className="rounded-md border bg-transparent px-2 py-1.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-mt-brand"
-              style={{ borderColor: MT.border, color: MT.ink }}
-            >
-              <option value="">— cualquiera —</option>
-              {PN_VALUES.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-[11.5px]" style={{ color: MT.ink3 }}>
-            <span className="mt-mono uppercase tracking-[0.6px]">material</span>
-            <select
-              value={material ?? ""}
-              onChange={(e) => void setMaterial(e.target.value || null)}
-              className="rounded-md border bg-transparent px-2 py-1.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-mt-brand"
-              style={{ borderColor: MT.border, color: MT.ink }}
-            >
-              <option value="">— cualquiera —</option>
-              {MATERIAL_VALUES.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      ) : null}
+      {/* Stage 3 (Wave 11) — barra horizontal de filtros (reemplaza la
+          sidebar Wave 10 + el panel "más filtros" + las píldoras inline). */}
+      <TopFilterBar
+        searchInput={searchInput}
+        onSearchInput={(v) => void setSearchInput(v)}
+        filters={facetFilters}
+        setFilter={setFacetFilter}
+        facets={facetsData}
+        onClearAll={clearAllFilters}
+        activeFiltersCount={activeFiltersCount}
+      />
 
       {isError ? (
         <div className="px-6 py-3">
@@ -643,14 +505,15 @@ export default function CatalogPage() {
               </MtTh>
               <MtTh style={{ width: 110 }}>SKU</MtTh>
               <MtTh style={{ width: 40 }}>img</MtTh>
-              <MtTh>name_en</MtTh>
-              <MtTh>family</MtTh>
+              <MtTh>Producto</MtTh>
+              <MtTh>Taxonomía</MtTh>
+              <MtTh>Serie</MtTh>
               <MtTh className="text-right">DN</MtTh>
               <MtTh className="text-right">PN</MtTh>
-              <MtTh>material</MtTh>
+              <MtTh>Material</MtTh>
               <MtTh>EN ES AR</MtTh>
-              <MtTh>data_quality</MtTh>
-              <MtTh>updated</MtTh>
+              <MtTh>Calidad</MtTh>
+              <MtTh>Actualizado</MtTh>
               <MtTh style={{ width: 28 }}>{""}</MtTh>
             </tr>
           </thead>
@@ -658,7 +521,7 @@ export default function CatalogPage() {
             {isLoading
               ? Array.from({ length: 12 }).map((_, i) => (
                   <tr key={`sk-${i}`}>
-                    {Array.from({ length: 12 }).map((__, j) => (
+                    {Array.from({ length: 13 }).map((__, j) => (
                       <MtTd key={j}>
                         <MtSkeleton width={j === 3 ? 180 : 60} />
                       </MtTd>
@@ -689,6 +552,26 @@ export default function CatalogPage() {
                       </MtTd>
                       <MtTd className="font-medium" style={{ color: MT.ink }}>
                         <Link href={`/catalogo/${r.sku}`}>{r.name_en}</Link>
+                        {r.division_codes && r.division_codes.length > 0 ? (
+                          <div className="mt-0.5 flex gap-1">
+                            {r.division_codes.map((d) => (
+                              <span
+                                key={d}
+                                className="rounded px-1 py-0 text-[9.5px] uppercase tracking-[0.4px]"
+                                style={{
+                                  background:
+                                    d === "industrial"
+                                      ? "rgba(229, 0, 76, 0.10)"
+                                      : "rgba(10, 77, 140, 0.10)",
+                                  color: d === "industrial" ? "#9c0033" : "#0a4d8c",
+                                }}
+                                title={`División: ${d}`}
+                              >
+                                {d.slice(0, 3)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </MtTd>
                       <MtTd>
                         {r.family ? (
@@ -697,14 +580,44 @@ export default function CatalogPage() {
                           <span style={{ color: MT.ink4 }}>—</span>
                         )}
                       </MtTd>
+                      <MtTd>
+                        {(() => {
+                          const ser = r.series_id ? seriesById[r.series_id] : undefined;
+                          if (!ser) {
+                            return <span style={{ color: MT.ink4 }}>—</span>;
+                          }
+                          const tierColor = ser.tier_id
+                            ? tierColorById[ser.tier_id]
+                            : undefined;
+                          return (
+                            <span className="inline-flex items-center gap-1.5">
+                              {tierColor ? (
+                                <span
+                                  className="size-2 rounded-full"
+                                  style={{
+                                    background: tierColor,
+                                    boxShadow: `0 0 0 1px ${MT.border}`,
+                                  }}
+                                  aria-hidden
+                                />
+                              ) : null}
+                              <span className="truncate" style={{ color: MT.ink2 }}>
+                                {ser.name_en}
+                              </span>
+                            </span>
+                          );
+                        })()}
+                      </MtTd>
                       <MtTd mono className="text-right">
                         {r.dn ?? "—"}
                       </MtTd>
                       <MtTd mono className="text-right" style={{ color: MT.ink3 }}>
                         {r.pn ?? "—"}
                       </MtTd>
-                      <MtTd mono className="text-[11.5px]" style={{ color: MT.ink3 }}>
-                        {r.material ?? "—"}
+                      <MtTd className="text-[11.5px]" style={{ color: MT.ink3 }}>
+                        {r.material_id && materialById[r.material_id]
+                          ? materialById[r.material_id]
+                          : r.material ?? "—"}
                       </MtTd>
                       <MtTd>
                         <TStatusGlyphs t={{ en: tEn, es: tEs, ar: tAr }} />
@@ -759,7 +672,6 @@ export default function CatalogPage() {
         <Kbd>/</Kbd> buscar · <Kbd>j</Kbd>
         <Kbd>k</Kbd> nav · <Kbd>e</Kbd> editar · <Kbd>↵</Kbd> detalle ·{" "}
         <Kbd>?</Kbd> atajos
-      </div>
       </div>
     </div>
   );
