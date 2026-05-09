@@ -29,6 +29,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils/cn";
 import { useFormStep } from "@/lib/hooks/use-form-step";
+import { useQuery } from "@tanstack/react-query";
+import { divisionsApi } from "@/lib/api/endpoints/divisions";
+import { materialsApi } from "@/lib/api/endpoints/materials";
+import { seriesApi } from "@/lib/api/endpoints/series";
 import {
   useCreateProduct,
   useUpdateProduct,
@@ -40,6 +44,11 @@ import {
   type ProductCreatePayload,
   type ProductUpdatePayload,
 } from "@/lib/api/endpoints/products";
+import {
+  isPermissiveDefaultSchema,
+  useSpecsSchema,
+} from "@/lib/api/endpoints/specs";
+import { DynamicSpecsForm } from "./dynamic-specs-form";
 
 const familySchema = z.enum(PRODUCT_FAMILIES);
 
@@ -109,13 +118,24 @@ const createSchema = (msgs: {
       (v) => (v === "" || v === null || (typeof v === "number" && Number.isNaN(v)) ? undefined : v),
       z.number().positive().optional(),
     ),
+
+    // Stage 3 (Wave 11) — taxonomía
+    series_id: z.string().uuid().or(z.literal("")).optional(),
+    material_id: z.string().uuid().or(z.literal("")).optional(),
+    division_codes: z.array(z.string()).optional(),
   });
 
 type WizardForm = z.infer<ReturnType<typeof createSchema>>;
 
 const STEP_FIELDS: Path<WizardForm>[][] = [
   ["sku", "name_en", "family", "active"],
-  ["dn", "pn", "material", "type", "connection", "weight_kg", "length", "width", "height"],
+  // Step 1: dynamic specs (validated by backend, no local fields).
+  [],
+  [
+    "dn", "pn", "material", "type", "connection", "weight_kg", "length", "width", "height",
+    // Stage 3 (Wave 11) — taxonomía Stage 3 vive con el resto de metadatos físicos.
+    "series_id", "material_id", "division_codes",
+  ],
   ["qty_x_box", "moq", "ean_unit", "ean_box", "hs_code", "origin_country", "net_weight_kg"],
   [],
 ];
@@ -129,7 +149,10 @@ function toNumberOrNull(v: unknown): number | null {
   return null;
 }
 
-function buildPayload(values: WizardForm): ProductCreatePayload {
+function buildPayload(
+  values: WizardForm,
+  specs: Record<string, unknown> | null,
+): ProductCreatePayload {
   const dimensions =
     values.length || values.width || values.height
       ? {
@@ -157,6 +180,17 @@ function buildPayload(values: WizardForm): ProductCreatePayload {
         }
       : null;
 
+  const specsPayload =
+    specs && Object.keys(specs).length > 0 ? specs : null;
+
+  // Stage 3 (Wave 11) — taxonomy fields (only included when set).
+  const stage3: Partial<ProductCreatePayload> = {};
+  if (values.series_id) stage3.series_id = values.series_id as string;
+  if (values.material_id) stage3.material_id = values.material_id as string;
+  if (values.division_codes && values.division_codes.length > 0) {
+    stage3.division_codes = values.division_codes;
+  }
+
   return {
     sku: values.sku,
     name_en: values.name_en,
@@ -171,6 +205,8 @@ function buildPayload(values: WizardForm): ProductCreatePayload {
     dimensions,
     packaging,
     intrastat,
+    specs: specsPayload,
+    ...stage3,
   };
 }
 
@@ -271,22 +307,60 @@ export function ProductWizard(props: Props) {
       form.reset({ ...initialValues } as WizardForm);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit && (props as EditProps).product?.id]);
+  }, [isEdit && (props as EditProps).product?.sku]);
 
-  const { step, isFirst, isLast, next, prev } = useFormStep<WizardForm>({
-    total: 4,
+  // Specs JSONB state (Stage 4): family/subfamily-specific structured attributes.
+  // Validation happens server-side; we only collect the value here.
+  const family = form.watch("family");
+  const specsQuery = useSpecsSchema(family ?? undefined);
+  const specsSchema = specsQuery.data;
+  const isPermissiveSpecs = isPermissiveDefaultSchema(specsSchema);
+
+  const [specs, setSpecs] = React.useState<Record<string, unknown>>({});
+  const [specsErrors, setSpecsErrors] = React.useState<Record<string, string>>({});
+
+  // Reset specs when family changes (different schema).
+  const prevFamilyRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (prevFamilyRef.current !== null && prevFamilyRef.current !== family) {
+      setSpecs({});
+      setSpecsErrors({});
+    }
+    prevFamilyRef.current = family;
+  }, [family]);
+
+  const { step, isFirst, isLast, next, prev, goTo } = useFormStep<WizardForm>({
+    total: 5,
     fieldsByStep: STEP_FIELDS,
     form,
   });
 
+  // If schema is permissive (`_default` catch-all), skip the dynamic specs step
+  // forward when the user advances and backward when stepping back.
+  const handleNext = React.useCallback(async () => {
+    const ok = await next();
+    if (ok && step === 0 && isPermissiveSpecs) {
+      goTo(2);
+    }
+    return ok;
+  }, [next, step, isPermissiveSpecs, goTo]);
+
+  const handlePrev = React.useCallback(() => {
+    if (step === 2 && isPermissiveSpecs) {
+      goTo(0);
+      return;
+    }
+    prev();
+  }, [step, isPermissiveSpecs, goTo, prev]);
+
   const createMut = useCreateProduct();
   const updateMut = useUpdateProduct(
-    isEdit ? (props as EditProps).product.id : "",
+    isEdit ? (props as EditProps).product.sku : "",
   );
   const submitting = isEdit ? updateMut.isPending : createMut.isPending;
 
   const onFinalSubmit = async (values: WizardForm) => {
-    const payload = buildPayload(values);
+    const payload = buildPayload(values, specs);
     try {
       if (isEdit) {
         const editProps = props as EditProps;
@@ -304,9 +378,24 @@ export function ProductWizard(props: Props) {
       if (err instanceof ProductsApiError) {
         const fields = err.fieldErrors();
         if (fields) {
+          // Split errors: those rooted at "specs.*" go to DynamicSpecsForm;
+          // the rest map to react-hook-form fields.
+          const nextSpecsErrors: Record<string, string> = {};
+          let hasSpecsError = false;
           Object.entries(fields).forEach(([k, msg]) => {
-            form.setError(k as Path<WizardForm>, { type: "server", message: msg });
+            if (k === "specs" || k.startsWith("specs.")) {
+              const path = k === "specs" ? "" : k.slice("specs.".length);
+              if (path) nextSpecsErrors[path] = msg;
+              hasSpecsError = true;
+            } else {
+              form.setError(k as Path<WizardForm>, { type: "server", message: msg });
+            }
           });
+          if (hasSpecsError) {
+            setSpecsErrors(nextSpecsErrors);
+            // Bring the user back to the specs step so they can fix it.
+            if (!isPermissiveSpecs) goTo(1);
+          }
           toast.error(tCommon("error"));
           return;
         }
@@ -315,13 +404,29 @@ export function ProductWizard(props: Props) {
     }
   };
 
-  const stepTitles = [t("step1"), t("step2"), t("step3"), t("step4")];
-  const stepDescs = [
+  const allStepTitles = [
+    t("step1"),
+    t("specsStep"),
+    t("step2"),
+    t("step3"),
+    t("step4"),
+  ];
+  const allStepDescs = [
     t("step1Description"),
+    t("specsStepDescription"),
     t("step2Description"),
     t("step3Description"),
     t("step4Description"),
   ];
+  // When the schema is permissive, hide the dynamic specs step from the
+  // visible stepper (we still keep it in the underlying state machine for
+  // simpler indexing). The skip is handled in handleNext/handlePrev.
+  const stepTitles = isPermissiveSpecs
+    ? allStepTitles.filter((_, i) => i !== 1)
+    : allStepTitles;
+  // For the stepper highlight, map the underlying step (0..4) into the
+  // visible step index (0..3 when permissive, 0..4 otherwise).
+  const visibleStep = isPermissiveSpecs && step >= 1 ? step - 1 : step;
 
   return (
     <form
@@ -330,12 +435,12 @@ export function ProductWizard(props: Props) {
       noValidate
       data-testid="product-wizard"
     >
-      <Stepper currentStep={step} stepTitles={stepTitles} />
+      <Stepper currentStep={visibleStep} stepTitles={stepTitles} />
 
       <Card>
         <CardHeader>
-          <CardTitle>{stepTitles[step]}</CardTitle>
-          <CardDescription>{stepDescs[step]}</CardDescription>
+          <CardTitle>{allStepTitles[step]}</CardTitle>
+          <CardDescription>{allStepDescs[step]}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {step === 0 ? (
@@ -386,6 +491,42 @@ export function ProductWizard(props: Props) {
           ) : null}
 
           {step === 1 ? (
+            <div className="space-y-4">
+              {!family ? (
+                <p className="text-sm text-muted-foreground">
+                  Selecciona una familia en el paso anterior para ver los
+                  atributos técnicos.
+                </p>
+              ) : specsQuery.isLoading ? (
+                <div
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                  data-testid="specs-loading"
+                >
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
+                  {t("specsLoading")}
+                </div>
+              ) : specsQuery.isError || !specsSchema ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {t("specsError")}
+                </p>
+              ) : (
+                <DynamicSpecsForm
+                  schema={specsSchema}
+                  value={specs}
+                  onChange={(v) => {
+                    setSpecs(v);
+                    // Clear errors for fields that the user just edited.
+                    if (Object.keys(specsErrors).length > 0) {
+                      setSpecsErrors({});
+                    }
+                  }}
+                  errors={specsErrors}
+                />
+              )}
+            </div>
+          ) : null}
+
+          {step === 2 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={tFields("dn")}>
                 <Input {...form.register("dn")} />
@@ -433,10 +574,22 @@ export function ProductWizard(props: Props) {
                   {...form.register("height", { valueAsNumber: true })}
                 />
               </Field>
+
+              {/* Stage 3 (Wave 11) — taxonomía: serie, material curado, divisiones */}
+              <div className="col-span-full mt-3 rounded-md border bg-muted/30 p-3">
+                <h4 className="mb-3 text-sm font-semibold">Taxonomía Stage 3</h4>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Stage3SeriesPicker form={form} />
+                  <Stage3MaterialPicker form={form} />
+                  <div className="col-span-full">
+                    <Stage3DivisionsPicker form={form} />
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null}
 
-          {step === 2 ? (
+          {step === 3 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label={tFields("qty_x_box")}
@@ -487,7 +640,7 @@ export function ProductWizard(props: Props) {
             </div>
           ) : null}
 
-          {step === 3 ? (
+          {step === 4 ? (
             isEdit ? (
               <DiffSummary
                 form={form}
@@ -502,14 +655,14 @@ export function ProductWizard(props: Props) {
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button type="button" variant="ghost" onClick={prev} disabled={isFirst}>
+        <Button type="button" variant="ghost" onClick={handlePrev} disabled={isFirst}>
           <ChevronLeft className="h-4 w-4" /> {tCommon("previous")}
         </Button>
         {!isLast ? (
           <Button
             type="button"
             onClick={() => {
-              void next();
+              void handleNext();
             }}
           >
             {tCommon("next")} <ChevronRight className="h-4 w-4" />
@@ -577,6 +730,103 @@ function Stepper({
         );
       })}
     </ol>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Stage 3 (Wave 11) — wizard pickers para taxonomía
+// ----------------------------------------------------------------------------
+
+function Stage3SeriesPicker({ form }: { form: UseFormReturn<WizardForm> }) {
+  const seriesQ = useQuery({
+    queryKey: ["wizard", "series", "list"],
+    queryFn: () => seriesApi.listPublic({}),
+    staleTime: 5 * 60_000,
+  });
+  const value = form.watch("series_id") ?? "";
+  return (
+    <Field label="Serie">
+      <select
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) =>
+          form.setValue("series_id", e.target.value, { shouldDirty: true })
+        }
+        className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+      >
+        <option value="">— sin serie —</option>
+        {(seriesQ.data ?? []).map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name_en} ({s.code})
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
+function Stage3MaterialPicker({ form }: { form: UseFormReturn<WizardForm> }) {
+  const materialsQ = useQuery({
+    queryKey: ["wizard", "materials", "list"],
+    queryFn: () => materialsApi.listPublic(),
+    staleTime: 5 * 60_000,
+  });
+  const value = form.watch("material_id") ?? "";
+  return (
+    <Field label="Material curado">
+      <select
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) =>
+          form.setValue("material_id", e.target.value, { shouldDirty: true })
+        }
+        className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+      >
+        <option value="">— sin material curado —</option>
+        {(materialsQ.data ?? []).map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name}
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
+function Stage3DivisionsPicker({ form }: { form: UseFormReturn<WizardForm> }) {
+  const divisionsQ = useQuery({
+    queryKey: ["wizard", "divisions", "list"],
+    queryFn: () => divisionsApi.listPublic(),
+    staleTime: 5 * 60_000,
+  });
+  const selected = (form.watch("division_codes") ?? []) as string[];
+  const toggle = (code: string) => {
+    const next = selected.includes(code)
+      ? selected.filter((c) => c !== code)
+      : [...selected, code];
+    form.setValue("division_codes", next, { shouldDirty: true });
+  };
+  return (
+    <Field label="Divisiones (M:N)">
+      <div className="flex flex-wrap gap-2">
+        {(divisionsQ.data ?? []).map((d) => {
+          const isOn = selected.includes(d.code);
+          return (
+            <button
+              key={d.code}
+              type="button"
+              onClick={() => toggle(d.code)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs transition-colors",
+                isOn
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background hover:bg-accent",
+              )}
+            >
+              {d.name}
+            </button>
+          );
+        })}
+      </div>
+    </Field>
   );
 }
 

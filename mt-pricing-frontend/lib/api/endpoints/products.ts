@@ -122,6 +122,11 @@ export interface ProductCreatePayload {
    * SpecsValidator against the family/subfamily JSON Schema.
    */
   specs?: Record<string, unknown> | null;
+  // Stage 3 (Wave 11) — taxonomy refinement at creation time.
+  series_id?: string | null;
+  material_id?: string | null;
+  display_pair_sku?: string | null;
+  division_codes?: string[];
 }
 
 export type ProductUpdatePayload = Partial<ProductCreatePayload>;

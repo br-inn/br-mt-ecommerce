@@ -239,11 +239,22 @@ class ProductService:
             )
             if not result.valid:
                 raise SpecsValidationError(result.errors)
+        # Stage 3 (Wave 11) — divisiones M:N se manejan vía junction post-create.
+        division_codes = data.pop("division_codes", None) or []
         prod = await self.products.create(
             **data,
             created_by=actor.id,
             updated_by=actor.id,
         )
+        if division_codes:
+            from app.repositories.vocabularies import DivisionRepo, ProductDivisionRepo
+
+            div_repo = DivisionRepo(self.session)
+            link_repo = ProductDivisionRepo(self.session)
+            for code in division_codes:
+                division = await div_repo.get_by_code(code)
+                if division is not None:
+                    await link_repo.link(prod.sku, division.id)
         await self.audit.record(
             entity_type="product",
             entity_id=prod.sku,

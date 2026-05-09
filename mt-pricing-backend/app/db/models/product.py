@@ -137,13 +137,14 @@ class Product(Base):
     external_url: Mapped[str | None] = mapped_column(Text)
 
     # ---- Stage 1 Opción C — taxonomía FK (mig. 042) ----------------------
-    # Nullable durante transición; coexisten con TEXT escalares (brand,
-    # family, subfamily, type) hasta Stage 2 que los hace fuente única.
-    brand_id: Mapped[UUID | None] = mapped_column(
-        UUID_PG, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True
+    # Stage 4a (mig. 048): brand_id + family_id promovidos a NOT NULL tras
+    # cobertura 100% verificada. subfamily_id + type_id siguen NULLABLE hasta
+    # Stage 4b (clasificación masiva).
+    brand_id: Mapped[UUID] = mapped_column(
+        UUID_PG, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False
     )
-    family_id: Mapped[UUID | None] = mapped_column(
-        UUID_PG, ForeignKey("families.id", ondelete="RESTRICT"), nullable=True
+    family_id: Mapped[UUID] = mapped_column(
+        UUID_PG, ForeignKey("families.id", ondelete="RESTRICT"), nullable=False
     )
     subfamily_id: Mapped[UUID | None] = mapped_column(
         UUID_PG, ForeignKey("subfamilies.id", ondelete="RESTRICT"), nullable=True

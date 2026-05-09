@@ -238,6 +238,18 @@ class ProductCreate(ProductBase):
 
     sku: SkuStr = Field(description="SKU canónico (PK). Mayúsculas + dígitos + guiones.")
 
+    # ---- Stage 3 (Wave 11): catalog hierarchy refinement (CREATE) ---------
+    series_id: UUID | None = None
+    material_id: UUID | None = None
+    display_pair_sku: str | None = Field(default=None, max_length=64)
+    division_codes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Divisiones a las que pertenece este SKU (M:N). "
+            "Si vacío, no se enlaza a ninguna división."
+        ),
+    )
+
 
 class ProductPatch(BaseModel):
     """Request para PATCH /products/{sku} — todos opcionales."""
