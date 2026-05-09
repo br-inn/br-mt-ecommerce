@@ -36,7 +36,21 @@ from app.api.routes import (
     vocabularies,
 )
 from app.api.routes.costs import products_costs_router
-from app.api.routes.vocabularies import admin_vocab_router, products_vocab_router
+from app.api.routes.taxonomy_extras import (
+    admin_divisions_router,
+    admin_materials_router,
+    admin_series_router,
+    divisions_router,
+    materials_router,
+    products_divisions_router,
+    series_router,
+)
+from app.api.routes.vocabularies import (
+    admin_taxonomy_router,
+    admin_vocab_router,
+    products_vocab_router,
+    taxonomy_router,
+)
 
 router = APIRouter()
 
@@ -69,3 +83,13 @@ router.include_router(pricing_admin.router)
 router.include_router(vocabularies.router)
 router.include_router(admin_vocab_router)
 router.include_router(products_vocab_router, prefix="/products")
+router.include_router(taxonomy_router)
+router.include_router(admin_taxonomy_router)
+# Stage 3 — divisions, series rica, materials (Wave 11)
+router.include_router(divisions_router)
+router.include_router(series_router)
+router.include_router(materials_router)
+router.include_router(admin_divisions_router)
+router.include_router(admin_series_router)
+router.include_router(admin_materials_router)
+router.include_router(products_divisions_router, prefix="/products")

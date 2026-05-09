@@ -122,18 +122,12 @@ class Product(Base):
         Boolean, nullable=False, server_default=text("false")
     )
 
-    # Technical scalars
-    dn_real: Mapped[str | None] = mapped_column(Text)
+    # Technical scalars (solo transversales — los específicos de válvula
+    # viven en `specs` JSONB validados por JSON Schema; ver mig. 043).
     size: Mapped[str | None] = mapped_column(Text)
     temp_min_c: Mapped[int | None] = mapped_column(Integer)
     temp_max_c: Mapped[int | None] = mapped_column(Integer)
     pressure_max_bar: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
-    manufacturing_method: Mapped[str | None] = mapped_column(Text)
-    actuator: Mapped[str | None] = mapped_column(Text)
-    kv: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
-    kv2: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
-    torque_nm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
-    iso5211_interface: Mapped[str | None] = mapped_column(Text)
 
     # Editorial / SEO
     tags: Mapped[list[str]] = mapped_column(
@@ -141,6 +135,39 @@ class Product(Base):
     )
     video_url: Mapped[str | None] = mapped_column(Text)
     external_url: Mapped[str | None] = mapped_column(Text)
+
+    # ---- Stage 1 Opción C — taxonomía FK (mig. 042) ----------------------
+    # Nullable durante transición; coexisten con TEXT escalares (brand,
+    # family, subfamily, type) hasta Stage 2 que los hace fuente única.
+    brand_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True
+    )
+    family_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("families.id", ondelete="RESTRICT"), nullable=True
+    )
+    subfamily_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("subfamilies.id", ondelete="RESTRICT"), nullable=True
+    )
+    type_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("product_types.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+
+    # ---- Stage 3 — Series rica + Material vocab + display pair (migs 045/046) ---
+    # `series_id` y `material_id` coexisten con TEXT escalares (`series`, `material`).
+    # `display_pair_sku` empareja modelos por color (4295 ↔ 42952) — self-FK.
+    series_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("series.id", ondelete="RESTRICT"), nullable=True
+    )
+    material_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("materials.id", ondelete="RESTRICT"), nullable=True
+    )
+    display_pair_sku: Mapped[str | None] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="SET NULL", name="fk_products_display_pair_sku"),
+        nullable=True,
+    )
 
     # Embeddings (Sprint 2+) — nullable, sin índice HNSW por ahora.
     embedding_text: Mapped[Any] = mapped_column(_EMBEDDING_TYPE, nullable=True)
@@ -233,6 +260,14 @@ class Product(Base):
         back_populates="compatible_with",
         lazy="selectin",
         viewonly=True,
+    )
+
+    # Stage 3 — divisiones M:N (selectin para incluir en ProductDetail)
+    product_divisions: Mapped[list["ProductDivision"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "ProductDivision",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (

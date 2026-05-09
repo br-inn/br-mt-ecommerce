@@ -35,9 +35,21 @@ from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
 from app.db.models.vocabularies import (
     Application,
+    Brand,
     Certification,
+    Division,
+    Family,
+    Material,
     ProductApplication,
     ProductCertification,
+    ProductDivision,
+    ProductType,
+    Series,
+    SeriesCertification,
+    SeriesDivision,
+    SeriesTier,
+    SeriesTranslation,
+    Subfamily,
 )
 
 __all__ = [
@@ -91,6 +103,20 @@ __all__ = [
     "Application",
     "ProductCertification",
     "ProductApplication",
+    # Stage 1 Opción C — taxonomía (mig. 042)
+    "Brand",
+    "Family",
+    "Subfamily",
+    "ProductType",
+    # Stage 3 — divisions, series rica, materials (migs. 044/045/046)
+    "Division",
+    "ProductDivision",
+    "SeriesTier",
+    "Series",
+    "SeriesTranslation",
+    "SeriesDivision",
+    "SeriesCertification",
+    "Material",
     # Wave 7 — spare parts / accessories compatibility M:N
     "ProductCompatibility",
     # Wave 3 — multi-component (materials + connections)
