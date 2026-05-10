@@ -82,6 +82,10 @@ class ProductRepository(BaseRepository[Product]):
         series_id: UUID | None = None,
         material_id: UUID | None = None,
         tier_code: str | None = None,
+        # Taxonomy lineage filters — pass through Product.subfamily / .type TEXT
+        # (FKs subfamily_id/type_id se promoverán en Stage 4b).
+        subfamily: str | None = None,
+        type_: str | None = None,
     ) -> tuple[Sequence[Product], str | None, int | None]:
         """Cursor-based pagination con filtros + opcional total.
 
@@ -104,6 +108,10 @@ class ProductRepository(BaseRepository[Product]):
         clauses: list[Any] = []
         if family:
             clauses.append(Product.family == family)
+        if subfamily:
+            clauses.append(Product.subfamily == subfamily)
+        if type_:
+            clauses.append(Product.type == type_)
         if brand:
             clauses.append(Product.brand == brand)
         if data_quality:

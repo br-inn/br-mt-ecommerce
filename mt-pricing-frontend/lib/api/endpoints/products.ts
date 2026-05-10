@@ -183,6 +183,8 @@ export interface TranslationUpsertPayload {
 
 export interface ProductFilters {
   family?: string | undefined;
+  subfamily?: string | undefined;
+  type?: string | undefined;
   data_quality?: DataQuality | undefined;
   translation_status?: TranslationStatus | undefined;
   active?: boolean | undefined;
@@ -290,6 +292,8 @@ export const productsApi = {
       `/api/v1/products${buildQuery({
         family: filters.family,
         data_quality: filters.data_quality,
+        subfamily: filters.subfamily,
+        type: filters.type,
         translation_status: filters.translation_status,
         active: filters.active,
         // US-1A-02-09 backend acepta `q`; mantenemos `search` como alias por

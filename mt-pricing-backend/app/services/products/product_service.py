@@ -178,6 +178,8 @@ class ProductService:
         self,
         *,
         family: str | None = None,
+        subfamily: str | None = None,
+        type_: str | None = None,
         brand: str | None = None,
         translation_status: str | None = None,
         translation_lang: str | None = None,
@@ -200,6 +202,8 @@ class ProductService:
     ) -> tuple[Sequence[Product], str | None, int | None]:
         return await self.products.list_paginated_with_filters(
             family=family,
+            subfamily=subfamily,
+            type_=type_,
             brand=brand,
             translation_status=translation_status,
             translation_lang=translation_lang,

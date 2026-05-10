@@ -103,6 +103,8 @@ function fmtUpdated(iso: string): string {
 export default function CatalogPage() {
   const [searchInput, setSearchInput] = useQueryState("q", parseAsString.withDefault(""));
   const [family, setFamily] = useQueryState("family", parseAsString);
+  const [subfamily, setSubfamily] = useQueryState("subfamily", parseAsString);
+  const [typeFilter, setTypeFilter] = useQueryState("type", parseAsString);
   const [quality, setQuality] = useQueryState(
     "quality",
     parseAsStringEnum<DataQuality>([...QUALITY_VALUES]),
@@ -165,6 +167,8 @@ export default function CatalogPage() {
     () => ({
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(family ? { family } : {}),
+      ...(subfamily ? { subfamily } : {}),
+      ...(typeFilter ? { type: typeFilter } : {}),
       ...(quality ? { data_quality: quality } : {}),
       ...(translationStatus ? { translation_status: translationStatus } : {}),
       ...(active === true || active === false ? { active } : {}),
@@ -180,6 +184,8 @@ export default function CatalogPage() {
     [
       debouncedSearch,
       family,
+      subfamily,
+      typeFilter,
       quality,
       translationStatus,
       active,
@@ -209,11 +215,25 @@ export default function CatalogPage() {
   );
   const total = data?.pages[0]?.total ?? null;
   const activeFiltersCount =
-    [family, quality, translationStatus, dn, pn, material].filter(Boolean).length +
-    (active === null || active === undefined ? 0 : 1);
+    [
+      family,
+      subfamily,
+      typeFilter,
+      quality,
+      translationStatus,
+      dn,
+      pn,
+      material,
+      division,
+      seriesId,
+      materialId,
+      tierCode,
+    ].filter(Boolean).length + (active === null || active === undefined ? 0 : 1);
 
   const clearAllFilters = React.useCallback(() => {
     void setFamily(null);
+    void setSubfamily(null);
+    void setTypeFilter(null);
     void setQuality(null);
     void setTranslationStatus(null);
     void setDn(null);
@@ -227,6 +247,8 @@ export default function CatalogPage() {
     void setTierCode(null);
   }, [
     setFamily,
+    setSubfamily,
+    setTypeFilter,
     setQuality,
     setTranslationStatus,
     setDn,
@@ -243,6 +265,8 @@ export default function CatalogPage() {
   const facetFilters: FacetsFilters = React.useMemo(
     () => ({
       family: family ?? null,
+      subfamily: subfamily ?? null,
+      type: typeFilter ?? null,
       data_quality: quality ?? null,
       translation_status: translationStatus ?? null,
       active: active ?? null,
@@ -258,6 +282,8 @@ export default function CatalogPage() {
     }),
     [
       family,
+      subfamily,
+      typeFilter,
       quality,
       translationStatus,
       active,
@@ -277,6 +303,12 @@ export default function CatalogPage() {
       switch (key) {
         case "family":
           void setFamily(value as string | null);
+          break;
+        case "subfamily":
+          void setSubfamily(value as string | null);
+          break;
+        case "type":
+          void setTypeFilter(value as string | null);
           break;
         case "material":
           void setMaterial(value as string | null);
@@ -313,6 +345,8 @@ export default function CatalogPage() {
     },
     [
       setFamily,
+      setSubfamily,
+      setTypeFilter,
       setMaterial,
       setDn,
       setPn,

@@ -25,6 +25,8 @@ class FacetsResponse(BaseModel):
     total: int = Field(ge=0)
     total_unfiltered: int = Field(ge=0)
     family: list[FacetBucket] = Field(default_factory=list)
+    subfamily: list[FacetBucket] = Field(default_factory=list)
+    type: list[FacetBucket] = Field(default_factory=list)
     material: list[FacetBucket] = Field(default_factory=list)
     dn: list[FacetBucket] = Field(default_factory=list)
     pn: list[FacetBucket] = Field(default_factory=list)

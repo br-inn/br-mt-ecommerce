@@ -11,6 +11,7 @@ import { type FacetsFilters, type FacetsResponse } from "@/lib/api/endpoints/fac
 import { materialsApi, type Material } from "@/lib/api/endpoints/materials";
 import { seriesApi, type Series } from "@/lib/api/endpoints/series";
 import { seriesTiersApi, type SeriesTier } from "@/lib/api/endpoints/series-tiers";
+import { taxonomyApi } from "@/lib/api/endpoints/taxonomy";
 
 const DN_VALUES = [
   "DN8", "DN10", "DN15", "DN20", "DN25", "DN32", "DN40", "DN50",
@@ -66,6 +67,34 @@ export function TopFilterBar({
     queryFn: () => materialsApi.listPublic(),
     staleTime: 5 * 60_000,
   });
+  const taxonomyQ = useQuery({
+    queryKey: ["taxonomy", "tree", "list-bar"],
+    queryFn: () => taxonomyApi.tree(),
+    staleTime: 5 * 60_000,
+  });
+
+  // family CODE → NAME (display) + subfamilias hijas + types nietos.
+  const familyMaps = React.useMemo(() => {
+    const familyName: Record<string, string> = {};
+    const subfamilyName: Record<string, string> = {};
+    const typeName: Record<string, string> = {};
+    const subfamiliesByFamily: Record<string, string[]> = {};
+    const typesBySubfamily: Record<string, string[]> = {};
+    for (const f of taxonomyQ.data?.families ?? []) {
+      familyName[f.code] = f.name;
+      subfamiliesByFamily[f.code] = [];
+      for (const sf of f.subfamilies) {
+        subfamilyName[sf.code] = sf.name;
+        subfamiliesByFamily[f.code]!.push(sf.code);
+        typesBySubfamily[sf.code] = [];
+        for (const t of sf.types) {
+          typeName[t.code] = t.name;
+          typesBySubfamily[sf.code]!.push(t.code);
+        }
+      }
+    }
+    return { familyName, subfamilyName, typeName, subfamiliesByFamily, typesBySubfamily };
+  }, [taxonomyQ.data]);
 
   const seriesById = React.useMemo<Record<string, Series>>(() => {
     const map: Record<string, Series> = {};
@@ -80,11 +109,26 @@ export function TopFilterBar({
   }, [materialsQ.data]);
 
   const familyBuckets = facets?.family ?? [];
+  const subfamilyBuckets = facets?.subfamily ?? [];
+  const typeBuckets = facets?.type ?? [];
   const seriesBuckets = facets?.series ?? [];
   const tierBuckets = facets?.tier_code ?? [];
   const materialCuratedBuckets = facets?.material_curated ?? [];
   const dnBuckets = facets?.dn ?? [];
   const pnBuckets = facets?.pn ?? [];
+
+  // Cascada: si family seleccionada → restringe subfamilias a sus hijas;
+  // si subfamily seleccionada → restringe types a sus hijos.
+  const subfamilyOptions = React.useMemo(() => {
+    const allowed = filters.family ? familyMaps.subfamiliesByFamily[filters.family] : null;
+    return subfamilyBuckets.filter((b) => !allowed || allowed.includes(b.value));
+  }, [subfamilyBuckets, filters.family, familyMaps]);
+  const typeOptions = React.useMemo(() => {
+    const allowed = filters.subfamily
+      ? familyMaps.typesBySubfamily[filters.subfamily]
+      : null;
+    return typeBuckets.filter((b) => !allowed || allowed.includes(b.value));
+  }, [typeBuckets, filters.subfamily, familyMaps]);
 
   return (
     <div
@@ -112,10 +156,38 @@ export function TopFilterBar({
           <FilterSelect
             label="Familia"
             value={filters.family ?? ""}
-            onChange={(v) => setFilter("family", v || null)}
+            onChange={(v) => {
+              setFilter("family", v || null);
+              // Cambio de family invalida sub/tipo seleccionados.
+              if (filters.subfamily) setFilter("subfamily", null);
+              if (filters.type) setFilter("type", null);
+            }}
             options={familyBuckets.map((b) => ({
               value: b.value,
-              label: b.value,
+              label: familyMaps.familyName[b.value] ?? b.value,
+              count: b.count,
+            }))}
+          />
+          <FilterSelect
+            label="Subfamilia"
+            value={filters.subfamily ?? ""}
+            onChange={(v) => {
+              setFilter("subfamily", v || null);
+              if (filters.type) setFilter("type", null);
+            }}
+            options={subfamilyOptions.map((b) => ({
+              value: b.value,
+              label: familyMaps.subfamilyName[b.value] ?? b.value,
+              count: b.count,
+            }))}
+          />
+          <FilterSelect
+            label="Tipo"
+            value={filters.type ?? ""}
+            onChange={(v) => setFilter("type", v || null)}
+            options={typeOptions.map((b) => ({
+              value: b.value,
+              label: familyMaps.typeName[b.value] ?? b.value,
               count: b.count,
             }))}
           />

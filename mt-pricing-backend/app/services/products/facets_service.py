@@ -40,6 +40,8 @@ from app.schemas.facets import FacetBucket, FacetsResponse, TranslationLangFacet
 @dataclass
 class ProductFilters:
     family: str | None = None
+    subfamily: str | None = None
+    type_: str | None = None
     brand: str | None = None
     material: str | None = None
     dn: str | None = None
@@ -70,7 +72,7 @@ class ProductFilters:
         return any(
             getattr(self, name) not in (None, False)
             for name in (
-                "family", "brand", "material", "dn", "pn", "data_quality",
+                "family", "subfamily", "type_", "brand", "material", "dn", "pn", "data_quality",
                 "active", "image_status", "has_image", "lifecycle_status",
                 "translation_status", "created_after", "created_before", "search",
                 "division_code", "series_id", "material_id", "tier_code",
@@ -93,6 +95,10 @@ def build_product_clauses(
         clauses.append(Product.deleted_at.is_(None))
     if filters.family and "family" not in exclude:
         clauses.append(Product.family == filters.family)
+    if filters.subfamily and "subfamily" not in exclude:
+        clauses.append(Product.subfamily == filters.subfamily)
+    if filters.type_ and "type" not in exclude:
+        clauses.append(Product.type == filters.type_)
     if filters.brand and "brand" not in exclude:
         clauses.append(Product.brand == filters.brand)
     if filters.material and "material" not in exclude:
@@ -383,6 +389,8 @@ async def compute_facets(
 
     (
         family,
+        subfamily,
+        type_buckets,
         material,
         dn,
         pn,
@@ -400,6 +408,8 @@ async def compute_facets(
         material_curated,
     ) = await asyncio.gather(
         _on_conn(lambda c: _count_by_column(c, Product.family, filters, exclude_field="family", limit=50)),
+        _on_conn(lambda c: _count_by_column(c, Product.subfamily, filters, exclude_field="subfamily", limit=80)),
+        _on_conn(lambda c: _count_by_column(c, Product.type, filters, exclude_field="type", limit=120)),
         _on_conn(lambda c: _count_by_column(c, Product.material, filters, exclude_field="material", limit=50)),
         _on_conn(lambda c: _count_by_column(c, Product.dn, filters, exclude_field="dn", limit=50)),
         _on_conn(lambda c: _count_by_column(c, Product.pn, filters, exclude_field="pn", limit=20)),
@@ -432,6 +442,8 @@ async def compute_facets(
         total=total,
         total_unfiltered=total_unfiltered,
         family=family,
+        subfamily=subfamily,
+        type=type_buckets,
         material=material,
         dn=_num_sort(dn),
         pn=_num_sort(pn),

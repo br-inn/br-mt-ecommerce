@@ -294,6 +294,10 @@ async def get_specs_schema(
 )
 async def list_products(
     family: Annotated[str | None, Query()] = None,
+    subfamily: Annotated[str | None, Query(max_length=64)] = None,
+    type: Annotated[  # noqa: A002 — query param name
+        str | None, Query(max_length=64, alias="type")
+    ] = None,
     brand: Annotated[str | None, Query()] = None,
     translation_status: Annotated[str | None, Query(pattern=r"^(pending|draft|approved)$")] = None,
     lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
@@ -354,6 +358,8 @@ async def list_products(
     effective_search = q or search
     rows, next_sku, total = await service.list_products(
         family=family,
+        subfamily=subfamily,
+        type_=type,
         brand=brand,
         translation_status=translation_status,
         translation_lang=lang,
@@ -1665,6 +1671,10 @@ from app.services.products.facets_service import (  # noqa: E402
 )
 async def get_facets(
     family: Annotated[str | None, Query()] = None,
+    subfamily: Annotated[str | None, Query(max_length=64)] = None,
+    type: Annotated[  # noqa: A002
+        str | None, Query(max_length=64, alias="type")
+    ] = None,
     brand: Annotated[str | None, Query()] = None,
     material: Annotated[str | None, Query()] = None,
     dn: Annotated[str | None, Query(max_length=8)] = None,
@@ -1694,6 +1704,8 @@ async def get_facets(
     """
     filters = ProductFilters(
         family=family,
+        subfamily=subfamily,
+        type_=type,
         brand=brand,
         material=material,
         dn=dn,

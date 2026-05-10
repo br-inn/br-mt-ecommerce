@@ -19,6 +19,8 @@ export interface FacetsResponse {
   total: number;
   total_unfiltered: number;
   family: FacetBucket[];
+  subfamily?: FacetBucket[];
+  type?: FacetBucket[];
   material: FacetBucket[];
   dn: FacetBucket[];
   pn: FacetBucket[];
@@ -36,6 +38,8 @@ export interface FacetsResponse {
 
 export interface FacetsFilters {
   family?: string | null;
+  subfamily?: string | null;
+  type?: string | null;
   brand?: string | null;
   material?: string | null;
   dn?: string | null;
