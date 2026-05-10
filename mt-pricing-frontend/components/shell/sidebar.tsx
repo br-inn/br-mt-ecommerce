@@ -47,7 +47,7 @@ interface NavItem {
 
 const SECTION_OPS: readonly NavItem[] = [
   { href: "/dashboard", label: "Inicio", icon: Home },
-  { href: "/catalogo", label: "Catálogo", icon: LayoutGrid, badge: "224" },
+  { href: "/catalogo", label: "Productos", icon: LayoutGrid, badge: "224" },
   { href: "/proveedores", label: "Proveedores", icon: Truck, badge: "3", permissions: ["suppliers:read"] },
   { href: "/imports", label: "Importer PIM", icon: FileUp },
   { href: "/imports/costs", label: "Importer costos", icon: FileUp, permissions: ["imports:write"] },

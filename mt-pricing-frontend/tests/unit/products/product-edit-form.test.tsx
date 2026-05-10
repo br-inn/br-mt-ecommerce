@@ -58,6 +58,7 @@ const product: Product = {
   sku: "MTV-1",
   name_en: "Ball valve",
   family: "valves",
+  subfamily: null,
   dn: "DN50",
   pn: "PN16",
   material: "CW617N",

@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  ChevronRight,
   Download,
   Image as ImageIcon,
   MoreHorizontal,
@@ -368,18 +367,14 @@ export default function CatalogPage() {
         style={{ borderColor: MT.border }}
       >
         <div className="flex items-center gap-2">
-          <span className="text-[12.5px]" style={{ color: MT.ink3 }}>
-            Catálogo
-          </span>
-          <ChevronRight className="size-3" style={{ color: MT.ink4 }} />
           <span
-            className="text-[13.5px] font-semibold tracking-[-0.1px]"
+            className="text-[15px] font-semibold tracking-[-0.1px]"
             style={{ color: MT.ink }}
           >
-            SKUs
+            Productos
           </span>
           <span className="mt-mono ml-2 text-xs" style={{ color: MT.ink4 }}>
-            {total !== null ? `${total} elementos` : `${items.length} cargados`}
+            {total !== null ? `${total} SKUs` : `${items.length} cargados`}
           </span>
         </div>
         <div className="flex gap-1.5">
@@ -505,15 +500,20 @@ export default function CatalogPage() {
               </MtTh>
               <MtTh style={{ width: 110 }}>SKU</MtTh>
               <MtTh style={{ width: 40 }}>img</MtTh>
-              <MtTh>Producto</MtTh>
-              <MtTh>Taxonomía</MtTh>
+              <MtTh>Nombre</MtTh>
+              <MtTh style={{ width: 110 }}>División</MtTh>
+              <MtTh>Familia</MtTh>
               <MtTh>Serie</MtTh>
-              <MtTh className="text-right">DN</MtTh>
-              <MtTh className="text-right">PN</MtTh>
               <MtTh>Material</MtTh>
-              <MtTh>EN ES AR</MtTh>
-              <MtTh>Calidad</MtTh>
-              <MtTh>Actualizado</MtTh>
+              <MtTh className="text-right" style={{ width: 60 }}>
+                DN
+              </MtTh>
+              <MtTh className="text-right" style={{ width: 60 }}>
+                PN
+              </MtTh>
+              <MtTh style={{ width: 70 }}>Calidad</MtTh>
+              <MtTh style={{ width: 70 }}>Trad</MtTh>
+              <MtTh style={{ width: 90 }}>Actualizado</MtTh>
               <MtTh style={{ width: 28 }}>{""}</MtTh>
             </tr>
           </thead>
@@ -521,7 +521,7 @@ export default function CatalogPage() {
             {isLoading
               ? Array.from({ length: 12 }).map((_, i) => (
                   <tr key={`sk-${i}`}>
-                    {Array.from({ length: 13 }).map((__, j) => (
+                    {Array.from({ length: 14 }).map((__, j) => (
                       <MtTd key={j}>
                         <MtSkeleton width={j === 3 ? 180 : 60} />
                       </MtTd>
@@ -551,13 +551,26 @@ export default function CatalogPage() {
                         <Thumb src={r.primary_image_url} alt={r.name_en} />
                       </MtTd>
                       <MtTd className="font-medium" style={{ color: MT.ink }}>
-                        <Link href={`/catalogo/${r.sku}`}>{r.name_en}</Link>
+                        <Link href={`/catalogo/${r.sku}`} className="line-clamp-2">
+                          {r.name_en}
+                        </Link>
+                        {r.subfamily ? (
+                          <span
+                            className="mt-mono mt-0.5 block text-[10.5px]"
+                            style={{ color: MT.ink4 }}
+                          >
+                            {r.subfamily}
+                            {r.type ? ` · ${r.type}` : ""}
+                          </span>
+                        ) : null}
+                      </MtTd>
+                      <MtTd>
                         {r.division_codes && r.division_codes.length > 0 ? (
-                          <div className="mt-0.5 flex gap-1">
+                          <div className="flex flex-wrap gap-1">
                             {r.division_codes.map((d) => (
                               <span
                                 key={d}
-                                className="rounded px-1 py-0 text-[9.5px] uppercase tracking-[0.4px]"
+                                className="rounded px-1.5 py-0.5 text-[10px] uppercase tracking-[0.4px]"
                                 style={{
                                   background:
                                     d === "industrial"
@@ -567,11 +580,13 @@ export default function CatalogPage() {
                                 }}
                                 title={`División: ${d}`}
                               >
-                                {d.slice(0, 3)}
+                                {d === "industrial" ? "Indus." : "Hidro."}
                               </span>
                             ))}
                           </div>
-                        ) : null}
+                        ) : (
+                          <span style={{ color: MT.ink4 }}>—</span>
+                        )}
                       </MtTd>
                       <MtTd>
                         {r.family ? (
@@ -608,22 +623,22 @@ export default function CatalogPage() {
                           );
                         })()}
                       </MtTd>
+                      <MtTd className="text-[11.5px]" style={{ color: MT.ink3 }}>
+                        {r.material_id && materialById[r.material_id]
+                          ? materialById[r.material_id]
+                          : r.material ?? "—"}
+                      </MtTd>
                       <MtTd mono className="text-right">
                         {r.dn ?? "—"}
                       </MtTd>
                       <MtTd mono className="text-right" style={{ color: MT.ink3 }}>
                         {r.pn ?? "—"}
                       </MtTd>
-                      <MtTd className="text-[11.5px]" style={{ color: MT.ink3 }}>
-                        {r.material_id && materialById[r.material_id]
-                          ? materialById[r.material_id]
-                          : r.material ?? "—"}
+                      <MtTd>
+                        <QualityBadge v={r.data_quality} />
                       </MtTd>
                       <MtTd>
                         <TStatusGlyphs t={{ en: tEn, es: tEs, ar: tAr }} />
-                      </MtTd>
-                      <MtTd>
-                        <QualityBadge v={r.data_quality} />
                       </MtTd>
                       <MtTd mono className="text-[11px]" style={{ color: MT.ink3 }}>
                         {fmtUpdated(r.updated_at)}

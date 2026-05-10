@@ -31,6 +31,7 @@ describe("useProducts", () => {
           sku: "VAL-001",
           name_en: "Valve",
           family: "valves",
+          subfamily: null,
           dn: "DN50",
           pn: "PN16",
           material: "steel",

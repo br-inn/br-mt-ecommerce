@@ -88,143 +88,159 @@ export function TopFilterBar({
 
   return (
     <div
-      className="flex flex-wrap items-end gap-2 border-b bg-mt-surface px-6 py-2"
+      className="flex flex-col gap-1.5 border-b bg-mt-surface px-6 py-2"
       style={{ borderColor: MT.border }}
     >
-      {/* Search */}
-      <div
-        className="flex h-[30px] min-w-[260px] flex-1 items-center gap-2 rounded-[5px] border px-2.5 text-[12.5px]"
-        style={{ background: MT.surface, borderColor: MT.border, color: MT.ink3 }}
-      >
-        <Search className="size-[13px]" />
-        <input
-          value={searchInput}
-          onChange={(e) => onSearchInput(e.target.value || null)}
-          placeholder="Buscar SKU o nombre…"
-          className="flex-1 bg-transparent outline-none placeholder:text-[color:var(--mt-ink-4)]"
-          style={{ color: MT.ink }}
-        />
-        <Kbd>/</Kbd>
+      {/* Row 1 — Búsqueda + Taxonomía + Comercial */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="flex h-[30px] min-w-[260px] flex-1 items-center gap-2 rounded-[5px] border px-2.5 text-[12.5px]"
+          style={{ background: MT.surface, borderColor: MT.border, color: MT.ink3 }}
+        >
+          <Search className="size-[13px]" />
+          <input
+            value={searchInput}
+            onChange={(e) => onSearchInput(e.target.value || null)}
+            placeholder="Buscar SKU o nombre…"
+            className="flex-1 bg-transparent outline-none placeholder:text-[color:var(--mt-ink-4)]"
+            style={{ color: MT.ink }}
+          />
+          <Kbd>/</Kbd>
+        </div>
+
+        <FilterGroup label="Taxonomía">
+          <FilterSelect
+            label="Familia"
+            value={filters.family ?? ""}
+            onChange={(v) => setFilter("family", v || null)}
+            options={familyBuckets.map((b) => ({
+              value: b.value,
+              label: b.value,
+              count: b.count,
+            }))}
+          />
+        </FilterGroup>
+
+        <FilterGroup label="Comercial">
+          <FilterSelect
+            label="Serie"
+            value={filters.series_id ?? ""}
+            onChange={(v) => setFilter("series_id", v || null)}
+            options={seriesBuckets.map((b) => ({
+              value: b.value,
+              label: seriesById[b.value]?.name_en ?? b.value.slice(0, 8),
+              count: b.count,
+            }))}
+          />
+          <FilterSelect
+            label="Tier"
+            value={filters.tier_code ?? ""}
+            onChange={(v) => setFilter("tier_code", v || null)}
+            options={tierBuckets.map((b) => ({
+              value: b.value,
+              label: b.value,
+              count: b.count,
+            }))}
+            renderDot={(opt) => {
+              const t = (tiersQ.data ?? []).find((x: SeriesTier) => x.code === opt.value);
+              return t?.display_color ?? null;
+            }}
+          />
+        </FilterGroup>
+
+        <span className="flex-1" />
+        {activeFiltersCount > 0 ? (
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="flex h-[30px] items-center gap-1 rounded-md border px-2 text-[11.5px] transition-colors hover:bg-mt-surface2"
+            style={{ borderColor: MT.border, color: MT.ink3 }}
+          >
+            <X className="size-3" />
+            Limpiar ({activeFiltersCount})
+          </button>
+        ) : null}
       </div>
 
-      {/* Family */}
-      <FilterSelect
-        label="Familia"
-        value={filters.family ?? ""}
-        onChange={(v) => setFilter("family", v || null)}
-        options={familyBuckets.map((b) => ({
-          value: b.value,
-          label: b.value,
-          count: b.count,
-        }))}
-      />
+      {/* Row 2 — Especificaciones + Estado */}
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterGroup label="Especificaciones">
+          <FilterSelect
+            label="Material"
+            value={filters.material_id ?? ""}
+            onChange={(v) => setFilter("material_id", v || null)}
+            options={materialCuratedBuckets.map((b) => ({
+              value: b.value,
+              label: materialsById[b.value]?.name ?? b.value.slice(0, 8),
+              count: b.count,
+            }))}
+          />
+          <FilterSelect
+            label="DN"
+            value={filters.dn ?? ""}
+            onChange={(v) => setFilter("dn", v || null)}
+            options={
+              dnBuckets.length > 0
+                ? dnBuckets.map((b) => ({ value: b.value, label: b.value, count: b.count }))
+                : DN_VALUES.map((v) => ({ value: v, label: v }))
+            }
+          />
+          <FilterSelect
+            label="PN"
+            value={filters.pn ?? ""}
+            onChange={(v) => setFilter("pn", v || null)}
+            options={
+              pnBuckets.length > 0
+                ? pnBuckets.map((b) => ({ value: b.value, label: b.value, count: b.count }))
+                : PN_VALUES.map((v) => ({ value: v, label: v }))
+            }
+          />
+        </FilterGroup>
 
-      {/* Serie (Stage 3) */}
-      <FilterSelect
-        label="Serie"
-        value={filters.series_id ?? ""}
-        onChange={(v) => setFilter("series_id", v || null)}
-        options={seriesBuckets.map((b) => ({
-          value: b.value,
-          label: seriesById[b.value]?.name_en ?? b.value.slice(0, 8),
-          count: b.count,
-        }))}
-      />
+        <FilterGroup label="Estado">
+          <FilterSelect
+            label="Calidad"
+            value={filters.data_quality ?? ""}
+            onChange={(v) => setFilter("data_quality", v || null)}
+            options={QUALITY_VALUES.map((v) => ({ value: v, label: v }))}
+          />
+          <FilterSelect
+            label="Trad."
+            value={filters.translation_status ?? ""}
+            onChange={(v) => setFilter("translation_status", v || null)}
+            options={TRANSLATION_VALUES.map((v) => ({ value: v, label: v }))}
+          />
+          <FilterSelect
+            label="Activo"
+            value={
+              filters.active === true ? "true" : filters.active === false ? "false" : ""
+            }
+            onChange={(v) =>
+              setFilter("active", v === "true" ? true : v === "false" ? false : null)
+            }
+            options={[
+              { value: "true", label: "sí" },
+              { value: "false", label: "no" },
+            ]}
+          />
+        </FilterGroup>
+      </div>
+    </div>
+  );
+}
 
-      {/* Tier (Stage 3) */}
-      <FilterSelect
-        label="Tier"
-        value={filters.tier_code ?? ""}
-        onChange={(v) => setFilter("tier_code", v || null)}
-        options={tierBuckets.map((b) => ({
-          value: b.value,
-          label: b.value,
-          count: b.count,
-        }))}
-        renderDot={(opt) => {
-          const t = (tiersQ.data ?? []).find((x: SeriesTier) => x.code === opt.value);
-          return t?.display_color ?? null;
-        }}
-      />
-
-      {/* Material curado (Stage 3) */}
-      <FilterSelect
-        label="Material"
-        value={filters.material_id ?? ""}
-        onChange={(v) => setFilter("material_id", v || null)}
-        options={materialCuratedBuckets.map((b) => ({
-          value: b.value,
-          label: materialsById[b.value]?.name ?? b.value.slice(0, 8),
-          count: b.count,
-        }))}
-      />
-
-      {/* DN */}
-      <FilterSelect
-        label="DN"
-        value={filters.dn ?? ""}
-        onChange={(v) => setFilter("dn", v || null)}
-        options={
-          dnBuckets.length > 0
-            ? dnBuckets.map((b) => ({ value: b.value, label: b.value, count: b.count }))
-            : DN_VALUES.map((v) => ({ value: v, label: v }))
-        }
-      />
-
-      {/* PN */}
-      <FilterSelect
-        label="PN"
-        value={filters.pn ?? ""}
-        onChange={(v) => setFilter("pn", v || null)}
-        options={
-          pnBuckets.length > 0
-            ? pnBuckets.map((b) => ({ value: b.value, label: b.value, count: b.count }))
-            : PN_VALUES.map((v) => ({ value: v, label: v }))
-        }
-      />
-
-      {/* Calidad */}
-      <FilterSelect
-        label="Calidad"
-        value={filters.data_quality ?? ""}
-        onChange={(v) => setFilter("data_quality", v || null)}
-        options={QUALITY_VALUES.map((v) => ({ value: v, label: v }))}
-      />
-
-      {/* Traducción */}
-      <FilterSelect
-        label="Trad."
-        value={filters.translation_status ?? ""}
-        onChange={(v) => setFilter("translation_status", v || null)}
-        options={TRANSLATION_VALUES.map((v) => ({ value: v, label: v }))}
-      />
-
-      {/* Activo (boolean) */}
-      <FilterSelect
-        label="Activo"
-        value={
-          filters.active === true ? "true" : filters.active === false ? "false" : ""
-        }
-        onChange={(v) => setFilter("active", v === "true" ? true : v === "false" ? false : null)}
-        options={[
-          { value: "true", label: "sí" },
-          { value: "false", label: "no" },
-        ]}
-      />
-
-      {/* Spacer + Clear */}
-      <span className="flex-1" />
-      {activeFiltersCount > 0 ? (
-        <button
-          type="button"
-          onClick={onClearAll}
-          className="flex items-center gap-1 rounded-md border px-2 py-1 text-[11.5px] transition-colors hover:bg-mt-surface2"
-          style={{ borderColor: MT.border, color: MT.ink3 }}
-        >
-          <X className="size-3" />
-          Limpiar ({activeFiltersCount})
-        </button>
-      ) : null}
+// FilterGroup — etiqueta agrupadora en mayúsculas pequeñas a la izquierda de
+// un cluster de filtros relacionados. Mejora el escaneo visual de la barra.
+function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-1">
+      <span
+        className="mt-mono mr-0.5 text-[10px] uppercase tracking-[0.6px]"
+        style={{ color: MT.ink4 }}
+      >
+        {label}
+      </span>
+      {children}
     </div>
   );
 }

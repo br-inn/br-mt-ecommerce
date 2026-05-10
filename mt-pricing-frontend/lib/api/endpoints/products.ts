@@ -61,6 +61,7 @@ export interface ProductListItem {
   sku: string;
   name_en: string;
   family: string | null;
+  subfamily: string | null;
   dn: string | null;
   pn: string | null;
   material: string | null;
