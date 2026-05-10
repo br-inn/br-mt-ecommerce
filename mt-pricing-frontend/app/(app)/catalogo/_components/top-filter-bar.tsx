@@ -75,6 +75,13 @@ export function TopFilterBar({
   });
 
   // ---- Lookup maps + cascada ----------------------------------------------
+  //
+  // Subfamily/type CODES no son únicos globalmente — la unicidad es
+  // (family_id, code) y (subfamily_id, code). Ej: "acero_inoxidable" puede
+  // aparecer como subfamily en N familias distintas. Para los dropdowns
+  // globales (sin family seleccionada) deduplicamos por code: el filtro
+  // backend usa TEXT match contra Product.subfamily/.type, así que múltiples
+  // entries con el mismo code resuelven a la misma consulta.
   const familyMaps = React.useMemo(() => {
     const familyName: Record<string, string> = {};
     const subfamilyName: Record<string, string> = {};
@@ -82,23 +89,41 @@ export function TopFilterBar({
     const subfamiliesByFamily: Record<string, { code: string; name: string }[]> = {};
     const typesBySubfamily: Record<string, { code: string; name: string }[]> = {};
     const allFamilies: { code: string; name: string }[] = [];
-    const allSubfamilies: { code: string; name: string; family_code: string }[] = [];
-    const allTypes: { code: string; name: string; subfamily_code: string }[] = [];
+    const allSubfamiliesMap = new Map<string, { code: string; name: string }>();
+    const allTypesMap = new Map<string, { code: string; name: string }>();
     for (const f of taxonomyQ.data?.families ?? []) {
       familyName[f.code] = f.name;
-      subfamiliesByFamily[f.code] = [];
-      allFamilies.push({ code: f.code, name: f.name });
+      const subBucket: { code: string; name: string }[] = [];
+      const sbSeen = new Set<string>();
       for (const sf of f.subfamilies) {
         subfamilyName[sf.code] = sf.name;
-        subfamiliesByFamily[f.code]!.push({ code: sf.code, name: sf.name });
-        allSubfamilies.push({ code: sf.code, name: sf.name, family_code: f.code });
-        typesBySubfamily[sf.code] = [];
+        if (!sbSeen.has(sf.code)) {
+          subBucket.push({ code: sf.code, name: sf.name });
+          sbSeen.add(sf.code);
+        }
+        if (!allSubfamiliesMap.has(sf.code)) {
+          allSubfamiliesMap.set(sf.code, { code: sf.code, name: sf.name });
+        }
+        const typeBucket: { code: string; name: string }[] = [];
+        const tSeen = new Set<string>();
         for (const t of sf.types) {
           typeName[t.code] = t.name;
-          typesBySubfamily[sf.code]!.push({ code: t.code, name: t.name });
-          allTypes.push({ code: t.code, name: t.name, subfamily_code: sf.code });
+          if (!tSeen.has(t.code)) {
+            typeBucket.push({ code: t.code, name: t.name });
+            tSeen.add(t.code);
+          }
+          if (!allTypesMap.has(t.code)) {
+            allTypesMap.set(t.code, { code: t.code, name: t.name });
+          }
+        }
+        // Cuando la subfamily aparece en varias families, conservamos los types
+        // de la primera que la registró (suficiente para sugerencias en cascada).
+        if (!typesBySubfamily[sf.code]) {
+          typesBySubfamily[sf.code] = typeBucket;
         }
       }
+      subfamiliesByFamily[f.code] = subBucket;
+      allFamilies.push({ code: f.code, name: f.name });
     }
     return {
       familyName,
@@ -107,8 +132,8 @@ export function TopFilterBar({
       subfamiliesByFamily,
       typesBySubfamily,
       allFamilies,
-      allSubfamilies,
-      allTypes,
+      allSubfamilies: Array.from(allSubfamiliesMap.values()),
+      allTypes: Array.from(allTypesMap.values()),
     };
   }, [taxonomyQ.data]);
 
@@ -418,9 +443,22 @@ interface FilterSelectProps {
 
 function FilterSelect({ label, value, onChange, options, renderDot }: FilterSelectProps) {
   const isActive = value !== "";
+  // Defensive dedupe by value — algunas dimensiones (subfamily/type) tienen
+  // codes no-únicos globalmente; el llamante ya deduplica, pero guardamos un
+  // último resort para no romper la regla de keys únicas de React.
+  const uniqueOptions = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: Option[] = [];
+    for (const o of options) {
+      if (seen.has(o.value)) continue;
+      seen.add(o.value);
+      out.push(o);
+    }
+    return out;
+  }, [options]);
   const selectedDot =
     isActive && renderDot
-      ? renderDot(options.find((o) => o.value === value) ?? { value, label })
+      ? renderDot(uniqueOptions.find((o) => o.value === value) ?? { value, label })
       : null;
   return (
     <label
@@ -450,13 +488,15 @@ function FilterSelect({ label, value, onChange, options, renderDot }: FilterSele
         style={{ color: isActive ? MT.ink : MT.ink3 }}
         aria-label={label}
       >
-        <option value="">{isActive ? "(quitar)" : "todos"}</option>
-        {options.length === 0 ? (
-          <option value="" disabled>
+        <option key="__all__" value="">
+          {isActive ? "(quitar)" : "todos"}
+        </option>
+        {uniqueOptions.length === 0 ? (
+          <option key="__none__" value="" disabled>
             (sin opciones)
           </option>
         ) : null}
-        {options.map((opt) => (
+        {uniqueOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
             {opt.count !== undefined ? ` (${opt.count})` : ""}
