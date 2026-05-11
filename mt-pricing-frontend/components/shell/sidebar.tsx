@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
+  Atom,
   Award,
   Boxes,
   ChevronLeft,
@@ -21,6 +22,7 @@ import {
   ScrollText,
   Search,
   Settings,
+  Shield,
   ShieldCheck,
   Sparkles,
   Sprout,
@@ -36,6 +38,8 @@ import { useUIStore } from "@/lib/stores/ui-store";
 import { RbacGuard } from "@/components/auth/rbac-guard";
 import { MTMark } from "@/components/mt/logo";
 import { MT } from "@/components/mt/tokens";
+import { useTaxonomyRegistry } from "@/lib/hooks/use-taxonomy-registry";
+import type { TaxonomyTypeRead } from "@/lib/api/endpoints/taxonomy-registry";
 
 interface NavItem {
   href: string;
@@ -63,11 +67,9 @@ const SECTION_QA: readonly NavItem[] = [
   { href: "/auditoria", label: "Auditoría", icon: ScrollText },
 ] as const;
 
-const SECTION_SYS: readonly NavItem[] = [
-  { href: "/admin/divisions", label: "Divisiones", icon: Layers, permissions: ["admin:taxonomy"] },
-  { href: "/admin/series", label: "Series", icon: Sprout, permissions: ["admin:taxonomy"] },
-  { href: "/admin/series-tiers", label: "Tiers", icon: Award, permissions: ["admin:taxonomy"] },
-  { href: "/admin/materials", label: "Materiales", icon: Boxes, permissions: ["admin:taxonomy"] },
+// Items NO-taxonómicos del sidebar SISTEMA. Los items de taxonomía se
+// renderizan dinámicamente desde /taxonomies/registry vía useTaxonomyRegistry.
+const SECTION_SYS_NON_TAXONOMY: readonly NavItem[] = [
   { href: "/admin/divisas", label: "Divisas", icon: Coins, permissions: ["currencies:manage"] },
   { href: "/admin/fx-rates", label: "Tasas FX", icon: Coins, permissions: ["fx:read"] },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },
@@ -77,6 +79,50 @@ const SECTION_SYS: readonly NavItem[] = [
   { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
   { href: "/ajustes", label: "Configuración", icon: Settings },
 ] as const;
+
+// --- Mapeo data-driven: icon string (de ui_layout.icon en backend) → componente lucide.
+// Cuando el backend agrega un nuevo taxonomy_type con ui_layout.icon='foo', la entrada
+// se renderiza con FALLBACK_ICON si no hay match. Para soportar el icono nuevo, basta
+// con añadir la clave aquí (única adición de código frontend al crecer).
+const ICON_MAP: Record<string, LucideIcon> = {
+  layers: Layers,
+  sprout: Sprout,
+  award: Award,
+  atom: Atom,
+  boxes: Boxes,
+  shield: Shield,
+  tags: Tags,
+};
+const FALLBACK_ICON: LucideIcon = Tags;
+
+// Slugs core que tienen pantallas legacy específicas (mientras se construyen
+// las pantallas genéricas `/admin/taxonomies/[slug]`). Cuando todas migren a
+// la página genérica, este map se puede vaciar.
+const LEGACY_ROUTE_MAP: Record<string, string> = {
+  division: "/admin/divisions",
+  series: "/admin/series",
+  tier: "/admin/series-tiers",
+  material: "/admin/materials",
+};
+
+function resolveLabel(t: TaxonomyTypeRead, locale: string): string {
+  const labels = t.label_i18n ?? {};
+  return (
+    labels[locale] ??
+    labels.es ??
+    labels.en ??
+    t.slug.charAt(0).toUpperCase() + t.slug.slice(1)
+  );
+}
+
+function resolveIcon(iconKey: string | undefined): LucideIcon {
+  if (!iconKey) return FALLBACK_ICON;
+  return ICON_MAP[iconKey] ?? FALLBACK_ICON;
+}
+
+function resolveHref(t: TaxonomyTypeRead): string {
+  return LEGACY_ROUTE_MAP[t.slug] ?? `/admin/taxonomies/${t.slug}`;
+}
 
 function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const pathname = usePathname();
@@ -151,11 +197,54 @@ function SectionLabel({ children, collapsed }: { children: string; collapsed: bo
   );
 }
 
+// Skeleton placeholders mientras el registry carga — evita "flash" del sidebar
+// expandiéndose cuando llegan los items.
+function SidebarTaxonomySkeleton({ collapsed }: { collapsed: boolean }) {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex items-center gap-2.5",
+            collapsed ? "justify-center py-2" : "px-2.5 py-[7px]",
+          )}
+        >
+          <div
+            className="size-[15px] shrink-0 animate-pulse rounded"
+            style={{ background: MT.border }}
+          />
+          {!collapsed ? (
+            <div
+              className="h-3 flex-1 animate-pulse rounded"
+              style={{ background: MT.border }}
+            />
+          ) : null}
+        </div>
+      ))}
+    </>
+  );
+}
+
 export function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const toggle = useUIStore((s) => s.toggleSidebar);
   const collapsed = !sidebarOpen;
   const tShell = useTranslations("shell");
+  const locale = useLocale();
+
+  // Data-driven taxonomy items para sección SISTEMA.
+  const { data: taxonomyTypes, isLoading: taxonomyLoading } = useTaxonomyRegistry();
+
+  const taxonomyNavItems: NavItem[] = (taxonomyTypes ?? [])
+    .filter((t) => t.active)
+    .sort((a, b) => a.display_order - b.display_order)
+    .map((t) => ({
+      href: resolveHref(t),
+      label: resolveLabel(t, locale),
+      icon: resolveIcon(t.ui_layout?.icon),
+      permissions: ["admin:taxonomy"],
+    }));
 
   return (
     <aside
@@ -215,7 +304,18 @@ export function Sidebar() {
         ))}
 
         <SectionLabel collapsed={collapsed}>Sistema</SectionLabel>
-        {SECTION_SYS.map((item) => (
+        {/* Taxonomías: data-driven desde /taxonomies/registry. Agregar una nueva
+            dimensión (mercados/certificaciones/aplicaciones) = INSERT en
+            taxonomy_types + reload — sin tocar código frontend. */}
+        {taxonomyLoading && !taxonomyTypes ? (
+          <SidebarTaxonomySkeleton collapsed={collapsed} />
+        ) : (
+          taxonomyNavItems.map((item) => (
+            <NavLink key={`tax-${item.href}`} item={item} collapsed={collapsed} />
+          ))
+        )}
+        {/* Items NO-taxonómicos (divisas, FX, jobs, etc.) hardcoded */}
+        {SECTION_SYS_NON_TAXONOMY.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
       </nav>
