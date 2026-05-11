@@ -148,16 +148,25 @@ def upgrade() -> None:
     )
 
     # Backfill closure family→subfamily.
+    # NOTA: subfamilies.code NO es globalmente único (ej. 'bypass' puede aparecer
+    # en families 'valves' y 'filters'). Como taxonomy_nodes tiene UNIQUE(type_id, slug),
+    # solo 1 subfamily node se materializa por código duplicado. Aquí dedupeamos
+    # con DISTINCT ON para preservar la regla partial unique
+    # `uq_taxonomy_node_parents_primary` (un solo is_primary=true por node_id).
+    # El primer match por sf.id queda como primary; otros families con mismo code
+    # se pierden en el registry. Para preservarlos: qualified slugs
+    # (family_code__subfamily_code) — futuro PR.
     op.execute(
         """
         INSERT INTO taxonomy_node_parents (node_id, parent_id, is_primary)
-        SELECT sub_node.id, fam_node.id, true
+        SELECT DISTINCT ON (sub_node.id) sub_node.id, fam_node.id, true
         FROM subfamilies sf
         JOIN families f ON f.id = sf.family_id
         JOIN taxonomy_nodes sub_node ON sub_node.slug = taxonomy_normalize_slug(sf.code)
             AND sub_node.type_id = (SELECT id FROM taxonomy_types WHERE slug = 'subfamily')
         JOIN taxonomy_nodes fam_node ON fam_node.slug = taxonomy_normalize_slug(f.code)
             AND fam_node.type_id = (SELECT id FROM taxonomy_types WHERE slug = 'family')
+        ORDER BY sub_node.id, sf.id
         ON CONFLICT (node_id, parent_id) DO NOTHING;
         """
     )
@@ -194,17 +203,19 @@ def upgrade() -> None:
         """
     )
 
-    # Backfill closure subfamily→product_type.
+    # Backfill closure subfamily→product_type — mismo patrón DISTINCT ON
+    # (product_types.code tampoco es globalmente único; dedupeamos primary parent).
     op.execute(
         """
         INSERT INTO taxonomy_node_parents (node_id, parent_id, is_primary)
-        SELECT pt_node.id, sub_node.id, true
+        SELECT DISTINCT ON (pt_node.id) pt_node.id, sub_node.id, true
         FROM product_types pt
         JOIN subfamilies sf ON sf.id = pt.subfamily_id
         JOIN taxonomy_nodes pt_node ON pt_node.slug = taxonomy_normalize_slug(pt.code)
             AND pt_node.type_id = (SELECT id FROM taxonomy_types WHERE slug = 'product_type')
         JOIN taxonomy_nodes sub_node ON sub_node.slug = taxonomy_normalize_slug(sf.code)
             AND sub_node.type_id = (SELECT id FROM taxonomy_types WHERE slug = 'subfamily')
+        ORDER BY pt_node.id, pt.id
         ON CONFLICT (node_id, parent_id) DO NOTHING;
         """
     )
