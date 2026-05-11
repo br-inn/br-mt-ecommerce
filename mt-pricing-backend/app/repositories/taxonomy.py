@@ -244,14 +244,23 @@ class TaxonomyNodeRepository:
         return instance
 
     async def soft_delete(self, node_id: UUID) -> bool:
-        """Deprecación con ``valid_until = now()`` + active=false."""
+        """Deprecación con ``valid_until = clock_timestamp()`` + active=false.
+
+        Server-side ``clock_timestamp()`` evita el CHECK ``valid_until > valid_from``
+        en escenarios donde Python ``datetime.now()`` queda por detrás del server
+        clock (testcontainers tienen clock skew respecto al host).
+        """
         instance = await self.get_by_id(node_id)
         if instance is None:
             return False
-        now = datetime.now(tz=timezone.utc)
-        instance.valid_until = now
-        instance.active = False
+        stmt = (
+            update(TaxonomyNode)
+            .where(TaxonomyNode.id == node_id)
+            .values(valid_until=func.clock_timestamp(), active=False)
+        )
+        await self.session.execute(stmt)
         await self.session.flush()
+        await self.session.refresh(instance)
         return True
 
     async def get_descendants(
@@ -423,9 +432,17 @@ class ProductTaxonomyLinkRepository:
         role: str = "belongs_to",
         soft: bool = True,
     ) -> bool:
-        """Borra o sets valid_until = now() (soft)."""
+        """Borra o sets valid_until = clock_timestamp() (soft).
+
+        Usamos ``clock_timestamp()`` (wall clock server-side) en vez de Python
+        ``datetime.now()`` porque:
+        1. ``valid_from`` se setea con server ``now()`` (transaction-start);
+           ``clock_timestamp()`` siempre es ≥ ``now()`` dentro de una transacción,
+           garantizando el CHECK constraint ``valid_until > valid_from``.
+        2. Evita skew entre clock del container Postgres y clock del host
+           (testcontainers).
+        """
         if soft:
-            now = datetime.now(tz=timezone.utc)
             stmt = (
                 update(ProductTaxonomyLink)
                 .where(
@@ -436,7 +453,7 @@ class ProductTaxonomyLinkRepository:
                         ProductTaxonomyLink.valid_until.is_(None),
                     )
                 )
-                .values(valid_until=now)
+                .values(valid_until=func.clock_timestamp())
             )
         else:
             stmt = delete(ProductTaxonomyLink).where(

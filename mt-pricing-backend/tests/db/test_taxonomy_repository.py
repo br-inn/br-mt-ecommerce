@@ -390,12 +390,20 @@ class TestProductTaxonomyLinkRepository:
         )
         assert ok is True
 
-        # Soft unlink: el link sigue existiendo pero con valid_until
-        current = await link_repo.list_for_product(sku, current_only=True)
+        # Soft unlink: el link específico al `node` queda con valid_until.
+        # Filtramos por type_slug='division' porque mig 052 trigger
+        # `sync_product_fk_to_registry` autocrea links para family_id
+        # (default brand/family seed) que no son objetivo de este test.
+        current = await link_repo.list_for_product(
+            sku, current_only=True, type_slug="division"
+        )
         assert len(current) == 0
-        historic = await link_repo.list_for_product(sku, current_only=False)
+        historic = await link_repo.list_for_product(
+            sku, current_only=False, type_slug="division"
+        )
         assert len(historic) == 1
         assert historic[0].valid_until is not None
+        assert historic[0].node_id == node.id
 
 
 # ---------------------------------------------------------------------------
