@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
-import { AlertTriangle, Info, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,8 @@ import type {
   TaxonomyNodeRead,
   TaxonomyTypeRead,
 } from "@/lib/api/endpoints/taxonomy-registry";
+
+import { CUSTOM_COMPONENTS } from "./_custom-components";
 
 /**
  * Form-builder genérico data-driven para `TaxonomyType` arbitrarios.
@@ -160,8 +162,19 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
   const type = typeQ.data;
   const nodes = nodesQ.data ?? [];
   const isHierarchical = type.is_hierarchical;
-  const hasCustomComponent = !!type.ui_layout?.custom_component;
+  const customComponentKey = type.ui_layout?.custom_component;
+  const CustomComponent = customComponentKey
+    ? CUSTOM_COMPONENTS[customComponentKey]
+    : undefined;
+  const hasCustomComponentRegistered = !!CustomComponent;
+  const hasCustomComponentDeclared = !!customComponentKey;
   const typeLabel = resolveLabel(type, locale);
+
+  // Si el type declara un custom_component Y está registrado en el frontend,
+  // delegamos el render completo a ese componente (sin form-builder default).
+  if (hasCustomComponentRegistered && CustomComponent) {
+    return <CustomComponent typeSlug={typeSlug} />;
+  }
 
   return (
     <>
@@ -204,17 +217,17 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
         </div>
       ) : null}
 
-      {hasCustomComponent ? (
-        <div className="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-50 p-3 text-sm text-blue-800">
-          <Info className="mt-0.5 size-4 shrink-0" />
+      {hasCustomComponentDeclared && !hasCustomComponentRegistered ? (
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-50 p-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <span>
             Este tipo declara{" "}
             <code className="font-mono text-xs">
-              ui_layout.custom_component =&quot;{type.ui_layout.custom_component}
-              &quot;
-            </code>
-            . El override de componente custom todavía no está implementado;
-            usando el form-builder genérico.
+              ui_layout.custom_component =&quot;{customComponentKey}&quot;
+            </code>{" "}
+            pero no hay componente registrado con esa key en{" "}
+            <code className="font-mono text-xs">_custom-components.ts</code>.
+            Cayendo al form-builder genérico.
           </span>
         </div>
       ) : null}
