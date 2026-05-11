@@ -74,6 +74,7 @@ interface NodeFormState {
   active: boolean;
   parent_id: string; // "" means no parent
   valid_until: string; // ISO date string or ""
+  attributes_text: string; // raw JSON textarea content; parsed on submit
 }
 
 const EMPTY_FORM: NodeFormState = {
@@ -83,6 +84,7 @@ const EMPTY_FORM: NodeFormState = {
   active: true,
   parent_id: "",
   valid_until: "",
+  attributes_text: "",
 };
 
 function fromNode(n: TaxonomyNodeRead): NodeFormState {
@@ -90,6 +92,7 @@ function fromNode(n: TaxonomyNodeRead): NodeFormState {
   for (const k of Object.keys(n.labels ?? {})) {
     labels[k] = (n.labels?.[k] as string) ?? "";
   }
+  const attrs = n.attributes ?? {};
   return {
     slug: n.slug,
     labels,
@@ -97,7 +100,49 @@ function fromNode(n: TaxonomyNodeRead): NodeFormState {
     active: n.active,
     parent_id: n.parent_id ?? "",
     valid_until: n.valid_until ? n.valid_until.slice(0, 10) : "",
+    attributes_text:
+      Object.keys(attrs).length > 0 ? JSON.stringify(attrs, null, 2) : "",
   };
+}
+
+/**
+ * Parsea el textarea de atributos JSON.
+ *
+ * - Vacío / solo whitespace → `{ ok: true, value: undefined }` (no enviar).
+ * - JSON válido y es un objeto plano → `{ ok: true, value }`.
+ * - JSON válido pero no es objeto (array/scalar) → error.
+ * - JSON inválido → error.
+ *
+ * Nota: no se valida contra JSON Schema (futuro: leer
+ * `TaxonomyType.governance_policy.attributes_schema`).
+ */
+type AttributesParseResult =
+  | { ok: true; value: Record<string, unknown> | undefined }
+  | { ok: false; error: string };
+
+function parseAttributes(text: string): AttributesParseResult {
+  const trimmed = text.trim();
+  if (!trimmed) return { ok: true, value: undefined };
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      return {
+        ok: false,
+        error:
+          "Atributos debe ser un objeto JSON ({ ... }), no array ni escalar.",
+      };
+    }
+    return { ok: true, value: parsed as Record<string, unknown> };
+  } catch (e) {
+    return {
+      ok: false,
+      error: `JSON inválido: ${(e as Error).message}`,
+    };
+  }
 }
 
 function resolveLabel(t: TaxonomyTypeRead, locale: string): string {
@@ -338,6 +383,9 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
             for (const k of SUPPORTED_LOCALES) {
               if (form.labels[k]?.trim()) labels[k] = form.labels[k].trim();
             }
+            // attributes parse: el submit ya está bloqueado si hay error
+            // (NodeFormDialog deshabilita el botón), así que aquí asumimos ok.
+            const attrs = parseAttributes(form.attributes_text);
             const payload: import("@/lib/api/endpoints/taxonomy-registry").TaxonomyNodeCreatePayload =
               {
                 slug: form.slug,
@@ -347,6 +395,7 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
                   isHierarchical && form.parent_id ? form.parent_id : null,
               };
             if (Object.keys(labels).length) payload.labels = labels;
+            if (attrs.ok && attrs.value) payload.attributes = attrs.value;
             createMut.mutate(payload, {
               onSuccess: () => {
                 toast.success("Nodo creado");
@@ -378,6 +427,7 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
             for (const k of SUPPORTED_LOCALES) {
               if (form.labels[k]?.trim()) labels[k] = form.labels[k].trim();
             }
+            const attrs = parseAttributes(form.attributes_text);
             const payload: import("@/lib/api/endpoints/taxonomy-registry").TaxonomyNodeUpdatePayload =
               {
                 display_order: Number(form.display_order || 0),
@@ -385,6 +435,11 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
                 valid_until: form.valid_until || null,
               };
             if (Object.keys(labels).length) payload.labels = labels;
+            // En edit, enviá explícitamente {} para "limpiar" atributos si el
+            // user vació el textarea (distinto al create donde omitimos).
+            if (attrs.ok) {
+              payload.attributes = attrs.value ?? {};
+            }
             updateMut.mutate(
               { nodeSlug: editing.slug, payload },
               {
@@ -465,6 +520,14 @@ function NodeFormDialog({
       setSlugError(null);
     }
   }, [open, initial]);
+
+  // Parse en vivo del textarea de atributos para feedback inmediato y para
+  // deshabilitar el submit cuando el JSON es inválido.
+  const attributesParse = React.useMemo(
+    () => parseAttributes(form.attributes_text),
+    [form.attributes_text],
+  );
+  const attributesError = attributesParse.ok ? null : attributesParse.error;
 
   function validate(state: NodeFormState): string | null {
     if (slugEditable) {
@@ -641,6 +704,34 @@ function NodeFormDialog({
             </div>
           ) : null}
 
+          <div className="space-y-1.5">
+            <Label htmlFor="attributes">Atributos (JSON)</Label>
+            <textarea
+              id="attributes"
+              value={form.attributes_text}
+              onChange={(e) =>
+                setForm({ ...form, attributes_text: e.target.value })
+              }
+              placeholder='{"foo": "bar"}'
+              rows={5}
+              spellCheck={false}
+              className={`font-mono text-xs flex w-full rounded-md border bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                attributesError
+                  ? "border-destructive"
+                  : "border-input"
+              }`}
+            />
+            {attributesError ? (
+              <p className="text-xs text-destructive">{attributesError}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Objeto JSON arbitrario. Vacío = sin atributos. TODO: validación
+                contra JSON Schema desde{" "}
+                <code className="font-mono">governance_policy</code>.
+              </p>
+            )}
+          </div>
+
           <DialogFooter>
             <Button
               type="button"
@@ -650,7 +741,10 @@ function NodeFormDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={busy || !!slugError}>
+            <Button
+              type="submit"
+              disabled={busy || !!slugError || !!attributesError}
+            >
               {busy ? "Guardando..." : "Guardar"}
             </Button>
           </DialogFooter>

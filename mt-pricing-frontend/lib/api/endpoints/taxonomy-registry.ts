@@ -133,6 +133,7 @@ export interface TaxonomyNodeUpdatePayload {
   valid_until?: string | null;
   superseded_by?: string | null;
   active?: boolean;
+  additional_parents?: string[];
 }
 
 export const taxonomyRegistryApi = {
