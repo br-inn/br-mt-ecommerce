@@ -11,8 +11,12 @@ duplicación de productos por canal.
 - Reutiliza el permiso ``admin:taxonomy`` (mig. 042) para gestión.
 
 Revision ID: 20260509_044
-Revises: 20260508_043
+Revises: 20260508_042
 Create Date: 2026-05-09
+
+Nota (mig. 049): el down_revision original era "20260508_043" pero la
+revisión 043 nunca se creó. 042 fue reconstituida como stub. Chain ajustada
+a "042" — el contenido funcional de esta migración no cambia.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 
 revision: str = "20260509_044"
-down_revision: str | None = "20260508_043"
+down_revision: str | None = "20260508_042"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

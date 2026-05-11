@@ -97,7 +97,7 @@ async def set_display_pair(
     body: DisplayPairSetRequest,
     _user: User = Depends(require_permissions("products:write")),
     service: DisplayPairService = Depends(get_display_pair_service),
-) -> None:
+):
     try:
         await service.set_pair(sku, body.paired_sku)
     except VocabularyDomainError as e:
@@ -114,7 +114,7 @@ async def clear_display_pair(
     sku: str,
     _user: User = Depends(require_permissions("products:write")),
     service: DisplayPairService = Depends(get_display_pair_service),
-) -> None:
+):
     try:
         await service.clear_pair(sku)
     except VocabularyDomainError as e:

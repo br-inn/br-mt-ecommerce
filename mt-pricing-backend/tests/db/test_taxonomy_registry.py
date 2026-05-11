@@ -32,9 +32,45 @@ def _alembic_config(sync_url: str):
     return cfg
 
 
+def _prepare_supabase_stubs(sync_url: str) -> None:
+    """Stubs de schema `auth` + funciones Supabase para correr migraciones
+    en plain Postgres (testcontainer) sin tener Supabase Auth disponible.
+
+    Necesario porque mig. 013 referencia ``auth.uid()`` en una RLS policy.
+    """
+    from sqlalchemy import create_engine, text
+
+    engine = create_engine(sync_url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("CREATE SCHEMA IF NOT EXISTS auth"))
+            for fn, ret in (
+                ("uid", "UUID"),
+                ("role", "TEXT"),
+                ("jwt", "JSONB"),
+            ):
+                conn.execute(
+                    text(
+                        f"CREATE OR REPLACE FUNCTION auth.{fn}() RETURNS {ret} "
+                        f"AS $$ SELECT NULL::{ret} $$ LANGUAGE sql"
+                    )
+                )
+            for role in ("anon", "authenticated", "service_role"):
+                conn.execute(
+                    text(
+                        f"DO $$ BEGIN "
+                        f"IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN "
+                        f"CREATE ROLE {role} NOLOGIN; END IF; END $$"
+                    )
+                )
+    finally:
+        engine.dispose()
+
+
 def _upgrade_head(sync_url: str) -> None:
     from alembic import command
 
+    _prepare_supabase_stubs(sync_url)
     cfg = _alembic_config(sync_url)
     command.upgrade(cfg, "head")
 
@@ -262,9 +298,13 @@ class TestConstraints:
             with engine.begin() as conn:
                 conn.execute(
                     text(
-                        "INSERT INTO products (sku, name_en, family) "
-                        "VALUES ('TEST-LINK-001', 'Test Product', 'ball_valve') "
-                        "ON CONFLICT DO NOTHING"
+                        """
+                        INSERT INTO products (sku, name_en, family, brand_id, family_id)
+                        SELECT 'TEST-LINK-001', 'Test Product', 'ball_valve',
+                               (SELECT id FROM brands WHERE code = 'default'),
+                               (SELECT id FROM families WHERE code = 'default')
+                        ON CONFLICT DO NOTHING
+                        """
                     )
                 )
                 division_type_id = conn.execute(
@@ -287,13 +327,18 @@ class TestConstraints:
                     {"nid": node_id},
                 )
 
-            # Cleanup
+            # Cleanup — productos no se borran (compliance trigger NFR-35);
+            # solo limpiar el nodo y los links.
             with engine.begin() as conn:
                 conn.execute(
-                    text("DELETE FROM taxonomy_nodes WHERE slug = 'test_link_node'")
+                    text(
+                        "DELETE FROM product_taxonomy_links WHERE product_sku = 'TEST-LINK-001'"
+                    )
                 )
                 conn.execute(
-                    text("DELETE FROM products WHERE sku = 'TEST-LINK-001'")
+                    text(
+                        "DELETE FROM taxonomy_nodes WHERE slug = 'test_link_node'"
+                    )
                 )
         finally:
             engine.dispose()
@@ -484,11 +529,15 @@ class TestClosureTable:
             assert p1 in ancestor_ids, "primary parent missing from closure"
             assert p2 in ancestor_ids, "secondary parent missing from closure"
 
-            # Cleanup
+            # Cleanup — borrar primero el child (sino RESTRICT en parents)
             with engine.begin() as conn:
                 conn.execute(
-                    text("DELETE FROM taxonomy_nodes WHERE id IN (:c, :p1, :p2)"),
-                    {"c": child, "p1": p1, "p2": p2},
+                    text("DELETE FROM taxonomy_nodes WHERE id = :c"),
+                    {"c": child},
+                )
+                conn.execute(
+                    text("DELETE FROM taxonomy_nodes WHERE id IN (:p1, :p2)"),
+                    {"p1": p1, "p2": p2},
                 )
         finally:
             engine.dispose()

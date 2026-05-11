@@ -206,13 +206,12 @@ async def admin_patch_certification(
     "/certifications/{cert_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="[Admin] Eliminar certificación",
-    responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_certification(
     cert_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: CertificationService = Depends(get_cert_service),
-) -> None:
+):
     try:
         await service.delete(cert_id)
     except VocabularyDomainError as e:
@@ -295,13 +294,12 @@ async def admin_patch_application(
     "/applications/{app_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="[Admin] Eliminar aplicación",
-    responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_application(
     app_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: ApplicationService = Depends(get_app_service),
-) -> None:
+):
     try:
         await service.delete(app_id)
     except VocabularyDomainError as e:
@@ -383,14 +381,13 @@ async def replace_product_certifications(
     "/{sku}/certifications/{cert_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar certificación de un producto",
-    responses={404: {"model": ProblemDetails}},
 )
 async def remove_product_certification(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     cert_id: UUID,
     _user: User = Depends(require_permissions("products:write")),
     service: ProductVocabularyService = Depends(get_product_vocab_service),
-) -> None:
+):
     try:
         await service.remove_certification(sku, cert_id)
     except VocabularyDomainError as e:
@@ -469,14 +466,13 @@ async def replace_product_applications(
     "/{sku}/applications/{app_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar aplicación de un producto",
-    responses={404: {"model": ProblemDetails}},
 )
 async def remove_product_application(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     app_id: UUID,
     _user: User = Depends(require_permissions("products:write")),
     service: ProductVocabularyService = Depends(get_product_vocab_service),
-) -> None:
+):
     try:
         await service.remove_application(sku, app_id)
     except VocabularyDomainError as e:

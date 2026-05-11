@@ -288,7 +288,7 @@ async def admin_delete_division(
     division_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: DivisionService = Depends(get_division_service),
-) -> None:
+):
     try:
         await service.delete(division_id)
     except VocabularyDomainError as e:
@@ -355,7 +355,7 @@ async def admin_delete_series_tier(
     tier_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: SeriesTierService = Depends(get_series_tier_service),
-) -> None:
+):
     try:
         await service.delete(tier_id)
     except VocabularyDomainError as e:
@@ -422,7 +422,7 @@ async def admin_delete_series(
     series_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: SeriesService = Depends(get_series_service),
-) -> None:
+):
     try:
         await service.delete(series_id)
     except VocabularyDomainError as e:
@@ -458,7 +458,7 @@ async def admin_link_series_division(
     division_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: SeriesService = Depends(get_series_service),
-) -> None:
+):
     try:
         await service.add_division(series_id, division_id)
     except VocabularyDomainError as e:
@@ -475,7 +475,7 @@ async def admin_unlink_series_division(
     division_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: SeriesService = Depends(get_series_service),
-) -> None:
+):
     try:
         await service.remove_division(series_id, division_id)
     except VocabularyDomainError as e:
@@ -521,7 +521,7 @@ async def admin_link_series_certification(
     certification_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: SeriesService = Depends(get_series_service),
-) -> None:
+):
     try:
         await service.add_certification(series_id, certification_id)
     except VocabularyDomainError as e:
@@ -538,7 +538,7 @@ async def admin_unlink_series_certification(
     certification_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: SeriesService = Depends(get_series_service),
-) -> None:
+):
     try:
         await service.remove_certification(series_id, certification_id)
     except VocabularyDomainError as e:
@@ -590,7 +590,7 @@ async def admin_delete_series_translation(
     lang: str,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: SeriesService = Depends(get_series_service),
-) -> None:
+):
     try:
         await service.delete_translation(series_id, lang)
     except VocabularyDomainError as e:
@@ -659,7 +659,7 @@ async def admin_delete_material(
     material_id: UUID,
     _user: User = Depends(require_permissions("admin:taxonomy")),
     service: MaterialService = Depends(get_material_service),
-) -> None:
+):
     try:
         await service.delete(material_id)
     except VocabularyDomainError as e:
@@ -744,7 +744,7 @@ async def remove_product_division(
     division_id: UUID,
     _user: User = Depends(require_permissions("products:write")),
     service: ProductDivisionService = Depends(get_product_division_service),
-) -> None:
+):
     try:
         await service.remove(sku, division_id)
     except VocabularyDomainError as e:
