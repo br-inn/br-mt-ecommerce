@@ -116,6 +116,25 @@ async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
   return (await res.json()) as T;
 }
 
+export interface TaxonomyNodeCreatePayload {
+  slug: string;
+  labels?: Record<string, string>;
+  attributes?: Record<string, unknown>;
+  display_order?: number;
+  parent_id?: string | null;
+  additional_parents?: string[];
+  active?: boolean;
+}
+
+export interface TaxonomyNodeUpdatePayload {
+  labels?: Record<string, string>;
+  attributes?: Record<string, unknown>;
+  display_order?: number;
+  valid_until?: string | null;
+  superseded_by?: string | null;
+  active?: boolean;
+}
+
 export const taxonomyRegistryApi = {
   /** Listado de tipos del registry (drives sidebar SISTEMA y filtros). */
   listRegistry: (params?: {
