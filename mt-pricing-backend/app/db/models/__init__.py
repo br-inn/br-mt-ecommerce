@@ -33,6 +33,15 @@ from app.db.models.pricing import (
 from app.db.models.product import Product, ProductImage, ProductTranslation
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
+from app.db.models.taxonomy_registry import (
+    FamilySchema,
+    ProductTaxonomyLink,
+    TaxonomyAlias,
+    TaxonomyNode,
+    TaxonomyNodeDescendant,
+    TaxonomyNodeParent,
+    TaxonomyType,
+)
 from app.db.models.vocabularies import (
     Application,
     Brand,
@@ -124,4 +133,12 @@ __all__ = [
     "ProductConnection",
     # Wave 6 — tech tables (matrix-style)
     "ProductTechTable",
+    # Sprint 7 — Registry polimórfico de taxonomías (mig. 049)
+    "TaxonomyType",
+    "TaxonomyNode",
+    "TaxonomyNodeParent",
+    "TaxonomyNodeDescendant",
+    "TaxonomyAlias",
+    "ProductTaxonomyLink",
+    "FamilySchema",
 ]
