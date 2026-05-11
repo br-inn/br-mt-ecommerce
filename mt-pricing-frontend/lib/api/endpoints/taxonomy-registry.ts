@@ -184,4 +184,32 @@ export const taxonomyRegistryApi = {
       `/api/v1/products/${encodeURIComponent(sku)}/taxonomies${qs ? `?${qs}` : ""}`,
     );
   },
+
+  /** Crear un nodo (term) en un type. Requiere `admin:taxonomy`. */
+  createNode: (
+    typeSlug: string,
+    payload: TaxonomyNodeCreatePayload,
+  ): Promise<TaxonomyNodeRead> =>
+    authedFetch<TaxonomyNodeRead>(
+      `/api/v1/admin/taxonomies/${encodeURIComponent(typeSlug)}/nodes`,
+      { method: "POST", body: JSON.stringify(payload) },
+    ),
+
+  /** Patch parcial de un nodo. Slug no se cambia. */
+  updateNode: (
+    typeSlug: string,
+    nodeSlug: string,
+    payload: TaxonomyNodeUpdatePayload,
+  ): Promise<TaxonomyNodeRead> =>
+    authedFetch<TaxonomyNodeRead>(
+      `/api/v1/admin/taxonomies/${encodeURIComponent(typeSlug)}/nodes/${encodeURIComponent(nodeSlug)}`,
+      { method: "PATCH", body: JSON.stringify(payload) },
+    ),
+
+  /** Soft-delete (status 204). */
+  deleteNode: (typeSlug: string, nodeSlug: string): Promise<void> =>
+    authedFetch<void>(
+      `/api/v1/admin/taxonomies/${encodeURIComponent(typeSlug)}/nodes/${encodeURIComponent(nodeSlug)}`,
+      { method: "DELETE" },
+    ),
 };

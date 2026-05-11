@@ -95,16 +95,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 const FALLBACK_ICON: LucideIcon = Tags;
 
-// Slugs core que tienen pantallas legacy específicas (mientras se construyen
-// las pantallas genéricas `/admin/taxonomies/[slug]`). Cuando todas migren a
-// la página genérica, este map se puede vaciar.
-const LEGACY_ROUTE_MAP: Record<string, string> = {
-  division: "/admin/divisions",
-  series: "/admin/series",
-  tier: "/admin/series-tiers",
-  material: "/admin/materials",
-};
-
 function resolveLabel(t: TaxonomyTypeRead, locale: string): string {
   const labels = t.label_i18n ?? {};
   return (
@@ -120,8 +110,12 @@ function resolveIcon(iconKey: string | undefined): LucideIcon {
   return ICON_MAP[iconKey] ?? FALLBACK_ICON;
 }
 
+// Todas las taxonomías enrutan a la página genérica data-driven. Las páginas
+// legacy (`/admin/divisions`, `/admin/series`, `/admin/series-tiers`,
+// `/admin/materials`) quedan como rutas huérfanas accesibles vía URL directa,
+// pendientes de cleanup en un PR posterior.
 function resolveHref(t: TaxonomyTypeRead): string {
-  return LEGACY_ROUTE_MAP[t.slug] ?? `/admin/taxonomies/${t.slug}`;
+  return `/admin/taxonomies/${t.slug}`;
 }
 
 function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {

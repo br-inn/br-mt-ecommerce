@@ -1,11 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   taxonomyRegistryApi,
   type ProductTaxonomyLinkRead,
+  type TaxonomyNodeCreatePayload,
   type TaxonomyNodeRead,
+  type TaxonomyNodeUpdatePayload,
   type TaxonomyTypeRead,
 } from "@/lib/api/endpoints/taxonomy-registry";
 
@@ -74,6 +76,53 @@ export function useProductTaxonomies(
     },
     enabled: (params?.enabled ?? true) && !!sku,
     staleTime: 30_000,
+  });
+}
+
+/**
+ * Mutation: crear nodo. Invalida la lista del type tras éxito.
+ */
+export function useCreateTaxonomyNode(typeSlug: string) {
+  const qc = useQueryClient();
+  return useMutation<TaxonomyNodeRead, Error, TaxonomyNodeCreatePayload>({
+    mutationFn: (payload) =>
+      taxonomyRegistryApi.createNode(typeSlug, payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: KEYS.nodes(typeSlug) });
+    },
+  });
+}
+
+/**
+ * Mutation: patch parcial de un nodo. El nodeSlug se pasa en el variables
+ * para soportar editar varios nodos sin re-renderizar el hook.
+ */
+export function useUpdateTaxonomyNode(typeSlug: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    TaxonomyNodeRead,
+    Error,
+    { nodeSlug: string; payload: TaxonomyNodeUpdatePayload }
+  >({
+    mutationFn: ({ nodeSlug, payload }) =>
+      taxonomyRegistryApi.updateNode(typeSlug, nodeSlug, payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: KEYS.nodes(typeSlug) });
+    },
+  });
+}
+
+/**
+ * Mutation: soft-delete. Devuelve void (204 No Content del backend).
+ */
+export function useDeleteTaxonomyNode(typeSlug: string) {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (nodeSlug) =>
+      taxonomyRegistryApi.deleteNode(typeSlug, nodeSlug),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: KEYS.nodes(typeSlug) });
+    },
   });
 }
 
