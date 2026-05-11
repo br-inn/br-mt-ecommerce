@@ -192,3 +192,47 @@ async def test_stage3_uuid_type_accepted_for_series_and_material() -> None:
     # Ambos son UUID — no debe lanzar.
     await repo.list_paginated_with_filters(series_id=sid, material_id=mid)
     assert len(captured) == 1
+
+
+# ---------------------------------------------------------------------------
+# Mig 052 — series_id/material_id aceptan SLUG (taxonomy registry slug)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_stage3_series_slug_emits_exists_against_series_code() -> None:
+    """Pasar un slug (no-UUID) → la cláusula es EXISTS contra series.code,
+    no equality contra products.series_id."""
+    session, captured = _fake_session()
+    repo = ProductRepository(session)
+    await repo.list_paginated_with_filters(series_id="industrial_brass")
+
+    sql = _compile_sql(captured[0])
+    # Debe haber EXISTS + JOIN contra series.code (no equality directa).
+    assert "exists" in sql
+    assert "series.code" in sql
+
+
+@pytest.mark.asyncio
+async def test_stage3_material_slug_emits_exists_against_material_code() -> None:
+    session, captured = _fake_session()
+    repo = ProductRepository(session)
+    await repo.list_paginated_with_filters(material_id="ss316")
+
+    sql = _compile_sql(captured[0])
+    assert "exists" in sql
+    assert "materials.code" in sql
+
+
+@pytest.mark.asyncio
+async def test_stage3_series_uuid_as_string_still_works_as_equality() -> None:
+    """Si llega un UUID en forma de string (caso typical FastAPI Query[str]),
+    debe parsearse y caer en la rama equality, no en slug lookup."""
+    session, captured = _fake_session()
+    repo = ProductRepository(session)
+    sid = uuid4()
+    await repo.list_paginated_with_filters(series_id=str(sid))
+
+    sql = _compile_sql(captured[0])
+    assert "products.series_id" in sql
+    # NO debe usar series.code en este caso (es UUID).
+    assert "series.code" not in sql

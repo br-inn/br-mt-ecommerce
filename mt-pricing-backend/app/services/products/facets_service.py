@@ -58,9 +58,10 @@ class ProductFilters:
     search: str | None = None
     include_deleted: bool = False
     # ---- Stage 3 (Wave 11) — division/series/tier/material curated ------
+    # series_id/material_id aceptan UUID (legacy) o SLUG (taxonomy registry mig 050+).
     division_code: str | None = None
-    series_id: UUID | None = None
-    material_id: UUID | None = None
+    series_id: UUID | str | None = None
+    material_id: UUID | str | None = None
     tier_code: str | None = None
     # Reserved for parent/variant filters in later iterations.
 
@@ -78,6 +79,44 @@ class ProductFilters:
                 "division_code", "series_id", "material_id", "tier_code",
             )
         )
+
+
+def _is_uuid_value(value: Any) -> bool:
+    try:
+        UUID(str(value))
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
+def _series_clause(value: UUID | str) -> Any:
+    """Resuelve series UUID o slug a una cláusula WHERE.
+
+    Mig 050 sync trigger garantiza que ``series.code === taxonomy_node.slug``,
+    así que el lookup por code es equivalente al lookup por taxonomy_node.slug
+    pero con un solo JOIN. Documentamos la elección aquí.
+    """
+    if isinstance(value, UUID):
+        return Product.series_id == value
+    if _is_uuid_value(value):
+        return Product.series_id == UUID(str(value))
+    sub = select(Series.id).where(
+        Series.id == Product.series_id,
+        Series.code == value,
+    )
+    return exists(sub)
+
+
+def _material_clause(value: UUID | str) -> Any:
+    if isinstance(value, UUID):
+        return Product.material_id == value
+    if _is_uuid_value(value):
+        return Product.material_id == UUID(str(value))
+    sub = select(Material.id).where(
+        Material.id == Product.material_id,
+        Material.code == value,
+    )
+    return exists(sub)
 
 
 def build_product_clauses(
@@ -146,9 +185,9 @@ def build_product_clauses(
         )
         clauses.append(exists(div_sub))
     if filters.series_id and "series" not in exclude:
-        clauses.append(Product.series_id == filters.series_id)
+        clauses.append(_series_clause(filters.series_id))
     if filters.material_id and "material_curated" not in exclude:
-        clauses.append(Product.material_id == filters.material_id)
+        clauses.append(_material_clause(filters.material_id))
     if filters.tier_code and "tier_code" not in exclude:
         tier_sub = (
             select(Series.id)

@@ -8,9 +8,6 @@ import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { Kbd } from "@/components/mt/primitives";
 import { MT } from "@/components/mt/tokens";
 import { type FacetsFilters, type FacetsResponse } from "@/lib/api/endpoints/facets";
-import { materialsApi } from "@/lib/api/endpoints/materials";
-import { seriesApi } from "@/lib/api/endpoints/series";
-import { seriesTiersApi, type SeriesTier } from "@/lib/api/endpoints/series-tiers";
 import { taxonomyApi } from "@/lib/api/endpoints/taxonomy";
 import type {
   TaxonomyNodeRead,
@@ -57,15 +54,18 @@ function resolveLabel(
 }
 
 // ---------------------------------------------------------------------------
-// SYSTEM_FILTER_CONFIG — para los 4 system slugs (division, series, tier,
-// material) preservamos el wiring legacy (FacetsFilters keys + facet bucket
-// keys + UI extras como el color dot del tier). Para slugs nuevos
-// (mercados/certificaciones/aplicaciones), el dropdown default usa node.slug
-// como value y el slug del type como key de URL/filtro.
+// SYSTEM_FILTER_CONFIG — mapea slugs del registry a la llave del filtro en
+// `FacetsFilters` y al bucket de counts en `FacetsResponse`.
 //
-// Esto permite que el registry sea source-of-truth (orden, labels, icon, qué
-// tipos son filterable) sin romper compatibilidad con el contrato backend
-// existente de /products?series_id=…&tier_code=…&material_id=…
+// Tras mig 052 + actualización del endpoint /products, los filtros aceptan
+// el SLUG del taxonomy_node directamente (no UUID), por lo que ya no
+// necesitamos las queries legacy a seriesApi/materialsApi. El nodo del
+// registry es la única fuente — su `slug` es el value y su `labels[locale]`
+// es el label.
+//
+// Para slugs nuevos (mercados/certificaciones/aplicaciones), si no hay
+// entry acá el RegistryFilter cae al default: filterKey = type.slug,
+// countsBucket = type.slug.
 // ---------------------------------------------------------------------------
 interface SystemConfig {
   /** Key dentro de FacetsFilters al que escribimos. */
@@ -83,36 +83,16 @@ interface SystemConfig {
     | "dn"
     | "pn"
     | null;
-  /**
-   * Cuando el system type viene del registry pero el VALUE backend espera
-   * UUID legacy (series_id, material_id), mapeamos con la lista legacy en
-   * lugar de los nodes del registry. `null` = usar nodes del registry y
-   * value=slug.
-   */
-  legacySource: "series" | "tiers" | "materials" | null;
 }
 
 const SYSTEM_FILTER_CONFIG: Record<string, SystemConfig> = {
-  division: {
-    filterKey: "division",
-    countsBucket: "division",
-    legacySource: null,
-  },
-  series: {
-    filterKey: "series_id",
-    countsBucket: "series",
-    legacySource: "series",
-  },
-  tier: {
-    filterKey: "tier_code",
-    countsBucket: "tier_code",
-    legacySource: "tiers",
-  },
-  material: {
-    filterKey: "material_id",
-    countsBucket: "material_curated",
-    legacySource: "materials",
-  },
+  family: { filterKey: "family", countsBucket: "family" },
+  subfamily: { filterKey: "subfamily", countsBucket: "subfamily" },
+  product_type: { filterKey: "type", countsBucket: "type" },
+  division: { filterKey: "division", countsBucket: "division" },
+  series: { filterKey: "series_id", countsBucket: "series" },
+  tier: { filterKey: "tier_code", countsBucket: "tier_code" },
+  material: { filterKey: "material_id", countsBucket: "material_curated" },
 };
 
 /**
@@ -151,30 +131,18 @@ export function TopFilterBar({
     [registryQ.data],
   );
 
-  // ---- Legacy registries (preservados para system slugs que mapean a
-  // UUID legacy en el backend products filter: series_id, material_id, y
-  // para el dot color del tier). Cuando los endpoints de products acepten
-  // slug directo (futuro), estas queries se eliminan. -----------------------
+  // ---- Taxonomy tree para la cascada family→subfamily→type en la sección
+  // avanzada. Cuando subfamily/product_type también vivan en el registry con
+  // closure transitivo expuesto en /taxonomies/nodes, esto se puede eliminar.
   const taxonomyQ = useQuery({
     queryKey: ["taxonomy", "tree", "list-bar"],
     queryFn: () => taxonomyApi.tree(),
     staleTime: 5 * 60_000,
   });
-  const seriesQ = useQuery({
-    queryKey: ["series", "public", "list-bar"],
-    queryFn: () => seriesApi.listPublic({}),
-    staleTime: 5 * 60_000,
-  });
-  const tiersQ = useQuery({
-    queryKey: ["series-tiers", "public", "list-bar"],
-    queryFn: () => seriesTiersApi.listPublic(),
-    staleTime: 5 * 60_000,
-  });
-  const materialsQ = useQuery({
-    queryKey: ["materials", "public", "list-bar"],
-    queryFn: () => materialsApi.listPublic(),
-    staleTime: 5 * 60_000,
-  });
+
+  // Tier nodes para acceder a `attributes.display_color` y renderizar el dot.
+  // Mig 050 copia series_tiers.display_color → taxonomy_nodes.attributes.
+  const tierNodesQ = useTaxonomyNodes("tier");
 
   // Lookup maps para cascada subfamily→type (sección avanzada).
   const familyMaps = React.useMemo(() => {
@@ -236,7 +204,8 @@ export function TopFilterBar({
     for (const b of buckets ?? []) map[b.value] = b.count;
     return map;
   };
-  const familyCounts = countMap(facets?.family);
+  // familyCounts ya no se usa en la línea principal (el RegistryFilter lee
+  // facets?.family por sí mismo via SYSTEM_FILTER_CONFIG.countsBucket).
   const subfamilyCounts = countMap(facets?.subfamily);
   const typeCounts = countMap(facets?.type);
   const dnCounts = countMap(facets?.dn);
@@ -290,41 +259,25 @@ export function TopFilterBar({
           <Kbd>/</Kbd>
         </div>
 
-        {/* "Familia" sigue siendo hardcoded — todavía no está en el registry
-            polimórfico (vive en taxonomy_tree heredado). Cuando se migre,
-            se elimina este bloque. */}
-        <FilterSelect
-          label="Familia"
-          value={filters.family ?? ""}
-          onChange={(v) => {
-            setFilter("family", v || null);
-            if (filters.subfamily) setFilter("subfamily", null);
-            if (filters.type) setFilter("type", null);
-          }}
-          options={sortByCount(familyMaps.allFamilies, familyCounts).map((f) => ({
-            value: f.code,
-            label: f.name,
-            count: familyCounts[f.code],
-          }))}
-        />
-
-        {/* Filtros derivados del registry polimórfico. */}
+        {/* Filtros derivados del registry polimórfico — family aparece
+            automáticamente tras mig 052 (no más hardcoded). */}
         {registryQ.isLoading ? (
           <RegistryFilterSkeleton count={4} />
         ) : (
-          registryTypes.map((type) => (
-            <RegistryFilter
-              key={type.id}
-              type={type}
-              locale={locale}
-              filters={filters}
-              setFilter={setFilter}
-              facets={facets}
-              seriesList={seriesQ.data}
-              tiersList={tiersQ.data}
-              materialsList={materialsQ.data}
-            />
-          ))
+          registryTypes
+            // Subfamily/product_type viven en la sección avanzada (cascada).
+            .filter((t) => t.slug !== "subfamily" && t.slug !== "product_type")
+            .map((type) => (
+              <RegistryFilter
+                key={type.id}
+                type={type}
+                locale={locale}
+                filters={filters}
+                setFilter={setFilter}
+                facets={facets}
+                tierNodes={tierNodesQ.data}
+              />
+            ))
         )}
 
         <span className="flex-1" />
@@ -470,9 +423,10 @@ export function TopFilterBar({
 }
 
 // ---------------------------------------------------------------------------
-// RegistryFilter — un FilterSelect alimentado por `useTaxonomyNodes(slug)`.
-// Para system slugs, mapea node.slug → value legacy (UUID o code) via
-// SYSTEM_FILTER_CONFIG. Para slugs nuevos, value = node.slug y key URL = slug.
+// RegistryFilter — FilterSelect alimentado 100% por `useTaxonomyNodes(slug)`.
+// El value del filtro es **siempre el slug del nodo** (no UUID); el backend
+// (mig 052) resuelve slug→FK internamente para series_id/material_id, y los
+// demás filtros ya eran code/slug-based.
 // ---------------------------------------------------------------------------
 interface RegistryFilterProps {
   type: TaxonomyTypeRead;
@@ -480,9 +434,8 @@ interface RegistryFilterProps {
   filters: FacetsFilters;
   setFilter: (key: keyof FacetsFilters, value: string | boolean | null) => void;
   facets: FacetsResponse | undefined;
-  seriesList: import("@/lib/api/endpoints/series").Series[] | undefined;
-  tiersList: SeriesTier[] | undefined;
-  materialsList: import("@/lib/api/endpoints/materials").Material[] | undefined;
+  /** Tier nodes para el dot color (attributes.display_color de mig 050). */
+  tierNodes: TaxonomyNodeRead[] | undefined;
 }
 
 function RegistryFilter({
@@ -491,17 +444,10 @@ function RegistryFilter({
   filters,
   setFilter,
   facets,
-  seriesList,
-  tiersList,
-  materialsList,
+  tierNodes,
 }: RegistryFilterProps) {
   const config = SYSTEM_FILTER_CONFIG[type.slug];
-  // Para system slugs con backend que espera UUID legacy (series, material),
-  // usamos la lista legacy. Para los demás (division, tier, y nuevos),
-  // basta con los nodes del registry.
-  const needsRegistryNodes =
-    !config || config.legacySource === null || config.legacySource === "tiers";
-  const nodesQ = useTaxonomyNodes(type.slug, needsRegistryNodes);
+  const nodesQ = useTaxonomyNodes(type.slug);
 
   // Filter key — para system slugs viene de config; para nuevos, slug == key.
   const filterKey = (config?.filterKey ?? (type.slug as keyof FacetsFilters)) as keyof FacetsFilters;
@@ -510,8 +456,7 @@ function RegistryFilter({
     typeof rawValue === "string" ? rawValue : rawValue == null ? "" : String(rawValue);
 
   // Counts bucket — preferimos el campo Stage 3 (division/series/tier_code/
-  // material_curated). Si no aplica, usamos el slug del type como key (los
-  // facets para taxonomías nuevas tendrán que extender FacetsResponse).
+  // material_curated). Si no aplica, usamos el slug del type como key.
   const buckets = config?.countsBucket
     ? (facets?.[config.countsBucket] as { value: string; count: number }[] | undefined)
     : (facets as unknown as Record<string, { value: string; count: number }[] | undefined>)?.[
@@ -522,70 +467,45 @@ function RegistryFilter({
 
   // ---- Options builder --------------------------------------------------
   const options: Option[] = React.useMemo(() => {
-    // Legacy UUID-based sources (series, materials) — keep legacy wiring,
-    // but ORDER and LABEL respect the registry type's display_order/label
-    // implicitly via the legacy data ordering.
-    if (config?.legacySource === "series") {
-      return (seriesList ?? [])
-        .map((s) => ({
-          value: s.id,
-          label: s.name_en,
-          count: counts[s.id],
-        }))
-        .sort((a, b) => (b.count ?? -1) - (a.count ?? -1));
-    }
-    if (config?.legacySource === "materials") {
-      return (materialsList ?? [])
-        .map((m) => ({
-          value: m.id,
-          label: m.name,
-          count: counts[m.id],
-        }))
-        .sort((a, b) => (b.count ?? -1) - (a.count ?? -1));
-    }
-    if (config?.legacySource === "tiers") {
-      // Tier usa CODE como filter value (no UUID), igual mantenemos la lista
-      // legacy para acceder a `display_color` y `rank`.
-      return (tiersList ?? [])
-        .filter((t) => t.code !== "n_a")
-        .sort((a, b) => a.rank - b.rank)
-        .map((t) => ({
-          value: t.code,
-          label: t.name,
-          count: counts[t.code],
-        }));
-    }
-    // Default — registry nodes con value=slug.
     const nodes: TaxonomyNodeRead[] = nodesQ.data ?? [];
     return [...nodes]
       .filter((n) => n.active)
+      // tier: ocultamos el legacy 'n_a' (sin nivel asignado).
+      .filter((n) => !(type.slug === "tier" && n.slug === "n_a"))
       .sort((a, b) => a.display_order - b.display_order)
       .map((n) => ({
         value: n.slug,
         label: resolveLabel(n.labels, n.slug, locale),
         count: counts[n.slug],
       }));
-  }, [
-    config?.legacySource,
-    seriesList,
-    materialsList,
-    tiersList,
-    nodesQ.data,
-    locale,
-    counts,
-  ]);
+  }, [nodesQ.data, locale, counts, type.slug]);
 
+  // Para 'tier' renderizamos un color dot via attributes.display_color del nodo.
   const renderDot =
-    config?.legacySource === "tiers"
-      ? (opt: Option) =>
-          (tiersList ?? []).find((t) => t.code === opt.value)?.display_color ?? null
+    type.slug === "tier"
+      ? (opt: Option) => {
+          const node = (tierNodes ?? []).find((n) => n.slug === opt.value);
+          const color = (node?.attributes as Record<string, unknown> | undefined)?.[
+            "display_color"
+          ];
+          return typeof color === "string" ? color : null;
+        }
       : undefined;
+
+  // Family selection cascade: limpia subfamily/type al cambiar.
+  const handleChange = (v: string) => {
+    setFilter(filterKey, v || null);
+    if (type.slug === "family") {
+      if (filters.subfamily) setFilter("subfamily", null);
+      if (filters.type) setFilter("type", null);
+    }
+  };
 
   return (
     <FilterSelect
       label={resolveLabel(type.label_i18n, type.slug, locale)}
       value={currentValue}
-      onChange={(v) => setFilter(filterKey, v || null)}
+      onChange={handleChange}
       options={options}
       {...(renderDot ? { renderDot } : {})}
     />

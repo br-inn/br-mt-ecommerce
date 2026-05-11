@@ -312,10 +312,18 @@ async def list_products(
     created_before: Annotated[str | None, Query(description="ISO-8601 datetime")] = None,
     q: Annotated[str | None, Query(min_length=1, max_length=128, alias="q")] = None,
     search: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
-    # Stage 3 (Wave 11) — division/series/material/tier filters
-    division: Annotated[str | None, Query(max_length=64, description="division.code")] = None,
-    series_id: Annotated[UUID | None, Query(description="series.id (UUID)")] = None,
-    material_id: Annotated[UUID | None, Query(description="materials.id (UUID)")] = None,
+    # Stage 3 (Wave 11) — division/series/material/tier filters.
+    # series_id/material_id aceptan UUID (legacy contract) o SLUG del registry
+    # (mig 050+). El repo resuelve slug→UUID via tabla legacy code lookup.
+    division: Annotated[str | None, Query(max_length=64, description="division.code o slug")] = None,
+    series_id: Annotated[
+        str | None,
+        Query(max_length=64, description="series.id (UUID) o slug del registry"),
+    ] = None,
+    material_id: Annotated[
+        str | None,
+        Query(max_length=64, description="materials.id (UUID) o slug del registry"),
+    ] = None,
     tier_code: Annotated[str | None, Query(max_length=32, description="series_tiers.code")] = None,
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
@@ -1689,10 +1697,10 @@ async def get_facets(
     ] = None,
     translation_lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
     q: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
-    # Stage 3 (Wave 11)
+    # Stage 3 (Wave 11) — series_id/material_id aceptan UUID o slug del registry.
     division: Annotated[str | None, Query(max_length=64)] = None,
-    series_id: Annotated[UUID | None, Query()] = None,
-    material_id: Annotated[UUID | None, Query()] = None,
+    series_id: Annotated[str | None, Query(max_length=64)] = None,
+    material_id: Annotated[str | None, Query(max_length=64)] = None,
     tier_code: Annotated[str | None, Query(max_length=32)] = None,
     _user: User = Depends(require_permissions("products:read")),
     session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]

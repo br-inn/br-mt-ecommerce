@@ -13,11 +13,21 @@ from app.db.enums import DataQuality
 from app.db.models.product import Product, ProductImage, ProductTranslation
 from app.db.models.vocabularies import (
     Division,
+    Material,
     ProductDivision,
     Series,
     SeriesTier,
 )
 from app.repositories.base import BaseRepository
+
+
+def _is_uuid(value: str) -> bool:
+    """Heurística rápida: True si `value` parsea como UUID."""
+    try:
+        UUID(value)
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
 
 
 class ProductRepository(BaseRepository[Product]):
@@ -78,9 +88,17 @@ class ProductRepository(BaseRepository[Product]):
         include_deleted: bool = False,
         include_total: bool = False,
         # Stage 3 filters (Wave 11) — divisions M:N + series rica + material vocab.
+        #
+        # series_id / material_id aceptan **UUID o SLUG** (taxonomy registry mig 050+).
+        # Si el caller pasa un UUID válido → comparación FK directa.
+        # Si pasa un slug (lookup en tabla legacy por code) → se resuelve a UUID
+        # vía JOIN con series.code / materials.code. Elección de implementación:
+        # **lookup contra tabla legacy** (no contra taxonomy_nodes) por ser el path
+        # más simple — un solo JOIN, sin atravesar el registry. El sync trigger
+        # de mig 050 garantiza que slugs legacy === slugs del registry.
         division_code: str | None = None,
-        series_id: UUID | None = None,
-        material_id: UUID | None = None,
+        series_id: UUID | str | None = None,
+        material_id: UUID | str | None = None,
         tier_code: str | None = None,
         # Taxonomy lineage filters — pass through Product.subfamily / .type TEXT
         # (FKs subfamily_id/type_id se promoverán en Stage 4b).
@@ -144,9 +162,33 @@ class ProductRepository(BaseRepository[Product]):
             )
             clauses.append(exists(sub))
         if series_id is not None:
-            clauses.append(Product.series_id == series_id)
+            # Acepta UUID o SLUG (registry-aware). Si parsea como UUID se usa
+            # directo contra la FK; de lo contrario se resuelve por `series.code`.
+            if isinstance(series_id, UUID):
+                clauses.append(Product.series_id == series_id)
+            elif isinstance(series_id, str):
+                if _is_uuid(series_id):
+                    clauses.append(Product.series_id == UUID(series_id))
+                else:
+                    # Lookup contra tabla legacy `series.code` — mig 050 garantiza
+                    # que el slug del registry === series.code (vía normalize_slug).
+                    sub = select(Series.id).where(
+                        Series.id == Product.series_id,
+                        Series.code == series_id,
+                    )
+                    clauses.append(exists(sub))
         if material_id is not None:
-            clauses.append(Product.material_id == material_id)
+            if isinstance(material_id, UUID):
+                clauses.append(Product.material_id == material_id)
+            elif isinstance(material_id, str):
+                if _is_uuid(material_id):
+                    clauses.append(Product.material_id == UUID(material_id))
+                else:
+                    sub = select(Material.id).where(
+                        Material.id == Product.material_id,
+                        Material.code == material_id,
+                    )
+                    clauses.append(exists(sub))
         if tier_code is not None:
             # JOIN series → series_tiers para filtrar por tier.code.
             sub = (

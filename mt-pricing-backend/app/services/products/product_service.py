@@ -194,10 +194,10 @@ class ProductService:
         cursor: str | None = None,
         limit: int = 50,
         include_total: bool = False,
-        # Stage 3 (Wave 11)
+        # Stage 3 (Wave 11) — series_id/material_id aceptan UUID o slug del registry.
         division_code: str | None = None,
-        series_id: UUID | None = None,
-        material_id: UUID | None = None,
+        series_id: UUID | str | None = None,
+        material_id: UUID | str | None = None,
         tier_code: str | None = None,
     ) -> tuple[Sequence[Product], str | None, int | None]:
         return await self.products.list_paginated_with_filters(

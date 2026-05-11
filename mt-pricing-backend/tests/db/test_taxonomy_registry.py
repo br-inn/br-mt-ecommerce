@@ -117,6 +117,11 @@ class TestSchemaAndSeed:
             engine.dispose()
 
     def test_seed_loads_four_system_types(self, upgraded_db: str) -> None:
+        """Tras mig 049: 4 system types (division/series/tier/material).
+        Tras mig 052: 7 system types (+ family/subfamily/product_type).
+
+        Validamos por orden de display_order ascendente.
+        """
         from sqlalchemy import create_engine, text
 
         engine = create_engine(upgraded_db)
@@ -129,14 +134,23 @@ class TestSchemaAndSeed:
                     )
                 ).fetchall()
             slugs = [r[0] for r in rows]
-            assert slugs == ["division", "series", "tier", "material"]
+            # Mig 052 agrega family (5), subfamily (6), product_type (7) tras
+            # los 4 originales (10/20/30/40 → reordenados a 5/6/7 vs 10/20/30/40).
+            # display_order: family=5, subfamily=6, product_type=7,
+            # division=10, series=20, tier=30, material=40.
+            assert slugs == [
+                "family", "subfamily", "product_type",
+                "division", "series", "tier", "material",
+            ]
             assert all(r[1] is True for r in rows)
-            # division y tier son enum_closed, series y material enum_open
             kinds = {r[0]: r[2] for r in rows}
             assert kinds["division"] == "enum_closed"
             assert kinds["tier"] == "enum_closed"
             assert kinds["series"] == "enum_open"
             assert kinds["material"] == "enum_open"
+            assert kinds["family"] == "enum_closed"
+            assert kinds["subfamily"] == "enum_closed"
+            assert kinds["product_type"] == "enum_open"
         finally:
             engine.dispose()
 
