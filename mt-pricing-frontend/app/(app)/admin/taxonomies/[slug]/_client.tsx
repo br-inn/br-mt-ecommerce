@@ -3,7 +3,31 @@
 import * as React from "react";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
-import { AlertTriangle, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  GripVertical,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -178,6 +202,21 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
   const [editing, setEditing] = React.useState<TaxonomyNodeRead | null>(null);
   const [confirmDelete, setConfirmDelete] =
     React.useState<TaxonomyNodeRead | null>(null);
+  const [reorderBusy, setReorderBusy] = React.useState(false);
+
+  // DnD: por ahora el frontend no expone filtros/sort por columna en la tabla
+  // — los nodos llegan del backend ordenados por display_order. Así que el
+  // drag-and-drop está siempre activo. Si el día de mañana se agrega sort por
+  // otra columna, gateá esto a `sortKey === "display_order"` y deshabilitá el
+  // handle con tooltip "Reordenar solo en vista por defecto".
+  const dragEnabled = true;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   // Loading / error states for `type`
   if (typeQ.isLoading) {
@@ -219,6 +258,50 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
   // delegamos el render completo a ese componente (sin form-builder default).
   if (hasCustomComponentRegistered && CustomComponent) {
     return <CustomComponent typeSlug={typeSlug} />;
+  }
+
+  /**
+   * onDragEnd: calcula el nuevo orden y dispara updates solo para nodos
+   * cuyo `display_order` cambió de posición (mínimo round-trip).
+   *
+   * El nuevo display_order = índice en la lista reordenada (0..N-1). No
+   * intentamos preservar gaps; el backend re-índice no es destructivo.
+   */
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = nodes.findIndex((n) => n.id === active.id);
+    const newIndex = nodes.findIndex((n) => n.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(nodes, oldIndex, newIndex);
+
+    // Solo updateamos los nodos cuyo nuevo display_order cambió.
+    const changes = reordered
+      .map((n, idx) => ({ node: n, newOrder: idx }))
+      .filter(({ node, newOrder }) => node.display_order !== newOrder);
+
+    if (changes.length === 0) return;
+
+    setReorderBusy(true);
+    try {
+      await Promise.all(
+        changes.map(({ node, newOrder }) =>
+          updateMut.mutateAsync({
+            nodeSlug: node.slug,
+            payload: { display_order: newOrder },
+          }),
+        ),
+      );
+      toast.success(
+        `Orden actualizado (${changes.length} nodo${changes.length === 1 ? "" : "s"})`,
+      );
+    } catch (e) {
+      toast.error(
+        `Error al reordenar: ${(e as Error).message ?? "desconocido"}`,
+      );
+    } finally {
+      setReorderBusy(false);
+    }
   }
 
   return (
@@ -303,67 +386,50 @@ export function TaxonomyAdminClient({ typeSlug }: { typeSlug: string }) {
             No hay nodos. Pulsa &quot;Crear nodo&quot; para añadir el primero.
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Slug</TableHead>
-                <TableHead>Etiqueta ({locale})</TableHead>
-                {isHierarchical ? <TableHead>Padre</TableHead> : null}
-                <TableHead>Orden</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {nodes.map((n) => {
-                const parent = isHierarchical
-                  ? nodes.find((x) => x.id === n.parent_id)
-                  : undefined;
-                const isDeprecated =
-                  !!n.valid_until &&
-                  new Date(n.valid_until).getTime() <= Date.now();
-                return (
-                  <TableRow key={n.id}>
-                    <TableCell className="font-mono text-xs">
-                      {n.slug}
-                    </TableCell>
-                    <TableCell>{resolveNodeLabel(n, locale)}</TableCell>
-                    {isHierarchical ? (
-                      <TableCell className="text-xs text-muted-foreground">
-                        {parent ? resolveNodeLabel(parent, locale) : "—"}
-                      </TableCell>
-                    ) : null}
-                    <TableCell>{n.display_order}</TableCell>
-                    <TableCell>
-                      {isDeprecated ? (
-                        <Badge variant="secondary">Deprecado</Badge>
-                      ) : n.active ? (
-                        <Badge>Activo</Badge>
-                      ) : (
-                        <Badge variant="secondary">Inactivo</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="space-x-1 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditing(n)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setConfirmDelete(n)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={nodes.map((n) => n.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8" />
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Etiqueta ({locale})</TableHead>
+                    {isHierarchical ? <TableHead>Padre</TableHead> : null}
+                    <TableHead>Orden</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                  {nodes.map((n) => (
+                    <SortableNodeRow
+                      key={n.id}
+                      node={n}
+                      nodes={nodes}
+                      isHierarchical={isHierarchical}
+                      locale={locale}
+                      dragEnabled={dragEnabled && !reorderBusy}
+                      onEdit={setEditing}
+                      onDelete={setConfirmDelete}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </SortableContext>
+            {reorderBusy ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Guardando nuevo orden...
+              </div>
+            ) : null}
+          </DndContext>
         )}
 
         <NodeFormDialog
@@ -751,5 +817,102 @@ function NodeFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface SortableNodeRowProps {
+  node: TaxonomyNodeRead;
+  nodes: TaxonomyNodeRead[];
+  isHierarchical: boolean;
+  locale: string;
+  dragEnabled: boolean;
+  onEdit: (n: TaxonomyNodeRead) => void;
+  onDelete: (n: TaxonomyNodeRead) => void;
+}
+
+/**
+ * Fila draggable de la tabla. Cuando `dragEnabled=false` se muestra el
+ * GripVertical en estado disabled con tooltip explicativo (preparado para
+ * el caso futuro de un sort/filter activo distinto al default).
+ */
+function SortableNodeRow({
+  node: n,
+  nodes,
+  isHierarchical,
+  locale,
+  dragEnabled,
+  onEdit,
+  onDelete,
+}: SortableNodeRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: n.id, disabled: !dragEnabled });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const parent = isHierarchical
+    ? nodes.find((x) => x.id === n.parent_id)
+    : undefined;
+  const isDeprecated =
+    !!n.valid_until && new Date(n.valid_until).getTime() <= Date.now();
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell className="w-8 p-1">
+        <button
+          type="button"
+          {...(dragEnabled ? attributes : {})}
+          {...(dragEnabled ? listeners : {})}
+          disabled={!dragEnabled}
+          aria-label="Reordenar"
+          title={
+            dragEnabled
+              ? "Arrastrar para reordenar"
+              : "Reordenar solo en vista por defecto"
+          }
+          className={`flex h-6 w-6 items-center justify-center rounded text-muted-foreground ${
+            dragEnabled
+              ? "cursor-grab hover:bg-muted active:cursor-grabbing"
+              : "cursor-not-allowed opacity-40"
+          }`}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </TableCell>
+      <TableCell className="font-mono text-xs">{n.slug}</TableCell>
+      <TableCell>{resolveNodeLabel(n, locale)}</TableCell>
+      {isHierarchical ? (
+        <TableCell className="text-xs text-muted-foreground">
+          {parent ? resolveNodeLabel(parent, locale) : "—"}
+        </TableCell>
+      ) : null}
+      <TableCell>{n.display_order}</TableCell>
+      <TableCell>
+        {isDeprecated ? (
+          <Badge variant="secondary">Deprecado</Badge>
+        ) : n.active ? (
+          <Badge>Activo</Badge>
+        ) : (
+          <Badge variant="secondary">Inactivo</Badge>
+        )}
+      </TableCell>
+      <TableCell className="space-x-1 text-right">
+        <Button size="sm" variant="ghost" onClick={() => onEdit(n)}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => onDelete(n)}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </TableCell>
+    </TableRow>
   );
 }
