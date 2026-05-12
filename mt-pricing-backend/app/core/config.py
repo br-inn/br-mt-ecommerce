@@ -119,6 +119,13 @@ class Settings(BaseSettings):
     # run gana sobre este default. Lista vacía = no-op.
     PIM_DEFAULT_DIVISIONS: list[str] = Field(default_factory=list)
 
+    # --- Comparator adapter (US-RND-01-11) ---
+    # Controla qué adapter activa el ComparatorService.
+    #   rag_only      — RAG puro (embedding ANN). Activo Fase 1.
+    #   hybrid        — RAG + graph hints (stub Fase 1, activo Fase 2).
+    #   full_graph_rag — KG completo + RAG (stub Fase 1, activo Fase 2+).
+    COMPARATOR_ADAPTER: Literal["rag_only", "hybrid", "full_graph_rag"] = "rag_only"
+
     # --- GraphRAG (Sprint 6) ---
     # Backend del graph store. `stub` = Neo4jStubGraphStore in-memory (default
     # Fase 1). `neo4j` = driver real contra Neo4j 5 (Docker local o managed).
