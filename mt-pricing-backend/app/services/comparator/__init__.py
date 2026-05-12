@@ -15,9 +15,20 @@ Para activar la implementación real (Fase 1.5+):
 
 from __future__ import annotations
 
+from app.services.comparator.adapters import (
+    FullGraphRagComparatorAdapter,
+    HybridComparatorAdapter,
+    RagOnlyComparatorAdapter,
+)
 from app.services.comparator.factory import (
     FLAG_COMPARATOR_ENABLED,
     ComparatorServiceFactory,
+)
+from app.services.comparator.graph_repository import (
+    GraphRepository,
+    Neo4jGraphRepository,
+    PostgresGraphRepository,
+    get_graph_repository,
 )
 from app.services.comparator.interfaces import (
     CandidateMatch,
@@ -44,13 +55,20 @@ __all__ = [
     "ComparatorPort",
     "ComparatorServiceFactory",
     "ComparisonStats",
+    "FullGraphRagComparatorAdapter",
+    "GraphRepository",
+    "HybridComparatorAdapter",
+    "Neo4jGraphRepository",
     "NoopComparatorService",
     "OcrBlock",
     "OcrPort",
     "OcrResult",
+    "PostgresGraphRepository",
+    "RagOnlyComparatorAdapter",
     "ReverseImageHit",
     "ReverseImageSearchPort",
     "ReverseImageSearchResult",
     "VlmJudgePort",
     "VlmJudgeVerdict",
+    "get_graph_repository",
 ]
