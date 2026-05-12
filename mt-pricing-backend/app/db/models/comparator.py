@@ -114,6 +114,17 @@ class CompetitorListing(UuidPkMixin, TimestampMixin, Base):
     )
     reverse_image_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    # Price Sanity Check — US-F15-02-04
+    price_too_low: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    price_too_high: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    sanity_check_skipped: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
     __table_args__ = (
         # Uniqueness por (source, source_id) — un listing no duplicado dentro
         # de un mismo provider.
@@ -268,10 +279,47 @@ class ProductEquivalence(Base):
     )
 
 
+class PriceCalibrationRange(Base):
+    """Rango P10/P90 de calibración de precios por categoría+divisa (US-F15-02-04).
+
+    Actualizado nocturnamente por la task ``price_sanity.recalibrate_price_ranges``.
+    Usado por :class:`app.services.comparator.price_sanity.PriceSanityCheckService`
+    para filtrar candidatos con precios anómalos antes del VLM judge.
+    """
+
+    __tablename__ = "price_calibration_ranges"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    category_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    expected_min_p10: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
+    expected_max_p90: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, server_default=text("'AED'")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "category_id",
+            "currency",
+            name="uq_price_calibration_ranges_category_currency",
+        ),
+    )
+
+
 __all__ = [
     "MATCH_DECISIONS",
     "CompetitorFetchError",
     "CompetitorListing",
     "MatchDecision",
+    "PriceCalibrationRange",
     "ProductEquivalence",
 ]

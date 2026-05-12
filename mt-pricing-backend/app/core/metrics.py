@@ -57,6 +57,12 @@ celery_task_duration = Histogram(
     buckets=(0.1, 0.5, 1, 5, 10, 30, 60, 300, 600),
 )
 
+price_sanity_rejections_total = Counter(
+    "price_sanity_rejections_total",
+    "Candidatos rechazados por price sanity check",
+    ["reason"],  # labels: price_too_low, price_too_high
+)
+
 
 # =============================================================================
 # Setup — llamar desde main.py tras crear la app
