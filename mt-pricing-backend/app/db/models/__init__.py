@@ -15,7 +15,7 @@ from app.db.models.attributes import (
 )
 from app.db.models.audit import AuditEvent
 from app.db.models.compatibility import ProductCompatibility
-from app.db.models.comparator import CompetitorListing, MatchDecision
+from app.db.models.comparator import CompetitorListing, ManufacturerWhitelist, MatchDecision
 from app.db.models.dimensions import (
     ActuationCode,
     DimensionCell,
@@ -183,6 +183,8 @@ __all__ = [
     # Fase 1 hooks — comparator research workstream (mig. 069, ADR-012)
     "CompetitorListing",
     "MatchDecision",
+    # US-F15-02-03 — manufacturers whitelist para RIS boost (mig. 075)
+    "ManufacturerWhitelist",
     # DR drills (mig. 076)
     "DrDrill",
     # Pricing exports manifest (US-1B-04-02 — mig. 081)

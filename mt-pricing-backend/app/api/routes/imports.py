@@ -54,6 +54,8 @@ from app.services.importer import ImporterService
 from app.services.importer.importer_service import (
     ImporterDomainError,
     ImportHeaderMismatchError,
+    ImportRunNotFoundError,
+    _RUN_STORE,
 )
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -456,6 +458,47 @@ async def get_batch_run(
             },
         )
     return _serialize_import_run(run)
+
+
+@router.get(
+    "/{run_id}/rejected-rows",
+    summary="Filas rechazadas del run wizard (in-memory)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def get_rejected_rows(
+    run_id: Annotated[str, Path(min_length=1, max_length=64)],
+    _user: Annotated[User, Depends(require_permissions("imports:read"))],
+) -> dict[str, Any]:
+    """Devuelve la lista de filas rechazadas (action=ERROR) del run wizard.
+
+    Solo aplica a runs creados via ``POST /imports/preview`` (wizard in-memory).
+    Para runs batch (Celery + ImportRun BD), consultar ``GET /imports/runs/{id}``.
+
+    Si el run no existe → 404. Si el run existe pero no tiene rechazadas → lista vacía.
+    """
+    state = _RUN_STORE.get(run_id)
+    if state is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "import_run_not_found",
+                "title": f"Import run {run_id!r} no existe.",
+            },
+        )
+    rejected = state.rejected_rows
+    return {
+        "run_id": run_id,
+        "total_rows": state.summary.get("total", 0),
+        "rejected_count": len(rejected),
+        "rejected_rows": [
+            {
+                "row_number": r.row_number,
+                "sku": r.sku,
+                "reasons": r.reasons,
+            }
+            for r in rejected
+        ],
+    }
 
 
 @router.get(

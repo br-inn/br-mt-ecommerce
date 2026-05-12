@@ -26,7 +26,7 @@ from app.services.importer.column_mapper import (
     map_row,
 )
 from app.services.importer.differ import RowAction, RowDiff, compute_diff
-from app.services.importer.importer_service import ImporterService, ImportRunState
+from app.services.importer.importer_service import ImporterService, ImportRunState, RejectedRow
 from app.services.importer.parser import ParsedRow, parse_xlsx_stream
 
 __all__ = [
@@ -35,6 +35,7 @@ __all__ = [
     "ImportRunState",
     "ImporterService",
     "ParsedRow",
+    "RejectedRow",
     "RowAction",
     "RowDiff",
     "compute_diff",

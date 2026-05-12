@@ -10,6 +10,9 @@ from fastapi import APIRouter
 from app.api.routes import (
     admin_calibrator,
     admin_flags,
+    admin_manufacturers,
+    admin_pim_quality,
+    admin_price_calibration,
     asset_links,
     attributes,
     audit,
@@ -149,3 +152,9 @@ router.include_router(exports.router)
 router.include_router(internal_cdc.router)
 # US-F15-03-01 — Dataset export etiquetado (labeled pairs JSONL)
 router.include_router(comparator_dataset_router)
+# PIM Data Quality diagnostics
+router.include_router(admin_pim_quality.router)
+# US-F15-02-03 — Manufacturers whitelist (RIS boost) admin CRUD
+router.include_router(admin_manufacturers.router)
+# US-F15-02-04 — Price calibration ranges CRUD + import/export + recalibrate trigger
+router.include_router(admin_price_calibration.router)

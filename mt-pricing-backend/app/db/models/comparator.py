@@ -355,11 +355,63 @@ class ComparatorModelRegistry(Base):
     )
 
 
+class ManufacturerWhitelist(Base):
+    """Whitelist de fabricantes con dominios canónicos para RIS boost — US-F15-02-03.
+
+    Cada fila representa un fabricante con su lista de dominios oficiales
+    (canonical_domains) y aliases de marca (brand_aliases).
+    ``get_canonical_domains()`` en ris_boost.py hace match por
+    ``manufacturer_name ILIKE :brand`` o ``:brand = ANY(brand_aliases)``
+    y retorna el union de canonical_domains de todos los matches activos.
+    """
+
+    __tablename__ = "manufacturers_whitelist"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID_PG,
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    manufacturer_name: Mapped[str] = mapped_column(
+        String(128), nullable=False, unique=True
+    )
+    canonical_domains: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()),
+        nullable=False,
+        server_default=text("'{}'::text[]"),
+    )
+    brand_aliases: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()),
+        nullable=False,
+        server_default=text("'{}'::text[]"),
+    )
+    confidence: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        server_default=text("1.0"),
+    )
+    active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    __table_args__ = (
+        Index("idx_manufacturers_whitelist_active", "active"),
+    )
+
+
 __all__ = [
     "MATCH_DECISIONS",
     "ComparatorModelRegistry",
     "CompetitorFetchError",
     "CompetitorListing",
+    "ManufacturerWhitelist",
     "MatchDecision",
     "PriceCalibrationRange",
     "ProductEquivalence",

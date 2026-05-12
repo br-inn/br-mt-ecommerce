@@ -89,6 +89,15 @@ class ImportHeaderMismatchError(ImporterDomainError):
 
 
 @dataclass(slots=True)
+class RejectedRow:
+    """Fila rechazada durante el parse o el apply."""
+
+    row_number: int
+    sku: str | None
+    reasons: list[str]
+
+
+@dataclass(slots=True)
 class ImportRunState:
     """Estado en memoria de un run."""
 
@@ -104,6 +113,9 @@ class ImportRunState:
     apply_result: ApplyResult | None = None
     summary: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
+    # Additive tracking: filas rechazadas (action=ERROR en el differ).
+    # Poblado en preview() — no modifica la lógica de apply.
+    rejected_rows: list[RejectedRow] = field(default_factory=list)
 
 
 # Almacenamiento por proceso. En tests se aísla con :func:`reset_run_store`.
@@ -173,6 +185,18 @@ class ImporterService:
         diffs = await compute_diff(self.session, parse_result.rows)
         summary = _summarize(diffs)
 
+        # Tracking additive: recolectar filas con action=ERROR para el
+        # endpoint GET /imports/{run_id}/rejected-rows.
+        rejected: list[RejectedRow] = [
+            RejectedRow(
+                row_number=d.row_index,
+                sku=d.sku,
+                reasons=list(d.errors) if d.errors else ["parse_error"],
+            )
+            for d in diffs
+            if d.action == RowAction.ERROR
+        ]
+
         run_id = uuid.uuid4().hex
         state = ImportRunState(
             run_id=run_id,
@@ -185,6 +209,7 @@ class ImporterService:
             parse_result=parse_result,
             diffs=diffs,
             summary=summary,
+            rejected_rows=rejected,
         )
         _RUN_STORE[run_id] = state
         _RUN_LOCKS[run_id] = asyncio.Lock()
