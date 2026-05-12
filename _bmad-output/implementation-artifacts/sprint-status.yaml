@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-12T00:00:00.000Z"  # US-F15-02-02 done — 16 patches code review aplicados
+last_updated: "2026-05-12T00:00:00.000Z"  # US-F15-02-03 done — Reverse Image Search activación completa
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -87,7 +87,7 @@ development_status:
 
 # ─── Épicas Fase 1.5 ──────────────────────────────────────────────────────────
   epic-EP-F15-01: done        # KG Foundation — CERRADA S10 (6/6 stories done, 34 SP)
-  epic-EP-F15-02: in-progress # Pipeline Activation (Amazon SP API real, VLM, RIS, Tradeling) — 1/5 done
+  epic-EP-F15-02: in-progress # Pipeline Activation (Amazon SP API real, VLM, RIS, Tradeling) — 3/5 done
   epic-EP-F15-03: backlog    # Precision Enhancement (fine-tune, conformal, weight tuning)
 
 # ─── Stories Fase 1.5 — EP-F15-01 (KG Foundation) ────────────────────────────
@@ -101,7 +101,7 @@ development_status:
 # ─── Stories Fase 1.5 — EP-F15-02 (Pipeline Activation) ─────────────────────
   US-F15-02-01: done          # Amazon SP API fetcher real — 8 SP ✅ S10 Wave 3B
   US-F15-02-02: done           # VLM Judge activación (claude-sonnet-4-6) — 8 SP ✅ code review 16 patches aplicados 2026-05-12
-  US-F15-02-03: ready-for-dev  # Reverse Image Search activación (flag on) — 5 SP
+  US-F15-02-03: done            # Reverse Image Search activación (flag on) — 5 SP ✅ S11
   US-F15-02-04: backlog      # Price Sanity Check (P10/P90 pre-VLM) — 5 SP
   US-F15-02-05: backlog      # Tradeling API integration — 8 SP
 

@@ -190,6 +190,14 @@ class Settings(BaseSettings):
     # Vacío = sólo se valida scheme https. Ejemplo: "m.media-amazon.com,cdn.example.com"
     VLM_ALLOWED_IMAGE_DOMAINS: list[str] = Field(default_factory=list)
 
+    # --- Reverse Image Search (US-F15-02-03) ---
+    # Provider activo: "tineye" o "google_lens_serpapi". Default: tineye.
+    # Sin API key correspondiente → NoopRisAdapter (safe default).
+    REVERSE_IMAGE_PROVIDER: Literal["tineye", "google_lens_serpapi"] = "tineye"
+    TINEYE_API_KEY: SecretStr = SecretStr("")
+    SERPAPI_KEY: SecretStr = SecretStr("")
+    REVERSE_IMAGE_DAILY_LIMIT: int = 200
+
     @property
     def is_prod(self) -> bool:
         return self.ENV == "production"

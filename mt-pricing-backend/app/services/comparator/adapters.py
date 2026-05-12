@@ -31,6 +31,7 @@ from app.services.comparator.interfaces import (
     CandidateMatch,
     ComparatorPort,
     ComparisonStats,
+    ReverseImageSearchPort,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,8 +54,14 @@ class RagOnlyComparatorAdapter(ComparatorPort):
                  None → confirm_match / reject_match son no-op (Fase 1).
     """
 
-    def __init__(self, *, session: AsyncSession | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        session: AsyncSession | None = None,
+        ris_adapter: ReverseImageSearchPort | None = None,
+    ) -> None:
         self._session = session
+        self._ris_adapter = ris_adapter
 
     async def find_candidates(
         self,
@@ -159,6 +166,58 @@ class RagOnlyComparatorAdapter(ComparatorPort):
         )
         self._session.add(decision)
         await self._session.flush()
+
+        # RIS rescue — si confidence baja y hay ris_adapter (AC#1, #4, #5)
+        calibrated_confidence_raw = (evidence or {}).get("calibrated_confidence")
+        image_url = (evidence or {}).get("image_url")
+        if (
+            self._ris_adapter is not None
+            and calibrated_confidence_raw is not None
+            and image_url is not None
+        ):
+            cal_conf = Decimal(str(calibrated_confidence_raw))
+            if cal_conf < _VLM_UNCERTAIN_CONFIDENCE_THRESHOLD:
+                from app.db.models.comparator import CompetitorListing
+                from app.services.image_search.ris_boost import (
+                    apply_ris_boost,
+                    get_canonical_domains,
+                )
+
+                ris_result = await self._ris_adapter.search(image_url=image_url)
+                canonical_domains = await get_canonical_domains(
+                    session=self._session, product_sku=product_sku
+                )
+                boosted_conf, was_boosted = apply_ris_boost(
+                    cal_conf, ris_result, canonical_domains
+                )
+
+                listing_stmt = select(CompetitorListing).where(
+                    CompetitorListing.id == listing_id
+                )
+                listing_row = (
+                    await self._session.execute(listing_stmt)
+                ).scalar_one_or_none()
+                if listing_row is not None:
+                    listing_row.reverse_image_hits = [
+                        {"url": h.url, "domain": h.domain, "similarity": h.similarity}
+                        for h in ris_result.hits
+                    ]
+                    listing_row.reverse_image_searched_at = ris_result.searched_at
+                    listing_row.reverse_image_provider = ris_result.provider
+
+                if was_boosted:
+                    decision.confidence = boosted_conf
+                    decision.evidence_jsonb = {
+                        **(decision.evidence_jsonb or {}),
+                        "ris": {
+                            "provider": ris_result.provider,
+                            "hits_count": len(ris_result.hits),
+                            "boost_applied": True,
+                        },
+                        "method": "embedding+ris",
+                    }
+
+                await self._session.flush()
 
         # Routing automático a human queue si VLM incierto y confianza baja (AC#4)
         if judge_verdict == "uncertain" and judge_confidence is not None:

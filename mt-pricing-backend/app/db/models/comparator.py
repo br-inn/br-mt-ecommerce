@@ -107,6 +107,13 @@ class CompetitorListing(UuidPkMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Reverse Image Search — US-F15-02-03
+    reverse_image_hits: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    reverse_image_searched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reverse_image_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     __table_args__ = (
         # Uniqueness por (source, source_id) — un listing no duplicado dentro
         # de un mismo provider.
