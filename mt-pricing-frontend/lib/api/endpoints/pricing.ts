@@ -256,10 +256,11 @@ export const pricingApi = {
     authedFetch<PriceRow>(`/api/v1/pricing/prices/${id}/export`, {
       method: "POST",
     }),
-  bulkApprove: (ids: string[], reason?: string): Promise<unknown> =>
+  // Nota: backend usa `comment` (no `reason`) — campo obligatorio ≥10 chars.
+  bulkApprove: (ids: string[], comment?: string): Promise<unknown> =>
     authedFetch(`/api/v1/pricing/prices/bulk-approve`, {
       method: "POST",
-      body: JSON.stringify({ price_ids: ids, reason: reason ?? null }),
+      body: JSON.stringify({ price_ids: ids, comment: comment ?? "" }),
     }),
   recalcAll: (): Promise<{ task_id: string; status: string }> =>
     authedFetch(`/api/v1/pricing/prices/recalculate`, { method: "POST" }),

@@ -120,8 +120,9 @@ export function useRejectPrice() {
 
 export function useBulkApprovePrices() {
   const qc = useQueryClient();
-  return useMutation<unknown, Error, { ids: string[]; reason?: string }>({
-    mutationFn: ({ ids, reason }) => pricingApi.bulkApprove(ids, reason),
+  // Nota: backend usa `comment` (no `reason`) — campo obligatorio ≥10 chars.
+  return useMutation<unknown, Error, { ids: string[]; comment?: string }>({
+    mutationFn: ({ ids, comment }) => pricingApi.bulkApprove(ids, comment),
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: pricingKeys.all });
       toast.success(`${vars.ids.length} propuestas aprobadas`);

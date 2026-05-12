@@ -46,7 +46,7 @@ development_status:
   US-DR-DRILLS: backlog       # Tabla dr_drills + mig 030 + endpoint admin — 3 SP
 
 # ─── Stories bloqueadas externo ────────────────────────────────────────────────
-  US-1B-02-06: backlog        # Cola Gerente UI — blocked: Pantalla 12 firma pendiente
+  US-1B-02-06: done            # Cola Gerente UI — 8 SP ✅ S7 (Pantalla 12 firmada 2026-05-12)
 
 # ─── Stories S6 entregadas (referencia) ────────────────────────────────────────
   US-1B-02-08: done           # Escalation job >48h + delegate — 5 SP ✅ S6
