@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-12T18:00:00.000Z"  # S7 Wave 2 completo: 5 stretch stories done (US-1B-05-07/06/02, US-OCR-S7, US-DR-DRILLS)
+last_updated: "2026-05-12T00:00:00.000Z"  # S9 sprint planning — S8 cerrado 100%
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -17,11 +17,11 @@ development_status:
   epic-EP-1A-07: done        # RBAC + i18n (ES/EN/AR) + audit trail
   epic-EP-1A-08: done        # Scheduler editable + UI Jobs admin
   epic-EP-1B-01: done        # Motor pricing multi-canal (incluyendo bulk-recalc S5)
-  epic-EP-1B-02: in-progress # Workflow aprobación por excepción — S7 foco principal
-  epic-EP-1B-03: backlog     # Estados de canal + simulación
-  epic-EP-1B-04: backlog     # Connectors base + shadow publish
-  epic-EP-1B-05: in-progress # Hardening + cutover (DR runbook S6 done; resto S7)
-  epic-EP-RND-01: in-progress # Comparator R&D (calibrator+judge S4/S5 done; UI queue S7)
+  epic-EP-1B-02: done        # Workflow aprobación — CERRADA S7 (todas 9 stories done S4-S7)
+  epic-EP-1B-03: done        # Estados de canal + simulación — CERRADA S8 (5/5 stories done)
+  epic-EP-1B-04: done        # Connectors base + shadow publish — CERRADA S8 (5/5 stories done)
+  epic-EP-1B-05: done        # Hardening + cutover — CERRADA S8 (impl done; acciones humanas externas pendientes)
+  epic-EP-RND-01: in-progress # Comparator R&D (US-RND-01-09 stretch S8)
 
 # ─── Stories S7 — comprometidas ────────────────────────────────────────────────
   # EP-1B-02 — Workflow aprobación (P0 core)
@@ -53,5 +53,40 @@ development_status:
   US-1A-06-04-V2-S6: done    # pdfplumber tablas estructuradas — 5 SP ✅ S6
   US-1B-05-04-DOC: done      # DR runbook + drill plan — 3 SP ✅ S6
 
+# ─── Stories S8 — comprometidas ───────────────────────────────────────────────
+  # EP-1B-05 — Cutover gate (P0)
+  US-1B-05-03: done          # Capacitación Backup Operator — template docs/training-log.md ✅ S8 Wave 1
+  US-1B-05-04: done          # Rollback playbook + drill-log — docs/runbooks/runbook-cutover.md ✅ S8 Wave 1
+  US-1B-05-05: done          # docs/cutover-signoff.md template + checklist 12 items ✅ S8 Wave 2
+
+  # EP-1B-03 — Estados de canal (P1 — épica completa)
+  US-1B-03-01: done          # Tabla channels + 6 estados + history — mig 079 ✅ S8 Wave 1
+  US-1B-03-02: done          # POST /channels/{id}/transition — 11 tests ✅ S8 Wave 2
+  US-1B-03-03: done          # Pause congela exports + notificación in-app ✅ S8 Wave 2
+  US-1B-03-04: done          # Feature flag channel_recommendation mig 080 — 5 tests ✅ S8 Wave 2
+  US-1B-03-05: done          # Consola TI Canales UI — 5 SP ✅ S8 Wave 3
+
+  # EP-1B-04 — Connectors core (P1)
+  US-1B-04-01: done          # Puerto ChannelPublisher + adapters skeleton — 5/5 tests ✅ S8 Wave 1
+  US-1B-04-02: done          # POST /exports/{channel_code} mig 081 — 3 tests ✅ S8 Wave 2
+  US-1B-04-03: done          # Constraint DB no-export sin aprobación — 5 SP ✅ S8 Wave 3
+
+# ─── Stories S8 — stretch (P2/P3) ─────────────────────────────────────────────
+  US-1B-04-04: done          # Shadow publish sandbox Amazon UAE — 8 SP ✅ S8 Wave 4
+  US-1B-04-05: done          # Job diario last-known-good exports — 3 SP ✅ S8 Wave 4
+  US-RND-01-09: done         # Reverse image search hooks (CLIP, flag off) — 5 SP ✅ S8 Wave 4
+
+# ─── Stories S8 — contingente externo ─────────────────────────────────────────
+  US-1A-IAC-01-DEPLOY: done     # Hetzner staging IaC completo — 5 SP ✅ S8 Wave 5 (deploy pendiente Doppler creds)
+  US-1A-07-04-AR: done          # AR 858/858 keys 100% cobertura — 3 SP ✅ S8 Wave 5 (firma owner pendiente)
+
+# ─── Stories S9 — comprometidas ───────────────────────────────────────────────
+  # EP-RND-01 — Comparador cierre Fase 1 R&D (decisión G4 build-vs-buy)
+  US-RND-01-11: review           # Hooks ComparatorService + GraphRepository (FR-CMP-GRAPH-01) — 8 SP ✅ S9 Wave 1
+  US-RND-01-12: review           # POC 500 SKUs × 3 marketplaces + métricas reales + decisión G4 — 13 SP ✅ S9 Wave 1
+
 # ─── Retrospectivas ────────────────────────────────────────────────────────────
   sprint-6-retrospective: done
+  sprint-7-retrospective: done
+  sprint-8-retrospective: done
+  sprint-9-retrospective: optional
