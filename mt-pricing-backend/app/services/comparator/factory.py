@@ -19,15 +19,14 @@ from __future__ import annotations
 
 import logging
 
-from app.services.comparator.interfaces import ComparatorPort
+from app.services.comparator.interfaces import ComparatorPort, VlmJudgePort
 from app.services.comparator.noop_service import NoopComparatorService
 
 logger = logging.getLogger(__name__)
 
 
-# Flag canónico — añadir a flag_service.KNOWN_FLAGS para que el endpoint
-# admin/flags lo exponga.
 FLAG_COMPARATOR_ENABLED = "COMPARATOR_ENABLED"
+FLAG_VLM_JUDGE_ENABLED = "VLM_JUDGE_ENABLED"
 
 
 class ComparatorServiceFactory:
@@ -107,4 +106,68 @@ class ComparatorServiceFactory:
         return RagOnlyComparatorAdapter()
 
 
-__all__ = ["FLAG_COMPARATOR_ENABLED", "ComparatorServiceFactory"]
+class VlmJudgeFactory:
+    """Factory síncrona — devuelve adapter VlmJudgePort activo.
+
+    Fase 1.5+: VLM_JUDGE_ENABLED=true + ANTHROPIC_API_KEY → ClaudeVlmJudgeAdapter.
+    Default: NoopVlmJudgeAdapter (safe default).
+    """
+
+    @staticmethod
+    def create() -> VlmJudgePort:
+        if not VlmJudgeFactory._is_enabled():
+            from app.services.comparator.vlm_judge_stub import NoopVlmJudgeAdapter
+
+            return NoopVlmJudgeAdapter()
+
+        api_key = VlmJudgeFactory._get_api_key()
+        if not api_key:
+            logger.warning(
+                "comparator.vlm_judge_factory: VLM_JUDGE_ENABLED=true pero "
+                "ANTHROPIC_API_KEY vacío — usando NoopVlmJudgeAdapter"
+            )
+            from app.services.comparator.vlm_judge_stub import NoopVlmJudgeAdapter
+
+            return NoopVlmJudgeAdapter()
+
+        from app.services.comparator.vlm_judge_adapter import ClaudeVlmJudgeAdapter
+
+        try:
+            from app.core.config import settings as _s
+
+            redis_url = str(_s.REDIS_URL)
+            allowed_domains = frozenset(_s.VLM_ALLOWED_IMAGE_DOMAINS)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("comparator.vlm_judge_factory: settings import failed: %s", exc)
+            redis_url = None
+            allowed_domains = frozenset()
+
+        return ClaudeVlmJudgeAdapter(
+            api_key=api_key,
+            redis_url=redis_url,
+            allowed_image_domains=allowed_domains,
+        )
+
+    @staticmethod
+    def _is_enabled() -> bool:
+        try:
+            from app.services.feature_flags.flag_service import (
+                is_enabled as flag_is_enabled,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("comparator.vlm_judge_factory: flag_service import failed: %s", exc)
+            return False
+        return flag_is_enabled(FLAG_VLM_JUDGE_ENABLED)
+
+    @staticmethod
+    def _get_api_key() -> str:
+        try:
+            from app.core.config import settings
+
+            return settings.ANTHROPIC_API_KEY.get_secret_value()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("comparator.vlm_judge_factory: settings import failed: %s", exc)
+            return ""
+
+
+__all__ = ["FLAG_COMPARATOR_ENABLED", "FLAG_VLM_JUDGE_ENABLED", "ComparatorServiceFactory", "VlmJudgeFactory"]

@@ -22,6 +22,19 @@ import { HumanQueueApiError } from "@/lib/api/endpoints/human-queue";
 import type { HumanQueueItem, HumanQueueLabel } from "@/lib/api/endpoints/human-queue";
 
 // ---------------------------------------------------------------------------
+// VLM Judge rationale (anti-anchor — mostrar ANTES del score numérico, AC#5)
+// ---------------------------------------------------------------------------
+function JudgeRationale({ rationale }: { rationale: string | null | undefined }) {
+  if (!rationale) return null;
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      <span className="font-semibold">VLM Judge: </span>
+      {rationale}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Confidence badge
 // ---------------------------------------------------------------------------
 function ConfidenceBadge({ value }: { value: string | null }) {
@@ -225,14 +238,17 @@ export function HumanQueueClient() {
                   }
                 >
                   <TableCell>
-                    <MatchCard
-                      item={item}
-                      candidateImageUrl={
-                        typeof item.specs_jsonb?.image_url === "string"
-                          ? item.specs_jsonb.image_url
-                          : null
-                      }
-                    />
+                    <div className="space-y-2">
+                      <JudgeRationale rationale={item.judge_rationale} />
+                      <MatchCard
+                        item={item}
+                        candidateImageUrl={
+                          typeof item.specs_jsonb?.image_url === "string"
+                            ? item.specs_jsonb.image_url
+                            : null
+                        }
+                      />
+                    </div>
                   </TableCell>
                   <TableCell>
                     <ConfidenceBadge value={item.calibrated_confidence} />

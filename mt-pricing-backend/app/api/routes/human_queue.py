@@ -21,12 +21,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
 from app.core.config import settings
+from app.db.models.match_candidate import MatchCandidate
 from app.db.models.user import User
 from app.schemas.human_queue import HumanQueueItem, HumanQueueList, LabelRequest
 from app.services.matching.human_queue_service import (
     HumanQueueError,
     HumanQueueService,
 )
+
+_VLM_ALLOWED_ROLES = frozenset({"admin", "gerente", "validador"})
 
 router = APIRouter(prefix="/human-queue", tags=["human-queue"])
 
@@ -64,6 +67,25 @@ def _raise_domain(err: HumanQueueError) -> None:
     )
 
 
+def _build_item(row: MatchCandidate, user: User) -> HumanQueueItem:
+    """Construye HumanQueueItem aplicando RBAC sobre campos VLM (AC#6)."""
+    item = HumanQueueItem.model_validate(row)
+
+    # Extraer datos VLM desde specs_jsonb['vlm_judge']
+    vlm_data = (row.specs_jsonb or {}).get("vlm_judge", {})
+    if vlm_data:
+        item.judge_rationale = vlm_data.get("rationale")
+        item.judge_image_regions = vlm_data.get("image_regions") or None
+
+    # Ocultar campos VLM a viewers (AC#6)
+    role_code = (user.role.code if user.role else None) or ""
+    if role_code not in _VLM_ALLOWED_ROLES:
+        item.judge_rationale = None
+        item.judge_image_regions = None
+
+    return item
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -93,7 +115,7 @@ async def list_human_queue(
         confidence_threshold=confidence_threshold,
     )
     return HumanQueueList(
-        items=[HumanQueueItem.model_validate(r) for r in rows],
+        items=[_build_item(r, _user) for r in rows],
         total=len(rows),
         limit=limit,
         offset=offset,
@@ -130,4 +152,4 @@ async def label_match(
         )
     except HumanQueueError as e:
         _raise_domain(e)
-    return HumanQueueItem.model_validate(row)
+    return _build_item(row, user)

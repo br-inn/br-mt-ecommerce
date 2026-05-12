@@ -44,6 +44,11 @@ class HumanQueueItem(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # VLM Judge (US-F15-02-02, AC#5/AC#6) — poblado desde specs_jsonb['vlm_judge'].
+    # Nulo para rol viewer y cuando VLM no ha corrido.
+    judge_rationale: str | None = None
+    judge_image_regions: list[dict] | None = None
+
 
 class HumanQueueList(BaseModel):
     """Respuesta paginada de GET /human-queue."""

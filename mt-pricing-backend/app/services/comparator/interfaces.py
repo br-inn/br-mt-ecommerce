@@ -67,10 +67,11 @@ class ReverseImageSearchResult:
 class VlmJudgeVerdict:
     """Veredicto VLM judge — qué dice el modelo cuando compara dos imágenes."""
 
-    decision: str  # 'match' | 'no_match' | 'uncertain'
+    decision: str  # 'match' | 'reject' | 'uncertain'
     confidence: float  # 0..1
     rationale: str
     deal_breakers_triggered: tuple[str, ...] = ()
+    image_regions: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

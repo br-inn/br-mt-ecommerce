@@ -46,6 +46,9 @@ dependencies = [
     "blurhash-python>=1.2",
     # Wave 9 — specs JSON Schema validation
     "jsonschema[format]>=4.21",
+    # Fase 1.5 — VLM Judge (US-F15-02-02)
+    "anthropic>=0.30",
+    "aiolimiter>=1.1",
 ]
 
 [dependency-groups]

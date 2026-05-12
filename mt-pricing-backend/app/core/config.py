@@ -181,6 +181,15 @@ class Settings(BaseSettings):
     SP_API_SELLER_ID: str = ""
     MT_LIVE_NETWORK: str = "false"
 
+    # --- VLM Judge (US-F15-02-02) ---
+    # VLM_JUDGE_ENABLED=true activa ClaudeVlmJudgeAdapter (claude-sonnet-4-6).
+    # Requiere ANTHROPIC_API_KEY válida. Falso = NoopVlmJudgeAdapter (safe default).
+    VLM_JUDGE_ENABLED: bool = False
+    ANTHROPIC_API_KEY: SecretStr = SecretStr("")
+    # Dominios permitidos para URLs de imagen enviadas al VLM judge (SSRF, F-04).
+    # Vacío = sólo se valida scheme https. Ejemplo: "m.media-amazon.com,cdn.example.com"
+    VLM_ALLOWED_IMAGE_DOMAINS: list[str] = Field(default_factory=list)
+
     @property
     def is_prod(self) -> bool:
         return self.ENV == "production"

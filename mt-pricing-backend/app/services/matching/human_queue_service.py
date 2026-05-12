@@ -13,14 +13,19 @@ Diseño:
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import asc, nulls_last, select, update
+from sqlalchemy import asc, cast, literal, nulls_last, select, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.comparator import CompetitorListing
 from app.db.models.match_candidate import MatchCandidate
+
+logger = logging.getLogger(__name__)
 
 LabelType = Literal["accept", "reject", "skip"]
 
@@ -121,3 +126,59 @@ class HumanQueueService:
         await self._session.flush()
         await self._session.refresh(row)
         return row
+
+    async def enqueue_vlm_uncertain(
+        self,
+        *,
+        listing_id: UUID,
+        product_sku: str,
+        rationale: str | None,
+        image_regions: list[dict[str, Any]] | None,
+    ) -> int:
+        """Marca el match_candidate de un listing específico para revisión humana por VLM.
+
+        Resuelve (channel, external_id) desde competitor_listings y filtra
+        MatchCandidate exacto, evitando actualizar otros candidatos del mismo SKU
+        (AC#4, US-F15-02-02).
+
+        Returns:
+            Número de filas actualizadas (0 si listing o candidato no existen).
+        """
+        # Resolver (source, source_id) del listing para identificar el candidato exacto
+        listing_stmt = select(
+            CompetitorListing.source, CompetitorListing.source_id
+        ).where(CompetitorListing.id == listing_id)
+        listing_result = await self._session.execute(listing_stmt)
+        listing_row = listing_result.one_or_none()
+        if listing_row is None:
+            logger.warning(
+                "human_queue_service.enqueue_vlm_uncertain: listing_id=%s no encontrado",
+                listing_id,
+            )
+            return 0
+
+        channel, external_id = listing_row
+
+        vlm_dict: dict[str, Any] = {
+            "vlm_judge": {
+                "reason": "vlm_uncertain",
+                "rationale": rationale,
+                "image_regions": image_regions or [],
+            }
+        }
+        vlm_patch = cast(literal(vlm_dict, type_=JSONB), JSONB)
+        stmt = (
+            update(MatchCandidate)
+            .where(MatchCandidate.channel == channel)
+            .where(MatchCandidate.external_id == external_id)
+            .where(MatchCandidate.product_sku == product_sku)
+            .where(MatchCandidate.status == "pending")
+            .values(
+                specs_jsonb=MatchCandidate.specs_jsonb.op("||")(vlm_patch),
+                label=None,
+            )
+            .returning(MatchCandidate.id)
+        )
+        result = await self._session.execute(stmt)
+        rows = result.fetchall()
+        return len(rows)

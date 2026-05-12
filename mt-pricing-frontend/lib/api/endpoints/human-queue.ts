@@ -26,6 +26,9 @@ export interface HumanQueueItem {
   discarded_reason: string | null;
   created_at: string;
   updated_at: string;
+  // VLM Judge (US-F15-02-02, AC#5/AC#6) — null para viewers y cuando VLM no corrió
+  judge_rationale: string | null;
+  judge_image_regions: Record<string, string>[] | null;
 }
 
 export interface HumanQueueListResponse {

@@ -19,8 +19,13 @@ Patrón mirror de :mod:`app.services.channel_mirror.ports` (ports-and-adapters).
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.comparator.interfaces import (
     CandidateMatch,
@@ -29,6 +34,8 @@ from app.services.comparator.interfaces import (
 )
 
 logger = logging.getLogger(__name__)
+
+_VLM_UNCERTAIN_CONFIDENCE_THRESHOLD = Decimal("0.50")
 
 
 # ---------------------------------------------------------------------------
@@ -41,11 +48,13 @@ class RagOnlyComparatorAdapter(ComparatorPort):
     Implementa el contrato :class:`ComparatorPort` usando sólo embedding ANN
     (pgvector) sobre ``competitor_listings``. No depende de Neo4j ni del KG.
 
-    En Fase 1 la tabla ``competitor_listings`` está vacía, por lo que todos
-    los métodos devuelven resultados vacíos / no-op. La infraestructura queda
-    lista para Fase 1.5+ sin refactor: basta con poblar la tabla y activar el
-    flag ``COMPARATOR_ENABLED``.
+    Args:
+        session: AsyncSession inyectada para operaciones DB (Fase 1.5+).
+                 None → confirm_match / reject_match son no-op (Fase 1).
     """
+
+    def __init__(self, *, session: AsyncSession | None = None) -> None:
+        self._session = session
 
     async def find_candidates(
         self,
@@ -59,9 +68,6 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             product_sku,
             limit,
         )
-        # Fase 1.5+: SELECT embedding <=> $vec FROM competitor_listings
-        # ORDER BY embedding <=> $vec LIMIT $limit
-        # Por ahora devuelve lista vacía (tabla sin datos).
         return []
 
     async def confirm_match(
@@ -72,13 +78,98 @@ class RagOnlyComparatorAdapter(ComparatorPort):
         decided_by: UUID,
         evidence: dict[str, Any] | None = None,
     ) -> None:
-        """Persiste decisión 'match' (Fase 1: no-op — tabla match_decisions vacía)."""
+        """Persiste decisión 'match' en match_decisions con columnas VLM (Fase 1.5+)."""
         logger.debug(
             "comparator.rag_only.confirm_match listing_id=%s product_sku=%s",
             listing_id,
             product_sku,
         )
-        # Fase 1.5+: INSERT INTO match_decisions ...
+        if self._session is None:
+            logger.warning(
+                "comparator.rag_only.confirm_match: no session — no-op listing_id=%s sku=%s",
+                listing_id,
+                product_sku,
+            )
+            return
+
+        from app.db.models.comparator import MatchDecision
+        from app.db.models.match_candidate import MatchCandidate
+        from app.services.matching.human_queue_service import HumanQueueService
+
+        # Idempotencia: bloquear cualquier decisión duplicada para este par
+        existing_stmt = (
+            select(MatchDecision.id)
+            .where(MatchDecision.competitor_listing_id == listing_id)
+            .where(MatchDecision.product_sku == product_sku)
+            .limit(1)
+        )
+        existing = await self._session.execute(existing_stmt)
+        if existing.scalar_one_or_none() is not None:
+            logger.debug(
+                "comparator.rag_only.confirm_match: idempotente — "
+                "ya existe decisión listing_id=%s sku=%s",
+                listing_id,
+                product_sku,
+            )
+            return
+
+        # Extraer datos VLM del evidence
+        vlm_data: dict[str, Any] = (evidence or {}).get("vlm") or {}
+        judge_verdict: str | None = None
+        judge_confidence: Decimal | None = None
+        judge_rationale: str | None = None
+        judge_image_regions: list[dict[str, Any]] | None = None
+        deal_breakers: list[str] | None = None
+        judge_model_version: str | None = None
+        if vlm_data:
+            judge_verdict = vlm_data.get("verdict") or None
+            judge_confidence_raw = vlm_data.get("confidence")
+            judge_confidence = (
+                Decimal(str(judge_confidence_raw)) if judge_confidence_raw is not None else None
+            )
+            judge_rationale = vlm_data.get("rationale")
+            judge_image_regions = vlm_data.get("image_regions") or None
+            deal_breakers = vlm_data.get("deal_breakers_triggered") or None
+            judge_model_version = vlm_data.get("model_version")
+
+        if judge_confidence is not None and not (
+            Decimal("0") <= judge_confidence <= Decimal("1")
+        ):
+            logger.warning(
+                "comparator.rag_only.confirm_match: confidence fuera de rango [0,1] "
+                "listing_id=%s confidence=%s — forzado a None",
+                listing_id,
+                judge_confidence,
+            )
+            judge_confidence = None
+
+        decision = MatchDecision(
+            competitor_listing_id=listing_id,
+            product_sku=product_sku,
+            decision="match",
+            decided_by=decided_by,
+            evidence_jsonb=evidence or {},
+            judge_verdict=judge_verdict,
+            judge_confidence=judge_confidence,
+            judge_rationale=judge_rationale,
+            judge_image_regions=judge_image_regions,
+            deal_breakers_triggered=deal_breakers,
+            judge_model_version=judge_model_version if judge_verdict is not None else None,
+            judge_at=datetime.now(tz=timezone.utc) if judge_verdict is not None else None,
+        )
+        self._session.add(decision)
+        await self._session.flush()
+
+        # Routing automático a human queue si VLM incierto y confianza baja (AC#4)
+        if judge_verdict == "uncertain" and judge_confidence is not None:
+            if judge_confidence < _VLM_UNCERTAIN_CONFIDENCE_THRESHOLD:
+                hqs = HumanQueueService(self._session)
+                await hqs.enqueue_vlm_uncertain(
+                    listing_id=listing_id,
+                    product_sku=product_sku,
+                    rationale=judge_rationale,
+                    image_regions=judge_image_regions,
+                )
 
     async def reject_match(
         self,
@@ -88,13 +179,68 @@ class RagOnlyComparatorAdapter(ComparatorPort):
         decided_by: UUID,
         evidence: dict[str, Any] | None = None,
     ) -> None:
-        """Persiste decisión 'no_match' (Fase 1: no-op)."""
+        """Persiste decisión 'no_match' en match_decisions con columnas VLM (Fase 1.5+)."""
         logger.debug(
             "comparator.rag_only.reject_match listing_id=%s product_sku=%s",
             listing_id,
             product_sku,
         )
-        # Fase 1.5+: INSERT INTO match_decisions ...
+        if self._session is None:
+            logger.warning(
+                "comparator.rag_only.reject_match: no session — no-op listing_id=%s sku=%s",
+                listing_id,
+                product_sku,
+            )
+            return
+
+        from app.db.models.comparator import MatchDecision
+
+        # Idempotencia: bloquear cualquier decisión duplicada para este par
+        existing_stmt = (
+            select(MatchDecision.id)
+            .where(MatchDecision.competitor_listing_id == listing_id)
+            .where(MatchDecision.product_sku == product_sku)
+            .limit(1)
+        )
+        existing = await self._session.execute(existing_stmt)
+        if existing.scalar_one_or_none() is not None:
+            logger.debug(
+                "comparator.rag_only.reject_match: idempotente — "
+                "ya existe decisión listing_id=%s sku=%s",
+                listing_id,
+                product_sku,
+            )
+            return
+
+        vlm_data: dict[str, Any] = (evidence or {}).get("vlm") or {}
+        r_verdict: str | None = None
+        r_rationale: str | None = None
+        r_image_regions: list[dict[str, Any]] | None = None
+        r_deal_breakers: list[str] | None = None
+        r_model_version: str | None = None
+        if vlm_data:
+            r_verdict = vlm_data.get("verdict") or None
+            r_rationale = vlm_data.get("rationale")
+            r_image_regions = vlm_data.get("image_regions") or None
+            r_deal_breakers = vlm_data.get("deal_breakers_triggered") or None
+            r_model_version = vlm_data.get("model_version")
+
+        decision = MatchDecision(
+            competitor_listing_id=listing_id,
+            product_sku=product_sku,
+            decision="no_match",
+            decided_by=decided_by,
+            evidence_jsonb=evidence or {},
+            judge_verdict=r_verdict,
+            judge_confidence=None,
+            judge_rationale=r_rationale,
+            judge_image_regions=r_image_regions,
+            deal_breakers_triggered=r_deal_breakers,
+            judge_model_version=r_model_version if r_verdict is not None else None,
+            judge_at=datetime.now(tz=timezone.utc) if r_verdict is not None else None,
+        )
+        self._session.add(decision)
+        await self._session.flush()
 
     async def get_stats(self) -> ComparisonStats:
         """Estadísticas de cobertura (Fase 1: contadores a 0)."""

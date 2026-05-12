@@ -77,22 +77,22 @@ def test_factory_returns_rag_only_when_flag_on_and_adapter_rag_only() -> None:
 # AC-3 — swap via COMPARATOR_ADAPTER
 # ---------------------------------------------------------------------------
 
-def test_factory_returns_hybrid_when_adapter_hybrid() -> None:
-    """AC-3: COMPARATOR_ADAPTER=hybrid → HybridComparatorAdapter (stub Fase 2)."""
+def test_factory_raises_for_hybrid_adapter_fase1() -> None:
+    """AC-3: COMPARATOR_ADAPTER=hybrid → ValueError en Fase 1 (no disponible)."""
     set_local_flag(FLAG_COMPARATOR_ENABLED, True)
     with patch("app.core.config.settings") as mock_settings:
         mock_settings.COMPARATOR_ADAPTER = "hybrid"
-        instance = ComparatorServiceFactory.create()
-    assert isinstance(instance, HybridComparatorAdapter)
+        with pytest.raises(ValueError, match="hybrid"):
+            ComparatorServiceFactory.create()
 
 
-def test_factory_returns_full_graph_rag_when_adapter_full_graph_rag() -> None:
-    """AC-3: COMPARATOR_ADAPTER=full_graph_rag → FullGraphRagComparatorAdapter."""
+def test_factory_raises_for_full_graph_rag_adapter_fase1() -> None:
+    """AC-3: COMPARATOR_ADAPTER=full_graph_rag → ValueError en Fase 1 (no disponible)."""
     set_local_flag(FLAG_COMPARATOR_ENABLED, True)
     with patch("app.core.config.settings") as mock_settings:
         mock_settings.COMPARATOR_ADAPTER = "full_graph_rag"
-        instance = ComparatorServiceFactory.create()
-    assert isinstance(instance, FullGraphRagComparatorAdapter)
+        with pytest.raises(ValueError, match="full_graph_rag"):
+            ComparatorServiceFactory.create()
 
 
 def test_factory_falls_back_to_rag_only_for_unknown_adapter() -> None:
