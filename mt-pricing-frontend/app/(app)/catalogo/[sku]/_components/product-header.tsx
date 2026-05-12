@@ -12,6 +12,8 @@ import { DataQualityBadge } from "@/components/domain/data-quality-badge";
 import { TranslationStatusPill } from "@/components/domain/translation-status-pill";
 import { SkuActionsMenu } from "@/components/domain/sku-actions-menu";
 import { useProduct } from "@/lib/hooks/products/use-product";
+import { getProductName } from "@/lib/utils/product-display";
+import { isProductActive } from "@/lib/utils/product-lifecycle";
 
 interface Props {
   sku: string;
@@ -48,13 +50,13 @@ export function ProductHeader({ sku }: Props) {
               {product.family}
             </Badge>
           ) : null}
-          {!product.active ? (
+          {!isProductActive(product) ? (
             <Badge variant="outline" className="text-muted-foreground">
               inactive
             </Badge>
           ) : null}
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{product.name_en}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{getProductName(product)}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <DataQualityBadge value={product.data_quality} />
           <TranslationStatusPill language="en" status="approved" />
@@ -71,7 +73,12 @@ export function ProductHeader({ sku }: Props) {
           </Button>
         </RbacGuard>
         <SkuActionsMenu
-          product={{ id: product.id, sku: product.sku, active: product.active }}
+          product={{
+            id:
+              (product as { id?: string }).id ?? product.internal_id,
+            sku: product.sku,
+            active: isProductActive(product),
+          }}
         />
       </div>
     </div>

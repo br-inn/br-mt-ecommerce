@@ -27,6 +27,10 @@ import {
   useUpsertTranslation,
 } from "@/lib/hooks/products/use-translations";
 import type { Language, ProductTranslationRead } from "@/lib/api/endpoints/products";
+import {
+  getProductDescription,
+  getProductName,
+} from "@/lib/utils/product-display";
 
 const translationSchema = z.object({
   name: z.string().min(2),
@@ -68,11 +72,13 @@ export function TranslationsTab({ sku }: { sku: string }) {
         <CardContent className="space-y-3">
           <div>
             <Label className="text-xs text-muted-foreground">name</Label>
-            <p className="text-sm font-medium">{product.name_en}</p>
+            <p className="text-sm font-medium">{getProductName(product)}</p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">description</Label>
-            <p className="whitespace-pre-wrap text-sm">{product.description_en ?? "—"}</p>
+            <p className="whitespace-pre-wrap text-sm">
+              {getProductDescription(product) ?? "—"}
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -43,6 +43,7 @@ import {
   type TranslationStatus,
 } from "@/lib/api/endpoints/products";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { getProductName } from "@/lib/utils/product-display";
 import { ActiveFiltersBar } from "./_components/active-filters-bar";
 import { SavedViewsBar, SYSTEM_VIEWS } from "./_components/saved-views-bar";
 import { Paginator } from "./_components/paginator";
@@ -582,11 +583,11 @@ export default function CatalogPage() {
                         <Link href={`/catalogo/${r.sku}`}>{r.sku}</Link>
                       </MtTd>
                       <MtTd>
-                        <Thumb src={r.primary_image_url} alt={r.name_en} />
+                        <Thumb />
                       </MtTd>
                       <MtTd className="font-medium" style={{ color: MT.ink }}>
                         <Link href={`/catalogo/${r.sku}`} className="line-clamp-2">
-                          {r.name_en}
+                          {getProductName(r)}
                         </Link>
                         {r.subfamily ? (
                           <span

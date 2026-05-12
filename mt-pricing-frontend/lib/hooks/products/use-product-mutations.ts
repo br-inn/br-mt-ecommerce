@@ -22,7 +22,9 @@ export function useCreateProduct() {
     mutationFn: (payload) => productsApi.create(payload),
     onSuccess: (created) => {
       // Sembrar caché del detalle para evitar refetch inmediato.
-      qc.setQueryData(productKeys.detail(created.id), created);
+      const id =
+        (created as Product & { id?: string }).id ?? created.internal_id;
+      qc.setQueryData(productKeys.detail(id), created);
       qc.setQueryData(productKeys.detail(created.sku), created);
       void qc.invalidateQueries({ queryKey: productKeys.lists() });
     },
@@ -56,7 +58,9 @@ export function useUpdateProduct(idOrSku: string) {
       }
     },
     onSuccess: (updated) => {
-      qc.setQueryData(productKeys.detail(updated.id), updated);
+      const id =
+        (updated as Product & { id?: string }).id ?? updated.internal_id;
+      qc.setQueryData(productKeys.detail(id), updated);
       qc.setQueryData(productKeys.detail(updated.sku), updated);
     },
     onSettled: () => {
@@ -78,7 +82,11 @@ export function useDeleteProduct() {
 
 /**
  * Toggle optimista del flag `active` en lista + detalle.
- * Comparte invariantes con `useUpdateProduct` pero parchea cache de listas.
+ *
+ * Post-Fase B: `active` es un computed read-only en backend, derivado de
+ * `lifecycle_status === 'active'`. Para mutarlo, enviamos `lifecycle_status`
+ * = `'active'` o `'deprecated'` según el toggle. La caché optimista parchea
+ * ambos campos para evitar flickers.
  */
 export function useToggleProductActive() {
   const qc = useQueryClient();
@@ -88,10 +96,14 @@ export function useToggleProductActive() {
     { id: string; active: boolean },
     { previousLists: [readonly unknown[], ListPagesData | undefined][] }
   >({
-    mutationFn: ({ id, active }) => productsApi.update(id, { active }),
+    mutationFn: ({ id, active }) =>
+      productsApi.update(id, {
+        lifecycle_status: active ? "active" : "deprecated",
+      }),
     onMutate: async ({ id, active }) => {
       await qc.cancelQueries({ queryKey: productKeys.lists() });
       const previousLists = qc.getQueriesData<ListPagesData>({ queryKey: productKeys.lists() });
+      const nextLifecycle = active ? "active" : "deprecated";
       previousLists.forEach(([key, data]) => {
         if (!data) return;
         qc.setQueryData<ListPagesData>(key, {
@@ -99,7 +111,9 @@ export function useToggleProductActive() {
           pages: data.pages.map((page) => ({
             ...page,
             items: page.items.map((it: ProductListItem) =>
-              it.id === id ? { ...it, active } : it,
+              (it as ProductListItem & { id?: string }).id === id
+                ? { ...it, active, lifecycle_status: nextLifecycle }
+                : it,
             ),
           })),
         });

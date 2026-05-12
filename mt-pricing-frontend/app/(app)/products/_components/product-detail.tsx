@@ -19,6 +19,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RbacGuard } from "@/components/auth/rbac-guard";
 import { useProduct } from "@/lib/hooks/products/use-product";
 import { type Product } from "@/lib/api/endpoints/products";
+import {
+  getProductDescription,
+  getProductName,
+} from "@/lib/utils/product-display";
+import { isProductActive } from "@/lib/utils/product-lifecycle";
 import { ProductEditForm } from "../[sku]/_components/product-edit-form";
 import { ImagesTab } from "../[sku]/_components/images-tab";
 import { useQuery } from "@tanstack/react-query";
@@ -79,13 +84,13 @@ export function ProductDetail({ sku }: { sku: string }) {
             </Badge>
           ) : null}
           <Badge
-            variant={product.active ? "default" : "outline"}
+            variant={isProductActive(product) ? "default" : "outline"}
             data-testid="product-status-badge"
           >
-            {product.active ? t("filters.active") : t("filters.inactive")}
+            {isProductActive(product) ? t("filters.active") : t("filters.inactive")}
           </Badge>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{product.name_en}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{getProductName(product)}</h1>
       </header>
 
       {/* Stage 3 (Wave 11) — taxonomy refinement: divisions, series, effective tags/certs, display pair */}
@@ -172,8 +177,11 @@ function ProductSpecsCards({ product, tFields }: SpecsCardsProps) {
         <CardContent>
           <dl>
             <Row label={tFields("sku")} value={product.sku} />
-            <Row label={tFields("name_en")} value={product.name_en} />
-            <Row label={tFields("description_en")} value={product.description_en} />
+            <Row label={tFields("name_en")} value={getProductName(product)} />
+            <Row
+              label={tFields("description_en")}
+              value={getProductDescription(product)}
+            />
             <Row label={tFields("family")} value={product.family} />
             <Row label={tFields("type")} value={product.type} />
           </dl>

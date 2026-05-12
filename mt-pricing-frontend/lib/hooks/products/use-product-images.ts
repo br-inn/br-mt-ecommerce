@@ -4,14 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   productsApi,
   type ImageConfirmPayload,
-  type ProductImage,
-  type ProductImageRecord,
+  type ProductAsset,
   type UploadUrlResponse,
 } from "@/lib/api/endpoints/products";
 import { productKeys } from "./query-keys";
 
 export function useProductImages(productId: string | undefined) {
-  return useQuery<ProductImage[], Error>({
+  return useQuery<ProductAsset[], Error>({
     queryKey: productKeys.images(productId ?? ""),
     queryFn: () => productsApi.listImages(productId as string),
     enabled: !!productId,
@@ -28,7 +27,7 @@ export function useGetUploadUrl(productId: string) {
 
 export function useConfirmImageUpload(productId: string) {
   const qc = useQueryClient();
-  return useMutation<ProductImageRecord, Error, ImageConfirmPayload>({
+  return useMutation<ProductAsset, Error, ImageConfirmPayload>({
     mutationFn: (payload) => productsApi.confirmImageUpload(productId, payload),
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: productKeys.images(productId) });
@@ -40,17 +39,17 @@ export function useConfirmImageUpload(productId: string) {
 export function useSetPrimaryImage(productId: string) {
   const qc = useQueryClient();
   return useMutation<
-    ProductImage,
+    ProductAsset,
     Error,
     string,
-    { previous: ProductImage[] | undefined }
+    { previous: ProductAsset[] | undefined }
   >({
     mutationFn: (imageId) => productsApi.setPrimaryImage(productId, imageId),
     onMutate: async (imageId) => {
       await qc.cancelQueries({ queryKey: productKeys.images(productId) });
-      const previous = qc.getQueryData<ProductImage[]>(productKeys.images(productId));
+      const previous = qc.getQueryData<ProductAsset[]>(productKeys.images(productId));
       if (previous) {
-        qc.setQueryData<ProductImage[]>(
+        qc.setQueryData<ProductAsset[]>(
           productKeys.images(productId),
           previous.map((img) => ({ ...img, is_primary: img.id === imageId })),
         );
@@ -69,13 +68,13 @@ export function useSetPrimaryImage(productId: string) {
 
 export function useDeleteImage(productId: string) {
   const qc = useQueryClient();
-  return useMutation<void, Error, string, { previous: ProductImage[] | undefined }>({
+  return useMutation<void, Error, string, { previous: ProductAsset[] | undefined }>({
     mutationFn: (imageId) => productsApi.deleteImage(productId, imageId),
     onMutate: async (imageId) => {
       await qc.cancelQueries({ queryKey: productKeys.images(productId) });
-      const previous = qc.getQueryData<ProductImage[]>(productKeys.images(productId));
+      const previous = qc.getQueryData<ProductAsset[]>(productKeys.images(productId));
       if (previous) {
-        qc.setQueryData<ProductImage[]>(
+        qc.setQueryData<ProductAsset[]>(
           productKeys.images(productId),
           previous.filter((img) => img.id !== imageId),
         );

@@ -54,10 +54,11 @@ const messages = {
 };
 
 const product: Product = {
+  id: "00000000-0000-0000-0000-000000000001",
   internal_id: "00000000-0000-0000-0000-000000000001",
   sku: "MTV-1",
-  name_en: "Ball valve",
   family: "valves",
+  family_id: null,
   subfamily: null,
   dn: "DN50",
   pn: "PN16",
@@ -67,6 +68,7 @@ const product: Product = {
   translation_status_es: "approved",
   translation_status_ar: null,
   active: true,
+  lifecycle_status: "active",
   primary_image_url: null,
   updated_at: "2026-05-01T00:00:00Z",
   connection: null,
@@ -74,12 +76,12 @@ const product: Product = {
   dimensions: null,
   packaging: null,
   intrastat: null,
-  description_en: null,
   created_at: "2026-04-01T00:00:00Z",
   series_id: null,
   material_id: null,
   display_pair_sku: null,
   division_codes: [],
+  translations: { en: { name: "Ball valve", description: null } },
 };
 
 function renderForm(props?: Partial<React.ComponentProps<typeof ProductEditForm>>) {

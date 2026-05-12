@@ -103,8 +103,13 @@ export function ImageGallery({ productId, className }: Props) {
             <div className="relative aspect-square w-full">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={img.url}
-                alt={img.alt ?? ""}
+                src={
+                  img.urls.thumb_400 ??
+                  img.urls.original ??
+                  img.original_url ??
+                  ""
+                }
+                alt={img.alt_text ?? ""}
                 className="h-full w-full object-cover"
                 loading="lazy"
               />

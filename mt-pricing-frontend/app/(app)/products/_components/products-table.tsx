@@ -17,6 +17,7 @@ import {
   type ProductFilters,
   type ProductListItem,
 } from "@/lib/api/endpoints/products";
+import { getProductName } from "@/lib/utils/product-display";
 import { useProductsListFilters } from "./products-filters";
 
 /**
@@ -111,9 +112,10 @@ export function ProductsTable() {
       {
         id: "name",
         header: () => <span>{t("columns.name")}</span>,
-        accessorKey: "name_en",
         cell: ({ row }) => (
-          <span className="line-clamp-1 max-w-xs">{row.original.name_en}</span>
+          <span className="line-clamp-1 max-w-xs">
+            {getProductName(row.original)}
+          </span>
         ),
       },
       {

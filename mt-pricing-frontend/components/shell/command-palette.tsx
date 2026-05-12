@@ -170,7 +170,7 @@ export function CommandPalette() {
                         {hit.sku}
                       </span>
                       <span className="text-muted-foreground">
-                        {hit.name_en}
+                        {hit.display_name ?? "(sin nombre)"}
                       </span>
                     </span>
                     {hit.family ? (

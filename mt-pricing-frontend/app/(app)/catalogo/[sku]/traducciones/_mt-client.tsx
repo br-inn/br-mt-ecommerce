@@ -34,6 +34,10 @@ import type {
   Language,
   ProductTranslationRead,
 } from "@/lib/api/endpoints/products";
+import {
+  getProductDescription,
+  getProductName,
+} from "@/lib/utils/product-display";
 
 type TabSpec = {
   label: string;
@@ -464,7 +468,7 @@ export function MtTraduccionesClient({ sku }: { sku: string }) {
                 className="m-0 text-[19px] font-semibold tracking-[-0.3px]"
                 style={{ color: MT.ink }}
               >
-                {product.name_en}
+                {getProductName(product)}
               </h1>
             )}
           </div>
@@ -560,7 +564,7 @@ export function MtTraduccionesClient({ sku }: { sku: string }) {
                     name_en
                   </div>
                   <div className="text-[13px] font-medium" style={{ color: MT.ink }}>
-                    {product.name_en}
+                    {getProductName(product)}
                   </div>
                 </div>
                 <div>
@@ -571,7 +575,7 @@ export function MtTraduccionesClient({ sku }: { sku: string }) {
                     desc_en
                   </div>
                   <div className="text-[12px] leading-[1.5]" style={{ color: MT.ink2 }}>
-                    {product.description_en ?? (
+                    {getProductDescription(product) ?? (
                       <em style={{ color: MT.ink4, fontStyle: "normal" }}>
                         — sin descripción —
                       </em>
@@ -585,15 +589,15 @@ export function MtTraduccionesClient({ sku }: { sku: string }) {
               productId={product.id}
               lang="es"
               current={findT("es")}
-              masterName={product.name_en}
-              masterDesc={product.description_en ?? ""}
+              masterName={getProductName(product)}
+              masterDesc={getProductDescription(product) ?? ""}
             />
             <TranslationEditor
               productId={product.id}
               lang="ar"
               current={findT("ar")}
-              masterName={product.name_en}
-              masterDesc={product.description_en ?? ""}
+              masterName={getProductName(product)}
+              masterDesc={getProductDescription(product) ?? ""}
             />
           </div>
         )}

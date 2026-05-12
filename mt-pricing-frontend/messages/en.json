@@ -235,6 +235,7 @@
         "translations": "Translations",
         "costs": "Costs",
         "datasheets": "Documents",
+        "spareParts": "Spare parts",
         "audit": "Audit"
       },
       "fields": {

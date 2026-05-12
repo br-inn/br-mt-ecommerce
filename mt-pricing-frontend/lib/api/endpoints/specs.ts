@@ -87,3 +87,42 @@ export async function getSpecsSchema(
   }
   return (await res.json()) as SpecsSchema;
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect the permissive default schema returned by the backend when no
+ * family-specific schema is registered yet. Heuristic: `additionalProperties:
+ * true` and `properties` empty or missing → permissive.
+ */
+export function isPermissiveDefaultSchema(
+  schema: SpecsSchema | null | undefined,
+): boolean {
+  if (!schema) return true;
+  const hasProps = schema.properties && Object.keys(schema.properties).length > 0;
+  return !hasProps && schema.additionalProperties !== false;
+}
+
+// ---------------------------------------------------------------------------
+// React hook
+// ---------------------------------------------------------------------------
+
+/**
+ * TanStack Query wrapper for `getSpecsSchema`. Returns the JSON Schema for the
+ * given family. Disabled when family is not provided.
+ */
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+
+export function useSpecsSchema(
+  family: string | undefined,
+  subfamily?: string,
+): UseQueryResult<SpecsSchema, Error> {
+  return useQuery({
+    queryKey: ["specs-schema", family, subfamily ?? null],
+    queryFn: () => getSpecsSchema(family as string, subfamily),
+    enabled: Boolean(family),
+    staleTime: 5 * 60 * 1000,
+  });
+}

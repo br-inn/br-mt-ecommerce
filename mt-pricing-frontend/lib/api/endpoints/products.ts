@@ -47,20 +47,109 @@ export interface ProductTranslationRead {
   approved_by: string | null;
 }
 
-export interface ProductImage {
-  id: string;
-  url: string;
-  is_primary: boolean;
-  alt: string | null;
-  position: number;
-  created_at: string;
+/**
+ * Asset kinds aligned with backend `product_assets.kind` enum (10 values).
+ * Source of truth: `mt-pricing-backend/app/schemas/assets.py::AssetKind`.
+ */
+export type AssetKind =
+  | "photo"
+  | "banner"
+  | "datasheet_pdf"
+  | "exploded_3d"
+  | "section_drawing"
+  | "dimension_drawing"
+  | "certificate_pdf"
+  | "video_link"
+  | "external_url"
+  | "mirror_url";
+
+export type AssetStatus =
+  | "active"
+  | "archived"
+  | "broken"
+  | "pending_upload"
+  | "processing";
+
+export interface ProductAssetUrls {
+  original: string | null;
+  thumb_160?: string | null;
+  thumb_400?: string | null;
+  thumb_800?: string | null;
+  thumb_1600?: string | null;
+  avif_400?: string | null;
+  avif_800?: string | null;
+  blurhash?: string | null;
 }
+
+/**
+ * Unified asset shape — aligned with backend `ProductAssetResponse`
+ * after Fase 0 drop of `product_assets.role`.
+ */
+export interface ProductAsset {
+  id: string;
+  sku: string;
+  kind: AssetKind;
+  bucket: string;
+  storage_path: string;
+  original_url?: string | null;
+  is_primary: boolean;
+  position: number;
+  alt_text?: string | null;
+  locale?: string | null;
+  caption?: string | null;
+  width?: number | null;
+  height?: number | null;
+  bytes_size?: number | null;
+  mime_type?: string | null;
+  hash_sha256?: string | null;
+  variants?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  revision?: string | null;
+  supersedes_id?: string | null;
+  status: AssetStatus;
+  archived_at?: string | null;
+  created_at: string;
+  created_by?: string | null;
+  urls: ProductAssetUrls;
+}
+
+/**
+ * Compact translation payload colocated on the product response post-Fase B.
+ * Backend exposes EN/ES/AR translations under a single `translations` map so
+ * the legacy `name_en` / `description_en` / `marketing_copy_en` columns can be
+ * dropped from the `products` table.
+ */
+export interface ProductTranslationsMap {
+  en?: {
+    name?: string | null;
+    description?: string | null;
+    marketing_copy?: string | null;
+  } | null;
+  es?: {
+    name?: string | null;
+    description?: string | null;
+    marketing_copy?: string | null;
+  } | null;
+  ar?: {
+    name?: string | null;
+    description?: string | null;
+    marketing_copy?: string | null;
+  } | null;
+}
+
+export type ProductLifecycleStatus =
+  | "draft"
+  | "active"
+  | "deprecated"
+  | "replaced"
+  | "discontinued";
 
 export interface ProductListItem {
   internal_id: string;
   sku: string;
-  name_en: string;
   family: string | null;
+  /** Fase B — UUID FK to `families` table. Null for legacy/un-classified rows. */
+  family_id: string | null;
   subfamily: string | null;
   dn: string | null;
   pn: string | null;
@@ -69,7 +158,10 @@ export interface ProductListItem {
   data_quality: DataQuality;
   translation_status_es: TranslationStatus | null;
   translation_status_ar: TranslationStatus | null;
+  /** Computed by backend from `lifecycle_status === 'active'`. Read-only. */
   active: boolean;
+  /** Fase B — canonical lifecycle source-of-truth; mutate via PATCH `lifecycle_status`. */
+  lifecycle_status?: ProductLifecycleStatus | null;
   primary_image_url: string | null;
   updated_at: string;
   // Stage 3 (Wave 11) — taxonomy refinement
@@ -77,21 +169,28 @@ export interface ProductListItem {
   material_id: string | null;
   display_pair_sku: string | null;
   division_codes: string[];
+  /** Fase B — translations colocated on the response. Resolve via `getProductName/Description`. */
+  translations?: ProductTranslationsMap | null;
 }
 
 export interface ProductMini {
   sku: string;
-  name_en: string;
   primary_image_url: string | null;
+  translations?: ProductTranslationsMap | null;
 }
 
 export interface Product extends ProductListItem {
+  /**
+   * Backend devuelve también `id` (UUID, == `internal_id`) en el detalle.
+   * Existían usos legacy de `product.id` previos a Fase B — mantenemos el
+   * campo presente para no requerir migración masiva.
+   */
+  id: string;
   connection: string | null;
   weight_kg: number | null;
   dimensions: ProductDimensions | null;
   packaging: ProductPackaging | null;
   intrastat: ProductIntrastat | null;
-  description_en: string | null;
   created_at: string;
 }
 
@@ -104,8 +203,9 @@ export interface ProductListResponse {
 
 export interface ProductCreatePayload {
   sku: string;
-  name_en: string;
   family?: string | null;
+  /** Fase B — UUID FK to `families`. Preferred over legacy slug `family`. */
+  family_id?: string | null;
   subfamily?: string | null;
   dn?: string | null;
   pn?: string | null;
@@ -116,8 +216,12 @@ export interface ProductCreatePayload {
   dimensions?: ProductDimensions | null;
   packaging?: ProductPackaging | null;
   intrastat?: ProductIntrastat | null;
-  description_en?: string | null;
-  active?: boolean;
+  /**
+   * Fase B — `active` is computed from `lifecycle_status`; mutate via the
+   * `lifecycle_status` field below. `active` is intentionally NOT in this
+   * payload anymore (read-only on responses).
+   */
+  lifecycle_status?: ProductLifecycleStatus | null;
   /**
    * Stage 4 (Option C): structured `specs` JSONB validated by backend
    * SpecsValidator against the family/subfamily JSON Schema.
@@ -135,8 +239,9 @@ export type ProductUpdatePayload = Partial<ProductCreatePayload>;
 export interface ProductSearchHit {
   id: string;
   sku: string;
-  name_en: string;
   family: string | null;
+  /** Fase B — pre-resolved display name from backend `product_translations(lang='en')`. */
+  display_name?: string | null;
 }
 
 export interface UploadUrlResponse {
@@ -157,28 +262,103 @@ export interface ImageConfirmPayload {
   height?: number;
   alt_text?: string;
   is_primary?: boolean;
-  role?: string;
-}
-
-export interface ProductImageRecord {
-  id: string;
-  sku: string;
-  role: string;
-  storage_path: string;
-  original_url: string | null;
-  is_primary: boolean;
-  alt_text: string | null;
-  width: number | null;
-  height: number | null;
-  bytes_size: number | null;
-  mime_type: string | null;
-  status: string;
-  created_at: string;
 }
 
 export interface TranslationUpsertPayload {
   name?: string | null;
   description?: string | null;
+}
+
+// ---- Compatibility (Wave 7 + Fase 5) -------------------------------------
+//
+// Mirror del backend `app/schemas/compatibility.py`. Fase 5 añade:
+//  - `owner_type` polymorphic (product | variant | series) — default `product`.
+//  - `dn_min` / `dn_max` para acotar rango de calibres cuando `owner_type=series`.
+// Defaults preservan compat con clientes legacy que no envíen los campos.
+
+export type CompatibilityKind =
+  | "spare_part"
+  | "accessory"
+  | "replaces"
+  | "replaced_by"
+  | "compatible_with";
+
+export type CompatibilityOwnerType = "product" | "variant" | "series";
+
+export interface CompatibleProductSummary {
+  sku: string;
+  family: string;
+  primary_image_url: string | null;
+  /** Fase B — backend-resolved display name (EN translation). */
+  display_name?: string | null;
+}
+
+export interface ProductCompatibility {
+  id: string;
+  product_sku: string;
+  compatible_with_sku: string;
+  kind: CompatibilityKind;
+  notes: string | null;
+  position: number;
+  /** Fase 5 — polymorphic owner. Default 'product'. */
+  owner_type: CompatibilityOwnerType;
+  /** Fase 5 — DN min/max para rangos (solo aplica cuando owner_type='series'). */
+  dn_min: number | null;
+  dn_max: number | null;
+  created_at: string;
+  created_by: string | null;
+  compatible_product: CompatibleProductSummary | null;
+}
+
+export interface ProductCompatibilityCreate {
+  compatible_with_sku: string;
+  kind: CompatibilityKind;
+  notes?: string | null;
+  position?: number;
+  owner_type?: CompatibilityOwnerType;
+  dn_min?: number | null;
+  dn_max?: number | null;
+}
+
+export interface ProductCompatibilityReplaceItem extends ProductCompatibilityCreate {
+  // Same shape — usado dentro de PUT /products/{sku}/compatibility (bulk replace).
+}
+
+export interface ProductCompatibilityPatchPayload {
+  notes?: string | null;
+  position?: number | null;
+}
+
+// ---- Certifications polymorphic (Fase 5) ---------------------------------
+
+export type CertificationOwnerType = "product" | "variant" | "series";
+
+export interface ProductCertificationLink {
+  certification_id: string;
+  /** Fase 5 — default 'product'; si no se pasa owner_id, backend usa product_sku. */
+  owner_type?: CertificationOwnerType;
+  owner_id?: string | null;
+  certificate_pdf_asset_id?: string | null;
+  obtained_at?: string | null;
+  expires_at?: string | null;
+  notes?: string | null;
+}
+
+export interface ProductCertification {
+  certification_id: string;
+  code: string;
+  name: string;
+  issued_by: string | null;
+  scope: string | null;
+  logo_url: string | null;
+  certificate_pdf_asset_id: string | null;
+  obtained_at: string | null;
+  expires_at: string | null;
+  notes: string | null;
+  created_at: string;
+  /** Fase 5 — polymorphic owner. */
+  owner_type: CertificationOwnerType;
+  owner_id: string | null;
 }
 
 export interface ProductFilters {
@@ -358,9 +538,9 @@ export const productsApi = {
       `/api/v1/products/${productId}/translations/${lang}/approve`,
       { method: "POST" },
     ),
-  // Images
-  listImages: (productId: string): Promise<ProductImage[]> =>
-    authedFetch<ProductImage[]>(`/api/v1/products/${productId}/images`),
+  // Images / Assets (unified ProductAsset shape post-Fase 0 drop of legacy role).
+  listImages: (productId: string): Promise<ProductAsset[]> =>
+    authedFetch<ProductAsset[]>(`/api/v1/products/${productId}/images`),
   getUploadUrl: (
     productId: string,
     fileName: string,
@@ -375,13 +555,13 @@ export const productsApi = {
   confirmImageUpload: (
     productId: string,
     payload: ImageConfirmPayload,
-  ): Promise<ProductImageRecord> =>
-    authedFetch<ProductImageRecord>(`/api/v1/products/${productId}/images/confirm`, {
+  ): Promise<ProductAsset> =>
+    authedFetch<ProductAsset>(`/api/v1/products/${productId}/images/confirm`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  setPrimaryImage: (productId: string, imageId: string): Promise<ProductImage> =>
-    authedFetch<ProductImage>(
+  setPrimaryImage: (productId: string, imageId: string): Promise<ProductAsset> =>
+    authedFetch<ProductAsset>(
       `/api/v1/products/${productId}/images/${imageId}/set-primary`,
       { method: "POST" },
     ),
@@ -389,6 +569,67 @@ export const productsApi = {
     authedFetch<void>(`/api/v1/products/${productId}/images/${imageId}`, {
       method: "DELETE",
     }),
+  // Compatibility (Wave 7 + Fase 5)
+  listCompatibility: (
+    sku: string,
+    kind?: CompatibilityKind,
+  ): Promise<ProductCompatibility[]> =>
+    authedFetch<ProductCompatibility[]>(
+      `/api/v1/products/${sku}/compatibility${buildQuery({ kind })}`,
+    ),
+  listCompatibilityInverse: (
+    sku: string,
+    kind?: CompatibilityKind,
+  ): Promise<ProductCompatibility[]> =>
+    authedFetch<ProductCompatibility[]>(
+      `/api/v1/products/${sku}/compatibility/inverse${buildQuery({ kind })}`,
+    ),
+  addCompatibility: (
+    sku: string,
+    payload: ProductCompatibilityCreate,
+  ): Promise<ProductCompatibility> =>
+    authedFetch<ProductCompatibility>(`/api/v1/products/${sku}/compatibility`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  removeCompatibility: (
+    sku: string,
+    compatibleWithSku: string,
+    kind: CompatibilityKind,
+  ): Promise<void> =>
+    authedFetch<void>(
+      `/api/v1/products/${sku}/compatibility/${compatibleWithSku}/${kind}`,
+      { method: "DELETE" },
+    ),
+  replaceCompatibility: (
+    sku: string,
+    items: ProductCompatibilityReplaceItem[],
+  ): Promise<ProductCompatibility[]> =>
+    authedFetch<ProductCompatibility[]>(
+      `/api/v1/products/${sku}/compatibility`,
+      { method: "PUT", body: JSON.stringify(items) },
+    ),
+  // Certifications (Fase 5 polymorphic)
+  listCertifications: (sku: string): Promise<ProductCertification[]> =>
+    authedFetch<ProductCertification[]>(
+      `/api/v1/products/${sku}/certifications`,
+    ),
+  addCertification: (
+    sku: string,
+    payload: ProductCertificationLink,
+  ): Promise<ProductCertification> =>
+    authedFetch<ProductCertification>(
+      `/api/v1/products/${sku}/certifications`,
+      { method: "POST", body: JSON.stringify(payload) },
+    ),
+  removeCertification: (
+    sku: string,
+    certificationId: string,
+  ): Promise<void> =>
+    authedFetch<void>(
+      `/api/v1/products/${sku}/certifications/${certificationId}`,
+      { method: "DELETE" },
+    ),
 };
 
 export const PRODUCT_FAMILIES = [

@@ -14,7 +14,7 @@ import {
 } from "@/lib/hooks/products/use-product-images";
 import type {
   ImageConfirmPayload,
-  ProductImageRecord,
+  ProductAsset,
 } from "@/lib/api/endpoints/products";
 
 interface Props {
@@ -23,7 +23,7 @@ interface Props {
   disabled?: boolean;
   className?: string;
   /** Notifica al padre con la nueva imagen para invalidar caches u optimistic updates. */
-  onUploaded?: (img: ProductImageRecord) => void;
+  onUploaded?: (img: ProductAsset) => void;
 }
 
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;

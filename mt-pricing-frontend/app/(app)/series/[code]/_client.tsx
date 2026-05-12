@@ -9,6 +9,7 @@ import { MT } from "@/components/mt/tokens";
 import { seriesApi, type Series, type SeriesTranslation } from "@/lib/api/endpoints/series";
 import { seriesTiersApi, type SeriesTier } from "@/lib/api/endpoints/series-tiers";
 import { productsApi, type ProductListItem } from "@/lib/api/endpoints/products";
+import { getProductName } from "@/lib/utils/product-display";
 
 interface Props {
   code: string;
@@ -170,7 +171,7 @@ export function SeriesLanding({ code }: Props) {
                   {p.primary_image_url ? (
                     <img
                       src={p.primary_image_url}
-                      alt={p.name_en}
+                      alt={getProductName(p)}
                       className="size-14 shrink-0 rounded object-cover"
                     />
                   ) : (
@@ -187,7 +188,7 @@ export function SeriesLanding({ code }: Props) {
                       className="mt-0.5 truncate text-sm font-medium"
                       style={{ color: MT.ink }}
                     >
-                      {p.name_en}
+                      {getProductName(p)}
                     </div>
                     {p.dn && (
                       <div className="mt-1 text-xs" style={{ color: MT.ink4 }}>

@@ -44,6 +44,8 @@ import {
   type ProductCreatePayload,
   type ProductUpdatePayload,
 } from "@/lib/api/endpoints/products";
+import { getProductName } from "@/lib/utils/product-display";
+import { isProductActive } from "@/lib/utils/product-lifecycle";
 import {
   isPermissiveDefaultSchema,
   useSpecsSchema,
@@ -193,9 +195,8 @@ function buildPayload(
 
   return {
     sku: values.sku,
-    name_en: values.name_en,
     family: values.family,
-    active: values.active,
+    lifecycle_status: values.active ? "active" : "deprecated",
     dn: values.dn || null,
     pn: values.pn || null,
     material: values.material || null,
@@ -223,9 +224,9 @@ function productToFormValues(product: Product): WizardForm {
 
   const out: WizardForm = {
     sku: product.sku,
-    name_en: product.name_en,
+    name_en: getProductName(product),
     family,
-    active: product.active,
+    active: isProductActive(product),
     dn: product.dn ?? "",
     pn: product.pn ?? "",
     material: product.material ?? "",

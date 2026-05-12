@@ -18,6 +18,7 @@ import {
   type ProductFilters,
   type ProductListItem,
 } from "@/lib/api/endpoints/products";
+import { getProductName } from "@/lib/utils/product-display";
 import { useCatalogFilters } from "./catalog-filters";
 import { useCatalogSearch } from "./catalog-search";
 
@@ -74,9 +75,10 @@ export function ProductsTable() {
       {
         id: "name_en",
         header: () => <span>{t("columns.name")}</span>,
-        accessorKey: "name_en",
         cell: ({ row }) => (
-          <span className="line-clamp-1 max-w-xs">{row.original.name_en}</span>
+          <span className="line-clamp-1 max-w-xs">
+            {getProductName(row.original)}
+          </span>
         ),
       },
       {
@@ -126,7 +128,9 @@ export function ProductsTable() {
               onClick={async () => {
                 try {
                   await toggleActive.mutateAsync({
-                    id: row.original.id,
+                    id:
+                      (row.original as ProductListItem & { id?: string }).id ??
+                      row.original.internal_id,
                     active: !active,
                   });
                   toast.success(active ? t("actions.deactivated") : t("actions.activated"));
@@ -153,7 +157,9 @@ export function ProductsTable() {
         cell: ({ row }) => (
           <SkuActionsMenu
             product={{
-              id: row.original.id,
+              id:
+                (row.original as ProductListItem & { id?: string }).id ??
+                row.original.internal_id,
               sku: row.original.sku,
               active: row.original.active,
             }}

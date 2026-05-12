@@ -24,6 +24,7 @@ import {
   type Product,
   type ProductUpdatePayload,
 } from "@/lib/api/endpoints/products";
+import { getProductName } from "@/lib/utils/product-display";
 
 interface Props {
   product: Product;
@@ -31,13 +32,8 @@ interface Props {
   onSaved?: () => void;
 }
 
-const buildSchema = (msgs: {
-  nameMin: string;
-  weightInvalid: string;
-}) =>
+const buildSchema = (msgs: { weightInvalid: string }) =>
   z.object({
-    name_en: z.string().min(3, msgs.nameMin),
-    description_en: z.string().optional(),
     family: z.enum(PRODUCT_FAMILIES),
     type: z.string().optional(),
     dn: z.string().optional(),
@@ -55,10 +51,12 @@ const buildSchema = (msgs: {
 
 type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
+/**
+ * Fase B: `name_en` / `description_en` ya no se editan desde aquí — viven en
+ * `product_translations(lang='en')` y se editan en el tab "Traducciones".
+ */
 function toPayload(values: FormValues): ProductUpdatePayload {
   return {
-    name_en: values.name_en,
-    description_en: values.description_en || null,
     family: values.family,
     type: values.type || null,
     dn: values.dn || null,
@@ -83,7 +81,6 @@ export function ProductEditForm({ product, onCancel, onSaved }: Props) {
   const schema = React.useMemo(
     () =>
       buildSchema({
-        nameMin: t("validation.nameMin"),
         weightInvalid: t("validation.weightInvalid"),
       }),
     [t],
@@ -92,8 +89,6 @@ export function ProductEditForm({ product, onCancel, onSaved }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name_en: product.name_en,
-      description_en: product.description_en ?? "",
       family: (product.family as (typeof PRODUCT_FAMILIES)[number]) ?? PRODUCT_FAMILIES[0],
       type: product.type ?? "",
       dn: product.dn ?? "",
@@ -142,11 +137,12 @@ export function ProductEditForm({ product, onCancel, onSaved }: Props) {
         <Field label={tFields("sku")}>
           <Input value={product.sku} disabled className="bg-muted/50" />
         </Field>
-        <Field
-          label={tFields("name_en")}
-          error={form.formState.errors.name_en?.message}
-        >
-          <Input {...form.register("name_en")} />
+        <Field label={tFields("name_en")}>
+          <Input
+            value={getProductName(product)}
+            disabled
+            className="bg-muted/50"
+          />
         </Field>
         <Field label={tFields("family")}>
           <Select
@@ -196,13 +192,11 @@ export function ProductEditForm({ product, onCancel, onSaved }: Props) {
         </Field>
       </div>
 
-      <Field label={tFields("description_en")}>
-        <textarea
-          {...form.register("description_en")}
-          rows={3}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        />
-      </Field>
+      {/*
+        Fase B: `description_en` ya no se edita aquí. Vive en
+        `product_translations(lang='en')` y se gestiona desde el tab
+        "Traducciones".
+      */}
 
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel}>
