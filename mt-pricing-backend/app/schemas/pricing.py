@@ -213,11 +213,36 @@ class ExceptionRuleResponse(BaseModel):
     fx_swing_threshold_pct: Decimal | None = None
     min_margin_pct: Decimal | None = None
     active: bool
+    version: int = 1
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
+    created_by: UUID | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ExceptionRuleCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    code: str = Field(min_length=1, max_length=64)
+    description: str | None = None
+    channel_id: UUID | None = None
+    scheme_code: str | None = None
+    margin_threshold_pct: Decimal | None = None
+    fx_swing_threshold_pct: Decimal | None = None
+    min_margin_pct: Decimal | None = None
+
+
+class ExceptionRuleActivateResponse(ExceptionRuleResponse):
+    """Respuesta al activar una regla — incluye la regla activada."""
+
+    pass
 
 
 __all__ = [
     "ChannelResponse",
     "ChannelStateUpdate",
+    "ExceptionRuleActivateResponse",
+    "ExceptionRuleCreate",
     "ExceptionRuleResponse",
     "FXRateCreate",
     "FXRateResponse",

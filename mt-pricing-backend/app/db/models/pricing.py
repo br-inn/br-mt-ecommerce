@@ -250,6 +250,18 @@ class ExceptionRule(UuidPkMixin, TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
+    version: Mapped[int] = mapped_column(
+        nullable=False, server_default=text("1")
+    )
+    effective_from: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    effective_to: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     __table_args__ = (
         CheckConstraint(

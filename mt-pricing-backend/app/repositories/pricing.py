@@ -315,6 +315,59 @@ class ExceptionRuleRepository(BaseRepository[ExceptionRule]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def create(self, data: dict) -> ExceptionRule:  # type: ignore[override]
+        """Crea nueva regla de excepción (inactiva por defecto hasta activar)."""
+        rule = ExceptionRule(**data)
+        self.session.add(rule)
+        await self.session.flush()
+        return rule
+
+    async def get_by_id(self, rule_id: UUID) -> ExceptionRule | None:
+        stmt = select(ExceptionRule).where(ExceptionRule.id == rule_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def activate(self, rule_id: UUID, actor_id: UUID) -> ExceptionRule:
+        """Activa la regla `rule_id` y cierra la versión anterior activa del
+        mismo scope (channel_id + scheme_code).
+
+        Raises ValueError si `rule_id` no existe.
+        """
+        now = datetime.now(tz=timezone.utc)
+
+        rule = await self.get_by_id(rule_id)
+        if rule is None:
+            raise ValueError(f"ExceptionRule {rule_id} not found")
+
+        # Cierra versiones previas activas del mismo scope (excluyendo la actual).
+        stmt = select(ExceptionRule).where(
+            ExceptionRule.active.is_(True),
+            ExceptionRule.channel_id == rule.channel_id,
+            ExceptionRule.scheme_code == rule.scheme_code,
+            ExceptionRule.id != rule_id,
+        )
+        result = await self.session.execute(stmt)
+        for prev in result.scalars().all():
+            prev.active = False
+            prev.effective_to = now
+
+        # Activa la regla solicitada.
+        rule.active = True
+        rule.effective_from = now
+        rule.effective_to = None
+        await self.session.flush()
+        return rule
+
+    async def list_history(self, *, limit: int = 50) -> Sequence[ExceptionRule]:
+        """Todas las reglas (activas e inactivas) ordenadas por created_at desc."""
+        stmt = (
+            select(ExceptionRule)
+            .order_by(desc(ExceptionRule.created_at))
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
 
 # ---------------------------------------------------------------------------
 # PriceApprovalEvent
