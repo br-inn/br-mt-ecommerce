@@ -198,6 +198,12 @@ class Settings(BaseSettings):
     SERPAPI_KEY: SecretStr = SecretStr("")
     REVERSE_IMAGE_DAILY_LIMIT: int = 200
 
+    # --- Tradeling (US-F15-02-05) ---
+    # API key para Tradeling MENA B2B marketplace (UAE).
+    # Sin key → TradelingFetcherFactory retorna None (fetcher deshabilitado).
+    TRADELING_API_KEY: SecretStr = SecretStr("")
+    TRADELING_API_BASE_URL: str = "https://api.tradeling.com/v1"
+
     @property
     def is_prod(self) -> bool:
         return self.ENV == "production"
