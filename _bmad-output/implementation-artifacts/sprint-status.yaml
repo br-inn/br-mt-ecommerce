@@ -1,0 +1,57 @@
+generated: "2026-05-12T00:00:00.000Z"
+last_updated: "2026-05-12T00:00:00.000Z"  # actualizado por bmad-sprint-status — sync commits US-1B-02-05 + US-1B-02-09
+project: "MT Middle East MDM + Pricing Fase 1"
+project_key: "mt-pricing-mdm-phase1"
+tracking_system: "BMAD sprint-status"
+story_location: "_bmad-output/planning-artifacts/"
+
+# ─── Épicas ───────────────────────────────────────────────────────────────────
+# Épicas cerradas (S0-S6)
+development_status:
+  epic-EP-1A-01: done        # Setup técnico + Sprint 0
+  epic-EP-1A-02: in-progress # PIM — core done; EAV/taxonomy extensión en vuelo
+  epic-EP-1A-03: done        # Master proveedores
+  epic-EP-1A-04: done        # Master costes
+  epic-EP-1A-05: done        # FX versionado
+  epic-EP-1A-06: done        # Importers + datasheets (incluyendo pdfplumber S6)
+  epic-EP-1A-07: done        # RBAC + i18n (ES/EN/AR) + audit trail
+  epic-EP-1A-08: done        # Scheduler editable + UI Jobs admin
+  epic-EP-1B-01: done        # Motor pricing multi-canal (incluyendo bulk-recalc S5)
+  epic-EP-1B-02: in-progress # Workflow aprobación por excepción — S7 foco principal
+  epic-EP-1B-03: backlog     # Estados de canal + simulación
+  epic-EP-1B-04: backlog     # Connectors base + shadow publish
+  epic-EP-1B-05: in-progress # Hardening + cutover (DR runbook S6 done; resto S7)
+  epic-EP-RND-01: in-progress # Comparator R&D (calibrator+judge S4/S5 done; UI queue S7)
+
+# ─── Stories S7 — comprometidas ────────────────────────────────────────────────
+  # EP-1B-02 — Workflow aprobación (P0 core)
+  US-1B-02-01: done           # State machine prices.status enforcement — 5 SP ✅ S7
+  US-1B-02-02: ready-for-dev  # exception_rules + UI Gerente — 8 SP
+  US-1B-02-03: ready-for-dev  # auto_approved vs pending_review logic — 5 SP
+  US-1B-02-05: done            # bulk-approve endpoint — 3 SP ✅ S7
+  US-1B-02-07: ready-for-dev  # Digest diario 18:00 UAE — 5 SP (carry-over S6)
+  US-1B-02-09: done            # Audit trail extendido — 3 SP ✅ S7
+
+  # EP-RND-01 — Human queue (P1)
+  US-RND-01-10: ready-for-dev # UI human queue MVP — 5 SP (carry-over S6)
+
+  # EP-1B-05 — Hardening pre-cutover (P1)
+  US-1B-05-01: ready-for-dev  # Reporte diff app vs Excel (parallel run) — 3 SP
+
+# ─── Stories S7 — stretch (P2/P3) ──────────────────────────────────────────────
+  US-1B-05-07: backlog        # Dashboards observabilidad — 5 SP
+  US-1B-05-06: backlog        # Performance hardening — 5 SP
+  US-1B-05-02: backlog        # Manual operativo handbook-es.md — 5 SP
+  US-OCR-S7: backlog          # Dockerfile.worker-ocr tesseract baked — 3 SP
+  US-DR-DRILLS: backlog       # Tabla dr_drills + mig 030 + endpoint admin — 3 SP
+
+# ─── Stories bloqueadas externo ────────────────────────────────────────────────
+  US-1B-02-06: backlog        # Cola Gerente UI — blocked: Pantalla 12 firma pendiente
+
+# ─── Stories S6 entregadas (referencia) ────────────────────────────────────────
+  US-1B-02-08: done           # Escalation job >48h + delegate — 5 SP ✅ S6
+  US-1A-06-04-V2-S6: done    # pdfplumber tablas estructuradas — 5 SP ✅ S6
+  US-1B-05-04-DOC: done      # DR runbook + drill plan — 3 SP ✅ S6
+
+# ─── Retrospectivas ────────────────────────────────────────────────────────────
+  sprint-6-retrospective: optional
