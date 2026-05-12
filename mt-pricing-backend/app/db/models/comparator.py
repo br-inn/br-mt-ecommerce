@@ -22,6 +22,7 @@ No insertar filas hasta que research workstream firme la decisión go.
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -39,6 +40,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -315,8 +317,47 @@ class PriceCalibrationRange(Base):
     )
 
 
+class ComparatorModelRegistry(Base):
+    """Registro de modelos embedding fine-tuned — US-F15-03-02.
+
+    Ciclo de vida: candidate → active (promote_model script) → retired.
+    Solo un modelo puede tener status='active' en producción; el promote_model
+    script se encarga de retirar el anterior al promover uno nuevo.
+    """
+
+    __tablename__ = "comparator_model_registry"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID_PG,
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    model_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    base_model: Mapped[str] = mapped_column(String(256), nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    eval_metrics_jsonb: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    trained_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="candidate",
+        server_default="candidate",
+    )
+
+    __table_args__ = (
+        Index("ix_comparator_model_registry_status", "status"),
+    )
+
+
 __all__ = [
     "MATCH_DECISIONS",
+    "ComparatorModelRegistry",
     "CompetitorFetchError",
     "CompetitorListing",
     "MatchDecision",

@@ -31,6 +31,8 @@ from scripts.poc.metrics_collector import (
     MarketplaceMetrics,
     MetricsCollector,
     PocMetrics,
+    _collect_failures,
+    _is_failure,
 )
 
 
@@ -360,6 +362,42 @@ class TestG4Report:
         content = generate_g4_report(metrics, path)
         assert "ComparatorPort" in content
         assert "VlmJudgePort" in content
+
+
+# ---------------------------------------------------------------------------
+# Fix W-4: _collect_failures con falsy non-bool
+# ---------------------------------------------------------------------------
+
+class TestCollectFailures:
+    def test_failures_falsy_non_bool(self):
+        """0 y 0.0 son falsy pero no False — no deben ser fallos (fix W-4)."""
+        result = _collect_failures({"ok": 0, "fail": False, "good": 0.0})
+        assert result == ["fail"], (
+            f"Solo 'fail' (bool False) debe ser un fallo, got {result!r}"
+        )
+
+    def test_collect_failures_empty(self):
+        """Sin fallos → lista vacía."""
+        result = _collect_failures({"a": True, "b": 1, "c": 0.5})
+        assert result == []
+
+    def test_collect_failures_negative_numeric(self):
+        """Valores negativos sí son fallos."""
+        result = _collect_failures({"neg_int": -1, "neg_float": -0.1, "ok": 0})
+        assert set(result) == {"neg_int", "neg_float"}
+
+    def test_is_failure_zero_not_failure(self):
+        """_is_failure: 0 y 0.0 no son fallos."""
+        assert _is_failure(0) is False
+        assert _is_failure(0.0) is False
+
+    def test_is_failure_false_is_failure(self):
+        """_is_failure: False es fallo."""
+        assert _is_failure(False) is True
+
+    def test_is_failure_true_not_failure(self):
+        """_is_failure: True no es fallo."""
+        assert _is_failure(True) is False
 
 
 # ---------------------------------------------------------------------------

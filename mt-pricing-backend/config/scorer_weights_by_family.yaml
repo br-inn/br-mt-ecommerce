@@ -1,0 +1,24 @@
+profiles:
+  default:
+    material: 0.30
+    pn: 0.25
+    thread: 0.20
+    norma: 0.15
+    brand_tier: 0.05
+    delivery: 0.05
+
+  valve_family:
+    material: 0.35
+    pn: 0.30
+    thread: 0.15
+    norma: 0.10
+    brand_tier: 0.05
+    delivery: 0.05
+
+  fitting_family:
+    material: 0.25
+    pn: 0.20
+    thread: 0.25
+    norma: 0.15
+    brand_tier: 0.10
+    delivery: 0.05

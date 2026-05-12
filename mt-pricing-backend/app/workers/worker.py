@@ -74,6 +74,8 @@ def make_celery() -> Celery:
             # S2 — image pipeline (US-1A-02-07/08, ADR-055)
             "app.workers.probe_mirror",
             "app.workers.thumbnails",
+            # F15-03-02 — embedding fine-tune ML task
+            "app.workers.tasks.ml_finetuning",
         ],
     )
 
@@ -109,6 +111,7 @@ def make_celery() -> Celery:
             "mt.audit.*": {"queue": "audit"},
             "mt.graphrag.*": {"queue": "comparator"},
             "mt.calibrator.*": {"queue": "comparator"},
+            "ml.*": {"queue": "comparator"},
         },
         # --- Beat (ADR-046 — scheduler custom sobre job_definitions) ---
         beat_scheduler="app.scheduler.database_scheduler:DatabaseScheduler",

@@ -204,6 +204,16 @@ class Settings(BaseSettings):
     TRADELING_API_KEY: SecretStr = SecretStr("")
     TRADELING_API_BASE_URL: str = "https://api.tradeling.com/v1"
 
+    # --- Cross-Encoder / Cohere Reranker (ADR-075, US-F15-03-04) ---
+    # DEFER — revisitar en S12 con dataset ≥1k pares etiquetados.
+    # False = RerankerPort no se activa (safe default).
+    ENABLE_CROSS_ENCODER_RERANKER: bool = False
+
+    # --- Scorer weights (US-F15-03-05) ---
+    # Path al YAML de pesos por familia. Relativo al CWD (raíz del proyecto).
+    # Si no existe → scorer_weights.py usa pesos hardcoded + logger.warning.
+    SCORER_WEIGHTS_PATH: str = "config/scorer_weights_by_family.yaml"
+
     @property
     def is_prod(self) -> bool:
         return self.ENV == "production"

@@ -49,6 +49,10 @@ dependencies = [
     # Fase 1.5 — VLM Judge (US-F15-02-02)
     "anthropic>=0.30",
     "aiolimiter>=1.1",
+    # Fase 1.5 — Conformal Prediction / Venn-Abers (US-F15-03-03)
+    "numpy>=1.26",
+    # F15-03-02 — Embedding fine-tune ML
+    "sentence-transformers>=2.7.0",
 ]
 
 [dependency-groups]

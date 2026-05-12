@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass
@@ -162,6 +162,172 @@ class IsotonicCalibrator:
 
 
 # ---------------------------------------------------------------------- #
+# Conformal Prediction / Venn-Abers (US-F15-03-03)
+# ---------------------------------------------------------------------- #
+
+try:
+    import numpy as np  # type: ignore[import-untyped]
+
+    _NUMPY_AVAILABLE = True
+except ImportError:
+    _NUMPY_AVAILABLE = False
+
+try:
+    from mapie.regression import MapieRegressor  # type: ignore[import-untyped]
+
+    _MAPIE_AVAILABLE = True
+except ImportError:
+    _MAPIE_AVAILABLE = False
+
+
+@dataclass(frozen=True)
+class ConformalPrediction:
+    """Resultado de una predicción conformal con intervalo y prioridad de revisión."""
+
+    point_estimate: float
+    lower_bound: float
+    upper_bound: float
+    review_priority: str | None
+
+
+@dataclass
+class ConformalWrapper:
+    """Conformal prediction wrapper sobre IsotonicCalibrator.
+
+    Garantiza cobertura empírica >= 1 - alpha en hold-out.
+
+    Usa MAPIE si está instalado; en caso contrario usa Venn-Abers interno
+    basado en residuales (|y_true - y_pred|) con quantile(1 - alpha).
+    """
+
+    calibrator: IsotonicCalibrator
+    method: Literal["mapie", "venn_abers"] = "mapie"
+    alpha: float = 0.02  # FP rate target: < 2%
+    _fitted: bool = field(default=False, init=False)
+    _residuals: list[float] = field(default_factory=list, init=False)
+    _mapie: Any = field(default=None, init=False, repr=False)
+
+    def fit(self, cal_scores: list[float], labels: list[int]) -> None:
+        """Fit sobre hold-out (mínimo 200 muestras).
+
+        Args:
+            cal_scores: scores de calibración (crudos, en el rango del comparador).
+            labels: etiquetas 0/1 (match real).
+
+        Raises:
+            ValueError: si len(cal_scores) < 200.
+        """
+        if len(cal_scores) < 200:
+            raise ValueError(
+                f"Insufficient calibration samples (min 200), got {len(cal_scores)}"
+            )
+        if len(cal_scores) != len(labels):
+            raise ValueError("cal_scores and labels must have same length")
+
+        # Calcular predicciones calibradas del calibrador base
+        y_pred = [self.calibrator.calibrate(s) for s in cal_scores]
+        y_true = [float(lbl) for lbl in labels]
+
+        if _MAPIE_AVAILABLE and self.method == "mapie":
+            self._fit_mapie(cal_scores, y_true)
+        else:
+            # Venn-Abers interno: residuales absolutos
+            self._residuals = [abs(yt - yp) for yt, yp in zip(y_true, y_pred, strict=True)]
+
+        self._fitted = True
+
+    def _fit_mapie(self, cal_scores: list[float], y_true: list[float]) -> None:
+        """Ajusta MapieRegressor con cv='prefit' sobre el calibrador base."""
+        import numpy as np  # noqa: PLC0415
+
+        # Wrapper sklearn-compatible que delega en IsotonicCalibrator
+        from sklearn.base import BaseEstimator, RegressorMixin  # type: ignore[import-untyped]  # noqa: PLC0415
+
+        class _CalWrapper(BaseEstimator, RegressorMixin):  # type: ignore[misc]
+            def __init__(self, cal: IsotonicCalibrator) -> None:
+                self.cal = cal
+
+            def fit(self, X: Any, y: Any) -> "_CalWrapper":  # noqa: N803
+                return self
+
+            def predict(self, X: Any) -> Any:  # noqa: N803
+                return np.array([self.cal.calibrate(float(x[0])) for x in X])
+
+        X_arr = np.array(cal_scores).reshape(-1, 1)
+        y_arr = np.array(y_true)
+        wrapped = _CalWrapper(self.calibrator)
+        self._mapie = MapieRegressor(wrapped, cv="prefit", method="base")
+        self._mapie.fit(X_arr, y_arr)
+
+    def predict_with_interval(self, score: float) -> ConformalPrediction:
+        """Retorna ConformalPrediction con point_estimate, lower_bound, upper_bound y review_priority.
+
+        Args:
+            score: score crudo a predecir.
+
+        Returns:
+            ConformalPrediction con todos los valores en [0.0, 1.0].
+        """
+        point_estimate = self.calibrator.calibrate(score)
+
+        if _MAPIE_AVAILABLE and self.method == "mapie" and self._mapie is not None:
+            lower, upper = self._predict_mapie(score, point_estimate)
+        else:
+            lower, upper = self._predict_venn_abers(point_estimate)
+
+        # Calcular review_priority
+        if lower > 0.70:
+            review_priority: str | None = "low"
+        elif upper < 0.50:
+            review_priority = "high"
+        else:
+            review_priority = None
+
+        return ConformalPrediction(
+            point_estimate=point_estimate,
+            lower_bound=lower,
+            upper_bound=upper,
+            review_priority=review_priority,
+        )
+
+    def _predict_mapie(self, score: float, point_estimate: float) -> tuple[float, float]:
+        """Predice intervalo usando MAPIE."""
+        import numpy as np  # noqa: PLC0415
+
+        X_arr = np.array([[score]])
+        _, intervals = self._mapie.predict(X_arr, alpha=self.alpha)
+        # intervals shape: (n_samples, 2, n_alphas)
+        lower = float(intervals[0, 0, 0])
+        upper = float(intervals[0, 1, 0])
+        lower = max(0.0, min(1.0, lower))
+        upper = max(0.0, min(1.0, upper))
+        # Garantizar lower <= point <= upper
+        lower = min(lower, point_estimate)
+        upper = max(upper, point_estimate)
+        return lower, upper
+
+    def _predict_venn_abers(self, point_estimate: float) -> tuple[float, float]:
+        """Predice intervalo con Venn-Abers interno (cuantil de residuales)."""
+        if not self._residuals:
+            return (point_estimate, point_estimate)
+
+        if _NUMPY_AVAILABLE:
+            import numpy as np  # noqa: PLC0415
+
+            margin = float(np.quantile(self._residuals, 1.0 - self.alpha))
+        else:
+            # Fallback puro Python si numpy no está disponible
+            sorted_res = sorted(self._residuals)
+            idx = int((1.0 - self.alpha) * len(sorted_res))
+            idx = min(idx, len(sorted_res) - 1)
+            margin = sorted_res[idx]
+
+        lower = max(0.0, point_estimate - margin)
+        upper = min(1.0, point_estimate + margin)
+        return lower, upper
+
+
+# ---------------------------------------------------------------------- #
 # Métricas auxiliares (Brier score + ECE) — pure Python.
 # ---------------------------------------------------------------------- #
 def brier_score(predictions: list[float], labels: list[int]) -> float:
@@ -202,6 +368,8 @@ def expected_calibration_error(
 
 __all__ = [
     "IsotonicCalibrator",
+    "ConformalWrapper",
+    "ConformalPrediction",
     "brier_score",
     "expected_calibration_error",
 ]

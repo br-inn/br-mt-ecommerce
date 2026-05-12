@@ -47,6 +47,7 @@ from app.api.routes import (
     users,
     vocabularies,
 )
+from app.api.routes.matches import dataset_router as comparator_dataset_router
 from app.api.routes.documents import admin_router as admin_documents_router
 from app.api.routes.attributes import (
     admin_attributes_router,
@@ -146,3 +147,5 @@ router.include_router(pricing_dashboard.router)
 router.include_router(exports.router)
 # US-F15-01-03 — CDC Postgres → Neo4j (Supabase Realtime → Celery → Cypher)
 router.include_router(internal_cdc.router)
+# US-F15-03-01 — Dataset export etiquetado (labeled pairs JSONL)
+router.include_router(comparator_dataset_router)

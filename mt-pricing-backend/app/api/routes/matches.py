@@ -7,6 +7,7 @@ Endpoints expuestos:
 - ``POST   /api/v1/matches/{sku}/refresh``         — gatilla scrape (stubs) y persiste.
 - ``POST   /api/v1/matches/{id}/validate``         — marca como validated.
 - ``POST   /api/v1/matches/{id}/discard``          — marca como discarded.
+- ``GET    /api/v1/comparator/dataset/export``     — exporta pares etiquetados JSONL.
 
 Cursor opaco: base64url(json({"id": "<uuid>"})) — distinto del cursor sku
 de Products porque la PK aquí es UUID.
@@ -17,13 +18,17 @@ from __future__ import annotations
 import base64
 import binascii
 import json
-from typing import Annotated, Any
+from datetime import date
+from typing import Annotated, Any, AsyncIterator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.db.models.match_candidate import MatchCandidate
 from app.db.models.user import User
 from app.schemas.common import Cursor, Pagination, ProblemDetails
 from app.schemas.matches import (
@@ -38,6 +43,7 @@ from app.services.matching.match_service import (
 )
 
 router = APIRouter(prefix="/matches", tags=["matches"])
+dataset_router = APIRouter(prefix="/comparator", tags=["comparator"])
 
 
 # ---------------------------------------------------------------------------
@@ -270,3 +276,86 @@ async def discard_match(
     except MatchDomainError as e:
         _raise_domain(e)
     return _to_response(row)
+
+
+# ---------------------------------------------------------------------------
+# Dataset export — US-F15-03-01
+# ---------------------------------------------------------------------------
+_LABEL_MAP: dict[str, int] = {"accept": 1, "reject": 0}
+
+
+async def _stream_labeled_pairs(
+    session: AsyncSession,
+) -> AsyncIterator[str]:
+    """Yields JSONL lines for validated labeled candidates."""
+    stmt = select(MatchCandidate).where(
+        MatchCandidate.label.in_(["accept", "reject"]),
+        MatchCandidate.status == "validated",
+    )
+    result = await session.execute(stmt)
+    rows = result.scalars().all()
+    for row in rows:
+        payload = {
+            "sku_mt": row.product_sku,
+            "candidate_id": str(row.id),
+            "title": row.title,
+            "specs_jsonb": row.specs_jsonb,
+            "label": _LABEL_MAP[row.label],  # type: ignore[index]
+        }
+        yield json.dumps(payload, ensure_ascii=False) + "\n"
+
+
+@dataset_router.get(
+    "/dataset/export",
+    summary="Exportar pares etiquetados como JSONL (US-F15-03-01)",
+    description=(
+        "Devuelve un stream NDJSON con los match candidates que tienen "
+        "``label IN ('accept','reject')`` y ``status='validated'``. "
+        "Si el total disponible es menor que ``min_pairs`` responde HTTP 422."
+    ),
+    operation_id="comparatorDatasetExport",
+    responses={
+        200: {
+            "content": {"application/x-ndjson": {}},
+            "description": "Stream JSONL de pares etiquetados.",
+        },
+        422: {"description": "Pares insuficientes."},
+    },
+)
+async def export_dataset(
+    format: Annotated[str, Query(pattern=r"^jsonl$")] = "jsonl",
+    min_pairs: Annotated[int, Query(ge=1)] = 1000,
+    _user: User = Depends(require_permissions("matches:read")),
+    session: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    # Count available labeled+validated pairs first
+    from sqlalchemy import func
+
+    count_stmt = select(func.count()).where(
+        MatchCandidate.label.in_(["accept", "reject"]),
+        MatchCandidate.status == "validated",
+    )
+    count_result = await session.execute(count_stmt)
+    available = count_result.scalar_one()
+
+    if available < min_pairs:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "insufficient_pairs",
+                "available": available,
+                "required": min_pairs,
+            },
+        )
+
+    filename = f"labeled_pairs_{date.today().isoformat()}.jsonl"
+
+    async def _generate() -> AsyncIterator[str]:
+        async for line in _stream_labeled_pairs(session):
+            yield line
+
+    return StreamingResponse(
+        _generate(),
+        media_type="application/x-ndjson",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

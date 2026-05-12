@@ -95,6 +95,13 @@ class MatchCandidate(UuidPkMixin, TimestampMixin, Base):
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # --- Conformal Prediction / Venn-Abers (US-F15-03-03) ---
+    # conf_lower / conf_upper: bounds del intervalo conformal [0,1]. NULL hasta que corra ConformalWrapper.
+    conf_lower: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    conf_upper: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    # review_priority: prioridad de revisión humana derivada del intervalo ('low'/'high'/NULL).
+    review_priority: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     __table_args__ = (
         CheckConstraint(
             "channel IN ('amazon_uae','noon_uae')",

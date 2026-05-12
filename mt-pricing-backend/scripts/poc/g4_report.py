@@ -31,43 +31,76 @@ from scripts.poc.metrics_collector import (
 )
 
 
-def _verdict(metrics: PocMetrics) -> tuple[str, str]:
-    """Devuelve (decision, rationale).
+def _verdict(
+    ac_results: dict[str, bool | int | float],
+    fail_threshold: int = 2,
+) -> str:
+    """Retorna veredicto G4.
 
+    Args:
+        ac_results: Diccionario {nombre_ac: resultado}. Un AC falla si:
+            - Es bool False (explícito)
+            - Es int/float negativo (< 0)
+        fail_threshold: Número de ACs fallidos para retornar "DEFER" (default 2,
+            mantiene el comportamiento original: si >= 2 → DEFER, si 1 → BUILD_CONDITIONAL,
+            si 0 → BUILD).
+
+    Returns:
+        'BUILD' | 'DEFER' | 'BUILD_CONDITIONAL'
+    """
+    failures = [k for k, v in ac_results.items() if _is_failure(v)]
+
+    if not failures:
+        return "BUILD"
+    if len(failures) >= fail_threshold:
+        return "DEFER"
+    return "BUILD_CONDITIONAL"
+
+
+def _is_failure(v: bool | int | float) -> bool:
+    """Determina si un valor de AC representa un fallo.
+
+    Solo `False` explícito (bool) o valores numéricos negativos son fallos.
+    Valores falsy no-bool como 0, 0.0 NO son fallos (fix W-1).
+    """
+    if isinstance(v, bool):
+        return v is False
+    if isinstance(v, (int, float)):
+        return v < 0
+    return False
+
+
+def _verdict_from_metrics(metrics: PocMetrics) -> tuple[str, str]:
+    """Devuelve (decision, rationale) a partir de PocMetrics.
+
+    Wrapper que calcula el veredicto y genera el rationale textual.
     decision: 'BUILD' | 'DEFER' | 'BUILD_CONDITIONAL'
     """
     agg = metrics.aggregate()
     ac = agg.passes_ac()
+    decision = _verdict(ac)
     failures = [k for k, v in ac.items() if not v]
 
-    if not failures:
-        return (
-            "BUILD",
-            (
-                "Todas las métricas del agregado superan los umbrales de aceptación. "
-                "El pipeline de matching existente es suficiente para Fase 1 "
-                "sin necesidad de herramientas comerciales adicionales."
-            ),
+    if decision == "BUILD":
+        rationale = (
+            "Todas las métricas del agregado superan los umbrales de aceptación. "
+            "El pipeline de matching existente es suficiente para Fase 1 "
+            "sin necesidad de herramientas comerciales adicionales."
         )
-    if len(failures) >= 2:
-        return (
-            "DEFER",
-            (
-                f"El pipeline falla en {len(failures)} métricas ({', '.join(failures)}). "
-                "Se recomienda diferir el comparador completo a Fase 1.5+ y activar "
-                "los hooks existentes (ComparatorService, OCR, VLM judge) cuando "
-                "el research workstream haya mejorado los embeddings y el calibrador."
-            ),
+    elif decision == "DEFER":
+        rationale = (
+            f"El pipeline falla en {len(failures)} métricas ({', '.join(failures)}). "
+            "Se recomienda diferir el comparador completo a Fase 1.5+ y activar "
+            "los hooks existentes (ComparatorService, OCR, VLM judge) cuando "
+            "el research workstream haya mejorado los embeddings y el calibrador."
         )
-    # Borderline — 1 fallo.
-    return (
-        "BUILD_CONDITIONAL",
-        (
+    else:  # BUILD_CONDITIONAL
+        rationale = (
             f"El pipeline falla en 1 métrica ({failures[0]}). "
             "Se puede continuar Fase 1 con un plan de mejora específico para esa métrica "
             "antes del lanzamiento a producción. Revisar con el equipo RND en S9."
-        ),
-    )
+        )
+    return decision, rationale
 
 
 def _metrics_table(marketplaces: list[MarketplaceMetrics]) -> str:
@@ -105,7 +138,7 @@ def generate_g4_report(metrics: PocMetrics, output_path: Path) -> str:
 
     Devuelve el contenido del reporte como string.
     """
-    decision, rationale = _verdict(metrics)
+    decision, rationale = _verdict_from_metrics(metrics)
     agg = metrics.aggregate()
     today = date.today().isoformat()
 
@@ -236,4 +269,4 @@ Si la decisión fuera DEFER, los siguientes componentes **ya existen** listos pa
     return content
 
 
-__all__ = ["generate_g4_report"]
+__all__ = ["generate_g4_report", "_verdict", "_is_failure"]

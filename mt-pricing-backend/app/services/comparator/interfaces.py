@@ -8,6 +8,8 @@ Ver:
 - ADR-012 (comparator como research workstream).
 - ADR-022 (OCR), ADR-023 (reverse image search), ADR-024 (VLM judge):
   proposed, NO activados Fase 1.
+- ADR-075 (cross-encoder reranker): DEFER — RerankerPort stub listo,
+  feature flag ENABLE_CROSS_ENCODER_RERANKER=false.
 - architecture-mt-pricing-mdm-phase1.md §17.1.
 """
 
@@ -17,7 +19,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 
@@ -221,6 +223,36 @@ class ComparatorPort(ABC):
         """Snapshot de cobertura/decisiones (admin / dashboard)."""
 
 
+class RerankerPort(ABC):
+    """Stub — activar si ADR-075 decide BUILD.
+
+    Feature flag: ENABLE_CROSS_ENCODER_RERANKER (default False).
+    Opciones evaluadas: Cohere Rerank v3 / cross-encoder/ms-marco-MiniLM-L-6-v2.
+    Revisitar en S12 con dataset ≥1k pares etiquetados.
+    """
+
+    @abstractmethod
+    async def rerank(self, query: str, candidates: list[str]) -> list["RankedCandidate"]:
+        """Reordena `candidates` por relevancia respecto a `query`.
+
+        Args:
+            query: Descripción/specs del SKU MT que se busca.
+            candidates: Textos de los candidatos competitor listings.
+
+        Returns:
+            Lista de :class:`RankedCandidate` ordenada de mayor a menor score.
+        """
+
+
+@dataclass(frozen=True)
+class RankedCandidate:
+    """Candidato rerankeado con score del cross-encoder."""
+
+    text: str
+    score: float
+    original_index: int
+
+
 __all__ = [
     "CandidateMatch",
     "ComparatorPort",
@@ -228,9 +260,11 @@ __all__ = [
     "OcrBlock",
     "OcrPort",
     "OcrResult",
+    "RankedCandidate",
     "ReverseImageHit",
     "ReverseImageSearchPort",
     "ReverseImageSearchResult",
+    "RerankerPort",
     "VlmJudgePort",
     "VlmJudgeVerdict",
 ]

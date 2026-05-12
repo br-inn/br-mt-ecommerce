@@ -336,6 +336,37 @@ class MetricsCollector:
                 writer.writerow(row)
 
 
+def _is_failure(v: bool | int | float) -> bool:
+    """Determina si un valor de AC representa un fallo (fix W-4: falsy non-bool).
+
+    Regla:
+    - bool False  → fallo
+    - bool True   → ok
+    - int/float < 0 → fallo
+    - int/float >= 0 (incl. 0, 0.0) → ok (no son fallos aunque sean falsy)
+    """
+    if isinstance(v, bool):
+        return v is False
+    if isinstance(v, (int, float)):
+        return v < 0
+    return False
+
+
+def _collect_failures(ac_results: dict[str, bool | int | float]) -> list[str]:
+    """Retorna lista de claves de ACs que fallan.
+
+    Usa :func:`_is_failure` para evitar el bug W-4 donde valores falsy
+    no-bool (0, 0.0) eran incorrectamente tratados como fallos.
+
+    Args:
+        ac_results: Diccionario {nombre_ac: resultado}.
+
+    Returns:
+        Lista de nombres de ACs fallidos.
+    """
+    return [k for k, v in ac_results.items() if _is_failure(v)]
+
+
 __all__ = [
     "AC_COV_MIN",
     "AC_ECE_MAX",
@@ -345,4 +376,6 @@ __all__ = [
     "MarketplaceMetrics",
     "MetricsCollector",
     "PocMetrics",
+    "_collect_failures",
+    "_is_failure",
 ]
