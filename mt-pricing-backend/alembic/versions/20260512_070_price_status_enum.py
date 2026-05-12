@@ -107,6 +107,7 @@ def upgrade() -> None:
         $$ LANGUAGE plpgsql;
     """)
 
+    op.execute("DROP TRIGGER IF EXISTS ck_price_status_transition ON prices;")
     op.execute("""
         CREATE TRIGGER ck_price_status_transition
         BEFORE UPDATE ON prices

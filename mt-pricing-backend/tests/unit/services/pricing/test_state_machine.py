@@ -1,6 +1,6 @@
 """Unit tests para `app.services.pricing.state_machine` — US-1B-02-01.
 
-Cubre PriceStateMachine.transition() con 8 escenarios de transición válidas
+Cubre PriceStateMachine.transition() con 10 escenarios de transición válidas
 e inválidas, sin IO ni sesión de base de datos.
 """
 
@@ -78,7 +78,20 @@ def test_approved_to_published() -> None:
 
     assert price.status == "published"
     assert price.approved_by == ACTOR_ID
+    assert price.approved_at is not None
     assert event.from_status == "approved"
+    assert event.to_status == "published"
+
+
+def test_auto_approved_to_published() -> None:
+    """auto_approved → published: camino directo sin aprobación manual explícita."""
+    price = make_price("auto_approved")
+    event = PriceStateMachine.transition(price, "published", ACTOR_ID)
+
+    assert price.status == "published"
+    assert price.approved_by == ACTOR_ID
+    assert price.approved_at is not None
+    assert event.from_status == "auto_approved"
     assert event.to_status == "published"
 
 

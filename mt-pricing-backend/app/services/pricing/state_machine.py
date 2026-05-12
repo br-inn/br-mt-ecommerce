@@ -13,6 +13,7 @@ ADR-006 (workflow excepción) + ADR-010 (no aprobado no integra):
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 from app.db.models.pricing import Price, PriceApprovalEvent
@@ -60,7 +61,7 @@ def transition(
     to_status: str,
     actor: User,
     reason: str | None = None,
-    metadata: dict | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> PriceApprovalEvent:
     """Verifica + aplica transición + devuelve `PriceApprovalEvent` listo para persistir.
 
@@ -116,7 +117,7 @@ class PriceStateMachine:
         target_status: str,
         actor_user_id: UUID,
         reason: str | None = None,
-        metadata: dict | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> PriceApprovalEvent:
         """Valida la transición, muta `price.status` y devuelve el evento de auditoría.
 
