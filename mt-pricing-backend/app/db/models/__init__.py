@@ -25,6 +25,7 @@ from app.db.models.dimensions import (
     Standard,
 )
 from app.db.models.documents import Document
+from app.db.models.dr_drills import DrDrill
 from app.db.models.components import ProductConnection, ProductMaterial
 from app.db.models.tech_tables import ProductTechTable
 from app.db.models.cdc_event import CdcEvent
@@ -176,4 +177,6 @@ __all__ = [
     # Fase 1 hooks — comparator research workstream (mig. 069, ADR-012)
     "CompetitorListing",
     "MatchDecision",
+    # DR drills (mig. 076)
+    "DrDrill",
 ]

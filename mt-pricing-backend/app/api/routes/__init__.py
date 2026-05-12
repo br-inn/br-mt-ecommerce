@@ -21,6 +21,7 @@ from app.api.routes import (
     dashboard,
     dimensions,
     documents,
+    dr_drills,
     exception_rules,
     fx_rates,
     graphrag,
@@ -34,6 +35,7 @@ from app.api.routes import (
     parallel_run,
     pricing,
     pricing_admin,
+    pricing_dashboard,
     pricing_engine,
     products,
     roles,
@@ -132,3 +134,7 @@ router.include_router(dimensions.admin_router)
 router.include_router(parallel_run.router)
 # US-RND-01-10 — Human Queue validación humana
 router.include_router(human_queue.router)
+# US-DR-DRILLS — Disaster Recovery drills (mig. 076)
+router.include_router(dr_drills.router)
+# US-1B-05-07 — Pricing observability dashboard
+router.include_router(pricing_dashboard.router)

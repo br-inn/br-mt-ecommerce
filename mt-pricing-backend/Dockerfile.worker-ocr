@@ -1,0 +1,126 @@
+# syntax=docker/dockerfile:1.7
+# =============================================================================
+# MT Middle East — Celery Worker OCR (tesseract + Arabic + English)
+#
+# SEPARADO de Dockerfile.worker intencionalmente:
+#   - tesseract-ocr + tessdata-ara suma ~500 MB de sistema. Mezclarlo con el
+#     worker de imágenes penalizaría el startup (<5s actual → >30s) y el pull.
+#   - Este worker solo consume la queue `ocr`. Escalar independientemente.
+#
+# Tamaño estimado del stage runtime:
+#   base python:3.11-slim  ~120 MB
+#   + tesseract + tessdata  ~300 MB  (ara ~200 MB, eng ~12 MB, core ~90 MB)
+#   + libleptonica6          ~25 MB
+#   + Pillow + python deps  ~80 MB  (wheels del stage builder)
+#   + curl, ca-certs         ~5 MB
+#   ─────────────────────────────
+#   TOTAL estimado          ~530-700 MB
+#
+# El antipatrón >2 GB es instalar gcc/build-essential/headers en runtime.
+# Multi-stage lo resuelve: headers solo en builder, runtime solo libs .so.
+#
+# tessdata árabe (tesseract-ocr-ara):
+#   Cubre OCR de precios y especificaciones en imágenes de noon.com / amazon.ae.
+#   Tesseract almacena tessdata en /usr/share/tesseract-ocr/<ver>/tessdata/
+#   — no se necesita TESSDATA_PREFIX manual con paquetes deb oficiales.
+#
+# Feature flag OCR_ENABLED:
+#   NO se implementa aquí. Este Dockerfile provee el runtime; la lógica de
+#   activar/desactivar la task OCR vive en app/workers/tasks/ocr_tasks.py.
+#   Por defecto en prod: OCR_ENABLED=false (no se levanta este servicio).
+#   En dev: OCR_ENABLED=true en .env.local.
+#
+# Refs: ADR-030 (Celery), ADR-055 (SSRF guard), US-OCR-S7.
+# =============================================================================
+
+# --- Stage 1: builder --------------------------------------------------------
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /build
+
+# Sistema: libs de desarrollo para Pillow + pytesseract + extensiones C.
+# tesseract-ocr y libtesseract-dev necesarios para que pytesseract encuentre
+# headers en build time (si hay alguna dep que compila bindings nativos).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        ca-certificates \
+        libjpeg-dev \
+        libpng-dev \
+        libwebp-dev \
+        zlib1g-dev \
+        liblcms2-dev \
+        libtiff-dev \
+        libfreetype6-dev \
+        tesseract-ocr \
+        tesseract-ocr-ara \
+        tesseract-ocr-eng \
+        libtesseract-dev \
+        libleptonica-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv
+
+COPY pyproject.toml uv.lock* README.md ./
+RUN uv pip install --system --no-cache .
+
+COPY app ./app
+
+# --- Stage 2: runtime (slim, libs runtime solamente) -------------------------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+# Runtime libs — sin -dev, sin build-essential.
+# libleptonica6: runtime de Leptonica (dependency de Tesseract).
+# tesseract-ocr-ara + tesseract-ocr-eng: tessdata en /usr/share/tesseract-ocr/
+# No se necesita TESSDATA_PREFIX — los paquetes deb colocan los datos
+# en la ruta que Tesseract busca por defecto.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        libjpeg62-turbo \
+        libpng16-16 \
+        libwebp7 \
+        libwebpmux3 \
+        libwebpdemux2 \
+        zlib1g \
+        liblcms2-2 \
+        libtiff6 \
+        libfreetype6 \
+        tesseract-ocr \
+        tesseract-ocr-ara \
+        tesseract-ocr-eng \
+        libleptonica6 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 1001 mtworker \
+    && useradd --system --uid 1001 --gid mtworker --no-create-home mtworker
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder --chown=mtworker:mtworker /build/app /app/app
+
+USER mtworker
+
+# Healthcheck: ping al worker via Celery inspect.
+# Overrideable desde docker-compose donde tenemos el hostname real del contenedor.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD celery -A app.workers.worker inspect ping -d celery@$HOSTNAME -t 5 || exit 1
+
+# Solo consume la queue `ocr`. Concurrencia 2: OCR es CPU-bound y
+# pytesseract lanza subprocesos — más de 2 workers por contenedor satura.
+# Escalar horizontalmente levantando más réplicas de este servicio.
+CMD ["celery", "-A", "app.workers.worker", "worker", \
+     "-Q", "ocr", \
+     "--loglevel=INFO", \
+     "--concurrency=2"]

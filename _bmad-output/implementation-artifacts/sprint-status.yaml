@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-12T00:00:00.000Z"  # Wave 1 completo: 5 stories done (US-1B-02-02/03/07, US-RND-01-10, US-1B-05-01)
+last_updated: "2026-05-12T18:00:00.000Z"  # S7 Wave 2 completo: 5 stretch stories done (US-1B-05-07/06/02, US-OCR-S7, US-DR-DRILLS)
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -39,11 +39,11 @@ development_status:
   US-1B-05-01: done            # Reporte diff app vs Excel (parallel run) — 3 SP ✅ S7
 
 # ─── Stories S7 — stretch (P2/P3) ──────────────────────────────────────────────
-  US-1B-05-07: backlog        # Dashboards observabilidad — 5 SP
-  US-1B-05-06: backlog        # Performance hardening — 5 SP
-  US-1B-05-02: backlog        # Manual operativo handbook-es.md — 5 SP
-  US-OCR-S7: backlog          # Dockerfile.worker-ocr tesseract baked — 3 SP
-  US-DR-DRILLS: backlog       # Tabla dr_drills + mig 030 + endpoint admin — 3 SP
+  US-1B-05-07: done            # Dashboards observabilidad — 5 SP ✅ S7
+  US-1B-05-06: done            # Performance hardening — 5 SP ✅ S7
+  US-1B-05-02: done            # Manual operativo handbook-es.md — 5 SP ✅ S7
+  US-OCR-S7: done              # Dockerfile.worker-ocr tesseract baked — 3 SP ✅ S7
+  US-DR-DRILLS: done           # Tabla dr_drills + mig 076 + endpoint admin — 3 SP ✅ S7
 
 # ─── Stories bloqueadas externo ────────────────────────────────────────────────
   US-1B-02-06: done            # Cola Gerente UI — 8 SP ✅ S7 (Pantalla 12 firmada 2026-05-12)
@@ -54,4 +54,4 @@ development_status:
   US-1B-05-04-DOC: done      # DR runbook + drill plan — 3 SP ✅ S6
 
 # ─── Retrospectivas ────────────────────────────────────────────────────────────
-  sprint-6-retrospective: optional
+  sprint-6-retrospective: done
