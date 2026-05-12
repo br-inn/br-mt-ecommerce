@@ -88,7 +88,7 @@ development_status:
 # ─── Épicas Fase 1.5 ──────────────────────────────────────────────────────────
   epic-EP-F15-01: done        # KG Foundation — CERRADA S10 (6/6 stories done, 34 SP)
   epic-EP-F15-02: done        # Pipeline Activation — 5/5 done ✅ S11 (SP API + VLM + RIS + Price Sanity + Tradeling)
-  epic-EP-F15-03: backlog    # Precision Enhancement (fine-tune, conformal, weight tuning)
+  epic-EP-F15-03: in-progress # Precision Enhancement — 0/5 done 🔄 S11 (parallel dispatch)
 
 # ─── Stories Fase 1.5 — EP-F15-01 (KG Foundation) ────────────────────────────
   US-F15-01-01: done          # Neo4j setup + data residency UAE — 3 SP ✅ S10 Wave 1
@@ -106,11 +106,11 @@ development_status:
   US-F15-02-05: done          # Tradeling API integration — 8 SP ✅ S11
 
 # ─── Stories Fase 1.5 — EP-F15-03 (Precision Enhancement) ───────────────────
-  US-F15-03-01: backlog      # Pipeline etiquetado + exportación dataset — 5 SP
-  US-F15-03-02: backlog      # Embedding fine-tune ≥1k pares — 8 SP
-  US-F15-03-03: backlog      # Conformal Prediction / Venn-Abers — 8 SP
-  US-F15-03-04: backlog      # Cross-Encoder spike + ADR — 5 SP
-  US-F15-03-05: backlog      # Weight tuning por familia + fix W-1/W-4 — 5 SP
+  US-F15-03-01: in-progress  # Pipeline etiquetado + exportación dataset — 5 SP 🔄 S11
+  US-F15-03-02: in-progress  # Embedding fine-tune ≥1k pares — 8 SP 🔄 S11
+  US-F15-03-03: in-progress  # Conformal Prediction / Venn-Abers — 8 SP 🔄 S11
+  US-F15-03-04: in-progress  # Cross-Encoder spike + ADR — 5 SP 🔄 S11
+  US-F15-03-05: in-progress  # Weight tuning por familia + fix W-1/W-4 — 5 SP 🔄 S11
 
 # ─── Retrospectivas ────────────────────────────────────────────────────────────
   sprint-6-retrospective: done
