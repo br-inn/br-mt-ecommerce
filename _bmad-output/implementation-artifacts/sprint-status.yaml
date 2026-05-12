@@ -102,8 +102,8 @@ development_status:
   US-F15-02-01: done          # Amazon SP API fetcher real — 8 SP ✅ S10 Wave 3B
   US-F15-02-02: done           # VLM Judge activación (claude-sonnet-4-6) — 8 SP ✅ code review 16 patches aplicados 2026-05-12
   US-F15-02-03: done            # Reverse Image Search activación (flag on) — 5 SP ✅ S11
-  US-F15-02-04: backlog      # Price Sanity Check (P10/P90 pre-VLM) — 5 SP
-  US-F15-02-05: backlog      # Tradeling API integration — 8 SP
+  US-F15-02-04: in-progress  # Price Sanity Check (P10/P90 pre-VLM) — 5 SP 🔄 S11
+  US-F15-02-05: in-progress  # Tradeling API integration — 8 SP 🔄 S11
 
 # ─── Stories Fase 1.5 — EP-F15-03 (Precision Enhancement) ───────────────────
   US-F15-03-01: backlog      # Pipeline etiquetado + exportación dataset — 5 SP
