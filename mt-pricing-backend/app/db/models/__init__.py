@@ -26,10 +26,12 @@ from app.db.models.dimensions import (
 )
 from app.db.models.documents import Document
 from app.db.models.dr_drills import DrDrill
+from app.db.models.exports import ExportManifest, LastGoodExport
 from app.db.models.components import ProductConnection, ProductMaterial
 from app.db.models.tech_tables import ProductTechTable
 from app.db.models.cdc_event import CdcEvent
 from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
+from app.db.models.channels import Channel, ChannelStateHistory
 from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
 from app.db.models.cost_scheme import CostScheme
 from app.db.models.currency import Currency
@@ -42,7 +44,6 @@ from app.db.models.match_candidate import MatchCandidate
 from app.db.models.material_compatibility import MaterialCompatibility
 from app.db.models.notification import Notification
 from app.db.models.pricing import (
-    Channel,
     ExceptionRule,
     FXRate,
     Price,
@@ -100,8 +101,10 @@ __all__ = [
     "JobRun",
     # imports (US-1A-06-01)
     "ImportRun",
-    # pricing engine (Wave 2 — motor v5.1)
+    # channel operational states (EP-1B-03 Sprint 8 — mig 079)
     "Channel",
+    "ChannelStateHistory",
+    # pricing engine (Wave 2 — motor v5.1)
     "FXRate",
     "Cost",
     "Price",
@@ -179,4 +182,8 @@ __all__ = [
     "MatchDecision",
     # DR drills (mig. 076)
     "DrDrill",
+    # Pricing exports manifest (US-1B-04-02 — mig. 081)
+    "ExportManifest",
+    # Last-known-good exports snapshot (US-1B-04-05 — mig. 083)
+    "LastGoodExport",
 ]

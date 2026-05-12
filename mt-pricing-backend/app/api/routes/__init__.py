@@ -15,6 +15,7 @@ from app.api.routes import (
     audit,
     audit_query,
     auth,
+    channels,
     channels_mirror,
     costs,
     currencies,
@@ -23,6 +24,7 @@ from app.api.routes import (
     documents,
     dr_drills,
     exception_rules,
+    exports,
     fx_rates,
     graphrag,
     human_queue,
@@ -87,6 +89,7 @@ router.include_router(jobs.router)
 router.include_router(audit.router)
 router.include_router(matches.router)
 router.include_router(channels_mirror.router)
+router.include_router(channels.router)
 router.include_router(currencies.router)
 router.include_router(fx_rates.router)
 router.include_router(imports_costs.router)
@@ -138,3 +141,5 @@ router.include_router(human_queue.router)
 router.include_router(dr_drills.router)
 # US-1B-05-07 — Pricing observability dashboard
 router.include_router(pricing_dashboard.router)
+# US-1B-04-02 — Exports CSV por canal (solo approved/auto_approved)
+router.include_router(exports.router)

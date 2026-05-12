@@ -71,6 +71,17 @@ class ChannelNotFound(PricingDomainError):
         super().__init__("channel_not_found", f"Canal {code!r} no existe.", 404)
 
 
+class ChannelDeprecated(PricingDomainError):
+    """US-1B-03-03 — canal deprecated: no se permiten nuevas propuestas."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(
+            "channel_deprecated",
+            f"canal deprecated: no se permiten nuevas propuestas ({code!r})",
+            422,
+        )
+
+
 class SchemeNotFound(PricingDomainError):
     def __init__(self, code: str) -> None:
         super().__init__("scheme_not_found", f"Scheme {code!r} no existe.", 404)
@@ -164,6 +175,9 @@ class PricingService:
         channel = await self.channels.get_by_code(channel_code)
         if channel is None:
             raise ChannelNotFound(channel_code)
+        # US-1B-03-03 — canal deprecated no acepta nuevas propuestas
+        if channel.state == "deprecated":
+            raise ChannelDeprecated(channel_code)
         # Scheme code se referencia directamente (es la PK de schemes)
         # Validamos via cost lookup más adelante; permitimos cualquier scheme_code
         # registrado (FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE).
@@ -550,6 +564,7 @@ __all__ = [
     "PricingService",
     "ProductNotFound",
     "ChannelNotFound",
+    "ChannelDeprecated",
     "SchemeNotFound",
     "CostNotFound",
     "PriceNotFound",

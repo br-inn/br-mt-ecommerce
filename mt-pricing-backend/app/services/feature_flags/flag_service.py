@@ -47,6 +47,12 @@ FLAG_VLM_JUDGE = "MT_LIVE_NETWORK_VLM_JUDGE"
 FLAG_KILL_SWITCH = "KILL_SWITCH"
 # Comparator research workstream (ADR-012) — seed en mig. 069.
 FLAG_COMPARATOR_ENABLED = "COMPARATOR_ENABLED"
+# Channel recommendation (US-1B-03-04) — default off Fase 1; activable Fase 3.
+FLAG_CHANNEL_RECOMMENDATION = "channel_recommendation"
+# Shadow publish Amazon UAE (US-1B-04-04) — escribe CSV en /tmp sin llamar SP-API real.
+FLAG_SHADOW_PUBLISH_AMAZON = "shadow_publish_amazon"
+# Reverse image search via CLIP (US-RND-01-09) — R&D only; OFF por defecto.
+FLAG_REVERSE_IMAGE_SEARCH = "reverse_image_search"
 
 KNOWN_FLAGS: tuple[str, ...] = (
     FLAG_LIVE_NETWORK_AMAZON_UAE,
@@ -56,6 +62,9 @@ KNOWN_FLAGS: tuple[str, ...] = (
     FLAG_VLM_JUDGE,
     FLAG_KILL_SWITCH,
     FLAG_COMPARATOR_ENABLED,
+    FLAG_CHANNEL_RECOMMENDATION,
+    FLAG_SHADOW_PUBLISH_AMAZON,
+    FLAG_REVERSE_IMAGE_SEARCH,
 )
 
 
@@ -280,22 +289,82 @@ def set_local_flag(key: str, value: bool) -> None:
     _local_cache[key] = value
 
 
+# ---------------------------------------------------------------------------
+# Shadow publish Amazon helper — US-1B-04-04
+# ---------------------------------------------------------------------------
+async def is_shadow_publish_amazon_enabled(session: "AsyncSession") -> bool:
+    """Retorna True si feature flag shadow_publish_amazon está activo.
+
+    Consulta directo a DB (sin cache Redis) — usar sólo en paths no críticos.
+    En hot-path usar :func:`is_enabled` con el singleton bootstrappeado.
+    """
+    from app.repositories.feature_flags import FeatureFlagRepository
+
+    repo = FeatureFlagRepository(session)
+    row = await repo.get(FLAG_SHADOW_PUBLISH_AMAZON)
+    if row is None:
+        return False
+    return bool(row.value_jsonb.get("enabled", False))
+
+
+# ---------------------------------------------------------------------------
+# Reverse image search helper — US-RND-01-09
+# ---------------------------------------------------------------------------
+async def is_reverse_image_search_enabled(session: "AsyncSession") -> bool:
+    """Retorna True si feature flag reverse_image_search está activo.
+
+    OFF por defecto — R&D only; no seed en BD.
+    Consulta directo a DB (sin cache Redis) — usar sólo en paths no críticos.
+    """
+    from app.repositories.feature_flags import FeatureFlagRepository
+
+    repo = FeatureFlagRepository(session)
+    row = await repo.get(FLAG_REVERSE_IMAGE_SEARCH)
+    if row is None:
+        return False
+    return bool(row.value_jsonb.get("enabled", False))
+
+
+# ---------------------------------------------------------------------------
+# Channel recommendation helper — US-1B-03-04
+# ---------------------------------------------------------------------------
+async def is_channel_recommendation_enabled(session: "AsyncSession") -> bool:
+    """Retorna True si feature flag channel_recommendation está activo.
+
+    Consulta directo a DB (sin cache Redis) — usar sólo en paths no críticos.
+    En hot-path usar :func:`is_enabled` con el singleton bootstrappeado.
+    """
+    from app.repositories.feature_flags import FeatureFlagRepository
+
+    repo = FeatureFlagRepository(session)
+    row = await repo.get(FLAG_CHANNEL_RECOMMENDATION)
+    if row is None:
+        return False
+    return bool(row.value_jsonb.get("enabled", False))
+
+
 __all__ = [
     "CACHE_NS",
     "CACHE_TTL_SECONDS",
+    "FLAG_CHANNEL_RECOMMENDATION",
     "FLAG_COMPARATOR_ENABLED",
     "FLAG_KILL_SWITCH",
     "FLAG_LIVE_NETWORK_AMAZON_UAE",
     "FLAG_LIVE_NETWORK_NOON_API",
     "FLAG_LIVE_NETWORK_NOON_UAE",
     "FLAG_LIVE_NETWORK_SP_API",
+    "FLAG_REVERSE_IMAGE_SEARCH",
+    "FLAG_SHADOW_PUBLISH_AMAZON",
     "FLAG_VLM_JUDGE",
     "FlagService",
     "KNOWN_FLAGS",
     "clear_local_cache",
     "get_default_service",
+    "is_channel_recommendation_enabled",
     "is_enabled",
     "is_live_network_enabled",
+    "is_reverse_image_search_enabled",
+    "is_shadow_publish_amazon_enabled",
     "set_default_service",
     "set_local_flag",
     "warmup_local_cache",

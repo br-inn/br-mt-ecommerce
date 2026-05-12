@@ -1,4 +1,4 @@
-"""Pricing domain models — channels, fx_rates, costs, prices, exception_rules,
+"""Pricing domain models — fx_rates, costs, prices, exception_rules,
 price_approval_events (Wave 2 — motor v5.1 ported).
 
 Refs:
@@ -9,8 +9,8 @@ Refs:
 - `_bmad-output/planning-artifacts/sprint0-v51-rules-extraction.md` (18 reglas + golden numbers)
 
 NOTAS arquitectura:
-- `Channel` se gestiona como tabla nueva (los 5 canales: amazon_uae, noon_uae,
-  b2c_direct, b2b_direct, marketplace_listing). PK UUID + `code` UNIQUE.
+- `Channel` se movió a `app.db.models.channels` (US-1B-03-01, mig 079).
+  Se re-exporta aquí para backward-compat.
 - `Scheme` (cost scheme) ya existía (`schemes` table, PK = code STRING).
   El modelo `Price.scheme_code` se referencia por `code` (no UUID) para coherencia
   con `costs.scheme_code` y la tabla previa.
@@ -41,42 +41,15 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.db.enums import ChannelState, PriceState, Scheme, values_csv
+from app.db.enums import PriceState, Scheme, values_csv
 from app.db.mixins import AuditMixin, TimestampMixin, UuidPkMixin
 from app.db.types import UUID_PG
 
-
 # ---------------------------------------------------------------------------
-# Channel
+# Channel — moved to app.db.models.channels (US-1B-03-01). Re-export here
+# for backward-compat with any code that does `from app.db.models.pricing import Channel`.
 # ---------------------------------------------------------------------------
-class Channel(UuidPkMixin, TimestampMixin, Base):
-    """Canal de venta (amazon_uae, noon_uae, b2c_direct, b2b_direct, marketplace).
-
-    `state` recorre el ciclo: inactive → pre_launch → pilot → live → paused → deprecated.
-    `state_history` JSONB acumula transiciones.
-    """
-
-    __tablename__ = "channels"
-
-    code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    state: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'inactive'")
-    )
-    schemes_supported: Mapped[list[str]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'[]'::jsonb")
-    )
-    state_history: Mapped[list[dict]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'[]'::jsonb")
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            f"state IN {values_csv(ChannelState)}",
-            name="ck_channels_state",
-        ),
-        Index("idx_channels_state", "state"),
-    )
+from app.db.models.channels import Channel  # noqa: F401,E402
 
 
 # ---------------------------------------------------------------------------

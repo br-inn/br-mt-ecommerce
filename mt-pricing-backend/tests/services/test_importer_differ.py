@@ -17,7 +17,9 @@ from app.services.importer.parser import ParsedRow
 
 def _mk_product(sku: str, **fields: Any) -> Product:
     """Construye un Product en memoria, sin pasar por DB."""
-    p = Product(sku=sku, name_en=fields.get("name_en", "n"), family=fields.get("family", "f"))
+    fields.pop("name_en", None)  # hybrid_property read-only — no tiene setter
+    family = fields.pop("family", "f")
+    p = Product(sku=sku, family=family)
     for k, v in fields.items():
         setattr(p, k, v)
     return p

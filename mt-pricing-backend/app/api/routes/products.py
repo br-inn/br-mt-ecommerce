@@ -1016,6 +1016,21 @@ async def confirm_asset_upload(
         except Exception:  # noqa: BLE001
             pass
 
+    # Hook: reverse image search CLIP indexing (US-RND-01-09).
+    # Sólo activo si feature flag reverse_image_search está ON.
+    if asset.kind in ("photo", "banner", "mirror_url") and asset.storage_path:
+        try:
+            from app.services.feature_flags.flag_service import is_reverse_image_search_enabled
+            from app.services.image_search.clip_service import get_image_backend
+
+            _db_session = product_service.session  # reuse existing session
+            if await is_reverse_image_search_enabled(_db_session):
+                _backend = get_image_backend()
+                await _backend.index_image(str(sku), asset.storage_path)
+        except Exception:  # noqa: BLE001
+            # Non-blocking — indexing failure must not break the upload response.
+            pass
+
     return ProductAssetResponse.model_validate(asset)
 
 
