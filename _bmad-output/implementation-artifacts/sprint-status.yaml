@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-12T00:00:00.000Z"  # actualizado por bmad-sprint-status — sync commits US-1B-02-05 + US-1B-02-09
+last_updated: "2026-05-12T00:00:00.000Z"  # Wave 1 completo: 5 stories done (US-1B-02-02/03/07, US-RND-01-10, US-1B-05-01)
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -26,17 +26,17 @@ development_status:
 # ─── Stories S7 — comprometidas ────────────────────────────────────────────────
   # EP-1B-02 — Workflow aprobación (P0 core)
   US-1B-02-01: done           # State machine prices.status enforcement — 5 SP ✅ S7
-  US-1B-02-02: ready-for-dev  # exception_rules + UI Gerente — 8 SP
-  US-1B-02-03: ready-for-dev  # auto_approved vs pending_review logic — 5 SP
+  US-1B-02-02: done            # exception_rules CRUD + versionado + UI Gerente — 8 SP ✅ S7
+  US-1B-02-03: done            # auto_approved vs pending_review logic — 5 SP ✅ S7
   US-1B-02-05: done            # bulk-approve endpoint — 3 SP ✅ S7
-  US-1B-02-07: ready-for-dev  # Digest diario 18:00 UAE — 5 SP (carry-over S6)
+  US-1B-02-07: done            # Digest diario 18:00 UAE — 5 SP ✅ S7
   US-1B-02-09: done            # Audit trail extendido — 3 SP ✅ S7
 
   # EP-RND-01 — Human queue (P1)
-  US-RND-01-10: ready-for-dev # UI human queue MVP — 5 SP (carry-over S6)
+  US-RND-01-10: done           # UI human queue MVP — 5 SP ✅ S7
 
   # EP-1B-05 — Hardening pre-cutover (P1)
-  US-1B-05-01: ready-for-dev  # Reporte diff app vs Excel (parallel run) — 3 SP
+  US-1B-05-01: done            # Reporte diff app vs Excel (parallel run) — 3 SP ✅ S7
 
 # ─── Stories S7 — stretch (P2/P3) ──────────────────────────────────────────────
   US-1B-05-07: backlog        # Dashboards observabilidad — 5 SP
