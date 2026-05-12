@@ -372,7 +372,8 @@
     },
     "audit": {
       "title": "Change history",
-      "placeholder": "Change timeline ships in Sprint 2 (US-1A-07-XX). Audit events are already being recorded."
+      "placeholder": "Change timeline ships in Sprint 2 (US-1A-07-XX). Audit events are already being recorded.",
+      "subtitle": "Events recorded for this SKU."
     }
   },
   "proveedores": {

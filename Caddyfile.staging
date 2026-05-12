@@ -1,0 +1,121 @@
+# =============================================================================
+# Caddyfile.staging — Reverse Proxy con auto-HTTPS para staging
+# =============================================================================
+# Dominio: staging.mt-pricing.com (o variable de entorno STAGING_DOMAIN)
+# Caddy gestiona TLS automáticamente vía Let's Encrypt / ZeroSSL.
+#
+# Rutas:
+#   /api/*    → backend FastAPI (mt-backend-staging:8000)
+#   /health/* → backend FastAPI (bypass auth, timeouts cortos)
+#   /metrics  → backend FastAPI (Prometheus)
+#   /docs*    → backend FastAPI (OpenAPI UI)
+#   /redoc*   → backend FastAPI
+#   /openapi.json → backend FastAPI
+#   /         → frontend Next.js (mt-frontend-staging:3000)
+#
+# Referencia: ADR-035 (Caddy reverse proxy).
+# =============================================================================
+
+{
+  # Admin API deshabilitada — seguridad.
+  admin off
+
+  # Logging estructurado JSON a stdout.
+  log {
+    output stdout
+    format json
+    level INFO
+  }
+
+  # Email para Let's Encrypt (ACME). Se puede sobreescribir via CADDY_ACME_EMAIL.
+  email {$CADDY_ACME_EMAIL:ops@br-innovation.com}
+}
+
+# -----------------------------------------------------------------------------
+# Dominio staging — auto-HTTPS gestionado por Caddy
+# -----------------------------------------------------------------------------
+{$STAGING_DOMAIN:staging.mt-pricing.com} {
+
+  # -------------------------------------------------------------------------
+  # Healthcheck bypass — sin rate-limiting ni auth.
+  # Usado por: Docker healthcheck, monitores externos, deploy script.
+  # -------------------------------------------------------------------------
+  handle /health/* {
+    reverse_proxy mt-backend-staging:8000 {
+      transport http {
+        dial_timeout    2s
+        response_header_timeout 5s
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Métricas Prometheus — restringir a IPs internas en producción.
+  # -------------------------------------------------------------------------
+  handle /metrics {
+    reverse_proxy mt-backend-staging:8000
+  }
+
+  # -------------------------------------------------------------------------
+  # API — todo bajo /api/* a FastAPI
+  # -------------------------------------------------------------------------
+  handle /api/* {
+    reverse_proxy mt-backend-staging:8000 {
+      header_up X-Real-IP          {remote_host}
+      header_up X-Forwarded-For    {remote_host}
+      header_up X-Forwarded-Proto  {scheme}
+      header_up X-Request-ID       {http.request.header.X-Request-ID}
+
+      transport http {
+        dial_timeout            5s
+        response_header_timeout 60s
+        read_timeout            600s
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Documentación OpenAPI
+  # -------------------------------------------------------------------------
+  handle /docs* {
+    reverse_proxy mt-backend-staging:8000
+  }
+  handle /redoc* {
+    reverse_proxy mt-backend-staging:8000
+  }
+  handle /openapi.json {
+    reverse_proxy mt-backend-staging:8000
+  }
+
+  # -------------------------------------------------------------------------
+  # Frontend (Next.js) — catch-all SSR + assets estáticos
+  # -------------------------------------------------------------------------
+  handle {
+    reverse_proxy mt-frontend-staging:3000 {
+      header_up X-Real-IP {remote_host}
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Security headers
+  # -------------------------------------------------------------------------
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options           "DENY"
+    X-Content-Type-Options    "nosniff"
+    Referrer-Policy           "strict-origin-when-cross-origin"
+    Permissions-Policy        "camera=(), microphone=(), geolocation=()"
+    -Server
+  }
+
+  # Compresión
+  encode zstd gzip
+}
+
+# -----------------------------------------------------------------------------
+# Redirect HTTP → HTTPS (Caddy lo hace automáticamente, pero explícito para
+# claridad en logs y compatibilidad con proxies intermedios).
+# -----------------------------------------------------------------------------
+http://{$STAGING_DOMAIN:staging.mt-pricing.com} {
+  redir https://{host}{uri} permanent
+}

@@ -1,0 +1,254 @@
+# =============================================================================
+# Docker Compose — Staging (Hetzner, imágenes pre-built, Doppler secrets)
+# =============================================================================
+# Modelo de despliegue staging:
+#   - Imágenes de ghcr.io por tag (no build local).
+#   - Sin bind mounts de código fuente.
+#   - Secrets via Doppler CLI: `doppler run -- docker compose -f docker-compose.staging.yml up -d`
+#   - DB: Supabase remota (DATABASE_URL provista por Doppler).
+#   - Redis: dockerizado con AOF persistence.
+#   - Caddy: auto-HTTPS vía Let's Encrypt / ZeroSSL.
+#
+# Uso:
+#   export IMAGE_TAG=1.2.3
+#   doppler run -- docker compose -f docker-compose.staging.yml pull
+#   doppler run -- docker compose -f docker-compose.staging.yml up -d --remove-orphans
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Redis 7 — Celery broker + result backend + cache (AOF persistence)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: mt-redis-staging
+    restart: unless-stopped
+    # No expuesto al host — solo accesible por la red interna.
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - mt-staging
+
+  # ---------------------------------------------------------------------------
+  # Backend (FastAPI) — imagen pre-built, sin bind mounts
+  # ---------------------------------------------------------------------------
+  backend:
+    image: ghcr.io/br-mt/mt-pricing-backend:${IMAGE_TAG:-latest}
+    container_name: mt-backend-staging
+    restart: unless-stopped
+    expose:
+      - "8000"
+    env_file:
+      - .env.staging
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: staging
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "2",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/health/live',timeout=3).status==200 else sys.exit(1)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - mt-staging
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker — imagen pre-built
+  # ---------------------------------------------------------------------------
+  worker:
+    image: ghcr.io/br-mt/mt-pricing-backend:${IMAGE_TAG:-latest}
+    container_name: mt-worker-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: staging
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.worker",
+        "worker",
+        "-Q",
+        "imports,pricing,images,comparator,notifications,audit,default",
+        "-l",
+        "info",
+        "--concurrency",
+        "4",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "celery -A app.workers.worker inspect ping -d celery@$$HOSTNAME -t 5 || exit 1",
+        ]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mt-staging
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat — DatabaseScheduler en Supabase Postgres
+  # ---------------------------------------------------------------------------
+  beat:
+    image: ghcr.io/br-mt/mt-pricing-backend:${IMAGE_TAG:-latest}
+    container_name: mt-beat-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: staging
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.worker",
+        "beat",
+        "--scheduler=app.scheduler.database_scheduler:DatabaseScheduler",
+        "-l",
+        "info",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "grep -q beat /proc/1/cmdline || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mt-staging
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js) — imagen pre-built, standalone output
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: ghcr.io/br-mt/mt-pricing-frontend:${IMAGE_TAG:-latest}
+    container_name: mt-frontend-staging
+    restart: unless-stopped
+    expose:
+      - "3000"
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-qO-",
+          "--tries=1",
+          "http://localhost:3000/api/health",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mt-staging
+
+  # ---------------------------------------------------------------------------
+  # Caddy 2 — ÚNICO entry point HTTPS. Auto-TLS via Let's Encrypt.
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: mt-caddy-staging
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN:-staging.mt-pricing.com}
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "wget", "-qO-", "--tries=1", "http://localhost:80/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - mt-staging
+
+# -----------------------------------------------------------------------------
+# Volumes — Redis AOF + Caddy TLS state
+# -----------------------------------------------------------------------------
+volumes:
+  redis_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+# -----------------------------------------------------------------------------
+# Network interna — servicios NO accesibles desde host excepto vía Caddy.
+# -----------------------------------------------------------------------------
+networks:
+  mt-staging:
+    name: mt-pricing-staging
+    driver: bridge
