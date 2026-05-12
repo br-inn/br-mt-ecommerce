@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digest Diario de Precios — MT Middle East</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { background: #1a237e; color: #ffffff; padding: 24px 32px; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    .header p  { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+    .body { padding: 24px 32px; }
+    .summary-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    .summary-table th { text-align: left; font-size: 12px; text-transform: uppercase; color: #666; padding: 8px 12px; background: #f0f0f0; }
+    .summary-table td { padding: 10px 12px; border-bottom: 1px solid #eeeeee; font-size: 15px; }
+    .summary-table td.label { color: #333; }
+    .summary-table td.value { font-weight: 700; text-align: right; }
+    .badge-pending  { color: #e65100; }
+    .badge-approved { color: #2e7d32; }
+    .badge-auto     { color: #1565c0; }
+    .badge-escalated{ color: #b71c1c; }
+    .badge-total    { color: #212121; }
+    .footer { background: #f5f5f5; padding: 16px 32px; font-size: 12px; color: #999; text-align: center; }
+    .cta { display: inline-block; margin: 16px 0; padding: 10px 24px; background: #1a237e; color: #ffffff !important; text-decoration: none; border-radius: 4px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Digest Diario de Precios</h1>
+      <p>MT Middle East MDM · {{date}}</p>
+    </div>
+    <div class="body">
+      <p style="color:#555;font-size:14px;">Resumen de actividad de precios del día:</p>
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Estado</th>
+            <th style="text-align:right;">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="label">Pendientes de revisión</td>
+            <td class="value badge-pending">{{pending_review}}</td>
+          </tr>
+          <tr>
+            <td class="label">Auto-aprobados</td>
+            <td class="value badge-auto">{{auto_approved}}</td>
+          </tr>
+          <tr>
+            <td class="label">Aprobados manualmente</td>
+            <td class="value badge-approved">{{approved}}</td>
+          </tr>
+          <tr>
+            <td class="label">Escalados</td>
+            <td class="value badge-escalated">{{escalated}}</td>
+          </tr>
+          <tr style="background:#fafafa;">
+            <td class="label" style="font-weight:700;">Total del día</td>
+            <td class="value badge-total">{{total}}</td>
+          </tr>
+        </tbody>
+      </table>
+      {% if pending_review > 0 %}
+      <p style="color:#e65100;font-size:13px;">
+        &#9888; Hay <strong>{{pending_review}}</strong> precio(s) pendiente(s) de revisión. Por favor revíselos a la brevedad.
+      </p>
+      {% endif %}
+      {% if escalated > 0 %}
+      <p style="color:#b71c1c;font-size:13px;">
+        &#128680; <strong>{{escalated}}</strong> precio(s) han sido escalados por superar el umbral de espera.
+      </p>
+      {% endif %}
+      <a href="{{app_url}}/pricing/prices?status=pending_review" class="cta">Ver precios pendientes</a>
+    </div>
+    <div class="footer">
+      Este mensaje fue generado automáticamente por MT Middle East Pricing Engine.<br/>
+      © 2026 BR Innovation — MT Middle East
+    </div>
+  </div>
+</body>
+</html>

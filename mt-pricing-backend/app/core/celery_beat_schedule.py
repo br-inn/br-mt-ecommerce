@@ -55,6 +55,24 @@ BEAT_SCHEDULE: dict[str, dict] = {
         "kwargs": {"window_hours": 48},
         "options": {"queue": "pricing"},
     },
+    # ----- Pricing daily digest 18:00 UAE (US-1B-02-07, Sprint 7) -----
+    # Digest diario a las 18:00 Asia/Dubai = 14:00 UTC.
+    # Crea notificación in-app para gerentes_comerciales + email si SMTP_ENABLED.
+    "pricing_daily_digest": {
+        "task": "mt.pricing.daily_digest",
+        "schedule": crontab(hour="14", minute="0"),  # 18:00 UAE = 14:00 UTC
+        "args": (),
+        "options": {"queue": "pricing"},
+    },
+    # ----- Pricing parallel run diff 08:00 UAE (US-1B-05-01, Sprint 7) -----
+    # Compara prices app vs Excel y persiste reporte en Redis.
+    # 08:00 Asia/Dubai = 04:00 UTC.
+    "pricing_parallel_run_diff": {
+        "task": "mt.pricing.parallel_run_diff",
+        "schedule": crontab(hour="4", minute="0"),  # 08:00 UAE = 04:00 UTC
+        "args": (),
+        "options": {"queue": "pricing"},
+    },
 }
 
 
