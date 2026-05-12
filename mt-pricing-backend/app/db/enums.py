@@ -24,10 +24,17 @@ class PriceState(StrEnum):
     AUTO_APPROVED = "auto_approved"
     APPROVED = "approved"
     REJECTED = "rejected"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+    # Legacy — mantenidos por backward-compat con datos históricos
     REVISED = "revised"
     EXPORTED = "exported"
     SUPERSEDED = "superseded"
     MIGRATED = "migrated"
+
+
+# Alias semántico usado en US-1B-02 (workflow aprobación)
+PriceStatus = PriceState
 
 
 class ChannelState(StrEnum):
