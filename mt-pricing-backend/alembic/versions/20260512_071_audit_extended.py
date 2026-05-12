@@ -51,7 +51,7 @@ def upgrade() -> None:
             END;
 
             IF TG_OP = 'INSERT' THEN
-                v_action       := 'price.status_changed';
+                v_action       := 'price.created';
                 v_old_status   := NULL;
                 v_new_status   := NEW.status;
                 v_payload_diff := jsonb_build_object(
@@ -119,7 +119,7 @@ def upgrade() -> None:
             END;
 
             IF TG_OP = 'INSERT' THEN
-                v_action       := 'exception_rule.updated';
+                v_action       := 'exception_rule.created';
                 v_payload_diff := jsonb_build_object(
                     'code',   NEW.code,
                     'active', NEW.active

@@ -19,14 +19,13 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
 from app.api.pagination import decode_cursor, encode_cursor
 from app.db.models.audit import AuditEvent
 from app.db.models.user import User
-from app.repositories.audit import AuditFilters, AuditRepository
+from app.repositories.audit import PRICE_TIMELINE_MAX_ROWS, AuditFilters, AuditRepository
 from app.schemas.audit import AuditActorRef, AuditEventResponse
 from app.schemas.common import Cursor, Pagination
 
@@ -158,20 +157,8 @@ async def get_price_timeline(
     _: Annotated[User, Depends(require_permissions("audit:read"))],
 ) -> list[AuditEventResponse]:
     """Devuelve todos los audit events de `entity_type='price'` para el precio dado,
-    ordenados cronológicamente ASC. Máx ~200 eventos por precio — sin paginación.
+    ordenados cronológicamente ASC. Máx `PRICE_TIMELINE_MAX_ROWS` eventos — sin paginación.
     """
-    stmt = (
-        select(AuditEvent, User)
-        .join(User, User.id == AuditEvent.actor_id, isouter=True)
-        .where(
-            and_(
-                AuditEvent.entity_type == "price",
-                AuditEvent.entity_id == str(price_id),
-            )
-        )
-        .order_by(AuditEvent.event_at.asc(), AuditEvent.id.asc())
-        .limit(200)
-    )
-    result = await session.execute(stmt)
-    rows: list[tuple[AuditEvent, User | None]] = [(row[0], row[1]) for row in result.all()]
+    repo = AuditRepository(session)
+    rows = await repo.list_price_timeline(price_id, limit=PRICE_TIMELINE_MAX_ROWS)
     return [_build_audit_event_response(evt, actor_user) for evt, actor_user in rows]

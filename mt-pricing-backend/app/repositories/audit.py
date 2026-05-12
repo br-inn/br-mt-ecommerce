@@ -21,6 +21,9 @@ from app.db.models.audit import AuditEvent
 from app.db.models.user import User
 from app.repositories.base import BaseRepository
 
+# Límite máximo de filas para la timeline de un precio (sin paginación).
+PRICE_TIMELINE_MAX_ROWS: int = 200
+
 
 @dataclass(frozen=True)
 class AuditFilters:
@@ -186,3 +189,29 @@ class AuditRepository(BaseRepository[AuditEvent]):
             next_cursor = (last.event_at, last.id)
             rows = rows[:limit]
         return rows, next_cursor
+
+    async def list_price_timeline(
+        self,
+        price_id: UUID,
+        *,
+        limit: int = PRICE_TIMELINE_MAX_ROWS,
+    ) -> list[tuple[AuditEvent, User | None]]:
+        """Devuelve todos los audit events de un precio ordenados ASC.
+
+        JOIN LEFT a users para resolver actor email/name en el route handler.
+        Límite por defecto `PRICE_TIMELINE_MAX_ROWS` (sin paginación).
+        """
+        stmt = (
+            select(AuditEvent, User)
+            .join(User, User.id == AuditEvent.actor_id, isouter=True)
+            .where(
+                and_(
+                    AuditEvent.entity_type == "price",
+                    AuditEvent.entity_id == str(price_id),
+                )
+            )
+            .order_by(AuditEvent.event_at.asc(), AuditEvent.id.asc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return [(row[0], row[1]) for row in result.all()]
