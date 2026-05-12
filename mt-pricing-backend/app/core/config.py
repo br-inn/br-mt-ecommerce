@@ -204,6 +204,12 @@ class Settings(BaseSettings):
     TRADELING_API_KEY: SecretStr = SecretStr("")
     TRADELING_API_BASE_URL: str = "https://api.tradeling.com/v1"
 
+    # --- Audit hash chain signing (ADR-076 / R-005 / VAT UAE 2026) ---
+    # Clave HMAC-SHA256 para firmar el último hash del audit chain (nightly job).
+    # Generar: python -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+    # Vacío en dev/local — job still runs pero sin firma criptográfica externa.
+    AUDIT_SIGNING_KEY: SecretStr = SecretStr("")
+
     # --- Cross-Encoder / Cohere Reranker (ADR-075, US-F15-03-04) ---
     # DEFER — revisitar en S12 con dataset ≥1k pares etiquetados.
     # False = RerankerPort no se activa (safe default).

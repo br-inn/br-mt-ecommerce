@@ -77,6 +77,7 @@ from app.api.routes.taxonomy_registry import (
 from app.api.routes.vocabularies import (
     admin_vocab_router,
     products_vocab_router,
+    taxonomy_router,
 )
 
 router = APIRouter()
@@ -112,6 +113,7 @@ router.include_router(exception_rules.router)
 router.include_router(vocabularies.router)
 router.include_router(admin_vocab_router)
 router.include_router(products_vocab_router, prefix="/products")
+router.include_router(taxonomy_router)
 # Stage 3 — divisions, series rica, materials (Wave 11)
 router.include_router(divisions_router)
 router.include_router(series_router)
