@@ -152,3 +152,18 @@ Research Workstream entregue los adapters reales:
 - `app/db/models/match_candidate.py` → campos `label`, `calibrated_confidence`, `reviewer_user_id`
 - `app/services/matching/adapters/bright_data_amazon_uae.py` → adapter real Amazon
 - `app/services/matching/adapters/playwright_noon_uae.py` → adapter real Noon
+
+---
+
+## Review Findings (2026-05-12)
+
+- [x] [Review][Patch] P-2 — APLICADO: eliminado sys.path.insert(0,...) redundante [scripts/poc/run_poc.py]
+- [x] [Review][Patch] P-3 — APLICADO: aggregate() usa unique_skus_with_peer (set global en compute()) — cobertura global correcta sin doble conteo [scripts/poc/metrics_collector.py]
+- [x] [Review][Patch] P-4 — APLICADO: _resolve_label() emite logger.warning once cuando usa inferencia sintética [scripts/poc/metrics_collector.py]
+- [x] [Review][Patch] P-5 — APLICADO: import ShopifyUaeStubFetcher en try/except ImportError con fallback warning [scripts/poc/run_poc.py]
+- [x] [Review][Patch] P-6 — APLICADO: sys.exit(1) cuando error_rate ≥ 20% en __main__ [scripts/poc/run_poc.py]
+- [x] [Review][Patch] P-7 — APLICADO: compute_scoring + collector.add en try/except; excepción registrada como error y contada en n_err [scripts/poc/run_poc.py]
+- [x] [Review][Patch] P-8 — APLICADO: guard `if predictions:` antes de expected_calibration_error [scripts/poc/metrics_collector.py]
+- [x] [Review][Defer] W-1 — _verdict() boundary >= 2 frágil al añadir ACs — deferred, concern futuro
+- [x] [Review][Defer] W-4 — failures = [k for k,v if not v] frágil a valores numéricos — deferred, riesgo bajo actual
+- [x] [Review][Defer] W-5 — Denominador cobertura = SKUs solicitados, no observados — deferred, comportamiento intencional

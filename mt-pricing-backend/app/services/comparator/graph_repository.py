@@ -237,7 +237,11 @@ def get_graph_repository(session_factory: Any = None) -> GraphRepository:
         try:
             from app.services.graphrag.adapters.factory import get_default_graph_store
             graph_store = get_default_graph_store()
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "comparator.graph_repository: neo4j import failed — "
+                "Neo4jGraphRepository iniciará sin graph_store: %s", exc
+            )
             graph_store = None
         return Neo4jGraphRepository(graph_store=graph_store)
 

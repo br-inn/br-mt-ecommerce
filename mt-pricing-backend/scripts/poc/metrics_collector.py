@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -28,6 +29,8 @@ from pathlib import Path
 from typing import Any
 
 from app.services.matching.calibrator import expected_calibration_error
+
+logger = logging.getLogger(__name__)
 
 # Umbral sintético: si el score del candidato supera este valor Y el kind
 # es "peer", se considera verdadero positivo cuando no hay label real.
@@ -132,6 +135,8 @@ class PocMetrics:
     elapsed_seconds: float = 0.0
     use_stubs: bool = True
     errors: list[str] = field(default_factory=list)
+    # Unión de SKUs con al menos un peer en cualquier canal (para cobertura global correcta).
+    unique_skus_with_peer: int = 0
 
     def aggregate(self) -> MarketplaceMetrics:
         """Métricas globales sumando todos los marketplaces."""
@@ -143,17 +148,15 @@ class PocMetrics:
             agg.fp += m.fp
             agg.tn += m.tn
             agg.fn += m.fn
-            agg.skus_with_peer += m.skus_with_peer
+        # Cobertura global: unión de SKUs con peer (no suma de por canal, que
+        # puede superar 1.0 si el mismo SKU aparece en varios marketplaces).
+        agg.skus_with_peer = self.unique_skus_with_peer
         # ECE agregada = media ponderada por candidatos.
         total_cands = sum(m.n_candidates for m in self.marketplaces)
         if total_cands and self.marketplaces:
             agg.ece = sum(
                 m.ece * m.n_candidates for m in self.marketplaces
             ) / total_cands
-        # cobertura: SKUs con peer en AL MENOS UN marketplace.
-        # n_skus ya está en agg — skus_with_peer es upper bound (puede contar
-        # el mismo SKU varias veces si aparece en múltiples canales).
-        # Para el POC reportamos el valor por canal, no el union.
         return agg
 
     def as_dict(self) -> dict[str, Any]:
@@ -196,6 +199,7 @@ class MetricsCollector:
         self._records: list[CandidateRecord] = []
         self._errors: list[str] = []
         self._elapsed: float = 0.0
+        self._warned_synthetic: bool = False
 
     # ------------------------------------------------------------------
     # Data ingestion
@@ -219,9 +223,11 @@ class MetricsCollector:
             channels.setdefault(r.channel, []).append(r)
 
         marketplace_metrics: list[MarketplaceMetrics] = []
+        global_skus_with_peer: set[str] = set()
         for channel, records in sorted(channels.items()):
             m = self._compute_for_channel(channel, records)
             marketplace_metrics.append(m)
+            global_skus_with_peer.update(r.sku for r in records if r.kind == "peer")
 
         return PocMetrics(
             n_skus_total=self.n_skus_total,
@@ -229,6 +235,7 @@ class MetricsCollector:
             elapsed_seconds=self._elapsed,
             use_stubs=self.use_stubs,
             errors=list(self._errors),
+            unique_skus_with_peer=len(global_skus_with_peer),
         )
 
     def _compute_for_channel(
@@ -274,7 +281,8 @@ class MetricsCollector:
             predictions.append(pred_prob)
             labels_bin.append(1 if is_positive_gt else 0)
 
-        m.ece = expected_calibration_error(predictions, labels_bin)
+        if predictions:
+            m.ece = expected_calibration_error(predictions, labels_bin)
         return m
 
     def _resolve_label(self, r: CandidateRecord) -> str | None:
@@ -290,7 +298,14 @@ class MetricsCollector:
             return "reject"
         if r.label == "skip":
             return None
-        # Sin label → inferencia sintética.
+        # Sin label → inferencia sintética (warn once — métricas no reflejan GT real).
+        if not self._warned_synthetic:
+            logger.warning(
+                "metrics: usando inferencia sintética de labels (use_stubs=%s) — "
+                "métricas no reflejan ground truth real; ignorar FP/FN en modo stub",
+                self.use_stubs,
+            )
+            self._warned_synthetic = True
         if r.score >= self.synthetic_threshold:
             return "accept"
         return "reject"

@@ -118,3 +118,15 @@ tests/unit/services/comparator/test_noop_service.py  4 passed  (backward compat)
 - `Neo4jGraphRepository` delega en `get_default_graph_store()` de `graphrag/adapters/factory.py`, que ya resuelve stub vs real por `GRAPHRAG_BACKEND` — no hay duplicación de lógica.
 - Los stubs `Hybrid` y `FullGraphRag` lanzan `NotImplementedError` (no `NotImplemented`) para señal explícita; el factory nunca los instancia con la config default (Fase 1).
 - `NoopComparatorService` se mantiene intacto — usado cuando `COMPARATOR_ENABLED=OFF` (default seguro Fase 1).
+
+---
+
+## Review Findings (2026-05-12)
+
+- [x] [Review][Decision] FD-1 — RESUELTO: ConfigurationError (ValueError) al startup cuando COMPARATOR_ADAPTER=hybrid|full_graph_rag — evita crash silencioso en runtime [factory.py]
+- [x] [Review][Decision] FD-2 — DISMISSED: PostgresGraphRepository confirmado devuelve [] / dicts vacíos (grep lines 140,155,163). Edge Case Hunter erró.
+- [x] [Review][Patch] P-1 — APLICADO: logging.warning en _is_enabled()/_get_adapter_name(); logging.error en get_graph_repository() cuando neo4j import falla [factory.py + graph_repository.py]
+- [x] [Review][Patch] P-9 — DISMISSED: FLAG_COMPARATOR_ENABLED ya estaba en KNOWN_FLAGS (flag_service.py:64). Falso positivo del reviewer.
+- [x] [Review][Defer] W-2 — Neo4jGraphRepository.health_check() siempre False misleading para Fase 2 [graph_repository.py] — deferred, Fase 2 concern
+- [x] [Review][Defer] W-3 — Test health_check sin marca lifecycle Fase 2 [test_graph_repository.py] — deferred, fallará limpiamente
+- [x] [Review][Defer] W-6 — Factory sync devuelve objetos async — deferred, patrón normal FastAPI

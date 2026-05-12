@@ -21,7 +21,7 @@ development_status:
   epic-EP-1B-03: done        # Estados de canal + simulación — CERRADA S8 (5/5 stories done)
   epic-EP-1B-04: done        # Connectors base + shadow publish — CERRADA S8 (5/5 stories done)
   epic-EP-1B-05: done        # Hardening + cutover — CERRADA S8 (impl done; acciones humanas externas pendientes)
-  epic-EP-RND-01: in-progress # Comparator R&D (US-RND-01-09 stretch S8)
+  epic-EP-RND-01: done        # Comparator R&D — CERRADA S9 (G4 decisión tomada; Fase 1.5+ hooks listos)
 
 # ─── Stories S7 — comprometidas ────────────────────────────────────────────────
   # EP-1B-02 — Workflow aprobación (P0 core)
@@ -82,8 +82,8 @@ development_status:
 
 # ─── Stories S9 — comprometidas ───────────────────────────────────────────────
   # EP-RND-01 — Comparador cierre Fase 1 R&D (decisión G4 build-vs-buy)
-  US-RND-01-11: review           # Hooks ComparatorService + GraphRepository (FR-CMP-GRAPH-01) — 8 SP ✅ S9 Wave 1
-  US-RND-01-12: review           # POC 500 SKUs × 3 marketplaces + métricas reales + decisión G4 — 13 SP ✅ S9 Wave 1
+  US-RND-01-11: done             # Hooks ComparatorService + GraphRepository (FR-CMP-GRAPH-01) — 8 SP ✅ S9 Wave 1 (code review patches applied 2026-05-12)
+  US-RND-01-12: done             # POC 500 SKUs × 3 marketplaces + métricas reales + decisión G4 — 13 SP ✅ S9 Wave 1 (code review patches applied 2026-05-12)
 
 # ─── Retrospectivas ────────────────────────────────────────────────────────────
   sprint-6-retrospective: done

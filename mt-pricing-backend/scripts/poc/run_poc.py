@@ -34,9 +34,6 @@ import time
 from datetime import date
 from pathlib import Path
 
-# Permite ejecutar desde la raíz del proyecto: python scripts/poc/run_poc.py
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -107,8 +104,11 @@ def _build_fetchers(marketplace: str, *, use_stubs: bool) -> list[FetcherPort]:
 
     if want_shopify:
         # Shopify: sólo stub disponible (Fase 1.5+ para real).
-        from scripts.poc.shopify_stub import ShopifyUaeStubFetcher
-        fetchers.append(ShopifyUaeStubFetcher())
+        try:
+            from scripts.poc.shopify_stub import ShopifyUaeStubFetcher
+            fetchers.append(ShopifyUaeStubFetcher())
+        except ImportError as exc:
+            logger.warning("Shopify stub unavailable (%s) — skipping shopify marketplace", exc)
 
     return fetchers
 
@@ -268,19 +268,24 @@ async def run_poc(
                 for k, v in (raw.specs or {}).items():
                     cand_dict.setdefault(k, v)
 
-                breakdown = compute_scoring(sku_dict, cand_dict)
-
-                collector.add(
-                    CandidateRecord(
-                        sku=sku,
-                        channel=raw.source,
-                        external_id=raw.external_id,
-                        kind=_classify(breakdown.score, breakdown.notes),
-                        score=breakdown.score,
-                        label=None,  # Sin labels reales en POC stub
-                        calibrated_confidence=None,
+                try:
+                    breakdown = compute_scoring(sku_dict, cand_dict)
+                    collector.add(
+                        CandidateRecord(
+                            sku=sku,
+                            channel=raw.source,
+                            external_id=raw.external_id,
+                            kind=_classify(breakdown.score, breakdown.notes),
+                            score=breakdown.score,
+                            label=None,  # Sin labels reales en POC stub
+                            calibrated_confidence=None,
+                        )
                     )
-                )
+                except Exception as exc:
+                    msg = f"scoring error sku={sku} channel={fetcher.channel} ext={raw.external_id}: {exc}"
+                    logger.warning(msg)
+                    collector.add_error(msg)
+                    n_err += 1
         n_ok += 1
         if verbose and idx % 50 == 0:
             logger.debug("Progreso: %d/%d SKUs procesados", idx + 1, len(sku_dicts))
@@ -396,7 +401,7 @@ def _parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = _parse_args()
-    asyncio.run(
+    _metrics = asyncio.run(
         run_poc(
             n_skus=args.n_skus,
             marketplace=args.marketplace,
@@ -406,3 +411,9 @@ if __name__ == "__main__":
             verbose=args.verbose,
         )
     )
+    # Exit non-zero so CI detects broken runs.
+    _n_err = len(_metrics.errors)
+    _error_rate = _n_err / max(_metrics.n_skus_total, 1)
+    if _error_rate >= 0.20:
+        logger.error("Error rate %.0f%% ≥ 20%% threshold (%d errors) — exit 1", _error_rate * 100, _n_err)
+        sys.exit(1)

@@ -41,9 +41,9 @@ class ComparatorServiceFactory:
           - Flag OFF → :class:`NoopComparatorService`.
           - Flag ON + ``COMPARATOR_ADAPTER=rag_only`` → :class:`RagOnlyComparatorAdapter`.
 
-        Fase 2+ (stub disponibles pero no activos):
-          - ``COMPARATOR_ADAPTER=hybrid`` → :class:`HybridComparatorAdapter`.
-          - ``COMPARATOR_ADAPTER=full_graph_rag`` → :class:`FullGraphRagComparatorAdapter`.
+        Fase 2+ (no disponibles en Fase 1):
+          - ``COMPARATOR_ADAPTER=hybrid`` o ``full_graph_rag`` → :exc:`ValueError`
+            al arrancar; estos adapters sólo se activan en Fase 2+.
         """
         if not ComparatorServiceFactory._is_enabled():
             return NoopComparatorService()
@@ -58,7 +58,8 @@ class ComparatorServiceFactory:
             from app.services.feature_flags.flag_service import (
                 is_enabled as flag_is_enabled,
             )
-        except Exception:  # noqa: BLE001 — feature_flags opcional en tests
+        except Exception as exc:  # noqa: BLE001 — feature_flags opcional en tests
+            logger.warning("comparator.factory: flag_service import failed: %s", exc)
             return False
         return flag_is_enabled(FLAG_COMPARATOR_ENABLED)
 
@@ -69,7 +70,8 @@ class ComparatorServiceFactory:
             from app.core.config import settings
 
             return settings.COMPARATOR_ADAPTER
-        except Exception:  # noqa: BLE001 — config opcional en tests
+        except Exception as exc:  # noqa: BLE001 — config opcional en tests
+            logger.warning("comparator.factory: settings import failed: %s", exc)
             return "rag_only"
 
     @staticmethod
@@ -78,27 +80,23 @@ class ComparatorServiceFactory:
 
         Importación diferida para evitar ciclos y reducir overhead de import
         cuando el factory siempre devuelve Noop (flag OFF, default Fase 1).
+
+        Raises:
+            ValueError: si ``adapter_name`` es ``hybrid`` o ``full_graph_rag``
+                (no disponibles en Fase 1 — activar en Fase 2+).
         """
-        from app.services.comparator.adapters import (
-            FullGraphRagComparatorAdapter,
-            HybridComparatorAdapter,
-            RagOnlyComparatorAdapter,
-        )
+        # FD-1: adapters Fase 2+ causan error al arrancar para evitar crashes
+        # silenciosos en runtime (todos sus métodos lanzan NotImplementedError).
+        if adapter_name in ("hybrid", "full_graph_rag"):
+            raise ValueError(
+                f"COMPARATOR_ADAPTER={adapter_name!r} no está disponible en Fase 1. "
+                "Sólo 'rag_only' está activo. Activar Hybrid/FullGraphRag en Fase 2+."
+            )
+
+        from app.services.comparator.adapters import RagOnlyComparatorAdapter
 
         if adapter_name == "rag_only":
             return RagOnlyComparatorAdapter()
-        if adapter_name == "hybrid":
-            logger.info(
-                "comparator.factory: adapter=hybrid (stub Fase 2 — "
-                "métodos lanzan NotImplementedError)"
-            )
-            return HybridComparatorAdapter()
-        if adapter_name == "full_graph_rag":
-            logger.info(
-                "comparator.factory: adapter=full_graph_rag (stub Fase 2+ — "
-                "métodos lanzan NotImplementedError)"
-            )
-            return FullGraphRagComparatorAdapter()
 
         # Valor desconocido — fallback seguro + warning
         logger.warning(
