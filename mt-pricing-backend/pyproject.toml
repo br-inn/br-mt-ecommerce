@@ -106,6 +106,7 @@ warn_required_dynamic_aliases = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "--cov=app --cov-report=term-missing --cov-report=xml --strict-markers"
 markers = [
     "unit: pure unit tests, no IO",
