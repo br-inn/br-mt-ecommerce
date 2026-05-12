@@ -351,14 +351,14 @@ async def export_price(
 
 @router.post(
     "/prices/bulk-approve",
-    summary="Aprobación masiva — falla soft (devuelve mapa éxitos/errores)",
+    summary="Aprobación masiva con comentario obligatorio",
 )
 async def bulk_approve(
     data: PriceBulkApproveRequest,
     user: Annotated[User, Depends(require_permissions("prices:approve"))],
     service: Annotated[PricingService, Depends(get_pricing_service)],
 ) -> dict[str, Any]:
-    return await service.bulk_approve(data.price_ids, user)
+    return await service.bulk_approve(data.price_ids, data.comment, user)
 
 
 @router.post(

@@ -423,19 +423,44 @@ class PricingService:
         return price
 
     async def bulk_approve(
-        self, price_ids: list[UUID], actor: User
+        self, price_ids: list[UUID], comment: str, actor: User
     ) -> dict[str, Any]:
-        """Aprobación masiva — falla soft (devuelve mapa éxitos/errores)."""
-        results = {"approved": [], "errors": []}
+        """Aprobación masiva — falla hard si algún precio no está en pending_review."""
+        from fastapi import HTTPException
+
+        # Pre-check: todos deben estar en pending_review
+        stmt = select(Price).where(Price.id.in_(price_ids))
+        result = await self.session.execute(stmt)
+        prices = result.scalars().all()
+
+        price_map = {p.id: p for p in prices}
+        invalid_ids = [
+            str(pid)
+            for pid in price_ids
+            if pid not in price_map or price_map[pid].status != "pending_review"
+        ]
+        if invalid_ids:
+            raise HTTPException(
+                status_code=422,
+                detail={"invalid_price_ids": invalid_ids},
+            )
+
+        approved_ids: list[str] = []
         for pid in price_ids:
-            try:
-                p = await self.approve(pid, actor)
-                results["approved"].append(str(p.id))
-            except PricingDomainError as exc:
-                results["errors"].append(
-                    {"price_id": str(pid), "code": exc.code, "message": exc.message}
-                )
-        return results
+            p = await self.approve(pid, actor, reason=comment)
+            approved_ids.append(str(p.id))
+
+        await self.audit.record(
+            entity_type="pricing_batch",
+            entity_id="bulk_approve",
+            action="price.bulk_approved",
+            actor_id=actor.id,
+            actor_email=actor.email,
+            reason=comment,
+            payload_diff={"approved_ids": approved_ids},
+        )
+
+        return {"approved": approved_ids}
 
     async def recalculate_for_product(
         self, product_id: UUID | str, actor: User

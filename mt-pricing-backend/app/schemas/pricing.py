@@ -175,7 +175,7 @@ class PriceReviseRequest(BaseModel):
 class PriceBulkApproveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     price_ids: list[UUID] = Field(min_length=1, max_length=500)
-    reason: str | None = Field(default=None, max_length=2048)
+    comment: str = Field(min_length=10, max_length=2048)
 
 
 class PricingCalculateRequest(BaseModel):
