@@ -19,16 +19,50 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
 from app.api.pagination import decode_cursor, encode_cursor
+from app.db.models.audit import AuditEvent
 from app.db.models.user import User
 from app.repositories.audit import AuditFilters, AuditRepository
 from app.schemas.audit import AuditActorRef, AuditEventResponse
 from app.schemas.common import Cursor, Pagination
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
+
+
+def _build_audit_event_response(evt: AuditEvent, actor_user: User | None) -> AuditEventResponse:
+    """Helper compartido para construir AuditEventResponse desde (evt, actor_user)."""
+    actor_ref: AuditActorRef | None = None
+    if evt.actor_id is not None:
+        actor_ref = AuditActorRef(
+            id=evt.actor_id,
+            email=(actor_user.email if actor_user is not None else evt.actor_email),
+            full_name=(actor_user.full_name if actor_user is not None else None),
+        )
+    elif evt.actor_email is not None:
+        actor_ref = AuditActorRef(
+            id=None,
+            email=evt.actor_email,
+            full_name=None,
+        )
+    return AuditEventResponse(
+        id=str(evt.id),
+        event_at=evt.event_at,
+        actor=actor_ref,
+        entity_type=evt.entity_type,
+        entity_id=evt.entity_id,
+        action=evt.action,
+        before=evt.before,
+        after=evt.after,
+        payload_diff=evt.payload_diff or {},
+        reason=evt.reason,
+        request_id=evt.request_id,
+        current_hash=evt.current_hash,
+        prev_hash=evt.prev_hash,
+    )
 
 
 def _decode_audit_cursor(cursor: str | None) -> tuple[datetime, int] | None:
@@ -102,41 +136,42 @@ async def list_audit_events(
         filters, cursor=decoded_cursor, limit=limit
     )
 
-    items: list[AuditEventResponse] = []
-    for evt, actor_user in rows:
-        actor_ref: AuditActorRef | None = None
-        if evt.actor_id is not None:
-            actor_ref = AuditActorRef(
-                id=evt.actor_id,
-                email=(actor_user.email if actor_user is not None else evt.actor_email),
-                full_name=(actor_user.full_name if actor_user is not None else None),
-            )
-        elif evt.actor_email is not None:
-            actor_ref = AuditActorRef(
-                id=None,
-                email=evt.actor_email,
-                full_name=None,
-            )
-        items.append(
-            AuditEventResponse(
-                id=str(evt.id),
-                event_at=evt.event_at,
-                actor=actor_ref,
-                entity_type=evt.entity_type,
-                entity_id=evt.entity_id,
-                action=evt.action,
-                before=evt.before,
-                after=evt.after,
-                payload_diff=evt.payload_diff or {},
-                reason=evt.reason,
-                request_id=evt.request_id,
-                current_hash=evt.current_hash,
-                prev_hash=evt.prev_hash,
-            )
-        )
+    items: list[AuditEventResponse] = [
+        _build_audit_event_response(evt, actor_user) for evt, actor_user in rows
+    ]
 
     return Pagination[AuditEventResponse](
         items=items,
         cursor=Cursor(next=_encode_audit_cursor(next_cursor)),
         page_size=limit,
     )
+
+
+@router.get(
+    "/prices/{price_id}/timeline",
+    response_model=list[AuditEventResponse],
+    summary="Timeline de audit events de un precio (ASC)",
+)
+async def get_price_timeline(
+    price_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    _: Annotated[User, Depends(require_permissions("audit:read"))],
+) -> list[AuditEventResponse]:
+    """Devuelve todos los audit events de `entity_type='price'` para el precio dado,
+    ordenados cronológicamente ASC. Máx ~200 eventos por precio — sin paginación.
+    """
+    stmt = (
+        select(AuditEvent, User)
+        .join(User, User.id == AuditEvent.actor_id, isouter=True)
+        .where(
+            and_(
+                AuditEvent.entity_type == "price",
+                AuditEvent.entity_id == str(price_id),
+            )
+        )
+        .order_by(AuditEvent.event_at.asc(), AuditEvent.id.asc())
+        .limit(200)
+    )
+    result = await session.execute(stmt)
+    rows: list[tuple[AuditEvent, User | None]] = [(row[0], row[1]) for row in result.all()]
+    return [_build_audit_event_response(evt, actor_user) for evt, actor_user in rows]
