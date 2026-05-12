@@ -1118,5 +1118,12 @@
       "statsLoadFailed": "Could not load catalog stats.",
       "overviewLoadFailed": "Could not load cost coverage overview."
     }
+  },
+  "comparator": {
+    "title": "Product comparison",
+    "research_message": "This feature is in research. Available in Phase 1.5+.",
+    "back_to_dashboard": "Back to dashboard",
+    "sidebar_label": "Comparator",
+    "sidebar_badge": "Research"
   }
 }

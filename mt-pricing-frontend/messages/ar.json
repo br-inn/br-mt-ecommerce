@@ -1118,5 +1118,12 @@
       "statsLoadFailed": "تعذّر تحميل إحصاءات الكتالوج.",
       "overviewLoadFailed": "تعذّر تحميل نظرة عامة على التكاليف."
     }
+  },
+  "comparator": {
+    "title": "مقارنة المنتجات",
+    "research_message": "هذه الميزة قيد البحث. متاحة في المرحلة 1.5+.",
+    "back_to_dashboard": "العودة إلى لوحة المعلومات",
+    "sidebar_label": "أداة المقارنة",
+    "sidebar_badge": "بحث"
   }
 }

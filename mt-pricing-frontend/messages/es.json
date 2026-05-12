@@ -1119,5 +1119,12 @@
       "statsLoadFailed": "No se pudieron cargar las estadísticas del catálogo.",
       "overviewLoadFailed": "No se pudo cargar el overview de costes."
     }
+  },
+  "comparator": {
+    "title": "Comparación de productos",
+    "research_message": "Esta función está en investigación. Disponible en Fase 1.5+.",
+    "back_to_dashboard": "Volver al panel",
+    "sidebar_label": "Comparador",
+    "sidebar_badge": "Investigación"
   }
 }

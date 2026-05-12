@@ -15,6 +15,7 @@ from app.db.models.attributes import (
 )
 from app.db.models.audit import AuditEvent
 from app.db.models.compatibility import ProductCompatibility
+from app.db.models.comparator import CompetitorListing, MatchDecision
 from app.db.models.dimensions import (
     ActuationCode,
     DimensionCell,
@@ -172,4 +173,7 @@ __all__ = [
     "DimensionRow",
     "DimensionCell",
     "PressureTemperaturePoint",
+    # Fase 1 hooks — comparator research workstream (mig. 069, ADR-012)
+    "CompetitorListing",
+    "MatchDecision",
 ]

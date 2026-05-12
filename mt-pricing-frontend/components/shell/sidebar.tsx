@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Coins,
+  Construction,
   Database,
   FileUp,
   Flag,
@@ -66,6 +67,21 @@ const SECTION_QA: readonly NavItem[] = [
   { href: "/catalogo/validacion", label: "Validación", icon: GitCompare },
   { href: "/auditoria", label: "Auditoría", icon: ScrollText },
 ] as const;
+
+// Comparator (ADR-012) — research workstream. La entrada del sidebar sólo
+// aparece si el flag build-time `NEXT_PUBLIC_COMPARATOR_ENABLED=true` está
+// activo. En Fase 1 la página renderiza placeholder. Cuando Fase 1.5+
+// active el subsistema, el flag DB `COMPARATOR_ENABLED` controla la lógica
+// runtime y este toggle de UI puede pasar a `true` en el deploy.
+const COMPARATOR_SIDEBAR_ENABLED =
+  process.env["NEXT_PUBLIC_COMPARATOR_ENABLED"] === "true";
+
+const COMPARATOR_NAV_ITEM: NavItem = {
+  href: "/comparator",
+  label: "Comparador",
+  icon: Construction,
+  badge: "Investigación",
+};
 
 // Items NO-taxonómicos del sidebar SISTEMA. Los items de taxonomía se
 // renderizan dinámicamente desde /taxonomies/registry vía useTaxonomyRegistry.
@@ -296,6 +312,13 @@ export function Sidebar() {
         {SECTION_QA.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
+        {COMPARATOR_SIDEBAR_ENABLED ? (
+          <NavLink
+            key={COMPARATOR_NAV_ITEM.href}
+            item={COMPARATOR_NAV_ITEM}
+            collapsed={collapsed}
+          />
+        ) : null}
 
         <SectionLabel collapsed={collapsed}>Sistema</SectionLabel>
         {/* Taxonomías: data-driven desde /taxonomies/registry. Agregar una nueva
