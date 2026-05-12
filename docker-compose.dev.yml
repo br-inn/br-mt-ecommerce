@@ -231,6 +231,33 @@ services:
       - mt-internal
 
   # ---------------------------------------------------------------------------
+  # Neo4j 5.20 — Knowledge Graph store (Fase 1.5 GraphRAG)
+  # Acceso externo: http://localhost:17474 (browser), bolt://localhost:17687
+  # Dentro del stack: bolt://neo4j:7687
+  # Habilitado por defecto; el backend lo usa solo cuando GRAPHRAG_BACKEND=neo4j
+  # ---------------------------------------------------------------------------
+  neo4j:
+    image: neo4j:5.20-community
+    container_name: mt-neo4j
+    restart: unless-stopped
+    ports:
+      - "17474:7474"
+      - "17687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/devpassword
+      NEO4J_PLUGINS: "[]"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p devpassword 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
   # Caddy 2 — ÚNICO entry point HTTP. Routing inteligente.
   # ---------------------------------------------------------------------------
   caddy:
@@ -261,12 +288,13 @@ services:
       - mt-internal
 
 # -----------------------------------------------------------------------------
-# Volumes — solo Redis cache + Caddy state. NO Postgres (todo en Supabase).
+# Volumes — Redis cache + Caddy state + Neo4j KG. NO Postgres (todo en Supabase).
 # -----------------------------------------------------------------------------
 volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  neo4j_data:
 
 # -----------------------------------------------------------------------------
 # Network interna — backend/frontend/worker/beat NO accesibles desde host.

@@ -45,8 +45,23 @@ class GraphRagReplayResponse(BaseModel):
     entity_type: str | None = None
 
 
+class KgMetricsResponse(BaseModel):
+    """Respuesta de ``GET /api/v1/graphrag/metrics`` (US-F15-01-06)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    node_count: int = Field(ge=0)
+    edge_count: int = Field(ge=0)
+    orphan_nodes: int = Field(ge=0)
+    cdc_lag_seconds: float = Field(ge=0.0)
+    last_sync: str | None = None
+    backend: str
+    healthy: bool = True
+
+
 __all__ = [
     "GraphRagHealthResponse",
     "GraphRagReplayRequest",
     "GraphRagReplayResponse",
+    "KgMetricsResponse",
 ]

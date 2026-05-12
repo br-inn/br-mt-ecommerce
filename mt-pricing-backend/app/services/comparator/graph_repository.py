@@ -23,6 +23,7 @@ Patrón: ports-and-adapters (ver ``app.services.channel_mirror.ports``).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
@@ -168,24 +169,16 @@ class PostgresGraphRepository(GraphRepository):
 
 
 # ---------------------------------------------------------------------------
-# Neo4jGraphRepository — stub Fase 2+
+# Neo4jGraphRepository — activo con GRAPHRAG_BACKEND=neo4j (US-F15-01-04)
 # ---------------------------------------------------------------------------
 
-_NEO4J_NOT_IMPLEMENTED = (
-    "Neo4jGraphRepository no está activo en Fase 1. "
-    "Activar en Fase 2+ configurando GRAPHRAG_BACKEND=neo4j."
-)
-
-
 class Neo4jGraphRepository(GraphRepository):
-    """Repositorio de grafo sobre Neo4j 5 (stub Fase 2+).
+    """Repositorio de grafo sobre Neo4j 5 — activo con ``GRAPHRAG_BACKEND=neo4j``.
 
     Delega en :class:`GraphStorePort` (``app.services.graphrag.ports``)
     que ya tiene implementaciones real + stub (ADR-016).
 
-    En Fase 1 todos los métodos lanzan :exc:`NotImplementedError` como señal
-    explícita de «no usar directamente». El factory nunca instancia este
-    repositorio con ``GRAPHRAG_BACKEND=stub`` (default).
+    US-F15-01-04: implementación real activada en Sprint 10 Wave 4.
     """
 
     def __init__(self, graph_store: Any = None) -> None:
@@ -201,20 +194,109 @@ class Neo4jGraphRepository(GraphRepository):
         *,
         relationship_type: str | None = None,
     ) -> list[dict[str, Any]]:
-        raise NotImplementedError(_NEO4J_NOT_IMPLEMENTED)
+        if self._graph_store is None:
+            logger.warning(
+                "neo4j_graph_repo.get_product_neighbors: graph_store not initialized, "
+                "returning empty list for sku=%s",
+                product_sku,
+            )
+            return []
+        try:
+            neighbors = await asyncio.to_thread(
+                self._graph_store.query_neighbors,
+                "Product",
+                product_sku,
+                edge_type=relationship_type,
+            )
+            return [
+                {
+                    "node_type": neighbor_node.label,
+                    "primary_key": neighbor_node.primary_key,
+                    "properties": dict(neighbor_node.properties),
+                    "relationship": edge.type,
+                    "relationship_properties": dict(edge.properties),
+                }
+                for edge, neighbor_node in neighbors
+            ]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "neo4j_graph_repo.get_product_neighbors failed sku=%s: %s",
+                product_sku,
+                exc,
+            )
+            return []
 
     async def get_competitor_context(
         self,
         competitor_listing_id: UUID,
     ) -> dict[str, Any]:
-        raise NotImplementedError(_NEO4J_NOT_IMPLEMENTED)
+        empty: dict[str, Any] = {
+            "competitor_listing_id": str(competitor_listing_id),
+            "product_matches": [],
+            "supplier_hints": [],
+            "graph_confidence": 0.0,
+        }
+        if self._graph_store is None:
+            logger.warning(
+                "neo4j_graph_repo.get_competitor_context: graph_store not initialized, "
+                "returning empty context for listing_id=%s",
+                competitor_listing_id,
+            )
+            return empty
+        try:
+            neighbors = await asyncio.to_thread(
+                self._graph_store.query_neighbors,
+                "CompetitorListing",
+                str(competitor_listing_id),
+            )
+            product_matches = [n for _e, n in neighbors if n.label == "Product"]
+            supplier_hints = [n for _e, n in neighbors if n.label == "Supplier"]
+            graph_confidence = (
+                len(product_matches) / (len(product_matches) + 1)
+                if product_matches
+                else 0.0
+            )
+            return {
+                "competitor_listing_id": str(competitor_listing_id),
+                "product_matches": [
+                    {"primary_key": n.primary_key, **dict(n.properties)}
+                    for n in product_matches
+                ],
+                "supplier_hints": [
+                    {"primary_key": n.primary_key, **dict(n.properties)}
+                    for n in supplier_hints
+                ],
+                "graph_confidence": graph_confidence,
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "neo4j_graph_repo.get_competitor_context failed listing_id=%s: %s",
+                competitor_listing_id,
+                exc,
+            )
+            return empty
 
     async def health_check(self) -> dict[str, Any]:
-        return {
-            "backend": "neo4j_graph_repository",
-            "healthy": False,
-            "note": "Stub Fase 1 — activar en Fase 2+ con GRAPHRAG_BACKEND=neo4j",
-        }
+        if self._graph_store is None:
+            return {
+                "backend": "neo4j_graph_repository",
+                "healthy": False,
+                "note": "graph_store not initialized",
+            }
+        try:
+            store_health = self._graph_store.health_check()
+            return {
+                "backend": "neo4j_graph_repository",
+                "healthy": store_health.get("healthy", False),
+                "store_health": store_health,
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("neo4j_graph_repo.health_check failed: %s", exc)
+            return {
+                "backend": "neo4j_graph_repository",
+                "healthy": False,
+                "error": str(exc),
+            }
 
 
 # ---------------------------------------------------------------------------

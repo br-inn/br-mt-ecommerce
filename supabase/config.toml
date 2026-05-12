@@ -1,0 +1,22 @@
+# Supabase local dev configuration
+# Docs: https://supabase.com/docs/guides/local-development/cli/config
+#
+# US-F15-01-03 — CDC Postgres → Neo4j
+# Habilita Realtime para las tablas `products` y `competitor_listings` de modo
+# que los cambios se publiquen como eventos y puedan ser recibidos por el
+# webhook CDC (POST /api/v1/internal/cdc/product).
+
+[realtime]
+enabled = true
+
+[[realtime.subscriptions]]
+name = "product_changes"
+schema = "public"
+table = "products"
+filter = ""
+
+[[realtime.subscriptions]]
+name = "competitor_listing_changes"
+schema = "public"
+table = "competitor_listings"
+filter = ""

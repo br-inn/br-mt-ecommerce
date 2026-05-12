@@ -165,6 +165,22 @@ class Settings(BaseSettings):
     # Timeout total para descarga (segundos).
     SSRF_FETCH_TIMEOUT_S: float = 30.0
 
+    # --- Internal CDC webhook (US-F15-01-03) ---
+    # Secret que Supabase Realtime incluye en el header X-Internal-Secret al
+    # llamar a POST /api/v1/internal/cdc/product. Vacío = sin autenticación
+    # (modo dev/local). En staging/prod setear un valor aleatorio > 32 chars.
+    INTERNAL_CDC_SECRET: str = ""
+
+    # --- SP-API competitor fetcher (Fase 1.5) ---
+    # Credenciales para obtener precios de competidores en Amazon UAE.
+    # Distinto del adapter channel_mirror/amazon_sp_api.py (ese publica precios).
+    # MT_LIVE_NETWORK="true" activa el adapter real; cualquier otro valor usa stub.
+    SP_API_REFRESH_TOKEN: str = ""
+    SP_API_LWA_CLIENT_ID: str = ""
+    SP_API_LWA_CLIENT_SECRET: SecretStr = SecretStr("")
+    SP_API_SELLER_ID: str = ""
+    MT_LIVE_NETWORK: str = "false"
+
     @property
     def is_prod(self) -> bool:
         return self.ENV == "production"

@@ -28,13 +28,16 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -176,8 +179,76 @@ class MatchDecision(UuidPkMixin, TimestampMixin, Base):
     )
 
 
+class CompetitorFetchError(Base):
+    """Errores de fetch de precios de competidores — US-F15-02-01.
+
+    Poblada por AmazonSPApiFetcherAdapter._log_fetch_error (best-effort).
+    Usada para diagnóstico y monitoreo de la integración SP-API.
+    """
+
+    __tablename__ = "competitor_fetch_errors"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    asin: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    error_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("now()"),
+        nullable=False,
+        index=True,
+    )
+
+
+class ProductEquivalence(Base):
+    """Par de productos equivalentes — US-F15-01-05.
+
+    Extraído de fichas técnicas PDF o declarado manualmente. Sincronizado
+    al Knowledge Graph como edges EQUIVALENT_TO via
+    ``mt.graphrag.ingest_equivalences_from_pdf``.
+    """
+
+    __tablename__ = "product_equivalences"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    product_id_a: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    product_id_b: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.8)
+    source: Mapped[str] = mapped_column(String(200), nullable=False, default="manual")
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("now()"),
+        nullable=False,
+    )
+    synced_to_kg: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    __table_args__ = (
+        UniqueConstraint("product_id_a", "product_id_b", name="uq_product_equivalences_pair"),
+        Index("ix_product_equivalences_product_id_a", "product_id_a"),
+        Index("ix_product_equivalences_product_id_b", "product_id_b"),
+    )
+
+
 __all__ = [
     "MATCH_DECISIONS",
+    "CompetitorFetchError",
     "CompetitorListing",
     "MatchDecision",
+    "ProductEquivalence",
 ]

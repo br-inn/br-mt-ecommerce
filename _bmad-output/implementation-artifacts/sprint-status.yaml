@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-12T00:00:00.000Z"  # S9 sprint planning — S8 cerrado 100%
+last_updated: "2026-05-12T00:00:00.000Z"  # S10 COMPLETO — 29 SP comprometidos + 13 SP stretch entregados (42 SP total)
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -85,8 +85,35 @@ development_status:
   US-RND-01-11: done             # Hooks ComparatorService + GraphRepository (FR-CMP-GRAPH-01) — 8 SP ✅ S9 Wave 1 (code review patches applied 2026-05-12)
   US-RND-01-12: done             # POC 500 SKUs × 3 marketplaces + métricas reales + decisión G4 — 13 SP ✅ S9 Wave 1 (code review patches applied 2026-05-12)
 
+# ─── Épicas Fase 1.5 ──────────────────────────────────────────────────────────
+  epic-EP-F15-01: done        # KG Foundation — CERRADA S10 (6/6 stories done, 34 SP)
+  epic-EP-F15-02: in-progress # Pipeline Activation (Amazon SP API real, VLM, RIS, Tradeling) — 1/5 done
+  epic-EP-F15-03: backlog    # Precision Enhancement (fine-tune, conformal, weight tuning)
+
+# ─── Stories Fase 1.5 — EP-F15-01 (KG Foundation) ────────────────────────────
+  US-F15-01-01: done          # Neo4j setup + data residency UAE — 3 SP ✅ S10 Wave 1
+  US-F15-01-02: done          # Schema KG + seed 674 materiales — 5 SP ✅ S10 Wave 2
+  US-F15-01-03: done          # CDC Postgres → Neo4j (Supabase Realtime → Celery) — 8 SP ✅ S10 Wave 3A
+  US-F15-01-04: done          # Activar Neo4jGraphRepository + fix W-2/W-3 — 5 SP ✅ S10 Wave 4
+  US-F15-01-05: done          # product_equivalences + ingestión fichas técnicas — 8 SP ✅ S10 Wave 5 stretch
+  US-F15-01-06: done          # Dashboard monitoreo KG + integridad nightly — 5 SP ✅ S10 Wave 5 stretch
+
+# ─── Stories Fase 1.5 — EP-F15-02 (Pipeline Activation) ─────────────────────
+  US-F15-02-01: done          # Amazon SP API fetcher real — 8 SP ✅ S10 Wave 3B
+  US-F15-02-02: backlog      # VLM Judge activación (claude-sonnet-4-6) — 8 SP
+  US-F15-02-03: backlog      # Reverse Image Search activación (flag on) — 5 SP
+  US-F15-02-04: backlog      # Price Sanity Check (P10/P90 pre-VLM) — 5 SP
+  US-F15-02-05: backlog      # Tradeling API integration — 8 SP
+
+# ─── Stories Fase 1.5 — EP-F15-03 (Precision Enhancement) ───────────────────
+  US-F15-03-01: backlog      # Pipeline etiquetado + exportación dataset — 5 SP
+  US-F15-03-02: backlog      # Embedding fine-tune ≥1k pares — 8 SP
+  US-F15-03-03: backlog      # Conformal Prediction / Venn-Abers — 8 SP
+  US-F15-03-04: backlog      # Cross-Encoder spike + ADR — 5 SP
+  US-F15-03-05: backlog      # Weight tuning por familia + fix W-1/W-4 — 5 SP
+
 # ─── Retrospectivas ────────────────────────────────────────────────────────────
   sprint-6-retrospective: done
   sprint-7-retrospective: done
   sprint-8-retrospective: done
-  sprint-9-retrospective: optional
+  sprint-9-retrospective: done

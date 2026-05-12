@@ -30,6 +30,7 @@ from app.db.models.exports import ExportManifest, LastGoodExport
 from app.db.models.components import ProductConnection, ProductMaterial
 from app.db.models.tech_tables import ProductTechTable
 from app.db.models.cdc_event import CdcEvent
+from app.db.models.graphrag import KgIntegrityResult
 from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
 from app.db.models.channels import Channel, ChannelStateHistory
 from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
@@ -121,6 +122,8 @@ __all__ = [
     "ProductDatasheet",
     # graphrag CDC outbox (Sprint 4 — US-RND-01-11)
     "CdcEvent",
+    # graphrag KG integrity results (Sprint 10 — US-F15-01-06)
+    "KgIntegrityResult",
     # feature flags + kill-switch (Sprint 5 — US-1A-09-08)
     "FeatureFlag",
     # calibrator training pipeline (Sprint 5 — US-1A-09-07)

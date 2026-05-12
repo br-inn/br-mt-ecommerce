@@ -112,6 +112,7 @@ markers = [
     "unit: pure unit tests, no IO",
     "integration: requires testcontainers (Postgres/Redis)",
     "e2e: full ASGI client end-to-end",
+    "neo4j_real: marks tests requiring real Neo4j instance (deselect with -m 'not neo4j_real')",
 ]
 
 [tool.coverage.run]

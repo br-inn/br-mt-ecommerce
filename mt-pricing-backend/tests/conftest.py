@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import pathlib
 from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
@@ -217,6 +218,36 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
+
+
+# =============================================================================
+# PDF fixtures — generados automáticamente si no existen (US-F15-01-05)
+# =============================================================================
+
+_FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures"
+_SAMPLE_PDF = _FIXTURES_DIR / "sample_equivalences.pdf"
+
+
+def _ensure_sample_pdf() -> None:
+    """Genera sample_equivalences.pdf si no existe."""
+    if _SAMPLE_PDF.exists():
+        return
+    from tests.fixtures.generate_sample_pdf import build_pdf
+
+    _FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
+    _SAMPLE_PDF.write_bytes(build_pdf())
+
+
+def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
+    """Hook de sesión — genera fixtures binarias antes de cualquier test."""
+    _ensure_sample_pdf()
+
+
+@pytest.fixture(scope="session")
+def sample_equivalences_pdf() -> pathlib.Path:
+    """Ruta al PDF de equivalencias de prueba."""
+    _ensure_sample_pdf()
+    return _SAMPLE_PDF
 
 
 # =============================================================================

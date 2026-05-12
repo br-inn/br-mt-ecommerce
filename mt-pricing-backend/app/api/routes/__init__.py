@@ -32,6 +32,7 @@ from app.api.routes import (
     imports_costs,
     imports_datasheets,
     imports_materials,
+    internal_cdc,
     jobs,
     matches,
     parallel_run,
@@ -143,3 +144,5 @@ router.include_router(dr_drills.router)
 router.include_router(pricing_dashboard.router)
 # US-1B-04-02 — Exports CSV por canal (solo approved/auto_approved)
 router.include_router(exports.router)
+# US-F15-01-03 — CDC Postgres → Neo4j (Supabase Realtime → Celery → Cypher)
+router.include_router(internal_cdc.router)
