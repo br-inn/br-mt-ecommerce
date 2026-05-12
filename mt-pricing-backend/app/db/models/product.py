@@ -29,6 +29,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -58,9 +59,11 @@ class Product(Base):
         server_default=text("gen_random_uuid()"),
     )
 
-    name_en: Mapped[str] = mapped_column(Text, nullable=False)
-    description_en: Mapped[str | None] = mapped_column(Text)
-    marketing_copy_en: Mapped[str | None] = mapped_column(Text)
+    # Fase B drop (mig 065): name_en/description_en/marketing_copy_en se
+    # eliminaron de la tabla; sustituidos por product_translations(lang='en').
+    # Se exponen como hybrid_property read-only para preservar compat con
+    # código existente que lee `product.name_en`. Para escritura usar
+    # ProductService.upsert_translation con lang='en'.
 
     family: Mapped[str] = mapped_column(Text, nullable=False)
     subfamily: Mapped[str | None] = mapped_column(Text)
@@ -88,22 +91,14 @@ class Product(Base):
     intrastat_code: Mapped[str | None] = mapped_column(Text)
     erp_name: Mapped[str | None] = mapped_column(Text)
 
-    # Imagen primaria (preview) + auditoría URL externa antes del mirror.
-    image_url: Mapped[str | None] = mapped_column(Text)
-    image_origin_url: Mapped[str | None] = mapped_column(Text)
-    image_status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'missing'")
-    )
-
     data_quality: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'partial'")
     )
     manual_locked_fields: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, server_default=text("'{}'::text[]")
     )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    # Fase B drop (mig 066): products.active eliminado; se deriva de
+    # lifecycle_status='active' vía hybrid_property (read-only).
 
     # ---- Wave 2 ----------------------------------------------------------
     # Lifecycle / identity
@@ -130,9 +125,8 @@ class Product(Base):
     pressure_max_bar: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
 
     # Editorial / SEO
-    tags: Mapped[list[str]] = mapped_column(
-        ARRAY(Text), nullable=False, server_default=text("'{}'::text[]")
-    )
+    # Fase B drop (mig 065): products.tags ARRAY eliminado; sustituido por
+    # vocabularios M:N (product_certifications + product_applications).
     video_url: Mapped[str | None] = mapped_column(Text)
     external_url: Mapped[str | None] = mapped_column(Text)
 
@@ -271,29 +265,110 @@ class Product(Base):
         lazy="selectin",
     )
 
+    # ---- Fase B hybrid properties (read-only compat layer) ------------------
+    # Permiten que código legacy siga leyendo prod.active / prod.name_en /
+    # prod.description_en / prod.marketing_copy_en sin reescribir.
+    # En contextos SQL (`Product.active`, `Product.name_en` dentro de select)
+    # se traducen a expressions equivalentes — para name_en/description_en/
+    # marketing_copy_en se usa un correlated subquery a product_translations
+    # con lang='en'.
+
+    @hybrid_property
+    def active(self) -> bool:  # noqa: D401 — propiedad-bandera.
+        """`True` si lifecycle_status == 'active'. Read-only (escribir en lifecycle_status)."""
+        return self.lifecycle_status == "active"
+
+    @active.expression  # type: ignore[no-redef]
+    def active(cls):  # noqa: N805 — hybrid expression.
+        return cls.lifecycle_status == "active"
+
+    @hybrid_property
+    def name_en(self) -> str | None:
+        """Lee `name` de la traducción lang='en' si está cargada/disponible."""
+        for t in (self.translations or []):
+            if t.lang == "en":
+                return t.name
+        return None
+
+    @name_en.expression  # type: ignore[no-redef]
+    def name_en(cls):  # noqa: N805
+        from sqlalchemy import select as _select
+
+        return (
+            _select(ProductTranslation.name)
+            .where(
+                ProductTranslation.sku == cls.sku,
+                ProductTranslation.lang == "en",
+            )
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def description_en(self) -> str | None:
+        for t in (self.translations or []):
+            if t.lang == "en":
+                return t.description
+        return None
+
+    @description_en.expression  # type: ignore[no-redef]
+    def description_en(cls):  # noqa: N805
+        from sqlalchemy import select as _select
+
+        return (
+            _select(ProductTranslation.description)
+            .where(
+                ProductTranslation.sku == cls.sku,
+                ProductTranslation.lang == "en",
+            )
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def marketing_copy_en(self) -> str | None:
+        for t in (self.translations or []):
+            if t.lang == "en":
+                return t.marketing_copy
+        return None
+
+    @marketing_copy_en.expression  # type: ignore[no-redef]
+    def marketing_copy_en(cls):  # noqa: N805
+        from sqlalchemy import select as _select
+
+        return (
+            _select(ProductTranslation.marketing_copy)
+            .where(
+                ProductTranslation.sku == cls.sku,
+                ProductTranslation.lang == "en",
+            )
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def tags(self) -> list[str]:
+        """Read-only: lista vacía (campo legacy dropeado en Fase B mig 065).
+
+        Sustituido por `product_certifications` y `product_applications`
+        (vocabularios M:N). Esta compat-property evita romper código que
+        leía `prod.tags` (effective_display_service); ahora siempre devuelve
+        lista vacía y el caller debe migrar a los vocabs.
+        """
+        return []
+
+    # Fase B drop (mig 065/066): idx_products_active e idx_products_name_trgm
+    # removidos en BD; aquí se elimina la declaración para alinear modelo y
+    # esquema. Cualquier full-text futuro debería indexar
+    # product_translations.name por lang.
     __table_args__ = (
         CheckConstraint(
             f"data_quality IN {values_csv(DataQuality)}",
             name="ck_products_data_quality",
         ),
-        CheckConstraint(
-            "image_status IN ('missing','mirrored','failed')",
-            name="ck_products_image_status",
-        ),
         Index("idx_products_family", "family"),
         Index("idx_products_brand", "brand"),
-        Index(
-            "idx_products_active",
-            "active",
-            postgresql_where=text("active = true"),
-        ),
         Index("idx_products_specs_gin", "specs", postgresql_using="gin"),
-        Index(
-            "idx_products_name_trgm",
-            "name_en",
-            postgresql_using="gin",
-            postgresql_ops={"name_en": "gin_trgm_ops"},
-        ),
         # HNSW para embeddings — Sprint 2+. No se crea ahora.
     )
 
@@ -407,8 +482,6 @@ class ProductAsset(UuidPkMixin, Base):
     archived_by: Mapped[UUID | None] = mapped_column(
         UUID_PG, ForeignKey("users.id", ondelete="SET NULL")
     )
-    # role — kept nullable for backward compat (Wave 2 drops column).
-    role: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

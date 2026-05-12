@@ -73,13 +73,9 @@ class EffectiveDisplayService:
                 series_feature_tags = list(series.features_tags or [])
                 series_certs = [sc.certification for sc in series.series_certifications]
 
-        # ---- Tags: union dedupe preservando orden (product first, series after) ----
+        # ---- Tags: Fase B (mig 065) — products.tags eliminado; sólo series feature_tags ----
         seen_tags: set[str] = set()
         merged_tags: list[str] = []
-        for t in (product.tags or []):
-            if t and t not in seen_tags:
-                seen_tags.add(t)
-                merged_tags.append(t)
         for t in series_feature_tags:
             if t and t not in seen_tags:
                 seen_tags.add(t)

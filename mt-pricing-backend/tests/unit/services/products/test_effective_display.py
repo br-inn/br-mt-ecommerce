@@ -92,7 +92,7 @@ async def test_compute_only_series_defaults() -> None:
     )
     product = SimpleNamespace(
         sku="MTV-100",
-        tags=[],
+        # Fase B (mig 065): products.tags dropeado — ignorado en el servicio.
         series_id=series.id,
         product_certifications=[],
     )
@@ -111,11 +111,12 @@ async def test_compute_only_series_defaults() -> None:
 
 @pytest.mark.asyncio
 async def test_compute_only_product_certs_no_series() -> None:
+    # Fase B (mig 065): products.tags dropeado; el effective display ahora
+    # sólo agrega features_tags de la serie. Sin serie → tags vacíos.
     cert_iso = _cert("ISO9001")
     pc = SimpleNamespace(certification=cert_iso)
     product = SimpleNamespace(
         sku="MTV-200",
-        tags=["premium"],
         series_id=None,
         product_certifications=[pc],
     )
@@ -124,7 +125,7 @@ async def test_compute_only_product_certs_no_series() -> None:
     svc = EffectiveDisplayService(session)
     result = await svc.compute("MTV-200")
 
-    assert result["tags"] == ["premium"]
+    assert result["tags"] == []
     assert [c["code"] for c in result["certifications"]] == ["ISO9001"]
 
 
@@ -158,7 +159,7 @@ async def test_compute_union_dedupe_by_code() -> None:
     )
     product = SimpleNamespace(
         sku="MTV-300",
-        tags=["shared", "premium"],
+        # Fase B (mig 065): products.tags dropeado — sólo features_tags de serie.
         series_id=series.id,
         product_certifications=[pc],
     )
@@ -167,8 +168,8 @@ async def test_compute_union_dedupe_by_code() -> None:
     svc = EffectiveDisplayService(session)
     result = await svc.compute("MTV-300")
 
-    # Tags: product order first ("shared", "premium"), then series unique ("x")
-    assert result["tags"] == ["shared", "premium", "x"]
+    # Tags: sólo serie (product.tags ya no existe en BD).
+    assert result["tags"] == ["x", "shared"]
 
     # Certs: CE comes from product (override wins), then WRAS from series
     certs = result["certifications"]
@@ -183,6 +184,7 @@ async def test_compute_union_dedupe_by_code() -> None:
 
 @pytest.mark.asyncio
 async def test_compute_dedupe_only_tags_no_certs() -> None:
+    # Fase B (mig 065): products.tags dropeado — sólo features_tags de serie.
     series = SimpleNamespace(
         id=uuid4(),
         features_tags=["a", "b", "c"],
@@ -190,7 +192,6 @@ async def test_compute_dedupe_only_tags_no_certs() -> None:
     )
     product = SimpleNamespace(
         sku="MTV-400",
-        tags=["b", "d"],
         series_id=series.id,
         product_certifications=[],
     )
@@ -199,6 +200,6 @@ async def test_compute_dedupe_only_tags_no_certs() -> None:
     svc = EffectiveDisplayService(session)
     result = await svc.compute("MTV-400")
 
-    # Product tags first, then series unique
-    assert result["tags"] == ["b", "d", "a", "c"]
+    # Sólo tags de la serie (product.tags removido).
+    assert result["tags"] == ["a", "b", "c"]
     assert result["certifications"] == []

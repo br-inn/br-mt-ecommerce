@@ -23,7 +23,7 @@ from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.db.engine import get_engine
-from app.db.models.product import Product, ProductTranslation
+from app.db.models.product import Product, ProductAsset, ProductTranslation
 from app.db.models.vocabularies import (
     Division,
     Material,
@@ -48,7 +48,6 @@ class ProductFilters:
     pn: str | None = None
     data_quality: str | None = None
     active: bool | None = None
-    image_status: str | None = None  # 'missing','mirrored','failed'
     has_image: bool | None = None
     lifecycle_status: str | None = None
     translation_status: str | None = None
@@ -74,7 +73,7 @@ class ProductFilters:
             getattr(self, name) not in (None, False)
             for name in (
                 "family", "subfamily", "type_", "brand", "material", "dn", "pn", "data_quality",
-                "active", "image_status", "has_image", "lifecycle_status",
+                "active", "has_image", "lifecycle_status",
                 "translation_status", "created_after", "created_before", "search",
                 "division_code", "series_id", "material_id", "tier_code",
             )
@@ -149,14 +148,23 @@ def build_product_clauses(
     if filters.data_quality and "data_quality" not in exclude:
         clauses.append(Product.data_quality == filters.data_quality)
     if filters.active is not None and "active" not in exclude:
-        clauses.append(Product.active.is_(filters.active))
-    if filters.image_status and "image_status" not in exclude:
-        clauses.append(Product.image_status == filters.image_status)
-    if filters.has_image is not None and "has_image" not in exclude:
-        if filters.has_image:
-            clauses.append(Product.image_status != "missing")
+        # Fase B (mig 066): active deriva de lifecycle_status='active'.
+        if filters.active:
+            clauses.append(Product.lifecycle_status == "active")
         else:
-            clauses.append(Product.image_status == "missing")
+            clauses.append(Product.lifecycle_status != "active")
+    if filters.has_image is not None and "has_image" not in exclude:
+        # has_image re-derivado vía EXISTS(product_assets kind='photo' status='active')
+        # tras drop de products.image_status (mig 053).
+        photo_exists = select(ProductAsset.id).where(
+            ProductAsset.sku == Product.sku,
+            ProductAsset.kind == "photo",
+            ProductAsset.status == "active",
+        )
+        if filters.has_image:
+            clauses.append(exists(photo_exists))
+        else:
+            clauses.append(~exists(photo_exists))
     if filters.lifecycle_status and "lifecycle_status" not in exclude:
         clauses.append(Product.lifecycle_status == filters.lifecycle_status)
     if filters.created_after:
@@ -164,8 +172,19 @@ def build_product_clauses(
     if filters.created_before:
         clauses.append(Product.created_at <= filters.created_before)
     if filters.search:
+        # Fase B (mig 065): name_en vive en product_translations(lang='en').
         term = f"%{filters.search}%"
-        clauses.append(or_(Product.sku.ilike(term), Product.name_en.ilike(term)))
+        tr_alias = ProductTranslation.__table__.alias("pt_en_facets")
+        en_name = (
+            select(tr_alias.c.name)
+            .where(
+                tr_alias.c.sku == Product.sku,
+                tr_alias.c.lang == "en",
+            )
+            .correlate(Product)
+            .scalar_subquery()
+        )
+        clauses.append(or_(Product.sku.ilike(term), en_name.ilike(term)))
     if filters.translation_status and "translation_status" not in exclude:
         sub = select(ProductTranslation.sku).where(
             ProductTranslation.status == filters.translation_status
@@ -245,12 +264,37 @@ async def _enum_counts(
     return {str(r.v): int(r.c) for r in rows if r.v is not None}
 
 
+async def _active_counts(
+    session: AsyncSession | AsyncConnection,
+    filters: ProductFilters,
+) -> dict[str, int]:
+    """Fase B (mig 066): active no es columna; deriva de lifecycle_status='active'.
+
+    Devuelve dict { 'True': n, 'False': m } compatible con el shape esperado.
+    """
+    clauses = build_product_clauses(filters, exclude={"active"})
+    active_expr = (Product.lifecycle_status == "active").label("v")
+    stmt = (
+        select(active_expr, func.count().label("c"))
+        .where(and_(*clauses))
+        .group_by(active_expr)
+    )
+    rows = (await session.execute(stmt)).all()
+    return {str(bool(r.v)): int(r.c) for r in rows}
+
+
 async def _has_image_counts(
     session: AsyncSession | AsyncConnection, filters: ProductFilters
 ) -> dict[str, int]:
-    clauses = build_product_clauses(filters, exclude={"has_image", "image_status"})
-    with_clause = and_(*clauses, Product.image_status != "missing")
-    without_clause = and_(*clauses, Product.image_status == "missing")
+    clauses = build_product_clauses(filters, exclude={"has_image"})
+    # has_image re-derivado: EXISTS(product_assets kind='photo' status='active').
+    photo_exists = select(ProductAsset.id).where(
+        ProductAsset.sku == Product.sku,
+        ProductAsset.kind == "photo",
+        ProductAsset.status == "active",
+    )
+    with_clause = and_(*clauses, exists(photo_exists))
+    without_clause = and_(*clauses, ~exists(photo_exists))
     with_n = await session.execute(select(func.count()).where(with_clause))
     without_n = await session.execute(select(func.count()).where(without_clause))
     return {
@@ -435,7 +479,6 @@ async def compute_facets(
         pn,
         data_quality,
         active,
-        image_status,
         has_image,
         tr_es,
         tr_ar,
@@ -453,8 +496,7 @@ async def compute_facets(
         _on_conn(lambda c: _count_by_column(c, Product.dn, filters, exclude_field="dn", limit=50)),
         _on_conn(lambda c: _count_by_column(c, Product.pn, filters, exclude_field="pn", limit=20)),
         _on_conn(lambda c: _enum_counts(c, Product.data_quality, filters, exclude_field="data_quality")),
-        _on_conn(lambda c: _enum_counts(c, Product.active, filters, exclude_field="active")),
-        _on_conn(lambda c: _enum_counts(c, Product.image_status, filters, exclude_field="image_status")),
+        _on_conn(lambda c: _active_counts(c, filters)),
         _on_conn(lambda c: _has_image_counts(c, filters)),
         _on_conn(lambda c: _translation_status_counts(c, filters, "es")),
         _on_conn(lambda c: _translation_status_counts(c, filters, "ar")),
@@ -488,7 +530,6 @@ async def compute_facets(
         pn=_num_sort(pn),
         data_quality=data_quality,
         active=active,
-        image_status=image_status,
         has_image=has_image,
         translation_status={"es": tr_es, "ar": tr_ar},
         division=division,

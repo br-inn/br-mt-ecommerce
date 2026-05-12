@@ -21,6 +21,7 @@ from pydantic import ValidationError
 
 from app.schemas.compatibility import (
     CompatibilityKind,
+    CompatibilityOwnerType,
     CompatibleProductSummary,
     ProductCompatibilityCreate,
     ProductCompatibilityPatch,
@@ -134,3 +135,129 @@ def test_replace_item_valid() -> None:
     assert len(items) == 2
     assert items[0].position == 0
     assert items[1].position == 2
+
+
+# ---------------------------------------------------------------------------
+# Fase 5 — owner_type + DN range tests
+# ---------------------------------------------------------------------------
+
+
+def test_owner_type_enum_values() -> None:
+    """CompatibilityOwnerType expone product/variant/series."""
+    assert {o.value for o in CompatibilityOwnerType} == {
+        "product",
+        "variant",
+        "series",
+    }
+
+
+def test_create_defaults_owner_type_product() -> None:
+    """Sin owner_type → default 'product' (compat con clientes legacy)."""
+    obj = ProductCompatibilityCreate(
+        compatible_with_sku="MT-B-002",
+        kind=CompatibilityKind.spare_part,
+    )
+    assert obj.owner_type == CompatibilityOwnerType.product
+    assert obj.dn_min is None
+    assert obj.dn_max is None
+
+
+def test_create_with_series_owner_and_dn_range() -> None:
+    """Crea recambio polymorphic vinculado a una serie con rango DN 15..50."""
+    obj = ProductCompatibilityCreate(
+        compatible_with_sku="MT-KIT-001",
+        kind=CompatibilityKind.spare_part,
+        owner_type=CompatibilityOwnerType.series,
+        dn_min=15,
+        dn_max=50,
+    )
+    assert obj.owner_type == CompatibilityOwnerType.series
+    assert obj.dn_min == 15
+    assert obj.dn_max == 50
+
+
+def test_create_dn_max_less_than_min_rejected() -> None:
+    """dn_max < dn_min → ValidationError."""
+    with pytest.raises(ValidationError):
+        ProductCompatibilityCreate(
+            compatible_with_sku="MT-KIT-002",
+            kind=CompatibilityKind.spare_part,
+            dn_min=50,
+            dn_max=15,
+        )
+
+
+def test_create_dn_only_min_allowed() -> None:
+    """Solo dn_min sin dn_max → válido (semi-acotado ≥ dn_min)."""
+    obj = ProductCompatibilityCreate(
+        compatible_with_sku="MT-KIT-003",
+        kind=CompatibilityKind.spare_part,
+        dn_min=25,
+    )
+    assert obj.dn_min == 25
+    assert obj.dn_max is None
+
+
+def test_create_dn_negative_rejected() -> None:
+    """dn_min negativo → ValidationError (ge=0)."""
+    with pytest.raises(ValidationError):
+        ProductCompatibilityCreate(
+            compatible_with_sku="MT-KIT-004",
+            kind=CompatibilityKind.spare_part,
+            dn_min=-1,
+        )
+
+
+def test_replace_item_carries_owner_type_and_dn() -> None:
+    """ProductCompatibilityReplaceItem propaga owner_type + dn_min/dn_max."""
+    item = ProductCompatibilityReplaceItem(
+        compatible_with_sku="MT-KIT-005",
+        kind=CompatibilityKind.spare_part,
+        owner_type=CompatibilityOwnerType.series,
+        dn_min=20,
+        dn_max=40,
+    )
+    assert item.owner_type == CompatibilityOwnerType.series
+    assert item.dn_min == 20
+    assert item.dn_max == 40
+
+
+def test_response_includes_owner_type_and_dn() -> None:
+    """ProductCompatibilityResponse expone owner_type + dn_min/dn_max."""
+    uid = uuid4()
+    from datetime import datetime, timezone
+
+    now = datetime.now(tz=timezone.utc)
+    obj = ProductCompatibilityResponse(
+        id=uid,
+        product_sku="series-pn40",
+        compatible_with_sku="MT-KIT-006",
+        kind=CompatibilityKind.spare_part,
+        position=0,
+        owner_type=CompatibilityOwnerType.series,
+        dn_min=15,
+        dn_max=100,
+        created_at=now,
+    )
+    assert obj.owner_type == CompatibilityOwnerType.series
+    assert obj.dn_min == 15
+    assert obj.dn_max == 100
+
+
+def test_response_defaults_owner_type_product_when_missing() -> None:
+    """Compat: response sin owner_type explícito asume 'product'."""
+    uid = uuid4()
+    from datetime import datetime, timezone
+
+    now = datetime.now(tz=timezone.utc)
+    obj = ProductCompatibilityResponse(
+        id=uid,
+        product_sku="MT-A-001",
+        compatible_with_sku="MT-B-002",
+        kind=CompatibilityKind.spare_part,
+        position=0,
+        created_at=now,
+    )
+    assert obj.owner_type == CompatibilityOwnerType.product
+    assert obj.dn_min is None
+    assert obj.dn_max is None

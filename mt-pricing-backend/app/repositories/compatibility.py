@@ -106,6 +106,9 @@ class CompatibilityRepo:
         notes: str | None = None,
         position: int = 0,
         created_by: UUID | None = None,
+        owner_type: str = "product",
+        dn_min: int | None = None,
+        dn_max: int | None = None,
     ) -> ProductCompatibility:
         """Crea el enlace directo. Para replaces/replaced_by crea también el inverso.
 
@@ -118,6 +121,9 @@ class CompatibilityRepo:
             notes=notes,
             position=position,
             created_by=created_by,
+            owner_type=owner_type,
+            dn_min=dn_min,
+            dn_max=dn_max,
         )
         self.session.add(link)
         await self.session.flush()
@@ -134,6 +140,9 @@ class CompatibilityRepo:
                     notes=notes,
                     position=position,
                     created_by=created_by,
+                    owner_type=owner_type,
+                    dn_min=dn_min,
+                    dn_max=dn_max,
                 )
                 self.session.add(inv)
                 await self.session.flush()
@@ -218,7 +227,58 @@ class CompatibilityRepo:
                 notes=item.get("notes"),
                 position=item.get("position", 0),
                 created_by=created_by,
+                owner_type=item.get("owner_type", "product"),
+                dn_min=item.get("dn_min"),
+                dn_max=item.get("dn_max"),
             )
             created.append(link)
 
         return created
+
+    # ------------------------------------------------------------------
+    # Fase 5 — polymorphic / DN-aware queries
+    # ------------------------------------------------------------------
+
+    async def list_for_owner(
+        self,
+        owner_type: str,
+        owner_id: str,
+        *,
+        kind: str | None = None,
+        dn: int | None = None,
+    ) -> Sequence[ProductCompatibility]:
+        """Lista enlaces por owner polymorphic (Fase 5).
+
+        - Para ``owner_type='product'`` el ``owner_id`` se compara contra
+          ``product_sku`` (compat layer — owner_id no se almacena en
+          product_compatibility, se deriva de product_sku).
+        - Para ``owner_type='series'`` filtra por ``owner_type`` + ``product_sku``
+          (que en este caso hace de owner_id de la serie en el modelo actual).
+        - Si ``dn`` se provee, aplica filtro de rango DN: la fila aplica si
+          (dn_min IS NULL OR dn_min <= dn) AND (dn_max IS NULL OR dn_max >= dn).
+        """
+        stmt = (
+            select(ProductCompatibility)
+            .where(
+                ProductCompatibility.owner_type == owner_type,
+                ProductCompatibility.product_sku == owner_id,
+            )
+            .options(selectinload(ProductCompatibility.compatible_with))
+            .order_by(
+                ProductCompatibility.position.asc(),
+                ProductCompatibility.created_at.asc(),
+            )
+        )
+        if kind is not None:
+            stmt = stmt.where(ProductCompatibility.kind == kind)
+        if dn is not None:
+            stmt = stmt.where(
+                and_(
+                    (ProductCompatibility.dn_min.is_(None))
+                    | (ProductCompatibility.dn_min <= dn),
+                    (ProductCompatibility.dn_max.is_(None))
+                    | (ProductCompatibility.dn_max >= dn),
+                )
+            )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()

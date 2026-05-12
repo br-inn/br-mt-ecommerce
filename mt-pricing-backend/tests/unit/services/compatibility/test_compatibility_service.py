@@ -306,3 +306,114 @@ async def test_remove_link_not_found() -> None:
 
     with pytest.raises(CompatibilityNotFoundError):
         await svc.remove_link("MT-A-001", "MT-B-002", "spare_part")
+
+
+# ---------------------------------------------------------------------------
+# Fase 5 — list_for_owner + DN range + list_spare_parts_for_series
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_add_link_propagates_owner_type_and_dn() -> None:
+    """add_link Fase 5 propaga owner_type + dn_min/dn_max al repo."""
+    p_a = _FakeProduct("MT-A-001")
+    p_b = _FakeProduct("MT-KIT-001")
+    svc, repo, _, _ = _make_service(
+        products={"MT-A-001": p_a, "MT-KIT-001": p_b}
+    )
+    fake_link = _FakeLink("MT-A-001", "MT-KIT-001", "spare_part")
+    repo.add_link = AsyncMock(return_value=fake_link)
+
+    await svc.add_link(
+        "MT-A-001",
+        "MT-KIT-001",
+        "spare_part",
+        owner_type="series",
+        dn_min=15,
+        dn_max=50,
+    )
+
+    kwargs = repo.add_link.call_args.kwargs
+    assert kwargs["owner_type"] == "series"
+    assert kwargs["dn_min"] == 15
+    assert kwargs["dn_max"] == 50
+
+
+@pytest.mark.asyncio
+async def test_add_link_rejects_dn_max_less_than_min() -> None:
+    """add_link con dn_max < dn_min → CompatibilityDomainError 422."""
+    p_a = _FakeProduct("MT-A-001")
+    p_b = _FakeProduct("MT-KIT-002")
+    svc, _, _, _ = _make_service(
+        products={"MT-A-001": p_a, "MT-KIT-002": p_b}
+    )
+
+    with pytest.raises(CompatibilityDomainError) as exc:
+        await svc.add_link(
+            "MT-A-001",
+            "MT-KIT-002",
+            "spare_part",
+            dn_min=50,
+            dn_max=15,
+        )
+    assert exc.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_for_owner_product_validates_sku() -> None:
+    """list_for_owner con owner_type='product' valida SKU existente."""
+    svc, _, _, _ = _make_service(products={})  # no products
+
+    with pytest.raises(CompatibilitySkuNotFoundError):
+        await svc.list_for_owner("product", "MT-NOPE")
+
+
+@pytest.mark.asyncio
+async def test_list_for_owner_series_no_sku_check() -> None:
+    """list_for_owner con owner_type='series' NO valida existencia en products."""
+    svc, repo, _, _ = _make_service(products={})
+    fake_links = [
+        _FakeLink("series-pn40", "MT-KIT-A", "spare_part"),
+    ]
+    repo.list_for_owner = AsyncMock(return_value=fake_links)
+
+    rows = await svc.list_for_owner("series", "series-pn40")
+    assert len(rows) == 1
+    repo.list_for_owner.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_for_owner_invalid_type_rejected() -> None:
+    """owner_type fuera del set permitido → 422."""
+    svc, _, _, _ = _make_service(products={})
+
+    with pytest.raises(CompatibilityDomainError) as exc:
+        await svc.list_for_owner("invalid_kind", "x")
+    assert exc.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_for_owner_passes_dn_filter_to_repo() -> None:
+    """list_for_owner propaga dn al repo (filtro de rango)."""
+    svc, repo, _, _ = _make_service(products={})
+    repo.list_for_owner = AsyncMock(return_value=[])
+
+    await svc.list_for_owner("series", "series-pn40", dn=32)
+
+    kwargs = repo.list_for_owner.call_args.kwargs
+    assert kwargs["dn"] == 32
+
+
+@pytest.mark.asyncio
+async def test_list_spare_parts_for_series_shortcut() -> None:
+    """list_spare_parts_for_series llama al repo con kind='spare_part'."""
+    svc, repo, _, _ = _make_service(products={})
+    repo.list_for_owner = AsyncMock(return_value=[])
+
+    await svc.list_spare_parts_for_series("series-pn40", dn=25)
+
+    call_args = repo.list_for_owner.call_args
+    assert call_args.args[0] == "series"
+    assert call_args.args[1] == "series-pn40"
+    assert call_args.kwargs["kind"] == "spare_part"
+    assert call_args.kwargs["dn"] == 25

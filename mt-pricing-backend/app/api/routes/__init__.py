@@ -10,6 +10,8 @@ from fastapi import APIRouter
 from app.api.routes import (
     admin_calibrator,
     admin_flags,
+    asset_links,
+    attributes,
     audit,
     audit_query,
     auth,
@@ -17,6 +19,8 @@ from app.api.routes import (
     costs,
     currencies,
     dashboard,
+    dimensions,
+    documents,
     fx_rates,
     graphrag,
     imports,
@@ -34,6 +38,11 @@ from app.api.routes import (
     translations_workflow,
     users,
     vocabularies,
+)
+from app.api.routes.documents import admin_router as admin_documents_router
+from app.api.routes.attributes import (
+    admin_attributes_router,
+    products_attributes_router,
 )
 from app.api.routes.costs import products_costs_router
 from app.api.routes.products_display import products_display_router
@@ -104,3 +113,14 @@ router.include_router(products_taxonomies_router)
 router.include_router(admin_registry_router)
 router.include_router(admin_products_taxonomies_router)
 router.include_router(admin_family_schemas_router)
+# Fase 2 — EAV typed attributes (migs. 054/055/056)
+router.include_router(attributes.router)
+router.include_router(admin_attributes_router)
+router.include_router(products_attributes_router, prefix="/products")
+# Fase 4 — polymorphic asset_links + versioned documents (migs. 058/059/060)
+router.include_router(asset_links.router)
+router.include_router(documents.router)
+router.include_router(admin_documents_router)
+# Fase 3 — tablas técnicas granulares (migs. 061/062/063)
+router.include_router(dimensions.router)
+router.include_router(dimensions.admin_router)

@@ -205,6 +205,7 @@ async def admin_patch_certification(
 @admin_vocab_router.delete(
     "/certifications/{cert_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="[Admin] Eliminar certificación",
 )
 async def admin_delete_certification(
@@ -293,6 +294,7 @@ async def admin_patch_application(
 @admin_vocab_router.delete(
     "/applications/{app_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="[Admin] Eliminar aplicación",
 )
 async def admin_delete_application(
@@ -345,6 +347,8 @@ async def add_product_certification(
             obtained_at=data.obtained_at,
             expires_at=data.expires_at,
             notes=data.notes,
+            owner_type=data.owner_type.value,
+            owner_id=data.owner_id,
         )
     except VocabularyDomainError as e:
         _raise_domain(e)
@@ -370,7 +374,11 @@ async def replace_product_certifications(
     service: ProductVocabularyService = Depends(get_product_vocab_service),
 ) -> list[ProductCertificationResponse]:
     try:
-        await service.replace_certifications(sku, [d.model_dump() for d in data])
+        # Fase 5 — model_dump(mode='json') normaliza Enums a strings antes de
+        # propagar al repo/service.
+        await service.replace_certifications(
+            sku, [d.model_dump(mode="json") for d in data]
+        )
     except VocabularyDomainError as e:
         _raise_domain(e)
     links = await service.list_certifications(sku)
@@ -380,6 +388,7 @@ async def replace_product_certifications(
 @products_vocab_router.delete(
     "/{sku}/certifications/{cert_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Eliminar certificación de un producto",
 )
 async def remove_product_certification(
@@ -465,6 +474,7 @@ async def replace_product_applications(
 @products_vocab_router.delete(
     "/{sku}/applications/{app_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Eliminar aplicación de un producto",
 )
 async def remove_product_application(

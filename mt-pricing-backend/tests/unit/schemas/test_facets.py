@@ -39,7 +39,6 @@ def test_facets_response_shape() -> None:
         pn=[FacetBucket(value="16", count=300)],
         data_quality={"complete": 100, "partial": 723},
         active={"True": 800, "False": 23},
-        image_status={"missing": 823},
         has_image={"with": 0, "without": 823},
         translation_status={
             "es": TranslationLangFacet(missing=823),

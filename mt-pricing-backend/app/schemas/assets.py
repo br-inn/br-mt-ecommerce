@@ -319,7 +319,14 @@ class ProductAssetResponse(BaseModel):
     hash_sha256: str | None = None
     variants: dict[str, Any] = Field(default_factory=dict)
     # ORM attr is `asset_meta` (DB column: `metadata`). We expose as `metadata` in JSON.
-    asset_meta: dict[str, Any] = Field(default_factory=dict, alias="metadata")
+    # Bug fix (Fase 0 2026-05-11): `alias="metadata"` chocaba con `MetaData()` de
+    # SQLAlchemy en `from_attributes`; dos aliases separadas resuelven sin choque
+    # y mantienen contrato JSON bidireccional.
+    asset_meta: dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias="metadata",
+        serialization_alias="metadata",
+    )
     revision: str | None = None
     supersedes_id: UUID | None = None
     status: str

@@ -136,8 +136,10 @@ class _DefaultProductRepo:
         self._session = session
 
     async def list_active_skus(self) -> list[str]:
+        # Fase B (mig 066): active deriva de lifecycle_status='active'.
         stmt = select(Product.sku).where(
-            Product.active.is_(True), Product.deleted_at.is_(None)
+            Product.lifecycle_status == "active",
+            Product.deleted_at.is_(None),
         )
         rows = (await self._session.execute(stmt)).all()
         return [r[0] for r in rows]

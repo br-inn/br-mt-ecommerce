@@ -127,6 +127,9 @@ class CompatibilityService:
         position: int = 0,
         actor_id: UUID | None = None,
         actor_email: str | None = None,
+        owner_type: str = "product",
+        dn_min: int | None = None,
+        dn_max: int | None = None,
     ) -> ProductCompatibility:
         """Añade un enlace de compatibilidad.
 
@@ -134,6 +137,7 @@ class CompatibilityService:
         - Ambos SKUs deben existir.
         - product_sku != compatible_with_sku (no self-loop).
         - No puede existir ya el mismo (product_sku, compatible_with_sku, kind).
+        - dn_min/dn_max coherentes (validado por CHECK en DB + schema).
 
         Para ``replaces``/``replaced_by``, el repo crea también el inverso.
         """
@@ -143,6 +147,13 @@ class CompatibilityService:
         await self._assert_sku_exists(product_sku)
         await self._assert_sku_exists(compatible_with_sku)
 
+        if dn_min is not None and dn_max is not None and dn_max < dn_min:
+            raise CompatibilityDomainError(
+                code="compatibility_dn_range_invalid",
+                message="dn_max debe ser >= dn_min",
+                status_code=422,
+            )
+
         try:
             link = await self._repo.add_link(
                 product_sku,
@@ -151,6 +162,9 @@ class CompatibilityService:
                 notes=notes,
                 position=position,
                 created_by=actor_id,
+                owner_type=owner_type,
+                dn_min=dn_min,
+                dn_max=dn_max,
             )
         except IntegrityError as exc:
             raise CompatibilityDuplicateError(product_sku, compatible_with_sku, kind) from exc
@@ -167,6 +181,9 @@ class CompatibilityService:
                 "kind": kind,
                 "notes": notes,
                 "position": position,
+                "owner_type": owner_type,
+                "dn_min": dn_min,
+                "dn_max": dn_max,
             },
         )
         return link
@@ -212,7 +229,8 @@ class CompatibilityService:
         """Reemplaza todos los enlaces OUTGOING de ``sku`` con la lista dada.
 
         Valida que todos los ``compatible_with_sku`` existen antes de ejecutar
-        la operación.
+        la operación. Acepta opcionalmente ``owner_type``, ``dn_min``, ``dn_max``
+        por item (Fase 5).
         """
         await self._assert_sku_exists(sku)
 
@@ -222,6 +240,15 @@ class CompatibilityService:
             if csku == sku:
                 raise CompatibilitySelfLoopError()
             await self._assert_sku_exists(csku)
+            # Validar rango DN si ambos provistos.
+            dmn = item.get("dn_min")
+            dmx = item.get("dn_max")
+            if dmn is not None and dmx is not None and dmx < dmn:
+                raise CompatibilityDomainError(
+                    code="compatibility_dn_range_invalid",
+                    message="dn_max debe ser >= dn_min",
+                    status_code=422,
+                )
 
         try:
             created = await self._repo.replace_all_for_product(
@@ -243,3 +270,46 @@ class CompatibilityService:
             after={"sku": sku, "count": len(created)},
         )
         return created
+
+    # ------------------------------------------------------------------
+    # Fase 5 — polymorphic / DN-aware queries
+    # ------------------------------------------------------------------
+
+    async def list_for_owner(
+        self,
+        owner_type: str,
+        owner_id: str,
+        *,
+        kind: str | None = None,
+        dn: int | None = None,
+    ) -> Sequence[ProductCompatibility]:
+        """Lista compatibilidades por owner polymorphic con filtro DN opcional.
+
+        Para ``owner_type='product'`` valida que el SKU exista (legacy). Para
+        ``owner_type='series'`` no valida (owner_id es un series code o id).
+        """
+        if owner_type not in ("product", "variant", "series"):
+            raise CompatibilityDomainError(
+                code="compatibility_owner_type_invalid",
+                message=f"owner_type inválido: {owner_type!r}",
+                status_code=422,
+            )
+        if owner_type == "product":
+            await self._assert_sku_exists(owner_id)
+        return await self._repo.list_for_owner(
+            owner_type, owner_id, kind=kind, dn=dn
+        )
+
+    async def list_spare_parts_for_series(
+        self,
+        series_id: str,
+        *,
+        dn: int | None = None,
+    ) -> Sequence[ProductCompatibility]:
+        """Resuelve recambios aplicables a una serie en un DN concreto.
+
+        Shortcut sobre ``list_for_owner(owner_type='series', kind='spare_part')``.
+        """
+        return await self._repo.list_for_owner(
+            "series", series_id, kind="spare_part", dn=dn
+        )

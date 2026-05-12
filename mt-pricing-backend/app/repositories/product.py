@@ -135,7 +135,11 @@ class ProductRepository(BaseRepository[Product]):
         if data_quality:
             clauses.append(Product.data_quality == data_quality)
         if active is not None:
-            clauses.append(Product.active.is_(active))
+            # Fase B (mig 066): active deriva de lifecycle_status.
+            if active:
+                clauses.append(Product.lifecycle_status == "active")
+            else:
+                clauses.append(Product.lifecycle_status != "active")
         if dn is not None:
             clauses.append(Product.dn == dn)
         if pn is not None:
@@ -210,11 +214,21 @@ class ProductRepository(BaseRepository[Product]):
                 sub = sub.where(ProductTranslation.lang == translation_lang)
             clauses.append(Product.sku.in_(sub))
 
-        # Búsqueda full-text — usa websearch_to_tsquery sobre Postgres con
-        # ranking por peso (sku>name>family>brand). En tests con SQLite cae
-        # al fallback ILIKE.
+        # Búsqueda full-text — Fase B (mig 065): name_en ya no es columna;
+        # ahora se hace LEFT JOIN a product_translations(lang='en') para
+        # incluir el nombre canónico en el tsvector / ILIKE.
         if search:
             dialect = self.session.bind.dialect.name if self.session.bind else "postgresql"
+            tr_alias = ProductTranslation.__table__.alias("pt_en_search")
+            en_name_sql = (
+                select(tr_alias.c.name)
+                .where(
+                    tr_alias.c.sku == Product.sku,
+                    tr_alias.c.lang == "en",
+                )
+                .correlate(Product)
+                .scalar_subquery()
+            )
             if dialect == "postgresql":
                 # Documento ponderado: sku 'A', name_en 'B', family 'C', brand 'D'.
                 ts_doc = func.setweight(
@@ -225,7 +239,7 @@ class ProductRepository(BaseRepository[Product]):
                 ).op("||")(
                     func.setweight(
                         func.to_tsvector(
-                            "simple", func.coalesce(Product.name_en, "")
+                            "simple", func.coalesce(en_name_sql, "")
                         ),
                         "B",
                     )
@@ -249,7 +263,7 @@ class ProductRepository(BaseRepository[Product]):
             else:
                 term = f"%{search}%"
                 clauses.append(
-                    or_(Product.sku.ilike(term), Product.name_en.ilike(term))
+                    or_(Product.sku.ilike(term), en_name_sql.ilike(term))
                 )
 
         if clauses:
@@ -280,28 +294,36 @@ class ProductRepository(BaseRepository[Product]):
     async def search_by_text(
         self, query: str, *, limit: int = 10
     ) -> Sequence[Product]:
-        """Full-text simple: pg_trgm sobre name_en + ILIKE prefix sobre sku.
+        """Full-text simple: pg_trgm sobre product_translations(en).name + ILIKE prefix sobre sku.
 
-        Sprint 1 (sin pgvector): trigram similarity para name_en, ILIKE prefix
-        para sku. Sprint 2+: hybrid (BM25 + embedding cosine) — TODO.
+        Fase B (mig 065): name_en se eliminó de products; ahora viene de
+        product_translations(lang='en').
         """
         term = query.strip()
         like_pattern = f"{term}%"
-        # similarity(name_en, query) — pg_trgm. Para SKU usamos ILIKE prefix
-        # porque los códigos no se prestan a similarity.
+        tr_alias = ProductTranslation.__table__.alias("pt_en_textsrch")
+        en_name = (
+            select(tr_alias.c.name)
+            .where(
+                tr_alias.c.sku == Product.sku,
+                tr_alias.c.lang == "en",
+            )
+            .correlate(Product)
+            .scalar_subquery()
+        )
         stmt = (
             select(Product)
             .where(
                 Product.deleted_at.is_(None),
                 or_(
                     Product.sku.ilike(like_pattern),
-                    Product.name_en.op("%")(term),
+                    en_name.op("%")(term),
                 ),
             )
             .order_by(
-                # ranking: prefix match SKU primero, luego similarity name_en.
+                # ranking: prefix match SKU primero, luego similarity name.
                 Product.sku.ilike(like_pattern).desc(),
-                func.similarity(Product.name_en, term).desc(),
+                func.similarity(en_name, term).desc(),
             )
             .limit(limit)
         )
@@ -313,18 +335,32 @@ class ProductRepository(BaseRepository[Product]):
     ) -> Sequence[Product]:
         stmt = select(Product).where(Product.family == family)
         if active_only:
-            stmt = stmt.where(Product.active.is_(True), Product.deleted_at.is_(None))
+            # Fase B (mig 066): active → lifecycle_status='active'.
+            stmt = stmt.where(
+                Product.lifecycle_status == "active",
+                Product.deleted_at.is_(None),
+            )
         stmt = stmt.order_by(Product.sku.asc()).limit(limit)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def search_by_name(self, query: str, *, limit: int = 50) -> Sequence[Product]:
-        """Búsqueda por similaridad pg_trgm sobre `name_en`."""
+        """Búsqueda por similaridad pg_trgm sobre product_translations(en).name."""
+        tr_alias = ProductTranslation.__table__.alias("pt_en_byname")
+        en_name = (
+            select(tr_alias.c.name)
+            .where(
+                tr_alias.c.sku == Product.sku,
+                tr_alias.c.lang == "en",
+            )
+            .correlate(Product)
+            .scalar_subquery()
+        )
         stmt = (
             select(Product)
-            .where(Product.name_en.op("%")(query))
+            .where(en_name.op("%")(query))
             .where(Product.deleted_at.is_(None))
-            .order_by(func.similarity(Product.name_en, query).desc())
+            .order_by(func.similarity(en_name, query).desc())
             .limit(limit)
         )
         result = await self.session.execute(stmt)
@@ -401,10 +437,15 @@ class ProductImageRepository(BaseRepository[ProductImage]):
     soft_delete_field = None
 
     async def list_for_sku(self, sku: str) -> Sequence[ProductImage]:
+        # Tras drop de `role` (mig 053): ordenar por (is_primary, kind, position).
         stmt = (
             select(ProductImage)
             .where(ProductImage.sku == sku)
-            .order_by(ProductImage.is_primary.desc(), ProductImage.role.asc())
+            .order_by(
+                ProductImage.is_primary.desc(),
+                ProductImage.kind.asc(),
+                ProductImage.position.asc(),
+            )
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()

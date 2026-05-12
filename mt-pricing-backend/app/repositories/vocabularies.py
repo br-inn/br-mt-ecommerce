@@ -100,8 +100,17 @@ class ProductCertificationRepo:
         obtained_at: "date | None" = None,  # type: ignore[name-defined]
         expires_at: "date | None" = None,  # type: ignore[name-defined]
         notes: str | None = None,
+        owner_type: str = "product",
+        owner_id: str | None = None,
     ) -> ProductCertification:
-        """Create or update a product-certification link."""
+        """Create or update a product-certification link.
+
+        Fase 5 — owner_type/owner_id polymorphic. Por compat layer, cuando
+        ``owner_type='product'`` y owner_id es None, owner_id se autorrellena
+        con product_sku.
+        """
+        if owner_id is None:
+            owner_id = product_sku
         # Upsert pattern: try to get existing, update or create.
         existing = await self.get_link(product_sku, certification_id)
         if existing:
@@ -113,6 +122,8 @@ class ProductCertificationRepo:
                 existing.expires_at = expires_at
             if notes is not None:
                 existing.notes = notes
+            existing.owner_type = owner_type
+            existing.owner_id = owner_id
             await self.session.flush()
             return existing
 
@@ -123,6 +134,8 @@ class ProductCertificationRepo:
             obtained_at=obtained_at,
             expires_at=expires_at,
             notes=notes,
+            owner_type=owner_type,
+            owner_id=owner_id,
         )
         self.session.add(row)
         await self.session.flush()
@@ -161,7 +174,10 @@ class ProductCertificationRepo:
         product_sku: str,
         links: list[dict],
     ) -> Sequence[ProductCertification]:
-        """Atomically replace all certifications for a product."""
+        """Atomically replace all certifications for a product.
+
+        Fase 5 — propaga owner_type/owner_id por item; default 'product'/product_sku.
+        """
         # Delete existing
         await self.session.execute(
             delete(ProductCertification).where(
@@ -178,6 +194,8 @@ class ProductCertificationRepo:
                 obtained_at=lnk.get("obtained_at"),
                 expires_at=lnk.get("expires_at"),
                 notes=lnk.get("notes"),
+                owner_type=lnk.get("owner_type", "product"),
+                owner_id=lnk.get("owner_id") or product_sku,
             )
             self.session.add(row)
             rows.append(row)

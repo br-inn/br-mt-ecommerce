@@ -210,7 +210,22 @@ class ProductVocabularyService:
                 code="certification_not_found",
                 status_code=404,
             )
-        row = await self.cert_repo.link(product_sku, certification_id, **kwargs)
+        # Fase 5 — owner_type/owner_id polymorphic. Default 'product' + product_sku.
+        owner_type = kwargs.pop("owner_type", "product")
+        owner_id = kwargs.pop("owner_id", None)
+        if owner_type not in ("product", "variant", "series"):
+            raise VocabularyDomainError(
+                f"owner_type inválido: {owner_type!r}",
+                code="certification_owner_type_invalid",
+                status_code=422,
+            )
+        row = await self.cert_repo.link(
+            product_sku,
+            certification_id,
+            owner_type=owner_type,
+            owner_id=owner_id,
+            **kwargs,
+        )
         await self.session.commit()
         return row
 

@@ -26,10 +26,11 @@ from app.db.models.product import Product
 from app.services.importer.parser import ParsedRow
 
 # Campos que comparamos para detectar cambios (whitelist explícita).
+# Fase B (mig 065/066): name_en/description_en/marketing_copy_en y active
+# removidos — los textos en inglés viven en product_translations(lang='en')
+# (su diff es responsabilidad de su propio differ futuro) y active deriva de
+# lifecycle_status.
 COMPARED_FIELDS: tuple[str, ...] = (
-    "name_en",
-    "description_en",
-    "marketing_copy_en",
     "family",
     "subfamily",
     "type",
@@ -45,9 +46,8 @@ COMPARED_FIELDS: tuple[str, ...] = (
     "packaging",
     "intrastat_code",
     "erp_name",
-    "image_url",
     "data_quality",
-    "active",
+    "lifecycle_status",
 )
 
 

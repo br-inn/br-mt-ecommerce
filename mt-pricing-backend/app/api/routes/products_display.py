@@ -86,6 +86,7 @@ async def get_effective_display(
 @products_display_router.put(
     "/{sku}/display-pair",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Establece la pareja de display (color sibling) simétricamente",
     responses={
         400: {"model": ProblemDetails},
@@ -107,6 +108,7 @@ async def set_display_pair(
 @products_display_router.delete(
     "/{sku}/display-pair",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Limpia el emparejamiento de display (idempotente)",
     responses={404: {"model": ProblemDetails}},
 )

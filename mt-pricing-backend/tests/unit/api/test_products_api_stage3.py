@@ -64,10 +64,13 @@ def _fake_product_orm(
     p = MagicMock()
     p.sku = sku
     p.internal_id = uuid4()
+    # Fase B (mig 065): name_en/description_en/marketing_copy_en ahora son
+    # hybrid_property en el ORM; el response acepta None si no hay translation EN.
     p.name_en = f"Product {sku}"
     p.description_en = None
     p.marketing_copy_en = None
     p.family = "valve"
+    p.family_id = None
     p.subfamily = None
     p.type = None
     p.material = None
@@ -82,10 +85,11 @@ def _fake_product_orm(
     p.packaging = {}
     p.intrastat_code = None
     p.erp_name = None
-    p.image_url = None
-    p.image_status = "missing"
     p.data_quality = "partial"
     p.manual_locked_fields = []
+    # Fase B (mig 066): active es computed_field en ProductResponse derivado
+    # de lifecycle_status='active'. Aquí lo dejamos en True para mocks (no se
+    # pasa al schema).
     p.active = True
     p.created_at = NOW
     p.updated_at = NOW
@@ -207,7 +211,8 @@ async def test_list_products_stage3_series_id_filter() -> None:
     async with await _client(app) as ac:
         resp = await ac.get(f"/api/v1/products?series_id={sid}")
     assert resp.status_code == 200
-    assert svc.list_products.await_args.kwargs["series_id"] == sid
+    # Route accepts UUID OR slug, so kwarg is forwarded as str (registry resolves slug→UUID).
+    assert svc.list_products.await_args.kwargs["series_id"] == str(sid)
 
 
 @pytest.mark.asyncio
@@ -220,7 +225,7 @@ async def test_list_products_stage3_material_id_filter() -> None:
     async with await _client(app) as ac:
         resp = await ac.get(f"/api/v1/products?material_id={mid}")
     assert resp.status_code == 200
-    assert svc.list_products.await_args.kwargs["material_id"] == mid
+    assert svc.list_products.await_args.kwargs["material_id"] == str(mid)
 
 
 @pytest.mark.asyncio
@@ -251,8 +256,9 @@ async def test_list_products_stage3_combined_filters() -> None:
     assert resp.status_code == 200
     kwargs = svc.list_products.await_args.kwargs
     assert kwargs["division_code"] == "industrial"
-    assert kwargs["series_id"] == sid
-    assert kwargs["material_id"] == mid
+    # UUID or slug both accepted; forwarded as str (see series_id_filter test).
+    assert kwargs["series_id"] == str(sid)
+    assert kwargs["material_id"] == str(mid)
     assert kwargs["tier_code"] == "gold"
 
 
@@ -306,12 +312,17 @@ async def test_get_product_detail_stage3_keys_present() -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_list_products_stage3_unknown_uuid_returns_422_not_500() -> None:
-    """series_id no-UUID debe devolver 422 (validación FastAPI), no 500."""
+async def test_list_products_stage3_invalid_series_id_too_long_returns_422() -> None:
+    """series_id excediendo max_length=64 debe devolver 422 (validación FastAPI), no 500.
+
+    Nota: el route acepta UUID O slug del registry como str(max_length=64) post-mig 050+.
+    Por eso ya no valida formato UUID en el query param; un slug arbitrario pasa.
+    Solo se rechaza si excede longitud (sanity bound).
+    """
     user = _FakeUser()
     svc = _mock_svc()
 
     app = _build_app(user, svc)
     async with await _client(app) as ac:
-        resp = await ac.get("/api/v1/products?series_id=not-a-uuid")
+        resp = await ac.get(f"/api/v1/products?series_id={'x' * 65}")
     assert resp.status_code == 422

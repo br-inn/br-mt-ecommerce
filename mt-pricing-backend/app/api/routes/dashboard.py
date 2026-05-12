@@ -85,7 +85,11 @@ async def get_dashboard_stats(
     products_active = await session.scalar(
         select(func.count())
         .select_from(Product)
-        .where(Product.deleted_at.is_(None), Product.active.is_(True))
+        # Fase B (mig 066): active deriva de lifecycle_status='active'.
+        .where(
+            Product.deleted_at.is_(None),
+            Product.lifecycle_status == "active",
+        )
     )
     products_complete = await session.scalar(
         select(func.count())

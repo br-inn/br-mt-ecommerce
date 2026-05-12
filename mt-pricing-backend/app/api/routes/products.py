@@ -256,7 +256,9 @@ async def _build_product_detail(
             detail_data["display_pair"] = ProductMini(
                 sku=prow.sku,
                 name_en=prow.name_en,
-                primary_image_url=getattr(prow, "image_url", None),
+                # `image_url` dropeado en mig 053; primary image se resuelve vía
+                # ProductAsset (kind='photo', is_primary=true) en el listado.
+                primary_image_url=None,
             )
 
     return ProductDetail.model_validate(detail_data)
@@ -1216,6 +1218,7 @@ async def add_compatibility(
     """Crea un enlace ``sku`` → ``kind`` → ``compatible_with_sku``.
 
     Para ``replaces``/``replaced_by`` también crea automáticamente el inverso.
+    Fase 5 — admite ``owner_type``, ``dn_min``, ``dn_max`` para spare parts.
     """
     try:
         link = await service.add_link(
@@ -1226,6 +1229,9 @@ async def add_compatibility(
             position=data.position,
             actor_id=user.id,
             actor_email=getattr(user, "email", None),
+            owner_type=data.owner_type.value,
+            dn_min=data.dn_min,
+            dn_max=data.dn_max,
         )
     except CompatibilityDomainError as e:
         _raise_compat(e)
@@ -1291,6 +1297,9 @@ async def replace_compatibility(
             "kind": item.kind.value,
             "notes": item.notes,
             "position": item.position,
+            "owner_type": item.owner_type.value,
+            "dn_min": item.dn_min,
+            "dn_max": item.dn_max,
         }
         for item in data
     ]
@@ -1367,6 +1376,7 @@ async def upsert_material(
 @router.delete(
     "/{sku}/materials/{component}/{position}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Eliminar un material específico (component+position)",
 )
 async def delete_material(
@@ -1453,6 +1463,7 @@ async def upsert_connection(
 @router.delete(
     "/{sku}/connections/{position}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Eliminar una conexión específica (por position)",
 )
 async def delete_connection(
@@ -1634,6 +1645,7 @@ async def upsert_tech_table(
 @router.delete(
     "/{sku}/tech-tables/{kind}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Eliminar una tabla técnica de un kind",
 )
 async def delete_tech_table(
@@ -1689,7 +1701,6 @@ async def get_facets(
     pn: Annotated[str | None, Query(max_length=8)] = None,
     data_quality: Annotated[str | None, Query()] = None,
     active: Annotated[bool | None, Query()] = None,
-    image_status: Annotated[str | None, Query()] = None,
     has_image: Annotated[bool | None, Query()] = None,
     lifecycle_status: Annotated[str | None, Query()] = None,
     translation_status: Annotated[
@@ -1720,7 +1731,6 @@ async def get_facets(
         pn=pn,
         data_quality=data_quality,
         active=active,
-        image_status=image_status,
         has_image=has_image,
         lifecycle_status=lifecycle_status,
         translation_status=translation_status,

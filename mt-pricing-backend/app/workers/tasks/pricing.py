@@ -84,8 +84,10 @@ def recalculate_catalog_task(actor_id: str) -> dict[str, Any]:
         from app.db.engine import get_sessionmaker
 
         async with get_sessionmaker()() as session:
+            # Fase B (mig 066): active deriva de lifecycle_status='active'.
             stmt = select(Product.sku).where(
-                Product.active.is_(True), Product.deleted_at.is_(None)
+                Product.lifecycle_status == "active",
+                Product.deleted_at.is_(None),
             )
             res = await session.execute(stmt)
             skus = [r[0] for r in res.all()]

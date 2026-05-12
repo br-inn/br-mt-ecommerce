@@ -12,6 +12,7 @@ from app.schemas.vocabularies import (
     ApplicationPatch,
     ApplicationResponse,
     CertificationCreate,
+    CertificationOwnerType,
     CertificationPatch,
     CertificationResponse,
     ProductApplicationLink,
@@ -130,3 +131,78 @@ class TestProductLinkSchemas:
         # Invalid negative
         with pytest.raises(Exception):
             ProductApplicationLink(application_id=uuid4(), position=-1)
+
+
+class TestCertificationOwnerType:
+    """Fase 5 — owner_type polymorphic en ProductCertificationLink/Response."""
+
+    def test_owner_type_enum_values(self) -> None:
+        assert {o.value for o in CertificationOwnerType} == {
+            "product",
+            "variant",
+            "series",
+        }
+
+    def test_cert_link_defaults_owner_type_product(self) -> None:
+        """Sin owner_type explícito → 'product' (compat con clientes legacy)."""
+        link = ProductCertificationLink(certification_id=uuid4())
+        assert link.owner_type == CertificationOwnerType.product
+        assert link.owner_id is None
+
+    def test_cert_link_with_series_owner(self) -> None:
+        """Certificación adjunta a serie completa."""
+        link = ProductCertificationLink(
+            certification_id=uuid4(),
+            owner_type=CertificationOwnerType.series,
+            owner_id="series-pn40-platinum",
+        )
+        assert link.owner_type == CertificationOwnerType.series
+        assert link.owner_id == "series-pn40-platinum"
+
+    def test_cert_response_includes_owner_fields(self) -> None:
+        """ProductCertificationResponse expone owner_type/owner_id."""
+        now = datetime.now(tz=UTC)
+        cert_id = uuid4()
+        resp = ProductCertificationResponse(
+            certification_id=cert_id,
+            code="CE",
+            name="CE",
+            issued_by=None,
+            scope=None,
+            logo_url=None,
+            certificate_pdf_asset_id=None,
+            obtained_at=None,
+            expires_at=None,
+            notes=None,
+            created_at=now,
+            owner_type=CertificationOwnerType.series,
+            owner_id="series-pn40",
+        )
+        assert resp.owner_type == CertificationOwnerType.series
+        assert resp.owner_id == "series-pn40"
+
+    def test_cert_response_from_link_backfills_legacy(self) -> None:
+        """from_link maneja rows legacy sin owner_type (default 'product')."""
+        now = datetime.now(tz=UTC)
+
+        class _FakeCert:
+            code = "CE"
+            name = "CE Marking"
+            issued_by = None
+            scope = None
+            logo_url = None
+
+        class _FakeLink:
+            certification_id = uuid4()
+            certificate_pdf_asset_id = None
+            obtained_at = None
+            expires_at = None
+            notes = None
+            created_at = now
+            owner_type = "product"
+            owner_id = "MT-A-001"
+            certification = _FakeCert()
+
+        resp = ProductCertificationResponse.from_link(_FakeLink())
+        assert resp.owner_type == CertificationOwnerType.product
+        assert resp.owner_id == "MT-A-001"

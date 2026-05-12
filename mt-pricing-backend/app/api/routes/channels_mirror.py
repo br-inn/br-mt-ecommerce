@@ -94,7 +94,9 @@ async def _canonical_loader_factory(
         result = await session.execute(stmt)
         translations = {t.lang: t for t in result.scalars().all()}
 
-        title_en = product.name_en
+        # Fase B (mig 065): name_en vive en product_translations(lang='en').
+        title_en_row = translations.get("en")
+        title_en = title_en_row.name if title_en_row else None
         title_ar = translations.get("ar").name if translations.get("ar") else None
 
         canonical: dict[str, Any] = {

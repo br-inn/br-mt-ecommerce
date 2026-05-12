@@ -9,9 +9,22 @@ Convenciones: Pydantic v2 ConfigDict, from_attributes=True para ORM.
 from __future__ import annotations
 
 from datetime import date, datetime
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class CertificationOwnerType(str, Enum):
+    """Tipo de owner polymorphic para certificaciones (Fase 5).
+
+    Default 'product' preserva compat con clientes legacy. Las certificaciones
+    pueden adjuntarse a un product, variant o series.
+    """
+
+    product = "product"
+    variant = "variant"
+    series = "series"
 
 
 # ---------------------------------------------------------------------------
@@ -96,11 +109,19 @@ class ApplicationResponse(BaseModel):
 # Product ↔ Certification link
 # ---------------------------------------------------------------------------
 class ProductCertificationLink(BaseModel):
-    """Payload para enlazar un producto a una certificación."""
+    """Payload para enlazar un producto a una certificación.
+
+    Fase 5 — admite owner_type opcional (default 'product') + owner_id opcional.
+    Si no se pasa owner_id, el servicio asume owner_id=product_sku (compat).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     certification_id: UUID
+    # Fase 5 — polymorphic owner. owner_id se autorrellena desde product_sku
+    # cuando owner_type='product' y el caller no lo especifica.
+    owner_type: CertificationOwnerType = CertificationOwnerType.product
+    owner_id: str | None = Field(default=None, max_length=64)
     certificate_pdf_asset_id: UUID | None = None
     obtained_at: date | None = None
     expires_at: date | None = None
@@ -126,11 +147,39 @@ class ProductCertificationResponse(BaseModel):
     expires_at: date | None
     notes: str | None
     created_at: datetime
+    # Fase 5 — polymorphic owner.
+    owner_type: CertificationOwnerType = CertificationOwnerType.product
+    owner_id: str | None = None
 
     @classmethod
     def from_link(cls, link: object) -> "ProductCertificationResponse":
-        """Construir desde un row ProductCertification (con cert eager-loaded)."""
+        """Construir desde un row ProductCertification (con cert eager-loaded).
+
+        Fase 5 — extrae owner_type/owner_id defensivamente; si el atributo no
+        está presente o no es un string válido, cae a defaults ('product' +
+        product_sku) para preservar compat con tests legacy y rows pre-064.
+        """
         cert = link.certification  # type: ignore[attr-defined]
+
+        raw_owner_type = getattr(link, "owner_type", None)
+        owner_type: CertificationOwnerType = CertificationOwnerType.product
+        if isinstance(raw_owner_type, str):
+            try:
+                owner_type = CertificationOwnerType(raw_owner_type)
+            except ValueError:
+                owner_type = CertificationOwnerType.product
+        elif isinstance(raw_owner_type, CertificationOwnerType):
+            owner_type = raw_owner_type
+
+        raw_owner_id = getattr(link, "owner_id", None)
+        owner_id: str | None
+        if isinstance(raw_owner_id, str):
+            owner_id = raw_owner_id
+        else:
+            # Compat fallback: usar product_sku si está disponible.
+            raw_sku = getattr(link, "product_sku", None)
+            owner_id = raw_sku if isinstance(raw_sku, str) else None
+
         return cls(
             certification_id=link.certification_id,  # type: ignore[attr-defined]
             code=cert.code,
@@ -143,6 +192,8 @@ class ProductCertificationResponse(BaseModel):
             expires_at=link.expires_at,  # type: ignore[attr-defined]
             notes=link.notes,  # type: ignore[attr-defined]
             created_at=link.created_at,  # type: ignore[attr-defined]
+            owner_type=owner_type,
+            owner_id=owner_id,
         )
 
 

@@ -8,6 +8,9 @@ Notas de diseño:
 - Validators para SKU regex, DN/PN whitelisted, lang ISO 639-1, MIME, etc.
 - `from_attributes=True` para mapear directo desde modelos SQLAlchemy.
 - Los schemas de respuesta NO exponen embeddings (Sprint 2+).
+- Stage 2 (mig. 043) movió valve scalars (manufacturing_method, actuator, kv,
+  kv2, torque_nm, iso5211_interface) a specs JSONB validados por JSON Schema.
+  dn_real ≡ dn (decisión usuario 2026-05-11) — no se expone como campo separado.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -95,13 +99,20 @@ LangStr = Annotated[
 # Product — base / create / patch / response
 # ---------------------------------------------------------------------------
 class ProductBase(BaseModel):
-    """Campos comunes — heredados por Create/Patch/Response."""
+    """Campos comunes — heredados por Create/Patch/Response.
+
+    Fase B (mig 065): los campos textuales en inglés (``name_en``,
+    ``description_en``, ``marketing_copy_en``) y ``tags`` se eliminaron del
+    schema base — ahora viven en ``product_translations(lang='en')`` y en los
+    vocabularios M:N respectivamente. Para crear un producto, las traducciones
+    se gestionan vía ``ProductService.upsert_translation``.
+    Fase B (mig 066): ``active`` boolean eliminado — derivable de
+    ``lifecycle_status='active'``; ProductResponse lo expone como
+    ``computed_field`` read-only.
+    """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    name_en: str = Field(min_length=1, max_length=512, description="Nombre canónico en inglés.")
-    description_en: str | None = Field(default=None, max_length=4000)
-    marketing_copy_en: str | None = Field(default=None, max_length=8000)
     family: str = Field(min_length=1, max_length=64)
     subfamily: str | None = Field(default=None, max_length=64)
     type: str | None = Field(default=None, max_length=64)
@@ -117,9 +128,7 @@ class ProductBase(BaseModel):
     packaging: dict[str, Any] = Field(default_factory=dict)
     intrastat_code: str | None = Field(default=None, max_length=16)
     erp_name: str | None = Field(default=None, max_length=128)
-    image_url: str | None = Field(default=None, max_length=2048)
     data_quality: str = Field(default="partial")
-    active: bool = True
 
     # ---- Wave 2: lifecycle / identity --------------------------------------
     lifecycle_status: str = Field(default="active")
@@ -129,21 +138,17 @@ class ProductBase(BaseModel):
     is_parent: bool = False
     is_variant: bool = False
 
-    # ---- Wave 2: technical scalars -----------------------------------------
-    dn_real: str | None = Field(default=None, max_length=16)
+    # ---- Wave 2: technical scalars (sólo transversales) --------------------
+    # Stage 2 (mig. 043) movió valve scalars a specs JSONB; dn_real ≡ dn
+    # (decisión usuario 2026-05-11) → dn_real no se expone aquí.
     size: str | None = Field(default=None, max_length=64)
     temp_min_c: int | None = Field(default=None, ge=-273, le=2000)
     temp_max_c: int | None = Field(default=None, ge=-273, le=2000)
     pressure_max_bar: Decimal | None = Field(default=None, ge=0, le=Decimal("9999.99"))
-    manufacturing_method: str | None = Field(default=None, max_length=32)
-    actuator: str | None = Field(default=None, max_length=32)
-    kv: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
-    kv2: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
-    torque_nm: Decimal | None = Field(default=None, ge=0, le=Decimal("99999.99"))
-    iso5211_interface: str | None = Field(default=None, max_length=16)
 
     # ---- Wave 2: editorial / SEO -------------------------------------------
-    tags: list[str] = Field(default_factory=list)
+    # Fase B (mig 065): `tags` dropeado; usar vocabularios M:N
+    # (product_certifications, product_applications).
     video_url: str | None = Field(default=None, max_length=2048)
     external_url: str | None = Field(default=None, max_length=2048)
 
@@ -153,30 +158,6 @@ class ProductBase(BaseModel):
         if v not in ALLOWED_LIFECYCLE_STATUS:
             raise ValueError(
                 f"lifecycle_status inválido: {v}; permitidos: {sorted(ALLOWED_LIFECYCLE_STATUS)}"
-            )
-        return v
-
-    @field_validator("manufacturing_method")
-    @classmethod
-    def _validate_manufacturing_method(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        v = v.lower()
-        if v not in ALLOWED_MANUFACTURING_METHOD:
-            raise ValueError(
-                f"manufacturing_method inválido: {v}; permitidos: {sorted(ALLOWED_MANUFACTURING_METHOD)}"
-            )
-        return v
-
-    @field_validator("actuator")
-    @classmethod
-    def _validate_actuator(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        v = v.lower()
-        if v not in ALLOWED_ACTUATOR:
-            raise ValueError(
-                f"actuator inválido: {v}; permitidos: {sorted(ALLOWED_ACTUATOR)}"
             )
         return v
 
@@ -252,13 +233,16 @@ class ProductCreate(ProductBase):
 
 
 class ProductPatch(BaseModel):
-    """Request para PATCH /products/{sku} — todos opcionales."""
+    """Request para PATCH /products/{sku} — todos opcionales.
+
+    Fase B (mig 065/066): se eliminaron campos legacy (name_en,
+    description_en, marketing_copy_en, tags, active). Para editar textos en
+    inglés usar PATCH /products/{sku}/translations/en. Para inactivar usar
+    lifecycle_status='deprecated'.
+    """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    name_en: str | None = Field(default=None, min_length=1, max_length=512)
-    description_en: str | None = Field(default=None, max_length=4000)
-    marketing_copy_en: str | None = Field(default=None, max_length=8000)
     family: str | None = Field(default=None, min_length=1, max_length=64)
     subfamily: str | None = Field(default=None, max_length=64)
     type: str | None = Field(default=None, max_length=64)
@@ -274,10 +258,8 @@ class ProductPatch(BaseModel):
     packaging: dict[str, Any] | None = None
     intrastat_code: str | None = Field(default=None, max_length=16)
     erp_name: str | None = Field(default=None, max_length=128)
-    image_url: str | None = Field(default=None, max_length=2048)
     data_quality: str | None = None
     manual_locked_fields: list[str] | None = None
-    active: bool | None = None
 
     # ---- Wave 2: lifecycle / identity (PATCH) ------------------------------
     lifecycle_status: str | None = None
@@ -288,20 +270,14 @@ class ProductPatch(BaseModel):
     is_variant: bool | None = None
 
     # ---- Wave 2: technical scalars (PATCH) --------------------------------
-    dn_real: str | None = Field(default=None, max_length=16)
+    # Stage 2 (mig. 043): valve scalars viven en specs JSONB; dn_real ≡ dn.
     size: str | None = Field(default=None, max_length=64)
     temp_min_c: int | None = Field(default=None, ge=-273, le=2000)
     temp_max_c: int | None = Field(default=None, ge=-273, le=2000)
     pressure_max_bar: Decimal | None = Field(default=None, ge=0, le=Decimal("9999.99"))
-    manufacturing_method: str | None = Field(default=None, max_length=32)
-    actuator: str | None = Field(default=None, max_length=32)
-    kv: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
-    kv2: Decimal | None = Field(default=None, ge=0, le=Decimal("999999.99"))
-    torque_nm: Decimal | None = Field(default=None, ge=0, le=Decimal("99999.99"))
-    iso5211_interface: str | None = Field(default=None, max_length=16)
 
     # ---- Wave 2: editorial / SEO (PATCH) ----------------------------------
-    tags: list[str] | None = None
+    # Fase B (mig 065): `tags` dropeado.
     video_url: str | None = Field(default=None, max_length=2048)
     external_url: str | None = Field(default=None, max_length=2048)
 
@@ -363,26 +339,6 @@ class ProductPatch(BaseModel):
             )
         return v
 
-    @field_validator("manufacturing_method")
-    @classmethod
-    def _validate_manufacturing_method(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        v = v.lower()
-        if v not in ALLOWED_MANUFACTURING_METHOD:
-            raise ValueError(f"manufacturing_method inválido: {v}")
-        return v
-
-    @field_validator("actuator")
-    @classmethod
-    def _validate_actuator(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        v = v.lower()
-        if v not in ALLOWED_ACTUATOR:
-            raise ValueError(f"actuator inválido: {v}")
-        return v
-
     @model_validator(mode="after")
     def _at_least_one_field(self) -> ProductPatch:
         if not self.model_dump(exclude_unset=True):
@@ -432,16 +388,29 @@ class ProductTranslationSummary(BaseModel):
 
 
 class ProductResponse(BaseModel):
-    """Response estándar — listados y mutaciones."""
+    """Response estándar — listados y mutaciones.
+
+    Fase B (mig 065/066):
+    - ``name_en/description_en/marketing_copy_en`` siguen exponiéndose como
+      campos *opcionales* para preservar contrato API hacia FE. Se rellenan
+      desde el modelo SQLAlchemy vía hybrid_property que lee de
+      ``product_translations(lang='en')`` cuando esa relationship está cargada.
+    - ``active`` se expone como **computed_field** read-only derivado de
+      ``lifecycle_status == 'active'``.
+    - ``tags`` se mantiene como lista vacía read-only (canónico en vocabs M:N).
+    - ``family_id`` (UUID) ahora se expone explícitamente (Fase 2 EAV FE).
+    """
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 
     sku: str
     internal_id: UUID
-    name_en: str
+    # Fase B: opcionales — populated vía Product hybrid props desde translations(en).
+    name_en: str | None = None
     description_en: str | None = None
     marketing_copy_en: str | None = None
     family: str
+    family_id: UUID | None = None
     subfamily: str | None = None
     type: str | None = None
     material: str | None = None
@@ -456,11 +425,9 @@ class ProductResponse(BaseModel):
     packaging: dict[str, Any] = Field(default_factory=dict)
     intrastat_code: str | None = None
     erp_name: str | None = None
-    image_url: str | None = None
-    image_status: str
     data_quality: str
     manual_locked_fields: list[str] = Field(default_factory=list)
-    active: bool
+    # Fase B: `active` se expone como computed_field (ver al final de la clase).
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
@@ -471,18 +438,12 @@ class ProductResponse(BaseModel):
     parent_sku: str | None = None
     is_parent: bool = False
     is_variant: bool = False
-    # ---- Wave 2: technical scalars -----------------------------------------
-    dn_real: str | None = None
+    # ---- Wave 2: technical scalars (sólo transversales) --------------------
+    # Stage 2 (mig. 043): valve scalars viven en specs JSONB; dn_real ≡ dn.
     size: str | None = None
     temp_min_c: int | None = None
     temp_max_c: int | None = None
     pressure_max_bar: Decimal | None = None
-    manufacturing_method: str | None = None
-    actuator: str | None = None
-    kv: Decimal | None = None
-    kv2: Decimal | None = None
-    torque_nm: Decimal | None = None
-    iso5211_interface: str | None = None
     # ---- Wave 2: editorial / SEO -------------------------------------------
     tags: list[str] = Field(default_factory=list)
     video_url: str | None = None
@@ -497,14 +458,26 @@ class ProductResponse(BaseModel):
     display_pair_sku: str | None = None
     division_codes: list[str] = Field(default_factory=list)
 
+    # Fase B (mig 066): active deriva de lifecycle_status para preservar
+    # contrato API (FE puede seguir leyendo `.active`) mientras
+    # input/storage usan sólo lifecycle_status.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def active(self) -> bool:
+        return self.lifecycle_status == "active"
+
 
 class ProductMini(BaseModel):
-    """Mini-summary de producto — usado para emparejado por color (display_pair)."""
+    """Mini-summary de producto — usado para emparejado por color (display_pair).
+
+    Fase B: ``name_en`` ahora opcional; viene de hybrid_property en Product
+    SQLAlchemy model.
+    """
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 
     sku: str
-    name_en: str
+    name_en: str | None = None
     primary_image_url: str | None = None
 
 

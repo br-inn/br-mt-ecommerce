@@ -6,8 +6,24 @@ no los descubre y las migraciones autogenerate los ignoran.
 
 from __future__ import annotations
 
+from app.db.models.asset_links import AssetLink
+from app.db.models.attributes import (
+    AttributeDefinition,
+    AttributeOption,
+    AttributeValue,
+    FamilyAttribute,
+)
 from app.db.models.audit import AuditEvent
 from app.db.models.compatibility import ProductCompatibility
+from app.db.models.dimensions import (
+    ActuationCode,
+    DimensionCell,
+    DimensionColumn,
+    DimensionRow,
+    PressureTemperaturePoint,
+    Standard,
+)
+from app.db.models.documents import Document
 from app.db.models.components import ProductConnection, ProductMaterial
 from app.db.models.tech_tables import ProductTechTable
 from app.db.models.cdc_event import CdcEvent
@@ -141,4 +157,19 @@ __all__ = [
     "TaxonomyAlias",
     "ProductTaxonomyLink",
     "FamilySchema",
+    # Fase 2 — EAV typed attributes (migs. 054/055/056)
+    "AttributeDefinition",
+    "AttributeOption",
+    "FamilyAttribute",
+    "AttributeValue",
+    # Fase 4 — polymorphic asset_links + versioned documents (migs. 058/059/060)
+    "AssetLink",
+    "Document",
+    # Fase 3 — tablas técnicas granulares (migs. 061/062/063)
+    "ActuationCode",
+    "Standard",
+    "DimensionColumn",
+    "DimensionRow",
+    "DimensionCell",
+    "PressureTemperaturePoint",
 ]

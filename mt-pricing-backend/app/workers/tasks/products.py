@@ -71,6 +71,8 @@ async def _run_async(
     from app.repositories.audit import AuditRepository
     from app.services.products.pvf_classifier import classify
 
+    from app.db.models.product import ProductTranslation
+
     actor_uuid = _UUID(actor_id) if actor_id else None
     SessionFactory = get_sessionmaker()
 
@@ -93,16 +95,27 @@ async def _run_async(
 
     async with SessionFactory() as session:
         # ---------- Pass 1: read + classify in memory ----------
-        stmt = select(
-            Product.sku,
-            Product.name_en,
-            Product.family,
-            Product.material,
-            Product.dn,
-            Product.pn,
-            Product.data_quality,
-            Product.manual_locked_fields,
-        ).where(Product.deleted_at.is_(None))
+        # Fase B (mig 065): name_en vive en product_translations(lang='en').
+        # LEFT JOIN para mantener filas sin translation EN.
+        stmt = (
+            select(
+                Product.sku,
+                ProductTranslation.name.label("name_en"),
+                Product.family,
+                Product.material,
+                Product.dn,
+                Product.pn,
+                Product.data_quality,
+                Product.manual_locked_fields,
+            )
+            .select_from(Product)
+            .outerjoin(
+                ProductTranslation,
+                (ProductTranslation.sku == Product.sku)
+                & (ProductTranslation.lang == "en"),
+            )
+            .where(Product.deleted_at.is_(None))
+        )
         if only_partial:
             stmt = stmt.where(Product.data_quality == "partial")
         result = await session.execute(stmt)

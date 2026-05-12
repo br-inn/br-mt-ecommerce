@@ -100,11 +100,11 @@ class ProductDataQualityTransitionError(ProductDomainError):
 
 
 # Snapshot helper — convierte modelo SQLAlchemy a dict serializable para audit.
+# Fase B (mig 065/066): se removieron name_en, description_en, marketing_copy_en,
+# tags y active (ya no son columnas reales del Product). Las traducciones
+# tienen su propio audit en upsert_translation.
 _AUDIT_FIELDS = (
     "sku",
-    "name_en",
-    "description_en",
-    "marketing_copy_en",
     "family",
     "subfamily",
     "type",
@@ -120,10 +120,9 @@ _AUDIT_FIELDS = (
     "packaging",
     "intrastat_code",
     "erp_name",
-    "image_url",
     "data_quality",
     "manual_locked_fields",
-    "active",
+    "lifecycle_status",
 )
 
 
@@ -229,6 +228,33 @@ class ProductService:
         return await self.products.search_by_text(query, limit=limit)
 
     # --------------------------------------------------------------- Mutations
+    @staticmethod
+    def _extract_en_translation_payload(
+        data: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Fase B: extrae name_en/description_en/marketing_copy_en del data
+        legacy y devuelve payload para upsert_translation en lang='en'.
+
+        Mutará `data` in-place removiendo las 3 claves para que el create del
+        Product no falle con TypeError por kwarg desconocido.
+        """
+        name = data.pop("name_en", None)
+        desc = data.pop("description_en", None)
+        marketing = data.pop("marketing_copy_en", None)
+        # Drop legacy keys that already no aplican al modelo (silenciosamente).
+        data.pop("tags", None)
+        data.pop("active", None)
+        if name is None and desc is None and marketing is None:
+            return None
+        payload: dict[str, Any] = {"status": "approved"}
+        if name is not None:
+            payload["name"] = name
+        if desc is not None:
+            payload["description"] = desc
+        if marketing is not None:
+            payload["marketing_copy"] = marketing
+        return payload
+
     async def create_product(self, data: dict[str, Any], actor: User) -> Product:
         sku = data["sku"]
         existing = await self.products.get_by_sku(sku)
@@ -245,11 +271,17 @@ class ProductService:
                 raise SpecsValidationError(result.errors)
         # Stage 3 (Wave 11) — divisiones M:N se manejan vía junction post-create.
         division_codes = data.pop("division_codes", None) or []
+        # Fase B (mig 065): extrae textos EN para crear translation en lang='en'.
+        en_translation = self._extract_en_translation_payload(data)
         prod = await self.products.create(
             **data,
             created_by=actor.id,
             updated_by=actor.id,
         )
+        if en_translation is not None:
+            await self.translations.upsert(
+                sku=prod.sku, lang="en", **en_translation
+            )
         if division_codes:
             from app.repositories.vocabularies import DivisionRepo, ProductDivisionRepo
 
@@ -275,6 +307,9 @@ class ProductService:
         prod = await self.products.get_by_sku(sku)
         if prod is None or prod.deleted_at is not None:
             raise ProductNotFoundError(sku)
+
+        # Fase B (mig 065): extrae textos EN legacy y redirige a translations.
+        en_translation = self._extract_en_translation_payload(data)
 
         # Respeta manual_locked_fields — sólo bloquea si el caller intenta
         # cambiar valor (no si manda el mismo).
@@ -305,6 +340,11 @@ class ProductService:
             setattr(prod, k, v)
         prod.updated_by = actor.id
         await self.session.flush()
+        # Fase B: redirige textos EN legacy a product_translations(en).
+        if en_translation is not None:
+            await self.translations.upsert(
+                sku=prod.sku, lang="en", **en_translation
+            )
         after = _snapshot(prod)
         await self.audit.record(
             entity_type="product",
@@ -336,10 +376,9 @@ class ProductService:
         }
     )
     # Campos que el PUT puede setear (whitelist explícita — nada de getattr loose).
+    # Fase B (mig 065/066): name_en/description_en/marketing_copy_en/tags/active
+    # removidos (textos viven en product_translations(en); active → lifecycle_status).
     _PUT_FIELDS: tuple[str, ...] = (
-        "name_en",
-        "description_en",
-        "marketing_copy_en",
         "family",
         "subfamily",
         "type",
@@ -355,10 +394,9 @@ class ProductService:
         "packaging",
         "intrastat_code",
         "erp_name",
-        "image_url",
         "data_quality",
         "manual_locked_fields",
-        "active",
+        "lifecycle_status",
     )
 
     @staticmethod
@@ -407,8 +445,13 @@ class ProductService:
         if "sku" in data and data["sku"] != sku:
             raise ProductImmutableFieldError("sku")
 
+        # Fase B: textos EN legacy → translations(en). Se procesa antes del
+        # filtrado por _PUT_FIELDS para no perderlos.
+        data_copy = dict(data)
+        en_translation = self._extract_en_translation_payload(data_copy)
+
         # Construye payload limpio — descarta sku si vino igual.
-        payload = {k: v for k, v in data.items() if k in self._PUT_FIELDS}
+        payload = {k: v for k, v in data_copy.items() if k in self._PUT_FIELDS}
 
         # Locks: bloquear escrituras sobre campos en manual_locked_fields
         # cuyo nuevo valor difiera. El propio set `manual_locked_fields` se
@@ -431,6 +474,10 @@ class ProductService:
         # `onupdate` cuando se persiste sin valor explícito.
         prod.updated_at = datetime.now(tz=timezone.utc)
         await self.session.flush()
+        if en_translation is not None:
+            await self.translations.upsert(
+                sku=prod.sku, lang="en", **en_translation
+            )
         after = _snapshot(prod)
         diff = _diff(before, after)
         # Si nada cambió, igual emitimos audit (PUT semánticamente reemplaza
@@ -449,8 +496,10 @@ class ProductService:
 
     # --------------------------------------------------------- data_quality
     # Campos que deben estar poblados para promover a `complete`.
+    # Fase B (mig 065): name_en (legacy column) removido — la verificación de
+    # nombre canónico se hace ahora consultando product_translations(lang='en').
+    # Mientras no haya validator dedicado, dejamos sólo los campos físicos.
     _DATA_QUALITY_REQUIRED_FIELDS: tuple[str, ...] = (
-        "name_en",
         "family",
         "material",
         "dn",
@@ -526,7 +575,9 @@ class ProductService:
             raise ProductNotFoundError(sku)
         before = _snapshot(prod)
         prod.deleted_at = datetime.now(tz=timezone.utc)
-        prod.active = False
+        # Fase B (mig 066): `active` ya no es columna; lifecycle_status='discontinued'
+        # marca semánticamente que el SKU dejó de comercializarse.
+        prod.lifecycle_status = "discontinued"
         prod.updated_by = actor.id
         await self.session.flush()
         await self.audit.record(
@@ -564,9 +615,9 @@ class ProductService:
         if prod is None or prod.deleted_at is not None:
             raise ProductNotFoundError(product_sku)
 
+        del role  # legacy param — column dropped en mig 053.
         img = ProductImage(
             sku=product_sku,
-            role=role,
             storage_path=storage_path,
             mime_type=mime_type,
             bytes_size=bytes_size,
@@ -575,7 +626,6 @@ class ProductService:
             alt_text=alt_text,
             is_primary=is_primary,
             status="active",
-            image_status="mirrored",  # Subida directa al bucket — ya está allá.
             created_by=actor.id,
         )
         self.session.add(img)

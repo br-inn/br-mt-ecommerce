@@ -46,6 +46,10 @@ def map_pim_row_to_product(row: tuple[Any, ...] | list[Any]) -> dict[str, Any]:
     # para el batch importer preferimos persistir con un placeholder y dejar
     # data_quality='partial' para que TI/Comercial lo backfilleen vía LLM o
     # manualmente.
+    #
+    # Fase B (mig 065): name_en ya no es columna de products. El payload sigue
+    # llevándolo y el ProductService.create_product lo extrae para upsertear en
+    # product_translations(lang='en') vía _extract_en_translation_payload.
     if "name_en" not in payload or not payload.get("name_en"):
         payload["name_en"] = f"[Producto sin nombre {sku}]"
         payload["data_quality"] = "partial"

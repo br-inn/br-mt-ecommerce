@@ -300,6 +300,9 @@ async def test_product_service_accepts_valid_specs(validator: SpecsValidator) ->
     service = ProductService(session=mock_session, specs_validator=validator)
     service.products = mock_products_repo
     service.audit = mock_audit_repo
+    # Fase B: create_product ahora puede llamar translations.upsert.
+    service.translations = AsyncMock()
+    service.translations.upsert = AsyncMock(return_value=(MagicMock(), True))
 
     mock_actor = MagicMock()
     mock_actor.id = uuid4()
@@ -333,6 +336,9 @@ async def test_product_service_no_validator_skips_validation() -> None:
     service = ProductService(session=mock_session, specs_validator=None)
     service.products = mock_products_repo
     service.audit = mock_audit_repo
+    # Fase B: create_product ahora puede llamar translations.upsert.
+    service.translations = AsyncMock()
+    service.translations.upsert = AsyncMock(return_value=(MagicMock(), True))
 
     mock_actor = MagicMock()
     mock_actor.id = uuid4()

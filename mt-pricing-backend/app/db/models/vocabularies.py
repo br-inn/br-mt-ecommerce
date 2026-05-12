@@ -86,7 +86,20 @@ class Application(UuidPkMixin, Base):
 
 
 class ProductCertification(Base):
-    """M:N junction: products ↔ certifications (con metadatos de certificado)."""
+    """M:N junction: products ↔ certifications (con metadatos de certificado).
+
+    Fase 5 — polymorphic owner:
+        Para soportar certificaciones a nivel ``variant`` o ``series`` (no solo
+        producto concreto), se añadieron las columnas ``owner_type`` y
+        ``owner_id`` en la migración 20260514_064.
+
+    **Compat layer:** ``product_sku`` se mantiene NOT NULL y como parte de la
+    PK existente. Para owner_type='product', ``owner_id == product_sku`` (los
+    métodos de servicio garantizan esta sincronía). Las filas con owner_type
+    ∈ {variant, series} requieren una migración futura que relaje el NOT NULL
+    de ``product_sku`` y deje de propagar valores. Por ahora todo flujo legacy
+    funciona sin cambios.
+    """
 
     __tablename__ = "product_certifications"
 
@@ -102,6 +115,15 @@ class ProductCertification(Base):
         primary_key=True,
         nullable=False,
     )
+    # Fase 5 — polymorphic owner. Para filas legacy, owner_type='product' +
+    # owner_id=product_sku (backfilled en migración 064).
+    owner_type: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        server_default=text("'product'"),
+    )
+    owner_id: Mapped[str] = mapped_column(Text, nullable=False)
+
     certificate_pdf_asset_id: Mapped[UUID | None] = mapped_column(
         UUID_PG, nullable=True
     )
@@ -122,6 +144,13 @@ class ProductCertification(Base):
 
     __table_args__ = (
         Index("idx_product_certifications_cert", "certification_id"),
+        Index("ix_product_certifications_owner", "owner_type", "owner_id"),
+        UniqueConstraint(
+            "owner_type",
+            "owner_id",
+            "certification_id",
+            name="uq_product_certifications_owner",
+        ),
     )
 
 

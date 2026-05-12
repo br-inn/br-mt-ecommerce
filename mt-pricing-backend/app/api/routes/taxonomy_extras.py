@@ -212,6 +212,78 @@ async def list_series_translations(
     return [SeriesTranslationResponse.model_validate(r) for r in rows]
 
 
+# ---------------------------------------------------------------------------
+# Fase 5 — spare parts polymorphic by series + DN range
+# ---------------------------------------------------------------------------
+from app.schemas.compatibility import (  # noqa: E402
+    ProductCompatibilityResponse,
+)
+from app.services.compatibility import (  # noqa: E402
+    CompatibilityDomainError,
+    CompatibilityService,
+)
+
+
+def get_compatibility_service_taxo(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CompatibilityService:
+    return CompatibilityService(session)
+
+
+@series_router.get(
+    "/series/{series_id}/spare-parts",
+    response_model=list[ProductCompatibilityResponse],
+    summary=(
+        "Listar recambios aplicables a una serie en un DN concreto (Fase 5)."
+    ),
+    responses={404: {"model": ProblemDetails}, 422: {"model": ProblemDetails}},
+)
+async def list_series_spare_parts(
+    series_id: str,
+    dn: Annotated[
+        int | None,
+        Query(ge=0, le=10000, description="DN (calibre) para filtrar el rango"),
+    ] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    service: CompatibilityService = Depends(get_compatibility_service_taxo),
+) -> list[ProductCompatibilityResponse]:
+    """Resuelve los recambios vinculados a una serie completa.
+
+    Filtra por rango DN si ``dn`` se provee — devuelve solo filas donde:
+
+        (dn_min IS NULL OR dn_min <= dn) AND (dn_max IS NULL OR dn_max >= dn)
+
+    El parámetro ``series_id`` es libre (string) para soportar tanto UUID como
+    series code; el servicio no valida existencia (es un filtro polymorphic).
+    """
+    try:
+        rows = await service.list_spare_parts_for_series(series_id, dn=dn)
+    except CompatibilityDomainError as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail={"code": e.code, "title": e.message},
+        ) from e
+    out: list[ProductCompatibilityResponse] = []
+    for r in rows:
+        out.append(
+            ProductCompatibilityResponse(
+                id=r.id,
+                product_sku=r.product_sku,
+                compatible_with_sku=r.compatible_with_sku,
+                kind=r.kind,
+                notes=r.notes,
+                position=r.position,
+                owner_type=r.owner_type,
+                dn_min=r.dn_min,
+                dn_max=r.dn_max,
+                created_at=r.created_at,
+                created_by=r.created_by,
+                compatible_product=None,
+            )
+        )
+    return out
+
+
 @materials_router.get(
     "/materials",
     response_model=list[MaterialResponse],
@@ -282,6 +354,7 @@ async def admin_patch_division(
 @admin_divisions_router.delete(
     "/divisions/{division_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_division(
@@ -349,6 +422,7 @@ async def admin_patch_series_tier(
 @admin_series_router.delete(
     "/series-tiers/{tier_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_series_tier(
@@ -416,6 +490,7 @@ async def admin_patch_series(
 @admin_series_router.delete(
     "/series/{series_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_series(
@@ -451,6 +526,7 @@ async def admin_list_series_divisions(
 @admin_series_router.post(
     "/series/{series_id}/divisions/{division_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_link_series_division(
@@ -468,6 +544,7 @@ async def admin_link_series_division(
 @admin_series_router.delete(
     "/series/{series_id}/divisions/{division_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_unlink_series_division(
@@ -514,6 +591,7 @@ async def admin_list_series_certifications(
 @admin_series_router.post(
     "/series/{series_id}/certifications/{certification_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_link_series_certification(
@@ -531,6 +609,7 @@ async def admin_link_series_certification(
 @admin_series_router.delete(
     "/series/{series_id}/certifications/{certification_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_unlink_series_certification(
@@ -583,6 +662,7 @@ async def admin_upsert_series_translation(
 @admin_series_router.delete(
     "/series/{series_id}/translations/{lang}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_series_translation(
@@ -653,6 +733,7 @@ async def admin_patch_material(
 @admin_materials_router.delete(
     "/materials/{material_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_material(
@@ -737,6 +818,7 @@ async def replace_product_divisions(
 @products_divisions_router.delete(
     "/{sku}/divisions/{division_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     responses={404: {"model": ProblemDetails}},
 )
 async def remove_product_division(

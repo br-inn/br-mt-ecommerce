@@ -73,13 +73,13 @@ def test_clauses_active_false_included() -> None:
 def test_clauses_has_image_true() -> None:
     f = ProductFilters(has_image=True)
     clauses = build_product_clauses(f)
-    assert len(clauses) == 2  # deleted_at + image_status != missing
+    assert len(clauses) == 2  # deleted_at + EXISTS(photo asset)
 
 
 def test_clauses_has_image_false() -> None:
     f = ProductFilters(has_image=False)
     clauses = build_product_clauses(f)
-    assert len(clauses) == 2  # deleted_at + image_status == missing
+    assert len(clauses) == 2  # deleted_at + NOT EXISTS(photo asset)
 
 
 def test_clauses_search_uses_ilike_or() -> None:

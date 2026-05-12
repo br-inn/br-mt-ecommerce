@@ -26,6 +26,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     SmallInteger,
     Text,
     UniqueConstraint,
@@ -62,6 +63,18 @@ class ProductCompatibility(UuidPkMixin, Base):
         nullable=False,
         server_default=text("0"),
     )
+    # Fase 5 — polymorphic owner: 'product' (default — vínculo SKU concreto),
+    # 'variant' (futuro) o 'series' (vínculo a serie entera, normalmente
+    # combinado con dn_min/dn_max para acotar el rango de calibres).
+    owner_type: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        server_default=text("'product'"),
+    )
+    # Fase 5 — rango de DN aplicable. Si ambos NULL → aplica a cualquier calibre.
+    # Si solo uno NULL → semi-acotado (≤ dn_max o ≥ dn_min).
+    dn_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    dn_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -92,6 +105,14 @@ class ProductCompatibility(UuidPkMixin, Base):
             "product_sku <> compatible_with_sku",
             name="chk_no_self_compatibility",
         ),
+        CheckConstraint(
+            "owner_type IN ('product','variant','series')",
+            name="ck_product_compatibility_owner_type",
+        ),
+        CheckConstraint(
+            "dn_min IS NULL OR dn_max IS NULL OR dn_max >= dn_min",
+            name="ck_compat_dn_range",
+        ),
         UniqueConstraint(
             "product_sku",
             "compatible_with_sku",
@@ -101,4 +122,5 @@ class ProductCompatibility(UuidPkMixin, Base):
         Index("idx_product_compatibility_sku", "product_sku"),
         Index("idx_product_compatibility_with", "compatible_with_sku"),
         Index("idx_product_compatibility_kind", "kind"),
+        Index("ix_compat_owner", "owner_type", "product_sku"),
     )
