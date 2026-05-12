@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     FEATURE_KB_ENABLED: bool = False
     FEATURE_COMPARATOR_ENABLED: bool = False
     FEATURE_OCR_ENABLED: bool = False
+    HUMAN_QUEUE_ENABLED: bool = True  # US-RND-01-10: cola validación humana
 
     # --- PIM importer (Stage 3 Wave 11 — division mapping) ---
     # Códigos de división por defecto que el PIM importer aplica a cada
@@ -128,6 +129,17 @@ class Settings(BaseSettings):
     NEO4J_DATABASE: str = "neo4j"
     NEO4J_CONNECTION_TIMEOUT_S: float = 10.0
     NEO4J_MAX_CONNECTION_POOL_SIZE: int = 50
+
+    # --- SMTP (digest diario US-1B-02-07) ---
+    SMTP_ENABLED: bool = False
+    SMTP_HOST: str = "localhost"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: SecretStr = SecretStr("")
+    SMTP_FROM: str = "mt-pricing@br-innovation.com"
+    SMTP_USE_TLS: bool = True
+    # URL base de la app (enlace en emails)
+    APP_URL: str = "http://localhost:3000"
 
     # --- SSRF / image probe (ADR-055, R-022, R-044) ---
     # Permitir HTTP plano sólo en dev (e.g. fixtures locales con httpbin).

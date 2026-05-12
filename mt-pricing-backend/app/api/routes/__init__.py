@@ -21,14 +21,17 @@ from app.api.routes import (
     dashboard,
     dimensions,
     documents,
+    exception_rules,
     fx_rates,
     graphrag,
+    human_queue,
     imports,
     imports_costs,
     imports_datasheets,
     imports_materials,
     jobs,
     matches,
+    parallel_run,
     pricing,
     pricing_admin,
     pricing_engine,
@@ -95,6 +98,7 @@ router.include_router(graphrag.router)
 router.include_router(admin_flags.router)
 router.include_router(admin_calibrator.router)
 router.include_router(pricing_admin.router)
+router.include_router(exception_rules.router)
 router.include_router(vocabularies.router)
 router.include_router(admin_vocab_router)
 router.include_router(products_vocab_router, prefix="/products")
@@ -124,3 +128,7 @@ router.include_router(admin_documents_router)
 # Fase 3 — tablas técnicas granulares (migs. 061/062/063)
 router.include_router(dimensions.router)
 router.include_router(dimensions.admin_router)
+# Sprint 7 — Parallel run report (US-1B-05-01)
+router.include_router(parallel_run.router)
+# US-RND-01-10 — Human Queue validación humana
+router.include_router(human_queue.router)

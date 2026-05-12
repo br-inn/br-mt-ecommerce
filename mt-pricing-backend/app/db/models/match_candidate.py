@@ -43,6 +43,7 @@ from app.db.types import UUID_PG
 MATCH_CANDIDATE_CHANNELS: tuple[str, ...] = ("amazon_uae", "noon_uae")
 MATCH_CANDIDATE_KINDS: tuple[str, ...] = ("peer", "drop", "unknown")
 MATCH_CANDIDATE_STATUSES: tuple[str, ...] = ("pending", "validated", "discarded")
+MATCH_CANDIDATE_LABELS: tuple[str, ...] = ("accept", "reject", "skip")
 
 
 class MatchCandidate(UuidPkMixin, TimestampMixin, Base):
@@ -81,6 +82,19 @@ class MatchCandidate(UuidPkMixin, TimestampMixin, Base):
     validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     discarded_reason: Mapped[str | None] = mapped_column(Text)
 
+    # --- Human Queue (US-RND-01-10) ---
+    # calibrated_confidence: confianza calibrada por el Isotonic Calibrator (Sprint 5).
+    # Valor en [0, 1]. NULL mientras no corra el calibrador.
+    calibrated_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
+
+    # label: veredicto del revisor humano (accept / reject / skip).
+    label: Mapped[str | None] = mapped_column(String(16))
+    # reviewer_user_id: FK al revisor (SET NULL si se borra el usuario).
+    reviewer_user_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     __table_args__ = (
         CheckConstraint(
             "channel IN ('amazon_uae','noon_uae')",
@@ -95,7 +109,19 @@ class MatchCandidate(UuidPkMixin, TimestampMixin, Base):
             name="ck_match_candidates_status",
         ),
         CheckConstraint("score >= 0 AND score <= 100", name="ck_match_candidates_score"),
+        CheckConstraint(
+            "label IS NULL OR label IN ('accept','reject','skip')",
+            name="ck_match_candidates_label",
+        ),
+        CheckConstraint(
+            "calibrated_confidence IS NULL OR (calibrated_confidence >= 0 AND calibrated_confidence <= 1)",
+            name="ck_match_candidates_calibrated_confidence",
+        ),
         Index("idx_match_candidates_sku_status", "product_sku", "status"),
+        Index(
+            "idx_match_candidates_confidence",
+            "calibrated_confidence",
+        ),
         Index(
             "idx_match_candidates_unique_external",
             "product_sku",
