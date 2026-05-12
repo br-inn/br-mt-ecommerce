@@ -47,11 +47,18 @@ from app.services.pricing.state_machine import (
 class PricingDomainError(Exception):
     """Errores recoverables del servicio (4xx)."""
 
-    def __init__(self, code: str, message: str, status_code: int = 400) -> None:
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        status_code: int = 400,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.status_code = status_code
+        self.extra: dict[str, Any] = extra or {}
 
 
 class ProductNotFound(PricingDomainError):
@@ -426,7 +433,8 @@ class PricingService:
         self, price_ids: list[UUID], comment: str, actor: User
     ) -> dict[str, Any]:
         """Aprobación masiva — falla hard si algún precio no está en pending_review."""
-        from fastapi import HTTPException
+        # Deduplicar preservando orden
+        price_ids = list(dict.fromkeys(price_ids))
 
         # Pre-check: todos deben estar en pending_review
         stmt = select(Price).where(Price.id.in_(price_ids))
@@ -440,16 +448,21 @@ class PricingService:
             if pid not in price_map or price_map[pid].status != "pending_review"
         ]
         if invalid_ids:
-            raise HTTPException(
-                status_code=422,
-                detail={"invalid_price_ids": invalid_ids},
+            raise PricingDomainError(
+                "invalid_price_ids",
+                "Algunos precios no están en pending_review.",
+                422,
+                extra={"invalid_price_ids": invalid_ids},
             )
 
         approved_ids: list[str] = []
         for pid in price_ids:
+            # approve() emite price.approved individual + audit por precio
             p = await self.approve(pid, actor, reason=comment)
             approved_ids.append(str(p.id))
 
+        # Audit summary a nivel batch — complementa (no reemplaza) los eventos
+        # price.approved individuales que approve() ya registra por cada precio.
         await self.audit.record(
             entity_type="pricing_batch",
             entity_id="bulk_approve",

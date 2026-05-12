@@ -1,20 +1,21 @@
 """Unit tests para `PricingService.bulk_approve` (US-1B-02-05).
 
 Sin DB — mocks de session, audit y approve().
-Tres escenarios: éxito, estado inválido → 422, comentario corto → 422 Pydantic.
+Escenarios: éxito, estado inválido → PricingDomainError 422, comentario corto → 422 Pydantic,
+deduplicación de IDs.
 """
 
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4, UUID
 
 import pytest
-from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.schemas.pricing import PriceBulkApproveRequest
+from app.services.pricing.pricing_service import PricingDomainError
 
 pytestmark = pytest.mark.unit
 
@@ -106,14 +107,14 @@ async def test_bulk_approve_wrong_state_raises_422() -> None:
     actor = _mk_user()
     svc.approve = AsyncMock()
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(PricingDomainError) as exc_info:
         await svc.bulk_approve([pid_ok, pid_bad], "Comentario válido largo", actor)
 
-    assert exc_info.value.status_code == 422
-    detail = exc_info.value.detail
-    assert "invalid_price_ids" in detail
-    assert str(pid_bad) in detail["invalid_price_ids"]
-    assert str(pid_ok) not in detail["invalid_price_ids"]
+    err = exc_info.value
+    assert err.status_code == 422
+    assert err.code == "invalid_price_ids"
+    assert str(pid_bad) in err.extra["invalid_price_ids"]
+    assert str(pid_ok) not in err.extra["invalid_price_ids"]
 
     # approve must NOT have been called
     svc.approve.assert_not_awaited()
@@ -137,3 +138,21 @@ def test_bulk_approve_missing_comment_raises_validation_error() -> None:
 
     errors = exc_info.value.errors()
     assert any("comment" in str(e.get("loc", "")) for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Test 4: duplicate price_ids are deduplicated — approve called only once per ID
+# ---------------------------------------------------------------------------
+async def test_bulk_approve_deduplicates_price_ids() -> None:
+    pid = uuid4()
+    price = _mk_price(price_id=pid, status="pending_review")
+
+    svc = _mk_service([price])
+    actor = _mk_user()
+    approved = _mk_price(price_id=pid, status="approved")
+    svc.approve = AsyncMock(return_value=approved)
+
+    result = await svc.bulk_approve([pid, pid, pid], "Comentario suficientemente largo", actor)
+
+    assert result["approved"] == [str(pid)]
+    assert svc.approve.await_count == 1

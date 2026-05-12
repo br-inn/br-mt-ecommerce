@@ -71,10 +71,10 @@ def get_pricing_service(
 
 
 def _raise_domain(err: PricingDomainError) -> None:
-    raise HTTPException(
-        status_code=err.status_code,
-        detail={"code": err.code, "title": err.message},
-    )
+    detail: dict = {"code": err.code, "title": err.message}
+    if err.extra:
+        detail.update(err.extra)
+    raise HTTPException(status_code=err.status_code, detail=detail)
 
 
 def _decode_uuid_cursor(cursor: str | None) -> UUID | None:
@@ -358,7 +358,10 @@ async def bulk_approve(
     user: Annotated[User, Depends(require_permissions("prices:approve"))],
     service: Annotated[PricingService, Depends(get_pricing_service)],
 ) -> dict[str, Any]:
-    return await service.bulk_approve(data.price_ids, data.comment, user)
+    try:
+        return await service.bulk_approve(data.price_ids, data.comment, user)
+    except PricingDomainError as exc:
+        _raise_domain(exc)
 
 
 @router.post(
