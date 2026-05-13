@@ -164,3 +164,238 @@ class VendorConditionUpdate(BaseModel):
     valid_to: date | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     is_active: bool | None = None
+
+
+# ---------------------------------------------------------------------------
+# Vendor Invoices (US-ERP-03-04 — 3-way match)
+# ---------------------------------------------------------------------------
+
+class VendorInvoiceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    invoice_number: str = Field(min_length=1, max_length=128)
+    vendor_id: str = Field(min_length=1, max_length=128)
+    po_id: UUID
+    gr_id: UUID | None = None
+    invoice_date: date
+    total_amount: Decimal = Field(ge=0)
+    currency: str = Field(default="AED", min_length=3, max_length=3)
+
+
+class VendorInvoiceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    id: UUID
+    invoice_number: str
+    vendor_id: str
+    po_id: UUID
+    gr_id: UUID | None
+    invoice_date: date
+    total_amount: Decimal
+    currency: str
+    status: str
+    payment_block: bool
+    match_details: dict | None
+    created_at: datetime
+
+
+class InvoiceReleaseBlock(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    reason: str = Field(min_length=1)
+
+
+class InvoiceToleranceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    document_type: str = Field(default="vendor_invoice", max_length=64)
+    vendor_category: str | None = None
+    tolerance_key: str = Field(min_length=1, max_length=128)
+    absolute_limit: Decimal | None = Field(default=None, ge=0)
+    pct_limit: Decimal | None = Field(default=None, ge=0)
+    currency: str = Field(default="AED", min_length=3, max_length=3)
+    is_active: bool = True
+
+
+class InvoiceToleranceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    id: UUID
+    document_type: str
+    vendor_category: str | None
+    tolerance_key: str
+    absolute_limit: Decimal | None
+    pct_limit: Decimal | None
+    currency: str
+    is_active: bool
+
+
+class InvoiceToleranceUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    absolute_limit: Decimal | None = Field(default=None, ge=0)
+    pct_limit: Decimal | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    is_active: bool | None = None
+
+
+# ---------------------------------------------------------------------------
+# Source List (US-ERP-03-05)
+# ---------------------------------------------------------------------------
+
+class SourceListCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    product_sku: str = Field(min_length=1)
+    vendor_id: str = Field(min_length=1, max_length=128)
+    vendor_name: str | None = None
+    is_preferred: bool = False
+    is_blocked: bool = False
+    valid_from: date | None = None
+    valid_to: date | None = None
+    fixed_source: bool = False
+    notes: str | None = None
+
+
+class SourceListOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    id: UUID
+    product_sku: str
+    vendor_id: str
+    vendor_name: str | None
+    is_preferred: bool
+    is_blocked: bool
+    valid_from: date
+    valid_to: date | None
+    fixed_source: bool
+    notes: str | None
+
+
+class SourceListUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    vendor_name: str | None = None
+    is_preferred: bool | None = None
+    is_blocked: bool | None = None
+    valid_to: date | None = None
+    fixed_source: bool | None = None
+    notes: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# RFQ (US-ERP-03-05)
+# ---------------------------------------------------------------------------
+
+class RfqLineCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    product_sku: str = Field(min_length=1)
+    qty: Decimal = Field(gt=0)
+    uom: str = Field(default="UNIT", max_length=32)
+
+
+class RfqLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    id: UUID
+    rfq_id: UUID
+    product_sku: str
+    qty: Decimal
+    uom: str
+
+
+class RfqCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    pr_id: UUID | None = None
+    deadline: date | None = None
+    notes: str | None = None
+    lines: list[RfqLineCreate] = Field(min_length=1)
+
+
+class RfqOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    id: UUID
+    rfq_number: str
+    pr_id: UUID | None
+    status: str
+    deadline: date | None
+    notes: str | None
+    created_at: datetime
+    created_by: UUID
+
+
+class RfqResponseCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    vendor_id: str = Field(min_length=1, max_length=128)
+    unit_price: Decimal | None = Field(default=None, ge=0)
+    currency: str = Field(default="AED", min_length=3, max_length=3)
+    lead_time_days: int | None = Field(default=None, ge=0)
+    valid_until: date | None = None
+    notes: str | None = None
+
+
+class RfqResponseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    id: UUID
+    rfq_id: UUID
+    vendor_id: str
+    unit_price: Decimal | None
+    currency: str
+    lead_time_days: int | None
+    valid_until: date | None
+    notes: str | None
+    responded_at: datetime | None
+
+
+class RfqComparisonItem(BaseModel):
+    """Un renglón en la tabla comparativa de respuestas RFQ."""
+
+    vendor_id: str
+    unit_price: Decimal | None
+    currency: str
+    lead_time_days: int | None
+    score: float | None
+    """Score compuesto: 0.6*(1/precio_norm) + 0.4*(1/lead_time_norm). Mayor es mejor."""
+
+
+class RfqComparisonOut(BaseModel):
+    rfq_id: UUID
+    rfq_number: str
+    items: list[RfqComparisonItem]
+
+
+# ---------------------------------------------------------------------------
+# KPIs Dashboard (US-ERP-03-06)
+# ---------------------------------------------------------------------------
+
+class ProcurementKpiOut(BaseModel):
+    """KPIs consolidados del módulo de compras."""
+
+    open_pr_count: int
+    open_po_count: int
+    pending_invoice_count: int
+    blocked_invoice_amount: Decimal
+    maverick_spend_pct: Decimal
+    avg_po_lead_time_days: Decimal | None
+    on_time_delivery_pct: Decimal | None
+
+
+class SpendByVendor(BaseModel):
+    vendor_id: str
+    total_amount: Decimal
+
+
+class SpendByProduct(BaseModel):
+    product_sku: str
+    total_amount: Decimal
+
+
+class SpendAnalysisOut(BaseModel):
+    period_days: int
+    by_vendor: list[SpendByVendor]
+    by_product: list[SpendByProduct]

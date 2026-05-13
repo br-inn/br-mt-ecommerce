@@ -263,3 +263,244 @@ export const procurementApi = {
       body: JSON.stringify(payload),
     }),
 };
+
+// ---------------------------------------------------------------------------
+// US-ERP-03-04 — Vendor Invoices + 3-way match
+// ---------------------------------------------------------------------------
+
+export type VendorInvoiceStatus =
+  | "pending"
+  | "matched"
+  | "tolerance_ok"
+  | "blocked"
+  | "approved"
+  | "paid";
+
+export interface VendorInvoiceRead {
+  id: string;
+  invoice_number: string;
+  vendor_id: string;
+  po_id: string;
+  gr_id: string | null;
+  invoice_date: string;
+  total_amount: string;
+  currency: string;
+  status: VendorInvoiceStatus;
+  payment_block: boolean;
+  match_details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface VendorInvoiceCreatePayload {
+  invoice_number: string;
+  vendor_id: string;
+  po_id: string;
+  gr_id?: string | null;
+  invoice_date: string;
+  total_amount: string;
+  currency?: string;
+}
+
+export interface InvoiceToleranceRead {
+  id: string;
+  document_type: string;
+  vendor_category: string | null;
+  tolerance_key: string;
+  absolute_limit: string | null;
+  pct_limit: string | null;
+  currency: string;
+  is_active: boolean;
+}
+
+export interface VendorInvoiceFilters {
+  vendor_id?: string;
+  status?: VendorInvoiceStatus;
+  limit?: number;
+}
+
+export const vendorInvoicesApi = {
+  list: (filters: VendorInvoiceFilters = {}): Promise<VendorInvoiceRead[]> =>
+    authedFetch<VendorInvoiceRead[]>(
+      `${BASE}/invoices${buildQuery(filters as Record<string, string | number | boolean | undefined | null>)}`,
+    ),
+
+  create: (payload: VendorInvoiceCreatePayload): Promise<VendorInvoiceRead> =>
+    authedFetch<VendorInvoiceRead>(`${BASE}/invoices`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  match: (id: string): Promise<VendorInvoiceRead> =>
+    authedFetch<VendorInvoiceRead>(`${BASE}/invoices/${id}/match`, {
+      method: "POST",
+    }),
+
+  releaseBlock: (id: string, reason: string): Promise<VendorInvoiceRead> =>
+    authedFetch<VendorInvoiceRead>(`${BASE}/invoices/${id}/release-block`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+};
+
+export const invoiceTolerancesApi = {
+  list: (activeOnly = true): Promise<InvoiceToleranceRead[]> =>
+    authedFetch<InvoiceToleranceRead[]>(
+      `${BASE}/invoice-tolerances${buildQuery({ active_only: activeOnly })}`,
+    ),
+
+  create: (payload: Partial<InvoiceToleranceRead>): Promise<InvoiceToleranceRead> =>
+    authedFetch<InvoiceToleranceRead>(`${BASE}/invoice-tolerances`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  update: (id: string, payload: Partial<InvoiceToleranceRead>): Promise<InvoiceToleranceRead> =>
+    authedFetch<InvoiceToleranceRead>(`${BASE}/invoice-tolerances/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+};
+
+// ---------------------------------------------------------------------------
+// US-ERP-03-05 — Source List + RFQ
+// ---------------------------------------------------------------------------
+
+export interface SourceListRead {
+  id: string;
+  product_sku: string;
+  vendor_id: string;
+  vendor_name: string | null;
+  is_preferred: boolean;
+  is_blocked: boolean;
+  valid_from: string;
+  valid_to: string | null;
+  fixed_source: boolean;
+  notes: string | null;
+}
+
+export type RfqStatus = "draft" | "sent" | "responses_received" | "awarded" | "cancelled";
+
+export interface RfqRead {
+  id: string;
+  rfq_number: string;
+  pr_id: string | null;
+  status: RfqStatus;
+  deadline: string | null;
+  notes: string | null;
+  created_at: string;
+  created_by: string;
+}
+
+export interface RfqResponseRead {
+  id: string;
+  rfq_id: string;
+  vendor_id: string;
+  unit_price: string | null;
+  currency: string;
+  lead_time_days: number | null;
+  valid_until: string | null;
+  notes: string | null;
+  responded_at: string | null;
+}
+
+export interface RfqComparisonItem {
+  vendor_id: string;
+  unit_price: string | null;
+  currency: string;
+  lead_time_days: number | null;
+  score: number | null;
+}
+
+export interface RfqComparisonOut {
+  rfq_id: string;
+  rfq_number: string;
+  items: RfqComparisonItem[];
+}
+
+export const sourceListApi = {
+  list: (params: { product_sku?: string; include_blocked?: boolean } = {}): Promise<SourceListRead[]> =>
+    authedFetch<SourceListRead[]>(
+      `${BASE}/source-list${buildQuery(params as Record<string, string | number | boolean | undefined | null>)}`,
+    ),
+
+  create: (payload: Partial<SourceListRead>): Promise<SourceListRead> =>
+    authedFetch<SourceListRead>(`${BASE}/source-list`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  update: (id: string, payload: Partial<SourceListRead>): Promise<SourceListRead> =>
+    authedFetch<SourceListRead>(`${BASE}/source-list/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  delete: (id: string): Promise<void> =>
+    authedFetch<void>(`${BASE}/source-list/${id}`, { method: "DELETE" }),
+};
+
+export const rfqApi = {
+  list: (params: { status?: RfqStatus; limit?: number } = {}): Promise<RfqRead[]> =>
+    authedFetch<RfqRead[]>(
+      `${BASE}/rfqs${buildQuery(params as Record<string, string | number | boolean | undefined | null>)}`,
+    ),
+
+  create: (payload: {
+    pr_id?: string | null;
+    deadline?: string | null;
+    notes?: string | null;
+    lines: Array<{ product_sku: string; qty: string; uom?: string }>;
+  }): Promise<RfqRead> =>
+    authedFetch<RfqRead>(`${BASE}/rfqs`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  addResponse: (rfqId: string, payload: {
+    vendor_id: string;
+    unit_price?: string | null;
+    currency?: string;
+    lead_time_days?: number | null;
+    valid_until?: string | null;
+    notes?: string | null;
+  }): Promise<RfqResponseRead> =>
+    authedFetch<RfqResponseRead>(`${BASE}/rfqs/${rfqId}/responses`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  comparison: (rfqId: string): Promise<RfqComparisonOut> =>
+    authedFetch<RfqComparisonOut>(`${BASE}/rfqs/${rfqId}/comparison`),
+};
+
+// ---------------------------------------------------------------------------
+// US-ERP-03-06 — KPIs Dashboard
+// ---------------------------------------------------------------------------
+
+export type SpendPeriod = "30d" | "90d" | "365d";
+
+export interface ProcurementKpiRead {
+  open_pr_count: number;
+  open_po_count: number;
+  pending_invoice_count: number;
+  blocked_invoice_amount: string;
+  maverick_spend_pct: string;
+  avg_po_lead_time_days: string | null;
+  on_time_delivery_pct: string | null;
+}
+
+export interface SpendAnalysisRead {
+  period_days: number;
+  by_vendor: Array<{ vendor_id: string; total_amount: string }>;
+  by_product: Array<{ product_sku: string; total_amount: string }>;
+}
+
+export const procurementKpiApi = {
+  kpis: (): Promise<ProcurementKpiRead> =>
+    authedFetch<ProcurementKpiRead>(`${BASE}/kpis`),
+
+  spendAnalysis: (period: SpendPeriod = "30d"): Promise<SpendAnalysisRead> =>
+    authedFetch<SpendAnalysisRead>(
+      `${BASE}/spend-analysis${buildQuery({ period })}`,
+    ),
+};
