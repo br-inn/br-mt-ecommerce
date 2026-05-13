@@ -61,7 +61,7 @@ def upgrade() -> None:
             ('capture_last_good_exports',
              'mt.pricing.capture_last_good_exports',
              'Captura el export completado más reciente por canal/scheme en last_good_exports (US-1B-04-05)',
-             'pricing', 'cron', '0 2 * * *', 'pricing', true,
+             'business', 'cron', '0 2 * * *', 'default', true,
              '[]'::jsonb, '{}'::jsonb)
         ON CONFLICT (code) DO NOTHING;
         """

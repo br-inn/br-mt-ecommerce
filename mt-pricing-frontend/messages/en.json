@@ -231,8 +231,10 @@
     "product": {
       "tabs": {
         "specs": "Specs",
+        "markets": "Markets",
         "images": "Images",
         "translations": "Translations",
+        "units": "Units",
         "costs": "Costs",
         "datasheets": "Documents",
         "spareParts": "Spare parts",
@@ -245,10 +247,15 @@
         "family": "Family",
         "dn": "Nominal diameter (DN)",
         "pn": "Nominal pressure (PN)",
+        "bore_mm": "Bore (actual bore)",
+        "dimensional_standard": "Dimensional standard",
+        "temp_range": "Operating temperature",
+        "pressure_max": "Max pressure",
         "material": "Material",
         "type": "Type",
         "connection": "Connection",
-        "weight_kg": "Weight (kg)",
+        "size": "Size",
+        "weight_kg": "Weight",
         "dimensions": "Dimensions",
         "length": "Length",
         "width": "Width",
@@ -262,16 +269,25 @@
         "intrastat": "Intrastat",
         "hs_code": "HS code",
         "origin_country": "Country of origin",
-        "net_weight_kg": "Net weight (kg)",
-        "active": "Active"
+        "net_weight_kg": "Net weight",
+        "active": "Active",
+        "erp_name": "ERP name",
+        "revision": "Revision",
+        "parent_sku": "Parent SKU"
       },
       "specs": {
         "title": "Technical specs",
-        "subtitle": "Canonical SKU data."
+        "subtitle": "Canonical SKU data.",
+        "sectionConstruction": "Construction",
+        "sectionReferences": "References"
       },
       "packaging": {
-        "title": "Packaging & Intrastat",
-        "subtitle": "Logistics and customs data."
+        "title": "Packaging",
+        "subtitle": "Packaging and barcodes."
+      },
+      "intrastat": {
+        "title": "Customs / Intrastat",
+        "subtitle": "Export and customs declaration data."
       }
     },
     "create": {
@@ -326,7 +342,18 @@
       },
       "fields": {
         "name": "Name",
-        "description": "Description"
+        "description": "Description",
+        "marketing_copy": "Marketing text",
+        "applications_text": "Applications",
+        "technical_limits": "Technical limits",
+        "marketing_features": "Marketing features",
+        "meta_title": "Meta title (SEO)",
+        "meta_description": "Meta description (SEO)",
+        "notes": "Internal notes"
+      },
+      "sections": {
+        "marketing": "Marketing content",
+        "seo": "SEO & metadata"
       },
       "status": {
         "draft": "Draft",
@@ -1126,5 +1153,71 @@
     "back_to_dashboard": "Back to dashboard",
     "sidebar_label": "Comparator",
     "sidebar_badge": "Research"
+  },
+  "fx_rates": {
+    "title": "Exchange Rates",
+    "subtitle": "FX rate history by currency pair.",
+    "newRateButton": "New rate",
+    "section": {
+      "tableTitle": "Registered rates",
+      "tableDescription": "Complete exchange rate history. The current rate is highlighted."
+    },
+    "rbac": {
+      "readDenied": "You do not have permission to view exchange rates."
+    },
+    "columns": {
+      "from_currency": "From currency",
+      "to_currency": "To currency",
+      "rate": "Rate",
+      "effective_from": "Effective from",
+      "effective_to": "Effective to",
+      "source": "Source",
+      "status": "Status"
+    },
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "any": "All",
+      "activeOnly": "Current only",
+      "showAll": "Show all",
+      "clear": "Clear filters"
+    },
+    "statuses": {
+      "current": "Current",
+      "expired": "Expired"
+    },
+    "form": {
+      "createTitle": "New exchange rate",
+      "createSubtitle": "Register a new exchange rate between two currencies.",
+      "create": "Create rate"
+    },
+    "fields": {
+      "from": "From currency",
+      "to": "To currency",
+      "rate": "Rate",
+      "effective_from": "Effective from",
+      "source": "Source",
+      "allowRetroactive": "Allow retroactive",
+      "allowRetroactiveHelp": "Confirm this rate may apply to past dates.",
+      "reason": "Reason",
+      "reasonPlaceholder": "Explain why this retroactive rate applies…"
+    },
+    "errors": {
+      "currencyRequired": "Currency code required (3 letters).",
+      "rateInvalid": "Rate must be a positive number.",
+      "effectiveFromRequired": "Effective date is required.",
+      "samePair": "From and to currencies must be different.",
+      "retroactiveReasonRequired": "You must provide a reason for the retroactive change.",
+      "saveFailed": "Could not save rate. Please try again.",
+      "retroactiveBlocked": "Retroactive rate not allowed without authorization.",
+      "sameEffectiveFrom": "A rate with that date already exists for this pair.",
+      "invalidCurrency": "Invalid currency code."
+    },
+    "feedback": {
+      "created": "Exchange rate created successfully."
+    },
+    "empty": {
+      "rates": "No exchange rates registered."
+    }
   }
 }

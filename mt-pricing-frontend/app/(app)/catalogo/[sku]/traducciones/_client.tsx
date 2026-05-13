@@ -35,6 +35,13 @@ import {
 const translationSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
+  marketing_copy: z.string().optional(),
+  applications_text: z.string().optional(),
+  technical_limits: z.string().optional(),
+  marketing_features: z.string().optional(),
+  meta_title: z.string().optional(),
+  meta_description: z.string().optional(),
+  notes: z.string().optional(),
 });
 type TranslationFormValues = z.infer<typeof translationSchema>;
 
@@ -60,8 +67,11 @@ export function TranslationsTab({ sku }: { sku: string }) {
   const findTranslation = (lang: Language): ProductTranslationRead | undefined =>
     translations?.find((tr) => tr.language === lang);
 
+  const enTranslation = translations?.find((tr) => tr.language === ("en" as Language));
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
+      {/* Canónico EN — solo lectura */}
       <Card>
         <CardHeader>
           <CardTitle>{t("canonical")}</CardTitle>
@@ -69,22 +79,38 @@ export function TranslationsTab({ sku }: { sku: string }) {
             <TranslationStatusPill language="en" status="approved" />
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">name</Label>
-            <p className="text-sm font-medium">{getProductName(product)}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">description</Label>
-            <p className="whitespace-pre-wrap text-sm">
-              {getProductDescription(product) ?? "—"}
-            </p>
-          </div>
+        <CardContent className="space-y-4">
+          <CanonicalField label={t("fields.name")} value={getProductName(product)} />
+          <CanonicalField label={t("fields.description")} value={getProductDescription(product)} pre />
+          {enTranslation?.marketing_copy ? (
+            <CanonicalField label={t("fields.marketing_copy")} value={enTranslation.marketing_copy} pre />
+          ) : null}
+          {enTranslation?.applications_text ? (
+            <CanonicalField label={t("fields.applications_text")} value={enTranslation.applications_text} pre />
+          ) : null}
+          {enTranslation?.technical_limits ? (
+            <CanonicalField label={t("fields.technical_limits")} value={enTranslation.technical_limits} pre />
+          ) : null}
+          {enTranslation?.meta_title ? (
+            <CanonicalField label={t("fields.meta_title")} value={enTranslation.meta_title} />
+          ) : null}
         </CardContent>
       </Card>
 
       <TranslationForm productId={product.id} lang="es" translation={findTranslation("es")} />
       <TranslationForm productId={product.id} lang="ar" translation={findTranslation("ar")} />
+    </div>
+  );
+}
+
+function CanonicalField({ label, value, pre = false }: { label: string; value: string | null | undefined; pre?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {pre
+        ? <p className="mt-0.5 whitespace-pre-wrap text-sm">{value ?? "—"}</p>
+        : <p className="mt-0.5 text-sm font-medium">{value ?? "—"}</p>
+      }
     </div>
   );
 }
@@ -102,12 +128,21 @@ function TranslationForm({
   const tCommon = useTranslations("common");
   const upsert = useUpsertTranslation(productId);
   const approve = useApproveTranslation(productId);
+  const [showMarketing, setShowMarketing] = React.useState(false);
+  const [showSeo, setShowSeo] = React.useState(false);
 
   const form = useForm<TranslationFormValues>({
     resolver: zodResolver(translationSchema),
     defaultValues: {
       name: translation?.name ?? "",
       description: translation?.description ?? "",
+      marketing_copy: translation?.marketing_copy ?? "",
+      applications_text: translation?.applications_text ?? "",
+      technical_limits: translation?.technical_limits ?? "",
+      marketing_features: translation?.marketing_features ?? "",
+      meta_title: translation?.meta_title ?? "",
+      meta_description: translation?.meta_description ?? "",
+      notes: translation?.notes ?? "",
     },
   });
 
@@ -115,6 +150,13 @@ function TranslationForm({
     form.reset({
       name: translation?.name ?? "",
       description: translation?.description ?? "",
+      marketing_copy: translation?.marketing_copy ?? "",
+      applications_text: translation?.applications_text ?? "",
+      technical_limits: translation?.technical_limits ?? "",
+      marketing_features: translation?.marketing_features ?? "",
+      meta_title: translation?.meta_title ?? "",
+      meta_description: translation?.meta_description ?? "",
+      notes: translation?.notes ?? "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translation?.language, translation?.name, translation?.description, translation?.status]);
@@ -122,11 +164,16 @@ function TranslationForm({
   const dir = lang === "ar" ? "rtl" : "ltr";
   const langLabel = t(`languages.${lang}`);
 
-  // Convierte el form (description?: string | undefined) al payload de API
-  // (description: string | null) para satisfacer exactOptionalPropertyTypes.
   const toUpsertPayload = (values: TranslationFormValues) => ({
     name: values.name,
     description: values.description ?? null,
+    marketing_copy: values.marketing_copy ?? null,
+    applications_text: values.applications_text ?? null,
+    technical_limits: values.technical_limits ?? null,
+    marketing_features: values.marketing_features ?? null,
+    meta_title: values.meta_title ?? null,
+    meta_description: values.meta_description ?? null,
+    notes: values.notes ?? null,
   });
 
   const onSaveDraft = async (values: TranslationFormValues) => {
@@ -177,6 +224,7 @@ function TranslationForm({
           dir={dir}
           noValidate
         >
+          {/* Contenido principal */}
           <div className="space-y-1.5">
             <Label htmlFor={`name-${lang}`}>{t("fields.name")}</Label>
             <Input id={`name-${lang}`} {...form.register("name")} dir={dir} />
@@ -189,11 +237,80 @@ function TranslationForm({
             <textarea
               id={`desc-${lang}`}
               dir={dir}
-              rows={4}
+              rows={3}
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               {...form.register("description")}
             />
           </div>
+
+          {/* Marketing — expandible */}
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded border border-dashed px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setShowMarketing((v) => !v)}
+          >
+            <span className="flex-1 text-left">{t("sections.marketing")}</span>
+            <span>{showMarketing ? "▲" : "▼"}</span>
+          </button>
+          {showMarketing ? (
+            <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={`mkt-${lang}`}>{t("fields.marketing_copy")}</Label>
+                <textarea id={`mkt-${lang}`} dir={dir} rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...form.register("marketing_copy")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`app-${lang}`}>{t("fields.applications_text")}</Label>
+                <textarea id={`app-${lang}`} dir={dir} rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...form.register("applications_text")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`tl-${lang}`}>{t("fields.technical_limits")}</Label>
+                <textarea id={`tl-${lang}`} dir={dir} rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...form.register("technical_limits")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`mf-${lang}`}>{t("fields.marketing_features")}</Label>
+                <textarea id={`mf-${lang}`} dir={dir} rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...form.register("marketing_features")} />
+              </div>
+            </div>
+          ) : null}
+
+          {/* SEO — expandible */}
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded border border-dashed px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setShowSeo((v) => !v)}
+          >
+            <span className="flex-1 text-left">{t("sections.seo")}</span>
+            <span>{showSeo ? "▲" : "▼"}</span>
+          </button>
+          {showSeo ? (
+            <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={`mt-${lang}`}>{t("fields.meta_title")}</Label>
+                <Input id={`mt-${lang}`} dir={dir} {...form.register("meta_title")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`md-${lang}`}>{t("fields.meta_description")}</Label>
+                <textarea id={`md-${lang}`} dir={dir} rows={2}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...form.register("meta_description")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`nt-${lang}`}>{t("fields.notes")}</Label>
+                <textarea id={`nt-${lang}`} dir={dir} rows={2}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...form.register("notes")} />
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-2 pt-1" dir="ltr">
             <RbacGuard permissions={["products:write"]}>
               <Button type="submit" size="sm" variant="outline" disabled={upsert.isPending}>

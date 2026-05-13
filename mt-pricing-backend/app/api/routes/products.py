@@ -48,6 +48,7 @@ from app.schemas.compatibility import (
     ProductCompatibilityResponse,
 )
 from app.schemas.products import (
+    BoreDimensionRead,
     ProductCreate,
     ProductDataQualityPatch,
     ProductDetail,
@@ -56,12 +57,18 @@ from app.schemas.products import (
     ProductImageUploadRequest,
     ProductMini,
     ProductPatch,
+    ProductReleasePatch,
+    ProductReleaseCreate,
+    ProductReleaseResponse,
     ProductReplace,
     ProductResponse,
     ProductTranslationCreate,
     ProductTranslationPatch,
     ProductTranslationResponse,
+    ProductUomConversionCreate,
+    ProductUomConversionResponse,
 )
+from app.schemas.facets import FacetsResponse
 from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 from app.services.assets import AssetService
 from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
@@ -70,7 +77,9 @@ from app.services.compatibility import (
     CompatibilityService,
 )
 from app.services.components import ComponentsDomainError, ComponentsService
+from app.repositories.product import ProductBoreDimensionRepository
 from app.services.products import ImageService, ProductService
+from app.services.products.facets_service import ProductFilters, compute_facets
 from app.services.products.parent_resolver import ParentResolver, ParentResolverError
 from app.services.products.product_service import ProductDomainError
 from app.services.specs.specs_registry import SpecsRegistry
@@ -118,6 +127,12 @@ def get_parent_resolver(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ParentResolver:
     return ParentResolver(session)
+
+
+def get_bore_dimension_repo(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ProductBoreDimensionRepository:
+    return ProductBoreDimensionRepository(session)
 
 
 # --------------------------------------------------------------------------
@@ -198,8 +213,6 @@ async def _build_product_detail(
     from app.db.models.product import Product as _ProdModel
     from app.db.models.vocabularies import Material, Series
 
-    # Base — usa el TEXT `series` para no romper retro-compat de ProductResponse,
-    # pero lo descartamos al final para evitar choque con SeriesResponse.
     base = ProductResponse.model_validate(prod).model_dump()
     # division_codes desde product_divisions eager-loaded.
     base["division_codes"] = [
@@ -207,10 +220,6 @@ async def _build_product_detail(
         for pd in (prod.product_divisions or [])
         if pd.division is not None
     ]
-    # Drop el TEXT `series` y `material` para no chocar con la versión
-    # estructurada (override de tipo en ProductDetail).
-    base.pop("series", None)
-    base.pop("material", None)
 
     detail_data: dict[str, Any] = {
         **base,
@@ -222,8 +231,8 @@ async def _build_product_detail(
             for i in prod.assets
             if i.kind == "photo"
         ],
-        "series": None,
-        "material": None,
+        "series_detail": None,
+        "material_detail": None,
         "display_pair": None,
     }
 
@@ -235,7 +244,7 @@ async def _build_product_detail(
             )
         ).scalar_one_or_none()
         if srow is not None:
-            detail_data["series"] = SeriesResponse.model_validate(srow)
+            detail_data["series_detail"] = SeriesResponse.model_validate(srow)
 
     if getattr(prod, "material_id", None):
         mrow = (
@@ -244,7 +253,7 @@ async def _build_product_detail(
             )
         ).scalar_one_or_none()
         if mrow is not None:
-            detail_data["material"] = MaterialResponse.model_validate(mrow)
+            detail_data["material_detail"] = MaterialResponse.model_validate(mrow)
 
     if getattr(prod, "display_pair_sku", None):
         prow = (
@@ -397,25 +406,18 @@ async def list_products(
     xlate_map: dict[tuple[str, str], str] = {}
     primary_photo_map: dict[str, str] = {}
     division_codes_map: dict[str, list[str]] = {}
+    # Build translation status from already selectin-loaded translations (no extra roundtrip).
+    for r in rows:
+        for t in r.translations or []:
+            if t.lang in ("es", "ar"):
+                xlate_map[(r.sku, t.lang)] = t.status
     if skus:
         from sqlalchemy import select as _select
 
-        from app.db.models.product import ProductAsset, ProductTranslation
+        from app.db.models.product import ProductAsset
         from app.db.models.vocabularies import Division, ProductDivision
 
         session = service.session
-        xlate_rows = await session.execute(
-            _select(
-                ProductTranslation.sku,
-                ProductTranslation.lang,
-                ProductTranslation.status,
-            ).where(
-                ProductTranslation.sku.in_(skus),
-                ProductTranslation.lang.in_(("es", "ar")),
-            )
-        )
-        for sku, lang_code, status_code in xlate_rows.all():
-            xlate_map[(sku, lang_code)] = status_code
         # Primary photo (kind='photo', is_primary=true, status='active') for each sku.
         photo_rows = await session.execute(
             _select(
@@ -505,6 +507,67 @@ async def create_product(
     # Reload con eager translations/images (vacíos al crear).
     full = await service.get_product_by_id(prod.sku)  # type: ignore[possibly-undefined]
     return await _build_product_detail(full, service.session)
+
+
+@router.get(
+    "/facets",
+    response_model=FacetsResponse,
+    summary="Counts por dimensión con refinements non-destructivos (Algolia-style)",
+)
+async def get_facets(
+    family: Annotated[str | None, Query()] = None,
+    subfamily: Annotated[str | None, Query(max_length=64)] = None,
+    type: Annotated[  # noqa: A002
+        str | None, Query(max_length=64, alias="type")
+    ] = None,
+    brand: Annotated[str | None, Query()] = None,
+    material: Annotated[str | None, Query()] = None,
+    dn: Annotated[str | None, Query(max_length=8)] = None,
+    pn: Annotated[str | None, Query(max_length=8)] = None,
+    data_quality: Annotated[str | None, Query()] = None,
+    active: Annotated[bool | None, Query()] = None,
+    has_image: Annotated[bool | None, Query()] = None,
+    lifecycle_status: Annotated[str | None, Query()] = None,
+    translation_status: Annotated[
+        str | None, Query(pattern=r"^(pending|draft|approved)$")
+    ] = None,
+    translation_lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    # Stage 3 (Wave 11) — series_id/material_id aceptan UUID o slug del registry.
+    division: Annotated[str | None, Query(max_length=64)] = None,
+    series_id: Annotated[str | None, Query(max_length=64)] = None,
+    material_id: Annotated[str | None, Query(max_length=64)] = None,
+    tier_code: Annotated[str | None, Query(max_length=32)] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> FacetsResponse:
+    """Devuelve counts por dimensión aplicando todos los filtros activos
+    EXCEPTO el de la propia dimensión (refinement no destructivo).
+
+    Performance objetivo: p95 <200ms con índices migration 041 y 5K-50K rows.
+    """
+    filters = ProductFilters(
+        family=family,
+        subfamily=subfamily,
+        type_=type,
+        brand=brand,
+        material=material,
+        dn=dn,
+        pn=pn,
+        data_quality=data_quality,
+        active=active,
+        has_image=has_image,
+        lifecycle_status=lifecycle_status,
+        translation_status=translation_status,
+        translation_lang=translation_lang,
+        search=q,
+        # Stage 3 (Wave 11)
+        division_code=division,
+        series_id=series_id,
+        material_id=material_id,
+        tier_code=tier_code,
+    )
+    return await compute_facets(session, filters)
 
 
 @router.get(
@@ -1689,72 +1752,311 @@ async def delete_tech_table(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# ==========================================================================
-# Wave 10 — Facets endpoint (non-destructive refinements + parallel compute)
-# ==========================================================================
-from app.schemas.facets import FacetsResponse  # noqa: E402
-from app.services.products.facets_service import (  # noqa: E402
-    ProductFilters,
-    compute_facets,
-)
+# =============================================================================
+# M1-01 — Product Releases (por mercado)
+# =============================================================================
+from sqlalchemy import select as _sa_select2  # noqa: E402
+from app.db.models.product import ProductRelease, ProductUomConversion  # noqa: E402
+
+
+def _assert_product_exists(product: Any, sku: str) -> None:
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "product_not_found", "title": f"Product {sku!r} not found"},
+        )
 
 
 @router.get(
-    "/facets",
-    response_model=FacetsResponse,
-    summary="Counts por dimensión con refinements non-destructivos (Algolia-style)",
+    "/{sku}/releases",
+    response_model=list[ProductReleaseResponse],
+    summary="Listar releases de un producto por mercado (M1-01)",
 )
-async def get_facets(
-    family: Annotated[str | None, Query()] = None,
-    subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[  # noqa: A002
-        str | None, Query(max_length=64, alias="type")
-    ] = None,
-    brand: Annotated[str | None, Query()] = None,
-    material: Annotated[str | None, Query()] = None,
-    dn: Annotated[str | None, Query(max_length=8)] = None,
-    pn: Annotated[str | None, Query(max_length=8)] = None,
-    data_quality: Annotated[str | None, Query()] = None,
-    active: Annotated[bool | None, Query()] = None,
-    has_image: Annotated[bool | None, Query()] = None,
-    lifecycle_status: Annotated[str | None, Query()] = None,
-    translation_status: Annotated[
-        str | None, Query(pattern=r"^(pending|draft|approved)$")
-    ] = None,
-    translation_lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
-    q: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
-    # Stage 3 (Wave 11) — series_id/material_id aceptan UUID o slug del registry.
-    division: Annotated[str | None, Query(max_length=64)] = None,
-    series_id: Annotated[str | None, Query(max_length=64)] = None,
-    material_id: Annotated[str | None, Query(max_length=64)] = None,
-    tier_code: Annotated[str | None, Query(max_length=32)] = None,
+async def list_releases(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     _user: User = Depends(require_permissions("products:read")),
     session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
-) -> FacetsResponse:
-    """Devuelve counts por dimensión aplicando todos los filtros activos
-    EXCEPTO el de la propia dimensión (refinement no destructivo).
+) -> list[ProductRelease]:
+    rows = (
+        await session.execute(
+            _sa_select2(ProductRelease).where(ProductRelease.product_sku == sku)
+        )
+    ).scalars().all()
+    return list(rows)
 
-    Performance objetivo: p95 <200ms con índices migration 041 y 5K-50K rows.
-    """
-    filters = ProductFilters(
-        family=family,
-        subfamily=subfamily,
-        type_=type,
-        brand=brand,
-        material=material,
-        dn=dn,
-        pn=pn,
-        data_quality=data_quality,
-        active=active,
-        has_image=has_image,
-        lifecycle_status=lifecycle_status,
-        translation_status=translation_status,
-        translation_lang=translation_lang,
-        search=q,
-        # Stage 3 (Wave 11)
-        division_code=division,
-        series_id=series_id,
-        material_id=material_id,
-        tier_code=tier_code,
+
+@router.post(
+    "/{sku}/releases",
+    response_model=ProductReleaseResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear release de un producto para un mercado (M1-01)",
+)
+async def create_release(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: ProductReleaseCreate,
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> ProductRelease:
+    from sqlalchemy import select as _sel
+    product = (
+        await session.execute(_sel(Product).where(Product.sku == sku))
+    ).scalar_one_or_none()
+    _assert_product_exists(product, sku)
+
+    existing = (
+        await session.execute(
+            _sa_select2(ProductRelease).where(
+                ProductRelease.product_sku == sku,
+                ProductRelease.market_code == data.market_code,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "release_exists",
+                "title": f"Release for market {data.market_code!r} already exists for sku={sku!r}",
+            },
+        )
+
+    release = ProductRelease(
+        product_sku=sku,
+        created_by=_user.id,
+        **data.model_dump(),
     )
-    return await compute_facets(session, filters)
+    session.add(release)
+    await session.flush()
+    await session.refresh(release)
+    return release
+
+
+@router.patch(
+    "/{sku}/releases/{market_code}",
+    response_model=ProductReleaseResponse,
+    summary="Actualizar datos de un release por mercado (M1-01)",
+)
+async def patch_release(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    market_code: Annotated[str, Path(min_length=2, max_length=10)],
+    data: ProductReleasePatch,
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> ProductRelease:
+    release = (
+        await session.execute(
+            _sa_select2(ProductRelease).where(
+                ProductRelease.product_sku == sku,
+                ProductRelease.market_code == market_code.upper(),
+            )
+        )
+    ).scalar_one_or_none()
+    if not release:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "release_not_found",
+                "title": f"Release for market {market_code!r} not found for sku={sku!r}",
+            },
+        )
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(release, field, value)
+    await session.flush()
+    await session.refresh(release)
+    return release
+
+
+@router.post(
+    "/{sku}/releases/{market_code}/activate",
+    response_model=ProductReleaseResponse,
+    summary="Activar release de un producto en un mercado (M1-01)",
+)
+async def activate_release(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    market_code: Annotated[str, Path(min_length=2, max_length=10)],
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> ProductRelease:
+    from datetime import datetime, timezone
+
+    release = (
+        await session.execute(
+            _sa_select2(ProductRelease).where(
+                ProductRelease.product_sku == sku,
+                ProductRelease.market_code == market_code.upper(),
+            )
+        )
+    ).scalar_one_or_none()
+    if not release:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "release_not_found",
+                "title": f"Release for market {market_code!r} not found for sku={sku!r}",
+            },
+        )
+    release.is_active = True
+    release.status = "active"
+    release.released_at = datetime.now(timezone.utc)
+    release.released_by = _user.id
+    await session.flush()
+    await session.refresh(release)
+    return release
+
+
+@router.post(
+    "/{sku}/releases/{market_code}/deactivate",
+    response_model=ProductReleaseResponse,
+    summary="Desactivar release de un producto en un mercado (M1-01)",
+)
+async def deactivate_release(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    market_code: Annotated[str, Path(min_length=2, max_length=10)],
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> ProductRelease:
+    release = (
+        await session.execute(
+            _sa_select2(ProductRelease).where(
+                ProductRelease.product_sku == sku,
+                ProductRelease.market_code == market_code.upper(),
+            )
+        )
+    ).scalar_one_or_none()
+    if not release:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "release_not_found",
+                "title": f"Release for market {market_code!r} not found for sku={sku!r}",
+            },
+        )
+    release.is_active = False
+    release.status = "suspended"
+    await session.flush()
+    await session.refresh(release)
+    return release
+
+
+# =============================================================================
+# M1-04 — Product UoM Conversions
+# =============================================================================
+
+
+@router.get(
+    "/{sku}/uom-conversions",
+    response_model=list[ProductUomConversionResponse],
+    summary="Listar conversiones UoM de un producto (M1-04)",
+)
+async def list_uom_conversions(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _user: User = Depends(require_permissions("products:read")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> list[ProductUomConversion]:
+    rows = (
+        await session.execute(
+            _sa_select2(ProductUomConversion).where(
+                ProductUomConversion.product_sku == sku
+            )
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+@router.post(
+    "/{sku}/uom-conversions",
+    response_model=ProductUomConversionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Agregar conversión UoM a un producto (M1-04)",
+)
+async def create_uom_conversion(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    data: ProductUomConversionCreate,
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> ProductUomConversion:
+    from sqlalchemy import select as _sel2
+    product = (
+        await session.execute(_sel2(Product).where(Product.sku == sku))
+    ).scalar_one_or_none()
+    _assert_product_exists(product, sku)
+
+    existing = (
+        await session.execute(
+            _sa_select2(ProductUomConversion).where(
+                ProductUomConversion.product_sku == sku,
+                ProductUomConversion.uom_from == data.uom_from,
+                ProductUomConversion.uom_to == data.uom_to,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "uom_conversion_exists",
+                "title": f"Conversion {data.uom_from}→{data.uom_to} already exists for sku={sku!r}",
+            },
+        )
+
+    row = ProductUomConversion(product_sku=sku, **data.model_dump())
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+@router.delete(
+    "/{sku}/uom-conversions/{uom_from}/{uom_to}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Eliminar conversión UoM de un producto (M1-04)",
+)
+async def delete_uom_conversion(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    uom_from: Annotated[str, Path(min_length=1, max_length=10)],
+    uom_to: Annotated[str, Path(min_length=1, max_length=10)],
+    _user: User = Depends(require_permissions("products:write")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> Response:
+    row = (
+        await session.execute(
+            _sa_select2(ProductUomConversion).where(
+                ProductUomConversion.product_sku == sku,
+                ProductUomConversion.uom_from == uom_from,
+                ProductUomConversion.uom_to == uom_to,
+            )
+        )
+    ).scalar_one_or_none()
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "uom_conversion_not_found",
+                "title": f"Conversion {uom_from}→{uom_to} not found for sku={sku!r}",
+            },
+        )
+    await session.delete(row)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==========================================================================
+# Bore Dimensions — mig 099 — dimensiones por norma
+# ==========================================================================
+@router.get(
+    "/{sku}/bore-dimensions",
+    response_model=list[BoreDimensionRead],
+    summary="Listar dimensiones por norma de un producto (EN 558, ASME B16.10, etc.)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def list_bore_dimensions(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _user: Annotated[User, Depends(require_permissions("products:read"))],
+    repo: Annotated[ProductBoreDimensionRepository, Depends(get_bore_dimension_repo)],
+    service: Annotated[ProductService, Depends(get_product_service)],
+) -> list[BoreDimensionRead]:
+    prod = await service.get_product_by_id(sku)
+    if prod is None:
+        raise HTTPException(status_code=404, detail={"code": "product_not_found", "title": f"SKU {sku!r} no encontrado"})
+    rows = await repo.list_for_sku(sku)
+    return [BoreDimensionRead.model_validate(r) for r in rows]

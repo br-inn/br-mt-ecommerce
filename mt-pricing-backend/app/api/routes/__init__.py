@@ -8,7 +8,10 @@ expone `router: APIRouter` y aquí se incluye con `router.include_router(...)`.
 from fastapi import APIRouter
 
 from app.api.routes import (
+    admin,
     admin_calibrator,
+    admin_erp,
+    admin_erp_eventos,
     admin_flags,
     admin_manufacturers,
     admin_pim_quality,
@@ -29,8 +32,10 @@ from app.api.routes import (
     exception_rules,
     exports,
     fx_rates,
+    goods_receipts,
     graphrag,
     human_queue,
+    inventory,
     imports,
     imports_costs,
     imports_datasheets,
@@ -44,6 +49,7 @@ from app.api.routes import (
     pricing_dashboard,
     pricing_engine,
     products,
+    purchase_orders,
     roles,
     suppliers,
     translations_workflow,
@@ -160,3 +166,15 @@ router.include_router(admin_pim_quality.router)
 router.include_router(admin_manufacturers.router)
 # US-F15-02-04 — Price calibration ranges CRUD + import/export + recalibrate trigger
 router.include_router(admin_price_calibration.router)
+# EP-INV-01 — Purchase Orders CRUD (US-INV-01-03)
+router.include_router(purchase_orders.router)
+# EP-INV-01 — Goods Receipts (US-INV-01-04)
+router.include_router(goods_receipts.router)
+# EP-INV-01 — Inventory Positions Dashboard (US-INV-01-05)
+router.include_router(inventory.router)
+# US-INV-01-08 — Admin seed/maintenance endpoints
+router.include_router(admin.router)
+# US-INV-01-06 — ERP adapter health check
+router.include_router(admin_erp.router)
+# US-INV-01-07 — ERP sync events log + retry
+router.include_router(admin_erp_eventos.router)

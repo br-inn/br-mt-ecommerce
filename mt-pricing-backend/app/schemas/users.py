@@ -15,13 +15,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 # Locales soportados Fase 1 — coincide con CheckConstraint `ck_users_locale`.
 LocaleStr = Literal["es", "en", "ar"]
 
-# Roles de sistema (seed Agente C).
+# Roles de sistema — sincronizado con tabla `roles` en BD.
 RoleCode = Literal[
+    "admin",
+    "auditor",
     "comercial",
     "gerente_comercial",
+    "responsable_compras",
     "ti_integracion",
-    "champion",
-    "backup_operator",
 ]
 
 

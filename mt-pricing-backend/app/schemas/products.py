@@ -70,7 +70,13 @@ ALLOWED_IMAGE_MIME: frozenset[str] = frozenset(
 )
 # Wave 2 — vocabulario controlado de lifecycle.
 ALLOWED_LIFECYCLE_STATUS: frozenset[str] = frozenset(
-    {"draft", "active", "deprecated", "replaced", "discontinued"}
+    {"draft", "in_review", "active", "deprecated", "replaced", "discontinued"}
+)
+ALLOWED_MARKETS: frozenset[str] = frozenset(
+    {"UAE", "KSA", "MX", "ES", "GLOBAL", "US", "EU"}
+)
+ALLOWED_RELEASE_STATUS: frozenset[str] = frozenset(
+    {"draft", "active", "suspended", "discontinued"}
 )
 # Wave 2 — métodos de fabricación más comunes (no exhaustivo, validación blanda).
 ALLOWED_MANUFACTURING_METHOD: frozenset[str] = frozenset(
@@ -487,8 +493,9 @@ class ProductDetail(ProductResponse):
     translations: list[ProductTranslationResponse] = Field(default_factory=list)
     images: list[ProductAssetResponse] = Field(default_factory=list)
     # ---- Stage 3 (Wave 11) — series/material/display pair eager-loaded ----
-    series: "SeriesResponse | None" = None
-    material: "MaterialResponse | None" = None
+    # Use *_detail fields to avoid shadowing the scalar str fields on ProductResponse.
+    series_detail: "SeriesResponse | None" = None
+    material_detail: "MaterialResponse | None" = None
     display_pair: ProductMini | None = None
 
 
@@ -576,6 +583,117 @@ class ProductSearchParams(BaseModel):
     data_quality: Literal["complete", "partial", "blocked", "migrated_demo"] | None = None
     active: bool | None = None
     search: str | None = Field(default=None, min_length=2, max_length=128)
+
+
+# ---------------------------------------------------------------------------
+# M1-04 — ProductUomConversion schemas
+# ---------------------------------------------------------------------------
+class ProductUomConversionBase(BaseModel):
+    uom_from: str = Field(min_length=1, max_length=10)
+    uom_to: str = Field(min_length=1, max_length=10)
+    factor: Decimal = Field(gt=0, description="qty_uom_from × factor = qty_uom_to")
+    is_active: bool = True
+
+    @model_validator(mode="after")
+    def uom_pair_not_equal(self) -> "ProductUomConversionBase":
+        if self.uom_from == self.uom_to:
+            raise ValueError("uom_from and uom_to must be different")
+        return self
+
+
+class ProductUomConversionCreate(ProductUomConversionBase):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ProductUomConversionResponse(ProductUomConversionBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    product_sku: str
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# M1-01 — ProductRelease schemas
+# ---------------------------------------------------------------------------
+class ProductReleaseBase(BaseModel):
+    market_code: str = Field(min_length=2, max_length=10)
+    local_name: str | None = Field(default=None, max_length=200)
+    local_description: str | None = None
+    local_sku: str | None = Field(default=None, max_length=50)
+    local_uom: str | None = Field(default=None, max_length=10)
+    list_price: Decimal | None = Field(default=None, gt=0)
+    price_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    tax_class: str | None = Field(default=None, max_length=50)
+
+    @field_validator("market_code")
+    @classmethod
+    def market_code_upper(cls, v: str) -> str:
+        return v.upper()
+
+    @field_validator("price_currency")
+    @classmethod
+    def currency_upper(cls, v: str | None) -> str | None:
+        return v.upper() if v else v
+
+
+class ProductReleaseCreate(ProductReleaseBase):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ProductReleasePatch(BaseModel):
+    """Actualización parcial de un release — todos los campos opcionales."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    local_name: str | None = Field(default=None, max_length=200)
+    local_description: str | None = None
+    local_sku: str | None = Field(default=None, max_length=50)
+    local_uom: str | None = Field(default=None, max_length=10)
+    list_price: Decimal | None = Field(default=None, gt=0)
+    price_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    tax_class: str | None = Field(default=None, max_length=50)
+
+    @field_validator("price_currency")
+    @classmethod
+    def currency_upper(cls, v: str | None) -> str | None:
+        return v.upper() if v else v
+
+
+class ProductReleaseResponse(ProductReleaseBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    product_sku: str
+    status: str
+    is_active: bool
+    released_at: datetime | None
+    released_by: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# BoreDimension — mig 099 — dimensiones por SKU × norma aplicable
+# ---------------------------------------------------------------------------
+class BoreDimensionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    product_sku: str
+    dn_nominal_ref: str | None
+    standard_system: str
+    standard_code: str
+    pressure_class: str | None
+    bore_mm: Decimal | None
+    face_to_face_mm: Decimal | None
+    end_to_end_mm: Decimal | None
+    flange_od_mm: Decimal | None
+    bolt_circle_mm: Decimal | None
+    bolt_count: int | None
+    bolt_size: str | None
+    is_primary: bool
+    notes: str | None
+    created_at: datetime
 
 
 # Re-bind forward references — ProductDetail referencia translations/images

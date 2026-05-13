@@ -19,6 +19,7 @@ import {
   Layers,
   LayoutGrid,
   Network,
+  Package,
   Receipt,
   ScrollText,
   Search,
@@ -61,6 +62,12 @@ const SECTION_OPS: readonly NavItem[] = [
   { href: "/canales", label: "Canales", icon: Network, badge: "5" },
   { href: "/precios/aprobaciones", label: "Aprobaciones", icon: ShieldCheck, badge: 45 },
   { href: "/costos", label: "Cobertura costes", icon: Receipt, permissions: ["costs:read"] },
+] as const;
+
+const SECTION_COMPRAS: readonly NavItem[] = [
+  { href: "/compras/pedidos", label: "Pedidos", icon: Package, permissions: ["purchases:write"] },
+  { href: "/compras/recepciones", label: "Recepciones", icon: Truck, permissions: ["purchases:write"] },
+  { href: "/inventario", label: "Inventario", icon: Boxes, permissions: ["purchases:write"] },
 ] as const;
 
 const SECTION_QA: readonly NavItem[] = [
@@ -144,7 +151,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       title={collapsed ? item.label : undefined}
       className={cn(
         "relative flex items-center gap-2.5 rounded-md text-[13px]",
-        collapsed ? "justify-center py-2" : "px-2.5 py-[7px]",
+        collapsed ? "justify-center py-2.5" : "px-3 py-[7px]",
         active ? "font-semibold" : "font-normal",
       )}
       style={{
@@ -199,7 +206,7 @@ function SectionLabel({ children, collapsed }: { children: string; collapsed: bo
   }
   return (
     <div
-      className="mt-mono px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-[0.6px]"
+      className="mt-mono px-3 pb-1 pt-3 text-[10px] uppercase tracking-[0.6px]"
       style={{ color: MT.ink4 }}
     >
       {children}
@@ -217,7 +224,7 @@ function SidebarTaxonomySkeleton({ collapsed }: { collapsed: boolean }) {
           key={i}
           className={cn(
             "flex items-center gap-2.5",
-            collapsed ? "justify-center py-2" : "px-2.5 py-[7px]",
+            collapsed ? "justify-center py-2.5" : "px-3 py-[7px]",
           )}
         >
           <div
@@ -260,7 +267,7 @@ export function Sidebar() {
     <aside
       className={cn(
         "relative hidden flex-col border-r bg-mt-surface transition-[width] duration-200 ease-out md:flex",
-        collapsed ? "md:w-[60px]" : "md:w-[220px]",
+        collapsed ? "md:w-[64px]" : "md:w-[248px]",
       )}
       style={{ borderColor: MT.border }}
       aria-label="Primary"
@@ -270,7 +277,7 @@ export function Sidebar() {
       <div
         className={cn(
           "flex items-center gap-2.5 border-b",
-          collapsed ? "justify-center px-1.5 py-3" : "px-3.5 py-3",
+          collapsed ? "justify-center px-2 py-3.5" : "px-4 py-3.5",
         )}
         style={{ borderColor: MT.border }}
       >
@@ -302,11 +309,18 @@ export function Sidebar() {
         )}
       </button>
 
-      <nav className={cn("flex flex-1 flex-col gap-px", collapsed ? "px-1.5 py-2" : "p-2")}>
+      <nav className={cn("flex flex-1 flex-col gap-px overflow-y-auto", collapsed ? "px-2 py-3" : "px-3 py-3")}>
         <SectionLabel collapsed={collapsed}>Operación</SectionLabel>
         {SECTION_OPS.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
+
+        <RbacGuard permissions={["purchases:write"]}>
+          <SectionLabel collapsed={collapsed}>Compras</SectionLabel>
+          {SECTION_COMPRAS.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} />
+          ))}
+        </RbacGuard>
 
         <SectionLabel collapsed={collapsed}>Calidad</SectionLabel>
         {SECTION_QA.map((item) => (
@@ -340,7 +354,7 @@ export function Sidebar() {
       <div
         className={cn(
           "flex items-center gap-2.5 border-t",
-          collapsed ? "justify-center px-2 py-2" : "px-3 py-3",
+          collapsed ? "justify-center px-2 py-3" : "px-4 py-3.5",
         )}
         style={{ borderColor: MT.border }}
       >

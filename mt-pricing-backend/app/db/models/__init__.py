@@ -50,7 +50,22 @@ from app.db.models.pricing import (
     Price,
     PriceApprovalEvent,
 )
-from app.db.models.product import Product, ProductImage, ProductTranslation
+from app.db.models.product import (
+    DnNpsReference,
+    Product,
+    ProductBoreDimension,
+    ProductImage,
+    ProductRelease,
+    ProductTranslation,
+    ProductUomConversion,
+)
+from app.db.models.inventory import (
+    CostLot,
+    GoodsReceipt,
+    InventoryPosition,
+    PurchaseOrder,
+    PurchaseOrderLine,
+)
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
 from app.db.models.taxonomy_registry import (
@@ -91,6 +106,13 @@ __all__ = [
     "Product",
     "ProductTranslation",
     "ProductImage",
+    # M1-01 — product releases por mercado
+    "ProductRelease",
+    # M1-04 — UoM conversions por producto
+    "ProductUomConversion",
+    # DN/NPS norm lookup + bore dimensions by standard (mig. 099)
+    "DnNpsReference",
+    "ProductBoreDimension",
     # master data fase 1a
     "Currency",
     "Supplier",
@@ -191,4 +213,10 @@ __all__ = [
     "ExportManifest",
     # Last-known-good exports snapshot (US-1B-04-05 — mig. 083)
     "LastGoodExport",
+    # Inventory costing pipeline (EP-INV-01 — migs. 090-094)
+    "PurchaseOrder",
+    "PurchaseOrderLine",
+    "GoodsReceipt",
+    "CostLot",
+    "InventoryPosition",
 ]

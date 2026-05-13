@@ -41,6 +41,13 @@ export interface ProductTranslationRead {
   language: Language;
   name: string | null;
   description: string | null;
+  marketing_copy?: string | null;
+  applications_text?: string | null;
+  technical_limits?: string | null;
+  marketing_features?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  notes?: string | null;
   status: TranslationStatus;
   updated_at: string;
   approved_at: string | null;
@@ -139,10 +146,13 @@ export interface ProductTranslationsMap {
 
 export type ProductLifecycleStatus =
   | "draft"
+  | "in_review"
   | "active"
   | "deprecated"
   | "replaced"
   | "discontinued";
+
+export type ReleaseStatus = "draft" | "active" | "suspended" | "discontinued";
 
 export interface ProductListItem {
   internal_id: string;
@@ -179,6 +189,25 @@ export interface ProductMini {
   translations?: ProductTranslationsMap | null;
 }
 
+export interface ProductMaterialDetail {
+  id: string;
+  code: string;
+  name: string;
+  family_kind: string | null;
+  notes: string | null;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductSeriesDetail {
+  id: string;
+  code: string;
+  name_en: string;
+  tier_id?: string | null;
+}
+
 export interface Product extends ProductListItem {
   /**
    * Backend devuelve también `id` (UUID, == `internal_id`) en el detalle.
@@ -192,6 +221,98 @@ export interface Product extends ProductListItem {
   packaging: ProductPackaging | null;
   intrastat: ProductIntrastat | null;
   created_at: string;
+  // M1-08 — GS1 global trade item number
+  gtin?: string | null;
+  // M1-04 — unidad de medida base
+  base_uom?: string | null;
+  // Stage 3 (Wave 11) — enriched detail objects (separate from scalar string fields)
+  material_detail?: ProductMaterialDetail | null;
+  series_detail?: ProductSeriesDetail | null;
+  // Campos técnicos operativos
+  brand?: string | null;
+  erp_name?: string | null;
+  revision?: string | null;
+  parent_sku?: string | null;
+  is_parent?: boolean;
+  is_variant?: boolean;
+  size?: string | null;
+  temp_min_c?: number | null;
+  temp_max_c?: number | null;
+  pressure_max_bar?: number | null;
+  // mig. 099 — bore real y estándar dimensional
+  bore_mm?: number | null;
+  dimensional_standard?: string | null;
+}
+
+// Mig 099 — Bore dimensions por norma
+export interface BoreDimension {
+  id: string;
+  product_sku: string;
+  dn_nominal_ref: string | null;
+  standard_system: "DIN" | "ASME" | "AWWA" | "ISO" | "JIS" | "GOST";
+  standard_code: string;
+  pressure_class: string | null;
+  bore_mm: number | null;
+  face_to_face_mm: number | null;
+  end_to_end_mm: number | null;
+  flange_od_mm: number | null;
+  bolt_circle_mm: number | null;
+  bolt_count: number | null;
+  bolt_size: string | null;
+  is_primary: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+// M1-01 — Product Release por mercado (D365 Released Product)
+export interface ProductRelease {
+  id: string;
+  product_sku: string;
+  market_code: string;
+  local_name: string | null;
+  local_description: string | null;
+  local_sku: string | null;
+  local_uom: string | null;
+  list_price: number | null;
+  price_currency: string | null;
+  tax_class: string | null;
+  status: ReleaseStatus;
+  is_active: boolean;
+  released_at: string | null;
+  released_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductReleaseCreate {
+  market_code: string;
+  local_name?: string | null;
+  local_description?: string | null;
+  local_sku?: string | null;
+  local_uom?: string | null;
+  list_price?: number | null;
+  price_currency?: string | null;
+  tax_class?: string | null;
+}
+
+export interface ProductReleasePatch extends Partial<Omit<ProductReleaseCreate, "market_code">> {}
+
+// M1-04 — Product UoM Conversion
+export interface ProductUomConversion {
+  id: string;
+  product_sku: string;
+  uom_from: string;
+  uom_to: string;
+  factor: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ProductUomConversionCreate {
+  uom_from: string;
+  uom_to: string;
+  factor: number;
+  is_active?: boolean;
 }
 
 export interface ProductListResponse {
@@ -267,6 +388,13 @@ export interface ImageConfirmPayload {
 export interface TranslationUpsertPayload {
   name?: string | null;
   description?: string | null;
+  marketing_copy?: string | null;
+  applications_text?: string | null;
+  technical_limits?: string | null;
+  marketing_features?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  notes?: string | null;
 }
 
 // ---- Compatibility (Wave 7 + Fase 5) -------------------------------------
@@ -628,6 +756,64 @@ export const productsApi = {
   ): Promise<void> =>
     authedFetch<void>(
       `/api/v1/products/${sku}/certifications/${certificationId}`,
+      { method: "DELETE" },
+    ),
+  // M1-01 — Releases por mercado
+  listReleases: (sku: string): Promise<ProductRelease[]> =>
+    authedFetch<ProductRelease[]>(`/api/v1/products/${sku}/releases`),
+  createRelease: (
+    sku: string,
+    payload: ProductReleaseCreate,
+  ): Promise<ProductRelease> =>
+    authedFetch<ProductRelease>(`/api/v1/products/${sku}/releases`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  patchRelease: (
+    sku: string,
+    marketCode: string,
+    payload: ProductReleasePatch,
+  ): Promise<ProductRelease> =>
+    authedFetch<ProductRelease>(
+      `/api/v1/products/${sku}/releases/${marketCode}`,
+      { method: "PATCH", body: JSON.stringify(payload) },
+    ),
+  activateRelease: (sku: string, marketCode: string): Promise<ProductRelease> =>
+    authedFetch<ProductRelease>(
+      `/api/v1/products/${sku}/releases/${marketCode}/activate`,
+      { method: "POST" },
+    ),
+  deactivateRelease: (
+    sku: string,
+    marketCode: string,
+  ): Promise<ProductRelease> =>
+    authedFetch<ProductRelease>(
+      `/api/v1/products/${sku}/releases/${marketCode}/deactivate`,
+      { method: "POST" },
+    ),
+  // Mig 099 — Bore Dimensions
+  listBoreDimensions: (sku: string): Promise<BoreDimension[]> =>
+    authedFetch<BoreDimension[]>(`/api/v1/products/${sku}/bore-dimensions`),
+  // M1-04 — UoM Conversions
+  listUomConversions: (sku: string): Promise<ProductUomConversion[]> =>
+    authedFetch<ProductUomConversion[]>(
+      `/api/v1/products/${sku}/uom-conversions`,
+    ),
+  createUomConversion: (
+    sku: string,
+    payload: ProductUomConversionCreate,
+  ): Promise<ProductUomConversion> =>
+    authedFetch<ProductUomConversion>(
+      `/api/v1/products/${sku}/uom-conversions`,
+      { method: "POST", body: JSON.stringify(payload) },
+    ),
+  deleteUomConversion: (
+    sku: string,
+    uomFrom: string,
+    uomTo: string,
+  ): Promise<void> =>
+    authedFetch<void>(
+      `/api/v1/products/${sku}/uom-conversions/${uomFrom}/${uomTo}`,
       { method: "DELETE" },
     ),
 };

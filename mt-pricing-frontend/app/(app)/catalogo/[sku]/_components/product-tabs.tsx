@@ -21,6 +21,11 @@ export function ProductTabs({ sku }: Props) {
   const tabs = [
     { href: `/catalogo/${sku}`, label: t("specs"), match: (p: string) => p === `/catalogo/${sku}` },
     {
+      href: `/catalogo/${sku}/mercados`,
+      label: t("markets"),
+      match: (p: string) => p.startsWith(`/catalogo/${sku}/mercados`),
+    },
+    {
       href: `/catalogo/${sku}/imagenes`,
       label: t("images"),
       match: (p: string) => p.startsWith(`/catalogo/${sku}/imagenes`),
@@ -29,6 +34,11 @@ export function ProductTabs({ sku }: Props) {
       href: `/catalogo/${sku}/traducciones`,
       label: t("translations"),
       match: (p: string) => p.startsWith(`/catalogo/${sku}/traducciones`),
+    },
+    {
+      href: `/catalogo/${sku}/unidades`,
+      label: t("units"),
+      match: (p: string) => p.startsWith(`/catalogo/${sku}/unidades`),
     },
     {
       href: `/catalogo/${sku}/costos`,

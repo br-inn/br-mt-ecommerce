@@ -76,6 +76,10 @@ def make_celery() -> Celery:
             "app.workers.thumbnails",
             # F15-03-02 — embedding fine-tune ML task
             "app.workers.tasks.ml_finetuning",
+            # EP-INV-01 — MAP Engine (US-INV-01-02)
+            "app.workers.tasks.inventory",
+            # EP-INV-01 — ERP outbox processor (US-INV-01-07)
+            "app.workers.tasks.erp_sync",
         ],
     )
 
@@ -112,6 +116,7 @@ def make_celery() -> Celery:
             "mt.graphrag.*": {"queue": "comparator"},
             "mt.calibrator.*": {"queue": "comparator"},
             "ml.*": {"queue": "comparator"},
+            "mt.inventory.*": {"queue": "default"},
         },
         # --- Beat (ADR-046 — scheduler custom sobre job_definitions) ---
         beat_scheduler="app.scheduler.database_scheduler:DatabaseScheduler",

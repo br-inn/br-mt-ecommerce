@@ -33,10 +33,12 @@ from app.schemas.vocabularies import (
     ProductApplicationResponse,
     ProductCertificationLink,
     ProductCertificationResponse,
+    TaxonomyTreeResponse,
 )
 from app.services.vocabularies.vocabulary_service import (
     ApplicationService,
     CertificationService,
+    FamilyService,
     ProductVocabularyService,
     VocabularyDomainError,
 )
@@ -54,6 +56,9 @@ admin_vocab_router = APIRouter(
 
 # Product vocabulary sub-router (prefix /products/{sku} added by products.py)
 products_vocab_router = APIRouter(tags=["products:vocabularies"])
+
+# Taxonomy tree — GET /taxonomy/tree
+taxonomy_router = APIRouter(prefix="/taxonomy", tags=["taxonomy"])
 
 
 # ---------------------------------------------------------------------------
@@ -487,3 +492,20 @@ async def remove_product_application(
         await service.remove_application(sku, app_id)
     except VocabularyDomainError as e:
         _raise_domain(e)
+
+
+# ---------------------------------------------------------------------------
+# Taxonomy tree — GET /taxonomy/tree
+# ---------------------------------------------------------------------------
+@taxonomy_router.get(
+    "/tree",
+    response_model=TaxonomyTreeResponse,
+    summary="Árbol completo families → subfamilies → product_types",
+)
+async def get_taxonomy_tree(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    _: Annotated[None, Depends(require_permissions("products:read"))],
+) -> TaxonomyTreeResponse:
+    svc = FamilyService(db)
+    families = await svc.list_tree()
+    return TaxonomyTreeResponse(families=list(families))

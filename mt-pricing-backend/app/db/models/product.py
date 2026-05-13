@@ -28,12 +28,12 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM as PG_ENUM, JSONB
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.enums import DataQuality, TranslationStatus, values_csv
+from app.db.enums import DataQuality, LifecycleStatus, ReleaseStatus, TranslationStatus, values_csv
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG, HAS_PGVECTOR
 
@@ -91,6 +91,13 @@ class Product(Base):
     intrastat_code: Mapped[str | None] = mapped_column(Text)
     erp_name: Mapped[str | None] = mapped_column(Text)
 
+    # M1-08 — GS1 global trade item number (EAN-8 / EAN-13 / GTIN-14)
+    gtin: Mapped[str | None] = mapped_column(String(14), nullable=True)
+    # M1-04 — unidad de medida base del producto (SAP MM base UoM)
+    base_uom: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'UNIT'")
+    )
+
     data_quality: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'partial'")
     )
@@ -102,8 +109,17 @@ class Product(Base):
 
     # ---- Wave 2 ----------------------------------------------------------
     # Lifecycle / identity
+    # Usa PG_ENUM con create_type=False porque el tipo lifecycle_status ya
+    # existe en BD (mig. 037). Declararlo como ENUM permite que asyncpg
+    # haga el binding correcto del parámetro (evita ::VARCHAR mismatch).
     lifecycle_status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'active'::lifecycle_status")
+        PG_ENUM(
+            "draft", "in_review", "active", "deprecated", "replaced", "discontinued",
+            name="lifecycle_status",
+            create_type=False,
+        ),
+        nullable=False,
+        server_default=text("'active'::lifecycle_status"),
     )
     revision: Mapped[str | None] = mapped_column(Text)
     series: Mapped[str | None] = mapped_column(Text)
@@ -123,6 +139,14 @@ class Product(Base):
     temp_min_c: Mapped[int | None] = mapped_column(Integer)
     temp_max_c: Mapped[int | None] = mapped_column(Integer)
     pressure_max_bar: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+
+    # mig 099 — Dimensiones por norma (DN/NPS)
+    # bore_mm: diámetro de paso del estándar principal — el "dn_real" del spec.
+    # Para multi-norma usar product_bore_dimensions (detalle completo).
+    bore_mm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2),
+        comment="Bore real (waterway) en mm — estándar principal. Detalle en product_bore_dimensions.")
+    dimensional_standard: Mapped[str | None] = mapped_column(String(16),
+        comment="Sistema dimensional principal: DIN | ASME | AWWA | ISO")
 
     # Editorial / SEO
     # Fase B drop (mig 065): products.tags ARRAY eliminado; sustituido por
@@ -188,7 +212,7 @@ class Product(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     translations: Mapped[list["ProductTranslation"]] = relationship(
-        back_populates="product", cascade="all, delete-orphan"
+        back_populates="product", cascade="all, delete-orphan", lazy="selectin"
     )
     # `assets` — all asset kinds; `images` — backward compat alias (kind='photo' only)
     assets: Mapped[list["ProductAsset"]] = relationship(
@@ -361,14 +385,43 @@ class Product(Base):
     # removidos en BD; aquí se elimina la declaración para alinear modelo y
     # esquema. Cualquier full-text futuro debería indexar
     # product_translations.name por lang.
+    # M1-04 — conversiones UoM alternativas (ej: 1 BOX = 12 UNIT)
+    uom_conversions: Mapped[list["ProductUomConversion"]] = relationship(
+        "ProductUomConversion",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    # M1-01 — releases por mercado (ej: UAE, KSA, MX)
+    releases: Mapped[list["ProductRelease"]] = relationship(
+        "ProductRelease",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    # mig 099 — dimensiones reales por norma (EN 558 / ASME B16.10 / AWWA C504)
+    bore_dimensions: Mapped[list["ProductBoreDimension"]] = relationship(
+        "ProductBoreDimension",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     __table_args__ = (
         CheckConstraint(
             f"data_quality IN {values_csv(DataQuality)}",
             name="ck_products_data_quality",
         ),
+        CheckConstraint(
+            "gtin IS NULL OR (length(gtin) IN (8,12,13,14) AND gtin ~ '^[0-9]+$')",
+            name="ck_products_gtin_format",
+        ),
         Index("idx_products_family", "family"),
         Index("idx_products_brand", "brand"),
         Index("idx_products_specs_gin", "specs", postgresql_using="gin"),
+        Index("idx_products_gtin", "gtin"),
         # HNSW para embeddings — Sprint 2+. No se crea ahora.
     )
 
@@ -529,3 +582,237 @@ class ProductAsset(UuidPkMixin, Base):
 # Backward-compat alias — deprecated; use ProductAsset directly.
 # ---------------------------------------------------------------------------
 ProductImage = ProductAsset  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# M1-04 — Product UoM Conversions (SAP MM alternate UoM)
+# ---------------------------------------------------------------------------
+class ProductUomConversion(UuidPkMixin, Base):
+    """Factores de conversión entre unidades de medida por producto.
+
+    Ejemplo: 1 BOX de MT-V-038 = 12 UNIT.
+    La tabla permite múltiples rutas: BOX→UNIT, PALLET→UNIT, KG→UNIT, etc.
+    """
+
+    __tablename__ = "product_uom_conversions"
+
+    product_sku: Mapped[str] = mapped_column(
+        Text, ForeignKey("products.sku", ondelete="CASCADE"), nullable=False
+    )
+    uom_from: Mapped[str] = mapped_column(String(10), nullable=False)
+    uom_to: Mapped[str] = mapped_column(String(10), nullable=False)
+    # Multiplicador: qty_in_uom_from × factor = qty_in_uom_to
+    factor: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    product: Mapped[Product] = relationship(back_populates="uom_conversions")
+
+    __table_args__ = (
+        CheckConstraint("uom_from <> uom_to", name="ck_uom_conv_no_self_loop"),
+        CheckConstraint("factor > 0", name="ck_uom_conv_positive_factor"),
+        Index(
+            "uq_uom_conv_product_pair",
+            "product_sku", "uom_from", "uom_to",
+            unique=True,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# M1-01 — Product Release (D365 Released Product / SAP MM Plant Data)
+# ---------------------------------------------------------------------------
+class ProductRelease(UuidPkMixin, Base):
+    """Activación de un producto global en un mercado específico.
+
+    Inspirado en D365 "Released Product" y SAP MM "Plant / Sales Org data".
+    Un producto existe una sola vez en `products` (identidad global) pero
+    puede tener distintas configuraciones por mercado: precio local, clase
+    fiscal, nombre en idioma local, SKU del distribuidor, etc.
+
+    Regla: solo productos con release is_active=true aparecen en catálogo
+    para ese market_code.
+    """
+
+    __tablename__ = "product_releases"
+
+    product_sku: Mapped[str] = mapped_column(
+        Text, ForeignKey("products.sku", ondelete="CASCADE"), nullable=False
+    )
+    # Código ISO o código interno de mercado: 'UAE', 'KSA', 'MX', 'ES', 'GLOBAL'
+    market_code: Mapped[str] = mapped_column(String(10), nullable=False)
+
+    # Datos locales del mercado
+    local_name: Mapped[str | None] = mapped_column(Text)
+    local_description: Mapped[str | None] = mapped_column(Text)
+    # SKU que usa el distribuidor/canal local (puede diferir del SKU global)
+    local_sku: Mapped[str | None] = mapped_column(String(50))
+    # UoM de venta local (puede diferir del base_uom global — ej: vende en BOX)
+    local_uom: Mapped[str | None] = mapped_column(String(10))
+
+    # Precio de lista local y moneda
+    list_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    price_currency: Mapped[str | None] = mapped_column(String(3))
+
+    # Clase fiscal para determinar tasa de impuesto (Pricing M1-01 tax matrix)
+    # Ejemplos: 'VAT_5_UAE', 'VAT_15_KSA', 'IVA_16_MX', 'EXEMPT'
+    tax_class: Mapped[str | None] = mapped_column(String(50))
+
+    # Estado del release en este mercado
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'draft'")
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    released_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("users.id", ondelete="SET NULL")
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+        onupdate=text("now()"),
+    )
+
+    product: Mapped[Product] = relationship(back_populates="releases")
+
+    __table_args__ = (
+        CheckConstraint(
+            f"status IN {values_csv(ReleaseStatus)}",
+            name="ck_product_releases_status",
+        ),
+        CheckConstraint(
+            "price_currency IS NULL OR length(price_currency) = 3",
+            name="ck_product_releases_currency_len",
+        ),
+        Index(
+            "uq_product_releases_sku_market",
+            "product_sku", "market_code",
+            unique=True,
+        ),
+        Index("idx_product_releases_active", "market_code", "is_active"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# DN/NPS reference — equivalencias según ISO 6708 / ASME B36.10M (mig 099)
+# ---------------------------------------------------------------------------
+
+class DnNpsReference(Base):
+    """Tabla de referencia global DN ↔ NPS ↔ OD de tubería.
+
+    Dato inmutable de norma — no varía por producto ni fabricante.
+    Fuente: ISO 6708 (DN) + ASME B36.10M (OD tubería).
+
+    DN (Diamètre Nominal) per ISO 6708 es adimensional: la etiqueta "80"
+    no implica que ninguna dimensión mida exactamente 80 mm.
+    El OD real de la tubería DN80 es 88.9 mm (≡ NPS 3").
+    """
+
+    __tablename__ = "dn_nps_reference"
+
+    dn_nominal: Mapped[str] = mapped_column(Text, primary_key=True,
+        comment="Tamaño nominal métrico sin prefijo DN: '80', '100'")
+    nps_nominal: Mapped[str] = mapped_column(Text, nullable=False,
+        comment="NPS sin comillas: '3', '4', '6'")
+    nps_label: Mapped[str] = mapped_column(Text, nullable=False,
+        comment="Etiqueta legible: '3\"', '4\"'")
+    od_pipe_mm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2),
+        comment="OD exterior de tubería según EN 10220 / ASME B36.10M (mm)")
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    # Backref desde ProductBoreDimension
+    bore_dimensions: Mapped[list["ProductBoreDimension"]] = relationship(
+        "ProductBoreDimension",
+        primaryjoin="DnNpsReference.dn_nominal == foreign(ProductBoreDimension.dn_nominal_ref)",
+        viewonly=True,
+    )
+
+
+class ProductBoreDimension(UuidPkMixin, Base):
+    """Dimensiones reales de un producto por norma aplicable.
+
+    Un mismo SKU puede declarar dimensiones para múltiples estándares:
+    ej. butterfly wafer MTFT_5114 cumple EN 558 Serie 20 Y ASME B16.10 Cl.150.
+
+    El campo `bore_mm` de esta tabla es lo que el spec_viewer llama `dn_real`.
+    Las dimensiones varían por estándar (EN vs ASME) y clase de presión (PN16 vs Cl.150).
+
+    Campos clave:
+      bore_mm          — diámetro de paso (waterway) — el "dn_real" del spec
+      face_to_face_mm  — longitud de construcción (EN 558 / ASME B16.10)
+      flange_od_mm     — diámetro exterior de brida (EN 1092 / ASME B16.5)
+    """
+
+    __tablename__ = "product_bore_dimensions"
+
+    product_sku: Mapped[str] = mapped_column(
+        Text, ForeignKey("products.sku", ondelete="CASCADE"), nullable=False
+    )
+    # Enlace opcional a la tabla de referencia DN/NPS
+    dn_nominal_ref: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("dn_nps_reference.dn_nominal", ondelete="SET NULL"), nullable=True,
+        comment="FK a dn_nps_reference para obtener OD de tubería y equivalencia NPS"
+    )
+
+    # Sistema y norma específica
+    standard_system: Mapped[str] = mapped_column(String(16), nullable=False,
+        comment="DIN | ASME | AWWA | ISO | JIS | GOST")
+    standard_code: Mapped[str] = mapped_column(Text, nullable=False,
+        comment="Ej: 'EN 558 Serie 20', 'ASME B16.10 Class 150', 'AWWA C504'")
+    pressure_class: Mapped[str | None] = mapped_column(String(20),
+        comment="PN6 | PN10 | PN16 | Class 150 | Class 300 | Class 600")
+
+    # Dimensiones reales (todas opcionales — dependen del tipo de válvula)
+    bore_mm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2),
+        comment="Diámetro de paso en mm — equiv. a dn_real del spec_viewer")
+    face_to_face_mm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2),
+        comment="Distancia cara a cara según la norma aplicable")
+    end_to_end_mm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2),
+        comment="Distancia extremo a extremo (incluyendo bridas)")
+    flange_od_mm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2),
+        comment="Diámetro exterior de brida")
+    bolt_circle_mm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2),
+        comment="Diámetro del círculo de pernos")
+    bolt_count: Mapped[int | None] = mapped_column(Integer,
+        comment="Número de pernos de brida")
+    bolt_size: Mapped[str | None] = mapped_column(String(16),
+        comment="Tamaño de perno: 'M16', '5/8\"'")
+
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+        comment="True si este es el estándar de referencia principal del producto"
+    )
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    product: Mapped[Product] = relationship(back_populates="bore_dimensions")
+
+    __table_args__ = (
+        CheckConstraint(
+            "standard_system IN ('DIN','ASME','AWWA','ISO','JIS','GOST')",
+            name="ck_bore_dim_system",
+        ),
+        Index(
+            "uq_product_bore_dim_sku_std_pclass",
+            "product_sku", "standard_code", "pressure_class",
+            unique=True,
+        ),
+        Index("idx_product_bore_dim_sku", "product_sku"),
+        Index("idx_product_bore_dim_system", "standard_system"),
+    )

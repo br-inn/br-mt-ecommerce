@@ -12,5 +12,6 @@ export const productKeys = {
   detail: (id: string) => [...productKeys.details(), id] as const,
   translations: (id: string) => [...productKeys.detail(id), "translations"] as const,
   images: (id: string) => [...productKeys.detail(id), "images"] as const,
+  boreDimensions: (id: string) => [...productKeys.detail(id), "bore-dimensions"] as const,
   search: (q: string) => [...productKeys.all(), "search", q] as const,
 };

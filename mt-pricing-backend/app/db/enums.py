@@ -118,6 +118,48 @@ class ImageStatus(StrEnum):
     FAILED = "failed"
 
 
+class POStatus(StrEnum):
+    """Estado de ciclo de vida de un Purchase Order (EP-INV-01)."""
+
+    DRAFT = "draft"
+    CONFIRMED = "confirmed"
+    PARTIAL = "partial"
+    RECEIVED = "received"
+    CANCELLED = "cancelled"
+
+
+class GRStatus(StrEnum):
+    """Estado de procesamiento de un Goods Receipt (EP-INV-01)."""
+
+    PENDING = "pending"
+    PROCESSED = "processed"
+    ERROR = "error"
+
+
+class LifecycleStatus(StrEnum):
+    """Ciclo de vida de un producto (M1-05).
+
+    Transiciones válidas: draft → in_review → active → discontinued.
+    deprecated/replaced conservados por compat con datos históricos.
+    """
+
+    DRAFT = "draft"
+    IN_REVIEW = "in_review"
+    ACTIVE = "active"
+    DEPRECATED = "deprecated"
+    REPLACED = "replaced"
+    DISCONTINUED = "discontinued"
+
+
+class ReleaseStatus(StrEnum):
+    """Estado del lanzamiento de un producto a un mercado (M1-01)."""
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    DISCONTINUED = "discontinued"
+
+
 # Helpers para CHECK constraints en migraciones —
 # evita repetir las listas de valores en SQL crudo.
 def values_csv(enum_cls: type[StrEnum]) -> str:

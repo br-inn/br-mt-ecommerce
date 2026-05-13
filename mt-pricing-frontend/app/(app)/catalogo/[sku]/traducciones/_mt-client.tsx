@@ -4,19 +4,15 @@ import * as React from "react";
 import {
   AlertTriangle,
   Check,
-  Diff,
-  History,
   Pencil,
-  RefreshCcw,
   Send,
   X,
-  Zap,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Crumbs, MtButton, Pill, SectionCard } from "@/components/mt/primitives";
+import { MtButton, Pill, SectionCard } from "@/components/mt/primitives";
 import { MtError, MtSkeleton } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import { useProduct } from "@/lib/hooks/products/use-product";
@@ -39,65 +35,6 @@ import {
   getProductName,
 } from "@/lib/utils/product-display";
 
-type TabSpec = {
-  label: string;
-  href?: (sku: string) => string;
-  active?: boolean;
-};
-
-const TABS: TabSpec[] = [
-  { label: "Identidad", href: (sku) => `/catalogo/${sku}` },
-  { label: "Datos técnicos", href: (sku) => `/catalogo/${sku}/edit` },
-  { label: "Traducciones", active: true },
-  { label: "Imágenes", href: (sku) => `/catalogo/${sku}/imagenes` },
-  { label: "Costes", href: (sku) => `/catalogo/${sku}/costos` },
-  { label: "Auditoría", href: (sku) => `/catalogo/${sku}/audit` },
-];
-
-function TabLabel({
-  label,
-  active,
-  count,
-  count_tone,
-}: {
-  label: string;
-  active?: boolean | undefined;
-  count?: string | number | undefined;
-  count_tone?: "warning" | "danger" | "neutral" | undefined;
-}) {
-  const cBg =
-    count_tone === "warning"
-      ? MT.warningSoft
-      : count_tone === "danger"
-        ? MT.dangerSoft
-        : MT.surface3;
-  const cFg =
-    count_tone === "warning"
-      ? MT.warning
-      : count_tone === "danger"
-        ? MT.danger
-        : MT.ink3;
-  return (
-    <span
-      className="inline-flex h-[38px] cursor-pointer items-center gap-1.5 whitespace-nowrap px-1 text-[13px]"
-      style={{
-        color: active ? MT.ink : MT.ink3,
-        fontWeight: active ? 600 : 500,
-        borderBottom: active ? `2px solid ${MT.brand}` : "2px solid transparent",
-      }}
-    >
-      {label}
-      {count !== undefined ? (
-        <span
-          className="mt-mono rounded-[3px] border px-1.5 py-px text-[10.5px] leading-[1.4]"
-          style={{ background: cBg, color: cFg, borderColor: MT.border }}
-        >
-          {count}
-        </span>
-      ) : null}
-    </span>
-  );
-}
 
 const tSchema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres"),
@@ -395,105 +332,7 @@ export function MtTraduccionesClient({ sku }: { sku: string }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Breadcrumb + identity bar */}
-      <div className="border-b bg-mt-surface px-6 pt-3" style={{ borderColor: MT.border }}>
-        <div className="mb-3 flex items-center gap-2 text-xs" style={{ color: MT.ink3 }}>
-          <Crumbs
-            items={[
-              { label: "Catálogo" },
-              { label: "SKUs" },
-              { label: sku, mono: true, bold: true },
-            ]}
-          />
-        </div>
-
-        <div className="flex items-center gap-3.5 pb-3">
-          <div
-            className="grid size-14 shrink-0 place-items-center rounded-md border"
-            style={{
-              background: `repeating-linear-gradient(45deg, ${MT.surface3} 0 6px, ${MT.surface2} 6px 12px)`,
-              borderColor: MT.border,
-              color: MT.ink4,
-            }}
-            aria-hidden
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-          </div>
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span
-                className="mt-mono text-[11px] uppercase tracking-[0.4px]"
-                style={{ color: MT.ink4 }}
-              >
-                SKU
-              </span>
-              <span className="mt-mono text-[13.5px] font-semibold" style={{ color: MT.ink }}>
-                {sku}
-              </span>
-              {loadingProduct || !product ? (
-                <MtSkeleton width={120} height={20} />
-              ) : (
-                <Pill
-                  tone={
-                    product.data_quality === "blocked"
-                      ? "danger"
-                      : product.data_quality === "partial"
-                        ? "warning"
-                        : "success"
-                  }
-                  dot
-                >
-                  data_quality: {product.data_quality}
-                </Pill>
-              )}
-            </div>
-            {loadingProduct || !product ? (
-              <MtSkeleton width={420} height={22} />
-            ) : (
-              <h1
-                className="m-0 text-[19px] font-semibold tracking-[-0.3px]"
-                style={{ color: MT.ink }}
-              >
-                {getProductName(product)}
-              </h1>
-            )}
-          </div>
-          <span className="flex-1" />
-          <MtButton icon={<History className="size-3.5" />}>Auditoría</MtButton>
-          <MtButton icon={<RefreshCcw className="size-3.5" />}>Recalcular precio</MtButton>
-        </div>
-
-        {/* Tabs */}
-        <div className="mt-1 flex items-center gap-[22px]">
-          {TABS.map((t) => {
-            const href = "href" in t ? t.href : undefined;
-            return href ? (
-              <a key={t.label} href={href(sku)} className="cursor-pointer">
-                <TabLabel label={t.label} />
-              </a>
-            ) : (
-              <TabLabel key={t.label} label={t.label} active={t.active} />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 overflow-auto px-6 py-4">
+    <div className="px-6 py-4">
         <SectionCard
           title="Traducciones"
           subtitle={
@@ -503,12 +342,6 @@ export function MtTraduccionesClient({ sku }: { sku: string }) {
           }
           actions={
             <>
-              <MtButton size="sm" icon={<Zap className="size-3.5" />}>
-                Sugerir AR (DeepL)
-              </MtButton>
-              <MtButton size="sm" icon={<Diff className="size-3.5" />}>
-                Comparar versiones
-              </MtButton>
               <MtButton
                 size="sm"
                 icon={<AlertTriangle className="size-3.5" />}
@@ -614,7 +447,6 @@ export function MtTraduccionesClient({ sku }: { sku: string }) {
           <AlertTriangle className="size-3" />
           Edición de master EN puede marcar ES/AR como <em>stale</em> — re-aprueba antes de publicar.
         </div>
-      </div>
     </div>
   );
 }

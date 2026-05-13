@@ -17,8 +17,8 @@ export default async function ProductDetailLayout({ children, params }: LayoutPr
   const tCommon = await getTranslations("common");
 
   return (
-    <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit">
+    <div className="mx-auto max-w-screen-xl space-y-6 px-6 py-6">
+      <Button asChild variant="ghost" size="sm" className="-ml-1 w-fit">
         <Link href="/catalogo">
           <ChevronLeft className="h-4 w-4" /> {tCommon("back")}
         </Link>

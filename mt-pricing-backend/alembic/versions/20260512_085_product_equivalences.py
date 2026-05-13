@@ -34,14 +34,14 @@ def upgrade() -> None:
         ),
         sa.Column(
             "product_id_a",
-            sa.UUID(),
-            sa.ForeignKey("products.id", ondelete="CASCADE"),
+            sa.Text(),
+            sa.ForeignKey("products.sku", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "product_id_b",
-            sa.UUID(),
-            sa.ForeignKey("products.id", ondelete="CASCADE"),
+            sa.Text(),
+            sa.ForeignKey("products.sku", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("confidence", sa.Float(), nullable=False, server_default="0.8"),

@@ -27,7 +27,6 @@ export async function resolveLocale(): Promise<Locale> {
       const primary = accept.split(",")[0]?.split(";")[0]?.trim().toLowerCase() ?? "";
       if (primary.startsWith("es")) return "es";
       if (primary.startsWith("en")) return "en";
-      if (primary.startsWith("ar")) return "ar";
     }
   } catch {
     // headers() lanza fuera de un server context — fallback a env/default.

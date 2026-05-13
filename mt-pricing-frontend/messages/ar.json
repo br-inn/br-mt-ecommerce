@@ -231,8 +231,10 @@
     "product": {
       "tabs": {
         "specs": "المواصفات",
+        "markets": "الأسواق",
         "images": "الصور",
         "translations": "الترجمات",
+        "units": "الوحدات",
         "costs": "التكاليف",
         "datasheets": "المستندات",
         "spareParts": "قطع الغيار",
@@ -245,10 +247,15 @@
         "family": "العائلة",
         "dn": "القطر الاسمي (DN)",
         "pn": "الضغط الاسمي (PN)",
+        "bore_mm": "القطر الداخلي الفعلي",
+        "dimensional_standard": "المعيار الأبعادي",
+        "temp_range": "درجة حرارة التشغيل",
+        "pressure_max": "الضغط الأقصى",
         "material": "المادة",
         "type": "النوع",
         "connection": "الوصلة",
-        "weight_kg": "الوزن (كجم)",
+        "size": "الحجم",
+        "weight_kg": "الوزن",
         "dimensions": "الأبعاد",
         "length": "الطول",
         "width": "العرض",
@@ -262,16 +269,25 @@
         "intrastat": "Intrastat",
         "hs_code": "كود HS",
         "origin_country": "بلد المنشأ",
-        "net_weight_kg": "الوزن الصافي (كجم)",
-        "active": "نشط"
+        "net_weight_kg": "الوزن الصافي",
+        "active": "نشط",
+        "erp_name": "اسم ERP",
+        "revision": "المراجعة",
+        "parent_sku": "SKU الرئيسي"
       },
       "specs": {
         "title": "المواصفات الفنية",
-        "subtitle": "البيانات القياسية للـ SKU."
+        "subtitle": "البيانات القياسية للـ SKU.",
+        "sectionConstruction": "البناء",
+        "sectionReferences": "المراجع"
       },
       "packaging": {
-        "title": "التغليف وIntrastat",
-        "subtitle": "بيانات اللوجستيات والجمارك."
+        "title": "التغليف",
+        "subtitle": "التعبئة والباركود."
+      },
+      "intrastat": {
+        "title": "الجمارك / Intrastat",
+        "subtitle": "بيانات التصدير والإقرارات الجمركية."
       }
     },
     "create": {
@@ -326,7 +342,18 @@
       },
       "fields": {
         "name": "الاسم",
-        "description": "الوصف"
+        "description": "الوصف",
+        "marketing_copy": "النص التسويقي",
+        "applications_text": "التطبيقات",
+        "technical_limits": "الحدود التقنية",
+        "marketing_features": "الميزات التسويقية",
+        "meta_title": "عنوان الميتا (SEO)",
+        "meta_description": "وصف الميتا (SEO)",
+        "notes": "ملاحظات داخلية"
+      },
+      "sections": {
+        "marketing": "محتوى التسويق",
+        "seo": "SEO والبيانات الوصفية"
       },
       "status": {
         "draft": "مسودّة",
@@ -1126,5 +1153,71 @@
     "back_to_dashboard": "العودة إلى لوحة المعلومات",
     "sidebar_label": "أداة المقارنة",
     "sidebar_badge": "بحث"
+  },
+  "fx_rates": {
+    "title": "أسعار الصرف",
+    "subtitle": "سجل أسعار الصرف حسب زوج العملات.",
+    "newRateButton": "سعر جديد",
+    "section": {
+      "tableTitle": "الأسعار المسجّلة",
+      "tableDescription": "السجل الكامل لأسعار الصرف. يتم تمييز السعر الساري."
+    },
+    "rbac": {
+      "readDenied": "لا تملك صلاحية عرض أسعار الصرف."
+    },
+    "columns": {
+      "from_currency": "عملة المصدر",
+      "to_currency": "عملة الوجهة",
+      "rate": "السعر",
+      "effective_from": "ساري من",
+      "effective_to": "ساري حتى",
+      "source": "المصدر",
+      "status": "الحالة"
+    },
+    "filters": {
+      "from": "من",
+      "to": "إلى",
+      "any": "الكل",
+      "activeOnly": "السارية فقط",
+      "showAll": "عرض الكل",
+      "clear": "مسح الفلاتر"
+    },
+    "statuses": {
+      "current": "ساري",
+      "expired": "منتهي"
+    },
+    "form": {
+      "createTitle": "سعر صرف جديد",
+      "createSubtitle": "تسجيل سعر صرف جديد بين عملتين.",
+      "create": "إنشاء السعر"
+    },
+    "fields": {
+      "from": "عملة المصدر",
+      "to": "عملة الوجهة",
+      "rate": "السعر",
+      "effective_from": "ساري من",
+      "source": "المصدر",
+      "allowRetroactive": "السماح بالأثر الرجعي",
+      "allowRetroactiveHelp": "تأكيد أن هذا السعر قد يُطبَّق على تواريخ سابقة.",
+      "reason": "السبب",
+      "reasonPlaceholder": "وضّح سبب تطبيق هذا السعر بأثر رجعي…"
+    },
+    "errors": {
+      "currencyRequired": "رمز العملة مطلوب (3 أحرف).",
+      "rateInvalid": "يجب أن يكون السعر رقمًا موجبًا.",
+      "effectiveFromRequired": "تاريخ السريان مطلوب.",
+      "samePair": "يجب أن تختلف عملة المصدر عن عملة الوجهة.",
+      "retroactiveReasonRequired": "يجب تقديم سبب للتغيير بأثر رجعي.",
+      "saveFailed": "تعذّر حفظ السعر. حاول مرة أخرى.",
+      "retroactiveBlocked": "السعر بأثر رجعي غير مسموح دون تفويض.",
+      "sameEffectiveFrom": "يوجد سعر بنفس التاريخ لهذا الزوج.",
+      "invalidCurrency": "رمز العملة غير صالح."
+    },
+    "feedback": {
+      "created": "تم إنشاء سعر الصرف بنجاح."
+    },
+    "empty": {
+      "rates": "لا توجد أسعار صرف مسجّلة."
+    }
   }
 }

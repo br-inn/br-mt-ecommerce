@@ -1,9 +1,12 @@
-export const locales = ["es", "en", "ar"] as const;
+// "ar" is intentionally excluded — Arabic is a product-content language only,
+// not a system UI locale. Product translations to Arabic are managed via
+// the product_translations table and shown within the ES/EN interface.
+export const locales = ["es", "en"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "es";
 
-/** Locales that need RTL document direction (US-1A-07-04-AR). */
-export const RTL_LOCALES: readonly Locale[] = ["ar"] as const;
+/** Locales that need RTL document direction. */
+export const RTL_LOCALES: readonly Locale[] = [] as const;
 
 /** Nombre de la cookie que persiste la preferencia de idioma (US-1A-01-06-S1). */
 export const LOCALE_COOKIE = "mt-locale";

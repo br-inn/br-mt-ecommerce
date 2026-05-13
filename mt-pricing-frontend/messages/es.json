@@ -231,8 +231,10 @@
     "product": {
       "tabs": {
         "specs": "Ficha técnica",
+        "markets": "Mercados",
         "images": "Imágenes",
         "translations": "Traducciones",
+        "units": "Unidades",
         "costs": "Costos",
         "datasheets": "Documentos",
         "spareParts": "Recambios",
@@ -245,10 +247,15 @@
         "family": "Familia",
         "dn": "Diámetro nominal (DN)",
         "pn": "Presión nominal (PN)",
+        "bore_mm": "Bore real (dn_real)",
+        "dimensional_standard": "Estándar dimensional",
+        "temp_range": "Temperatura de operación",
+        "pressure_max": "Presión máxima",
         "material": "Material",
         "type": "Tipo",
         "connection": "Conexión",
-        "weight_kg": "Peso (kg)",
+        "size": "Talla",
+        "weight_kg": "Peso",
         "dimensions": "Dimensiones",
         "length": "Largo",
         "width": "Ancho",
@@ -262,16 +269,25 @@
         "intrastat": "Intrastat",
         "hs_code": "Código HS",
         "origin_country": "País de origen",
-        "net_weight_kg": "Peso neto (kg)",
-        "active": "Activo"
+        "net_weight_kg": "Peso neto",
+        "active": "Activo",
+        "erp_name": "Nombre ERP",
+        "revision": "Revisión",
+        "parent_sku": "SKU padre"
       },
       "specs": {
         "title": "Especificaciones técnicas",
-        "subtitle": "Datos canónicos del SKU."
+        "subtitle": "Datos canónicos del SKU.",
+        "sectionConstruction": "Construcción",
+        "sectionReferences": "Referencias"
       },
       "packaging": {
-        "title": "Packaging e Intrastat",
-        "subtitle": "Datos logísticos y aduaneros."
+        "title": "Packaging",
+        "subtitle": "Embalaje y códigos de barras."
+      },
+      "intrastat": {
+        "title": "Aduanas / Intrastat",
+        "subtitle": "Datos para exportación y declaraciones aduaneras."
       }
     },
     "create": {
@@ -326,7 +342,18 @@
       },
       "fields": {
         "name": "Nombre",
-        "description": "Descripción"
+        "description": "Descripción",
+        "marketing_copy": "Texto marketing",
+        "applications_text": "Aplicaciones",
+        "technical_limits": "Límites técnicos",
+        "marketing_features": "Características marketing",
+        "meta_title": "Meta título (SEO)",
+        "meta_description": "Meta descripción (SEO)",
+        "notes": "Notas internas"
+      },
+      "sections": {
+        "marketing": "Contenido marketing",
+        "seo": "SEO y metadatos"
       },
       "status": {
         "draft": "Borrador",
@@ -1126,5 +1153,71 @@
     "back_to_dashboard": "Volver al panel",
     "sidebar_label": "Comparador",
     "sidebar_badge": "Investigación"
+  },
+  "fx_rates": {
+    "title": "Tipos de Cambio",
+    "subtitle": "Historial de tasas FX por par de monedas.",
+    "newRateButton": "Nueva tasa",
+    "section": {
+      "tableTitle": "Tasas registradas",
+      "tableDescription": "Historial completo de tipos de cambio. La tasa vigente se resalta."
+    },
+    "rbac": {
+      "readDenied": "No tienes permiso para ver los tipos de cambio."
+    },
+    "columns": {
+      "from_currency": "Moneda origen",
+      "to_currency": "Moneda destino",
+      "rate": "Tasa",
+      "effective_from": "Vigente desde",
+      "effective_to": "Vigente hasta",
+      "source": "Fuente",
+      "status": "Estado"
+    },
+    "filters": {
+      "from": "Origen",
+      "to": "Destino",
+      "any": "Todas",
+      "activeOnly": "Solo vigentes",
+      "showAll": "Mostrar todas",
+      "clear": "Limpiar filtros"
+    },
+    "statuses": {
+      "current": "Vigente",
+      "expired": "Expirada"
+    },
+    "form": {
+      "createTitle": "Nueva tasa de cambio",
+      "createSubtitle": "Registra un nuevo tipo de cambio entre dos monedas.",
+      "create": "Crear tasa"
+    },
+    "fields": {
+      "from": "Moneda origen",
+      "to": "Moneda destino",
+      "rate": "Tasa",
+      "effective_from": "Vigente desde",
+      "source": "Fuente",
+      "allowRetroactive": "Permitir retroactivo",
+      "allowRetroactiveHelp": "Confirma que esta tasa puede aplicar a fechas pasadas.",
+      "reason": "Motivo",
+      "reasonPlaceholder": "Explica por qué aplica esta tasa retroactiva…"
+    },
+    "errors": {
+      "currencyRequired": "Código de moneda requerido (3 letras).",
+      "rateInvalid": "La tasa debe ser un número positivo.",
+      "effectiveFromRequired": "Fecha de vigencia requerida.",
+      "samePair": "Las monedas origen y destino deben ser distintas.",
+      "retroactiveReasonRequired": "Debes indicar el motivo del cambio retroactivo.",
+      "saveFailed": "No se pudo guardar la tasa. Intenta de nuevo.",
+      "retroactiveBlocked": "Tasa retroactiva no permitida sin autorización.",
+      "sameEffectiveFrom": "Ya existe una tasa con esa fecha para este par.",
+      "invalidCurrency": "Código de moneda inválido."
+    },
+    "feedback": {
+      "created": "Tasa de cambio creada correctamente."
+    },
+    "empty": {
+      "rates": "No hay tasas de cambio registradas."
+    }
   }
 }

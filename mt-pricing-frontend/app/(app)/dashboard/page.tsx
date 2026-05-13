@@ -24,6 +24,7 @@ import {
 import { MtEmpty, MtError, MtSkeleton } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import { useDashboardStats } from "@/lib/hooks/use-dashboard";
+import { InventoryKpiWidget } from "@/components/inventario/inventory-kpi-widget";
 
 const TODAY_FORMAT = new Intl.DateTimeFormat("es-ES", {
   weekday: "long",
@@ -171,6 +172,11 @@ export default function DashboardPage() {
           badge="hoy"
           spark={<Sparkline color={MT.brand} data={[3, 4, 5, 6, 5, 7, 8, 7, 8, 9, 8, act?.audit_events_24h ?? 8]} />}
         />
+      </div>
+
+      {/* Inventario widget */}
+      <div className="mb-[18px]">
+        <InventoryKpiWidget />
       </div>
 
       {/* Two columns */}
