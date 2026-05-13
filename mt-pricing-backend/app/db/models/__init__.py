@@ -66,6 +66,12 @@ from app.db.models.inventory import (
     PurchaseOrder,
     PurchaseOrderLine,
 )
+from app.db.models.procurement import (
+    ApprovalDecision,
+    ApprovalRule,
+    PurchaseRequisition,
+    VendorProductCondition,
+)
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
 from app.db.models.taxonomy_registry import (
@@ -219,4 +225,9 @@ __all__ = [
     "GoodsReceipt",
     "CostLot",
     "InventoryPosition",
+    # EP-ERP-03 — Compras P2P (migs. 105-107)
+    "PurchaseRequisition",
+    "ApprovalDecision",
+    "ApprovalRule",
+    "VendorProductCondition",
 ]

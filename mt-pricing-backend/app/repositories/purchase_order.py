@@ -57,6 +57,7 @@ class PurchaseOrderRepository:
             po_number=po_data.po_number,
             supplier_code=po_data.supplier_code,
             currency=po_data.currency,
+            po_type=po_data.po_type,
             notes=po_data.notes,
             status="draft",
             created_by=created_by,
@@ -65,18 +66,56 @@ class PurchaseOrderRepository:
         await self.session.flush()
 
         for line_data in po_data.lines:
+            price_source = "manual"
+            unit_price = line_data.unit_price
+            if po_data.supplier_code and line_data.sku:
+                pir = await self._find_pir_by_sku(po_data.supplier_code, line_data.sku)
+                if pir is not None:
+                    unit_price = pir.price
+                    price_source = "pir"
+
             line = PurchaseOrderLine(
                 po_id=po.id,
                 sku=line_data.sku,
                 scheme_code=line_data.scheme_code,
                 qty_ordered=line_data.qty_ordered,
-                unit_price=line_data.unit_price,
+                unit_price=unit_price,
                 landed_cost_breakdown=line_data.landed_cost_breakdown,
+                price_source=price_source,
             )
             self.session.add(line)
 
         await self.session.flush()
         return po
+
+    async def _find_pir_by_sku(self, supplier_code: str, sku: str) -> Any:
+        from datetime import date as _date
+
+        from sqlalchemy import and_, or_
+
+        from app.db.models.procurement import VendorProductCondition
+        from app.db.models.product import Product
+
+        today = _date.today()
+        stmt = (
+            select(VendorProductCondition)
+            .join(Product, Product.id == VendorProductCondition.product_id)
+            .where(
+                and_(
+                    VendorProductCondition.vendor_id == supplier_code,
+                    Product.sku == sku,
+                    VendorProductCondition.is_active.is_(True),
+                    VendorProductCondition.valid_from <= today,
+                    or_(
+                        VendorProductCondition.valid_to.is_(None),
+                        VendorProductCondition.valid_to >= today,
+                    ),
+                )
+            )
+            .order_by(VendorProductCondition.valid_from.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
 
     # ------------------------------------------------------------------
     # Read

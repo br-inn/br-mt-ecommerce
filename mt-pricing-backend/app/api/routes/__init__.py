@@ -48,6 +48,7 @@ from app.api.routes import (
     pricing_admin,
     pricing_dashboard,
     pricing_engine,
+    procurement,
     products,
     purchase_orders,
     roles,
@@ -178,3 +179,5 @@ router.include_router(admin.router)
 router.include_router(admin_erp.router)
 # US-INV-01-07 — ERP sync events log + retry
 router.include_router(admin_erp_eventos.router)
+# EP-ERP-03 — Compras P2P: requisitions, approval matrix, PIR
+router.include_router(procurement.router)

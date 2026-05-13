@@ -143,6 +143,10 @@ export default function PurchaseOrderDetailPage() {
               <dd className="text-sm">{po.supplier_code ?? "—"}</dd>
             </div>
             <div>
+              <dt className="text-xs font-medium text-muted-foreground">Tipo PO</dt>
+              <dd className="font-mono text-xs">{po.po_type}</dd>
+            </div>
+            <div>
               <dt className="text-xs font-medium text-muted-foreground">Moneda</dt>
               <dd className="text-sm">{po.currency ?? "—"}</dd>
             </div>
@@ -207,6 +211,7 @@ export default function PurchaseOrderDetailPage() {
                   const canReceive =
                     hasPending &&
                     (po.status === "confirmed" || po.status === "partial");
+                  const priceSource = line.price_source;
                   return (
                     <TableRow key={line.id}>
                       <TableCell className="font-mono text-xs">{line.sku}</TableCell>
@@ -218,7 +223,12 @@ export default function PurchaseOrderDetailPage() {
                         {line.qty_received}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs">
-                        {line.unit_price} {po.currency}
+                        <span>{line.unit_price} {po.currency}</span>
+                        {priceSource === "pir" && (
+                          <Badge variant="outline" className="ml-1 text-[10px] px-1">
+                            PIR
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {receptionStatus}

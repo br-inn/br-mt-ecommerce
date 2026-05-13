@@ -13,6 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field
 # ---------------------------------------------------------------------------
 # Purchase Order Line
 # ---------------------------------------------------------------------------
+_PO_TYPES = ("STANDARD", "BLANKET", "CONTRACT", "SCHEDULING")
+
+
 class PurchaseOrderLineCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -34,6 +37,7 @@ class PurchaseOrderLineRead(BaseModel):
     qty_received: Decimal
     unit_price: Decimal
     landed_cost_breakdown: dict[str, Any]
+    price_source: str
     created_at: datetime
     updated_at: datetime
 
@@ -55,6 +59,7 @@ class PurchaseOrderCreate(BaseModel):
     po_number: str = Field(min_length=1, max_length=64)
     supplier_code: str | None = Field(default=None, max_length=64)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
+    po_type: str = Field(default="STANDARD", max_length=32)
     notes: str | None = None
     lines: list[PurchaseOrderLineCreate] = Field(default_factory=list)
 
@@ -66,6 +71,7 @@ class PurchaseOrderRead(BaseModel):
     po_number: str
     supplier_code: str | None
     currency: str | None
+    po_type: str
     notes: str | None
     status: str
     confirmed_at: datetime | None

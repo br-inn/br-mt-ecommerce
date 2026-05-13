@@ -27,6 +27,7 @@ export interface POLineRead {
   qty_received: string;
   unit_price: string;
   landed_cost_breakdown: LandedCostBreakdown;
+  price_source: "manual" | "pir";
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +37,7 @@ export interface PurchaseOrderRead {
   po_number: string;
   supplier_code: string | null;
   currency: string | null;
+  po_type: string;
   notes: string | null;
   status: POStatus;
   confirmed_at: string | null;
@@ -68,6 +70,7 @@ export interface POCreatePayload {
   po_number: string;
   supplier_code?: string | null;
   currency?: string | null;
+  po_type?: string;
   notes?: string | null;
   lines?: POLineCreatePayload[];
 }

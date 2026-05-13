@@ -46,6 +46,7 @@ interface POFormProps {
 }
 
 const CURRENCIES = ["AED", "EUR", "USD"] as const;
+const PO_TYPES = ["STANDARD", "BLANKET", "CONTRACT", "SCHEDULING"] as const;
 
 function newLine(): LineState {
   return {
@@ -70,6 +71,7 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
   const [poNumber, setPoNumber] = React.useState("");
   const [supplierCode, setSupplierCode] = React.useState<string>("");
   const [currency, setCurrency] = React.useState<string>("AED");
+  const [poType, setPoType] = React.useState<string>("STANDARD");
   const [notes, setNotes] = React.useState("");
   const [lines, setLines] = React.useState<LineState[]>([newLine()]);
 
@@ -101,6 +103,7 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
     setPoNumber("");
     setSupplierCode("");
     setCurrency("AED");
+    setPoType("STANDARD");
     setNotes("");
     setLines([newLine()]);
   }
@@ -112,6 +115,7 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
       po_number: poNumber,
       supplier_code: supplierCode || null,
       currency: currency || null,
+      po_type: poType,
       notes: notes || null,
       lines: validLines.map((l) => ({
         sku: l.sku,
@@ -190,6 +194,22 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
                   {CURRENCIES.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Tipo PO</Label>
+              <Select value={poType} onValueChange={setPoType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PO_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
                     </SelectItem>
                   ))}
                 </SelectContent>
