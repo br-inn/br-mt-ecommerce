@@ -32,6 +32,7 @@ import {
   Timer,
   Truck,
   Users,
+  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -98,6 +99,7 @@ const SECTION_SYS_NON_TAXONOMY: readonly NavItem[] = [
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },
   { href: "/admin/jobs", label: "Jobs", icon: Timer, permissions: ["jobs:read"] },
   { href: "/admin/imports", label: "Importaciones", icon: Database, permissions: ["imports:read"] },
+  { href: "/admin/almacenes", label: "Almacenes", icon: Warehouse, permissions: ["purchases:write"] },
   { href: "/admin/flags", label: "Feature flags", icon: Flag, permissions: ["admin:read"] },
   { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
   { href: "/ajustes", label: "Configuración", icon: Settings },

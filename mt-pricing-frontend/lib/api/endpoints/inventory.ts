@@ -4,7 +4,7 @@ import env from "@/lib/env";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — EP-INV-01
 // ---------------------------------------------------------------------------
 
 export interface InventoryPositionRead {
@@ -17,6 +17,11 @@ export interface InventoryPositionRead {
   total_stock_value_aed: string | null;
   last_gr_id: string | null;
   last_updated_at: string | null;
+  product_id: string | null;
+  warehouse_id: string | null;
+  lot_id: string | null;
+  location_id: string | null;
+  stock_type: string;
   product_name: string | null;
 }
 
@@ -41,6 +46,137 @@ export interface InventoryPositionFilters {
   supplier_code?: string;
   scheme_code?: string;
   has_stock?: boolean;
+  stock_type?: string;
+  warehouse_id?: string;
+  zone_id?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Types — US-ERP-02-01: Movement Types + Movements
+// ---------------------------------------------------------------------------
+
+export interface StockMovementTypeRead {
+  id: string;
+  code: string;
+  name: string;
+  direction: "IN" | "OUT" | "TRANSFER";
+  requires_reference: boolean;
+  posts_accounting: boolean;
+  is_active: boolean;
+}
+
+export interface JournalEntryRead {
+  id: string;
+  source_movement_id: string;
+  debit_account: string;
+  credit_account: string;
+  amount: string;
+  currency: string;
+  posted_at: string;
+}
+
+export interface StockMovementRead {
+  id: string;
+  movement_type_id: string;
+  product_id: string;
+  qty: string;
+  lot_id: string | null;
+  warehouse_id: string | null;
+  location_id: string | null;
+  reference_id: string | null;
+  reference_type: string | null;
+  reversal_of: string | null;
+  posted_at: string;
+  posted_by: string | null;
+  notes: string | null;
+  journal_entries: JournalEntryRead[];
+}
+
+export interface StockMovementCreate {
+  movement_type_id: string;
+  product_id: string;
+  qty: number;
+  lot_id?: string;
+  warehouse_id?: string;
+  location_id?: string;
+  reference_id?: string;
+  reference_type?: string;
+  notes?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Types — US-ERP-02-03: Lot tracking
+// ---------------------------------------------------------------------------
+
+export interface InventoryLotRead {
+  id: string;
+  lot_number: string;
+  product_id: string;
+  manufacture_date: string | null;
+  expiry_date: string | null;
+  country_of_origin: string | null;
+  quality_status: string;
+  po_line_id: string | null;
+  created_at: string;
+}
+
+export interface LotTraceabilityRead {
+  lot: InventoryLotRead;
+  upstream: {
+    lot_id: string;
+    lot_number: string;
+    po_line_id: string | null;
+    po_number: string | null;
+    supplier_code: string | null;
+  };
+  downstream: Array<{
+    movement_id: string;
+    movement_type_code: string;
+    qty: string;
+    reference_id: string | null;
+    reference_type: string | null;
+    posted_at: string;
+  }>;
+}
+
+// ---------------------------------------------------------------------------
+// Types — US-ERP-02-04: Warehouses
+// ---------------------------------------------------------------------------
+
+export interface WarehouseRead {
+  id: string;
+  code: string;
+  name: string;
+  address: string | null;
+  is_active: boolean;
+}
+
+export interface WarehouseCreate {
+  code: string;
+  name: string;
+  address?: string;
+}
+
+export interface WarehouseZoneRead {
+  id: string;
+  warehouse_id: string;
+  code: string;
+  name: string;
+  zone_type: string | null;
+}
+
+export interface WarehouseZoneCreate {
+  code: string;
+  name: string;
+  zone_type?: string;
+}
+
+export interface WarehouseLocationRead {
+  id: string;
+  zone_id: string;
+  bin_code: string;
+  is_active: boolean;
+  max_weight: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,13 +241,13 @@ function buildQuery(
 }
 
 // ---------------------------------------------------------------------------
-// API
+// API — Inventory
 // ---------------------------------------------------------------------------
 
 const BASE = "/api/v1/inventory";
+const WH_BASE = "/api/v1/warehouses";
 
 export const inventoryApi = {
-  /** Lista posiciones con filtros opcionales. */
   listPositions: (
     filters: InventoryPositionFilters = {},
   ): Promise<InventoryPositionRead[]> =>
@@ -121,20 +257,76 @@ export const inventoryApi = {
         supplier_code: filters.supplier_code,
         scheme_code: filters.scheme_code,
         has_stock: filters.has_stock,
+        stock_type: filters.stock_type,
+        warehouse_id: filters.warehouse_id,
+        zone_id: filters.zone_id,
       })}`,
     ),
 
-  /** Posiciones para un SKU específico (todas las combinaciones). */
   getPositionsBySku: (sku: string): Promise<InventoryPositionRead[]> =>
     authedFetch<InventoryPositionRead[]>(`${BASE}/positions/${encodeURIComponent(sku)}`),
 
-  /** Historial de cambios MAP para un SKU. */
   getMAPHistory: (sku: string, limit = 50): Promise<MAPHistoryPoint[]> =>
     authedFetch<MAPHistoryPoint[]>(
       `${BASE}/positions/${encodeURIComponent(sku)}/map-history${buildQuery({ limit })}`,
     ),
 
-  /** KPIs agregados de inventario. */
   getSummary: (): Promise<InventorySummary> =>
     authedFetch<InventorySummary>(`${BASE}/summary`),
+
+  // US-ERP-02-01: Movement Types + Movements
+  listMovementTypes: (): Promise<StockMovementTypeRead[]> =>
+    authedFetch<StockMovementTypeRead[]>(`${BASE}/movement-types`),
+
+  listMovements: (limit = 50): Promise<StockMovementRead[]> =>
+    authedFetch<StockMovementRead[]>(`${BASE}/movements${buildQuery({ limit })}`),
+
+  createMovement: (payload: StockMovementCreate): Promise<StockMovementRead> =>
+    authedFetch<StockMovementRead>(`${BASE}/movements`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  reverseMovement: (movementId: string): Promise<StockMovementRead> =>
+    authedFetch<StockMovementRead>(`${BASE}/movements/${movementId}/reverse`, {
+      method: "POST",
+    }),
+
+  // US-ERP-02-03: Lots
+  listLots: (filters: { product_id?: string; quality_status?: string } = {}): Promise<InventoryLotRead[]> =>
+    authedFetch<InventoryLotRead[]>(`${BASE}/lots${buildQuery(filters)}`),
+
+  getLot: (lotId: string): Promise<InventoryLotRead> =>
+    authedFetch<InventoryLotRead>(`${BASE}/lots/${lotId}`),
+
+  patchLotQuality: (lotId: string, quality_status: string): Promise<InventoryLotRead> =>
+    authedFetch<InventoryLotRead>(`${BASE}/lots/${lotId}/quality-status`, {
+      method: "PATCH",
+      body: JSON.stringify({ quality_status }),
+    }),
+
+  getLotTraceability: (lotId: string): Promise<LotTraceabilityRead> =>
+    authedFetch<LotTraceabilityRead>(`${BASE}/lots/${lotId}/traceability`),
+
+  // US-ERP-02-04: Warehouses
+  listWarehouses: (): Promise<WarehouseRead[]> =>
+    authedFetch<WarehouseRead[]>(WH_BASE),
+
+  createWarehouse: (payload: WarehouseCreate): Promise<WarehouseRead> =>
+    authedFetch<WarehouseRead>(WH_BASE, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  listZones: (warehouseId: string): Promise<WarehouseZoneRead[]> =>
+    authedFetch<WarehouseZoneRead[]>(`${WH_BASE}/${warehouseId}/zones`),
+
+  createZone: (warehouseId: string, payload: WarehouseZoneCreate): Promise<WarehouseZoneRead> =>
+    authedFetch<WarehouseZoneRead>(`${WH_BASE}/${warehouseId}/zones`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  listLocations: (warehouseId: string, zoneId: string): Promise<WarehouseLocationRead[]> =>
+    authedFetch<WarehouseLocationRead[]>(`${WH_BASE}/${warehouseId}/zones/${zoneId}/locations`),
 };
