@@ -61,10 +61,18 @@ from app.db.models.product import (
 )
 from app.db.models.inventory import (
     CostLot,
+    ERPSyncEvent,
     GoodsReceipt,
+    InventoryLot,
     InventoryPosition,
+    JournalEntry,
     PurchaseOrder,
     PurchaseOrderLine,
+    StockMovement,
+    StockMovementType,
+    Warehouse,
+    WarehouseLocation,
+    WarehouseZone,
 )
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
@@ -218,5 +226,16 @@ __all__ = [
     "PurchaseOrderLine",
     "GoodsReceipt",
     "CostLot",
+    "ERPSyncEvent",
     "InventoryPosition",
+    # EP-ERP-02: Movement Types + Movements (US-ERP-02-01 — mig. 105)
+    "StockMovementType",
+    "StockMovement",
+    "JournalEntry",
+    # EP-ERP-02: Lot tracking (US-ERP-02-03 — mig. 107)
+    "InventoryLot",
+    # EP-ERP-02: Warehouse hierarchy (US-ERP-02-04 — mig. 108)
+    "Warehouse",
+    "WarehouseZone",
+    "WarehouseLocation",
 ]

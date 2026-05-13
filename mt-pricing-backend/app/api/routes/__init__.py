@@ -55,6 +55,7 @@ from app.api.routes import (
     translations_workflow,
     users,
     vocabularies,
+    warehouses,
 )
 from app.api.routes.matches import dataset_router as comparator_dataset_router
 from app.api.routes.documents import admin_router as admin_documents_router
@@ -178,3 +179,5 @@ router.include_router(admin.router)
 router.include_router(admin_erp.router)
 # US-INV-01-07 — ERP sync events log + retry
 router.include_router(admin_erp_eventos.router)
+# EP-ERP-02-04 — Warehouse hierarchy CRUD
+router.include_router(warehouses.router)

@@ -32,6 +32,7 @@ import { MAPHistoryDrawer } from "@/components/inventario/map-history-drawer";
 import {
   inventoryApi,
   type InventoryPositionRead,
+  type StockMovementRead,
 } from "@/lib/api/endpoints/inventory";
 
 // ---------------------------------------------------------------------------
@@ -217,6 +218,124 @@ function PositionRow({
 }
 
 // ---------------------------------------------------------------------------
+// Tab Movimientos
+// ---------------------------------------------------------------------------
+
+function MovimientosTab() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["inventory-movements"],
+    queryFn: () => inventoryApi.listMovements(100),
+    staleTime: 30_000,
+  });
+
+  const DIRECTION_LABEL: Record<string, string> = {
+    IN: "Entrada",
+    OUT: "Salida",
+    TRANSFER: "Traslado",
+  };
+
+  const DIRECTION_COLOR: Record<string, string> = {
+    IN: "text-emerald-700",
+    OUT: "text-red-600",
+    TRANSFER: "text-blue-600",
+  };
+
+  return (
+    <div className="space-y-4">
+      {isError ? (
+        <p className="text-sm text-destructive">Error al cargar movimientos.</p>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Dirección</TableHead>
+                <TableHead>Producto</TableHead>
+                <TableHead className="text-right">Cantidad</TableHead>
+                <TableHead>Referencia</TableHead>
+                <TableHead>Notas</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 7 }).map((__, j) => (
+                        <TableCell key={j}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                : (data ?? []).map((mv) => (
+                    <MovementRow
+                      key={mv.id}
+                      mv={mv}
+                      directionLabel={DIRECTION_LABEL}
+                      directionColor={DIRECTION_COLOR}
+                    />
+                  ))}
+              {!isLoading && (data ?? []).length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="py-8 text-center text-sm text-muted-foreground"
+                  >
+                    No hay movimientos registrados.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MovementRow({
+  mv,
+  directionLabel,
+  directionColor,
+}: {
+  mv: StockMovementRead;
+  directionLabel: Record<string, string>;
+  directionColor: Record<string, string>;
+}) {
+  return (
+    <TableRow>
+      <TableCell className="text-xs text-muted-foreground">
+        {fmtDate(mv.posted_at)}
+      </TableCell>
+      <TableCell className="font-mono text-xs">{mv.movement_type_id}</TableCell>
+      <TableCell>
+        <span className={`text-xs font-medium ${directionColor["IN"] ?? ""}`}>
+          {directionLabel["IN"] ?? mv.movement_type_id}
+        </span>
+      </TableCell>
+      <TableCell className="font-mono text-xs">{mv.product_id}</TableCell>
+      <TableCell className="text-right font-mono text-xs">
+        {parseFloat(mv.qty).toLocaleString("en-AE", { minimumFractionDigits: 4 })}
+      </TableCell>
+      <TableCell className="text-xs">
+        {mv.reference_type ? (
+          <Badge variant="outline" className="font-mono text-xs">
+            {mv.reference_type}
+          </Badge>
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell className="max-w-40 truncate text-xs text-muted-foreground">
+        {mv.notes ?? "—"}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Tab Resumen
 // ---------------------------------------------------------------------------
 
@@ -334,11 +453,16 @@ export default function InventarioPage() {
       <Tabs defaultValue="posiciones">
         <TabsList>
           <TabsTrigger value="posiciones">Posiciones</TabsTrigger>
+          <TabsTrigger value="movimientos">Movimientos</TabsTrigger>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
         </TabsList>
 
         <TabsContent value="posiciones" className="mt-4">
           <PositionsTab />
+        </TabsContent>
+
+        <TabsContent value="movimientos" className="mt-4">
+          <MovimientosTab />
         </TabsContent>
 
         <TabsContent value="resumen" className="mt-4">

@@ -1,23 +1,26 @@
-"""Inventory costing models — EP-INV-01 (US-INV-01-01).
+"""Inventory models — EP-INV-01 + EP-ERP-02.
 
-Tablas del pipeline Purchase Order → Goods Receipt → MAP automático.
-Siguiendo el estándar SAP MM / NetSuite para distribuidoras.
-
-No contiene lógica de negocio — el MAP Engine (US-INV-01-02) escribe en
-estas tablas. Los valores `landed_cost_breakdown` y `actual_breakdown`
-siguen la convención `*_aed` / `*_eur` / `*_pct` de `costs.breakdown`.
+Pipeline completo:
+  Purchase Order → Goods Receipt → MAP automático (EP-INV-01)
+  Movement Types → Stock Movements → Journal Entries (US-ERP-02-01)
+  Inventory Positions 5D (US-ERP-02-02)
+  Lot tracking + trazabilidad (US-ERP-02-03)
+  Warehouse → Zone → Location hierarchy (US-ERP-02-04)
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import (
+    Boolean,
+    CHAR,
     CheckConstraint,
     Computed,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -36,6 +39,11 @@ from app.db.types import UUID_PG
 
 if TYPE_CHECKING:
     pass
+
+
+# ---------------------------------------------------------------------------
+# EP-INV-01: Purchase Order pipeline
+# ---------------------------------------------------------------------------
 
 
 class PurchaseOrder(UuidPkMixin, TimestampMixin, Base):
@@ -267,13 +275,8 @@ class CostLot(UuidPkMixin, TimestampMixin, Base):
 class ERPSyncEvent(UuidPkMixin, TimestampMixin, Base):
     """Outbox de eventos ERP salientes (US-INV-01-07).
 
-    Cada fila representa un evento (GR, MAP update, etc.) pendiente de envío
-    al ERP externo. La Celery task ``mt.erp.push_erp_event`` consume estas
-    filas y actualiza su ``status``.
-
     Patrón transactional outbox: el evento se inserta en la misma transacción
-    que el GR — si la transacción hace rollback, el evento desaparece y no
-    se intentará enviar.
+    que el GR — si la transacción hace rollback, el evento desaparece.
     """
 
     __tablename__ = "erp_sync_events"
@@ -314,7 +317,7 @@ class ERPSyncEvent(UuidPkMixin, TimestampMixin, Base):
 
 
 class InventoryPosition(UuidPkMixin, TimestampMixin, Base):
-    """Posición de inventario agregada por (SKU × proveedor × esquema).
+    """Posición de inventario 5D: product × warehouse × location × lot × stock_type.
 
     `total_stock_value_aed` es una generated column de Postgres:
     GENERATED ALWAYS AS (qty_on_hand * map_aed) STORED.
@@ -352,11 +355,331 @@ class InventoryPosition(UuidPkMixin, TimestampMixin, Base):
     last_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # EP-ERP-02-02: columnas 5D
+    product_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("products.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    warehouse_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        # FK a warehouses añadida en mig 108
+        nullable=True,
+    )
+    lot_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        # FK a inventory_lots añadida en mig 107
+        nullable=True,
+    )
+    location_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        # FK a warehouse_locations añadida en mig 108
+        nullable=True,
+    )
+    stock_type: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        server_default=text("'unrestricted'"),
+    )
 
     __table_args__ = (
         UniqueConstraint(
             "sku", "supplier_code", "scheme_code",
             name="uq_inventory_positions",
         ),
+        CheckConstraint(
+            "stock_type IN ('unrestricted','quality_inspection','restricted','in_transit')",
+            name="ck_inv_pos_stock_type",
+        ),
         Index("idx_inv_pos_sku", "sku"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-01: Movement Types catalog
+# ---------------------------------------------------------------------------
+
+
+class StockMovementType(Base):
+    """Catálogo de tipos de movimiento SAP-MM (101, 261, 301, 551, 561…)."""
+
+    __tablename__ = "stock_movement_types"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    direction: Mapped[str] = mapped_column(Text, nullable=False)
+    requires_reference: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    posts_accounting: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    movements: Mapped[list[StockMovement]] = relationship(
+        "StockMovement",
+        back_populates="movement_type",
+        lazy="noload",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "direction IN ('IN','OUT','TRANSFER')",
+            name="ck_smt_direction",
+        ),
+    )
+
+
+class StockMovement(Base):
+    """Movimiento físico de stock — diario de entradas/salidas/traslados."""
+
+    __tablename__ = "stock_movements"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    movement_type_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("stock_movement_types.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    product_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("products.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    qty: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    lot_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        # FK real a inventory_lots añadida en mig 107
+        nullable=True,
+    )
+    warehouse_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        # FK real a warehouses añadida en mig 108
+        nullable=True,
+    )
+    location_id: Mapped[UUID | None] = mapped_column(UUID_PG, nullable=True)
+    reference_id: Mapped[UUID | None] = mapped_column(UUID_PG, nullable=True)
+    reference_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reversal_of: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("stock_movements.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    posted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    posted_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    movement_type: Mapped[StockMovementType] = relationship(
+        "StockMovementType",
+        back_populates="movements",
+        lazy="noload",
+    )
+    journal_entries: Mapped[list[JournalEntry]] = relationship(
+        "JournalEntry",
+        back_populates="source_movement",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        CheckConstraint("qty <> 0", name="ck_sm_qty_nonzero"),
+        CheckConstraint(
+            "reference_type IN ('purchase_order','goods_receipt','sale_order') OR reference_type IS NULL",
+            name="ck_sm_reference_type",
+        ),
+        Index("idx_sm_product", "product_id"),
+        Index("idx_sm_type", "movement_type_id"),
+        Index("idx_sm_posted_at", "posted_at"),
+        Index("idx_sm_reference", "reference_id", "reference_type"),
+    )
+
+
+class JournalEntry(Base):
+    """Asiento contable simple creado cuando posts_accounting=true en el tipo de movimiento."""
+
+    __tablename__ = "journal_entries"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    source_movement_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("stock_movements.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    debit_account: Mapped[str] = mapped_column(Text, nullable=False)
+    credit_account: Mapped[str] = mapped_column(Text, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    currency: Mapped[str] = mapped_column(
+        CHAR(3), nullable=False, server_default=text("'AED'")
+    )
+    posted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    source_movement: Mapped[StockMovement] = relationship(
+        "StockMovement",
+        back_populates="journal_entries",
+        lazy="noload",
+    )
+
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_je_amount_pos"),
+        Index("idx_je_movement", "source_movement_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-03: Lot tracking
+# ---------------------------------------------------------------------------
+
+
+class InventoryLot(Base):
+    """Lote físico de inventario con trazabilidad upstream/downstream."""
+
+    __tablename__ = "inventory_lots"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    lot_number: Mapped[str] = mapped_column(Text, nullable=False)
+    product_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("products.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    manufacture_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    country_of_origin: Mapped[str | None] = mapped_column(CHAR(2), nullable=True)
+    quality_status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'released'")
+    )
+    po_line_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("purchase_order_lines.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "quality_status IN ('released','hold','blocked')",
+            name="ck_lot_quality_status",
+        ),
+        UniqueConstraint("lot_number", "product_id", name="uq_lot_number_product"),
+        Index("idx_lots_product", "product_id"),
+        Index("idx_lots_quality_status", "quality_status"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-04: Warehouse hierarchy
+# ---------------------------------------------------------------------------
+
+
+class Warehouse(UuidPkMixin, TimestampMixin, Base):
+    """Almacén físico (nivel raíz de la jerarquía WH → Zone → Location)."""
+
+    __tablename__ = "warehouses"
+
+    code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+
+    zones: Mapped[list[WarehouseZone]] = relationship(
+        "WarehouseZone",
+        back_populates="warehouse",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_warehouse_code"),
+    )
+
+
+class WarehouseZone(UuidPkMixin, TimestampMixin, Base):
+    """Zona dentro de un almacén (refrigerada, seca, peligrosa, general)."""
+
+    __tablename__ = "warehouse_zones"
+
+    warehouse_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    zone_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    warehouse: Mapped[Warehouse] = relationship(
+        "Warehouse",
+        back_populates="zones",
+        lazy="noload",
+    )
+    locations: Mapped[list[WarehouseLocation]] = relationship(
+        "WarehouseLocation",
+        back_populates="zone",
+        lazy="noload",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "zone_type IN ('refrigerated','dry','hazardous','general') OR zone_type IS NULL",
+            name="ck_zone_type",
+        ),
+        UniqueConstraint("warehouse_id", "code", name="uq_zone_wh_code"),
+        Index("idx_zones_warehouse", "warehouse_id"),
+    )
+
+
+class WarehouseLocation(UuidPkMixin, TimestampMixin, Base):
+    """Ubicación física (bin) dentro de una zona — formato WH1-A-03-02-B."""
+
+    __tablename__ = "warehouse_locations"
+
+    zone_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouse_zones.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    bin_code: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    max_weight: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
+
+    zone: Mapped[WarehouseZone] = relationship(
+        "WarehouseZone",
+        back_populates="locations",
+        lazy="noload",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("zone_id", "bin_code", name="uq_location_zone_bin"),
+        Index("idx_locations_zone", "zone_id"),
     )
