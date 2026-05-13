@@ -606,6 +606,8 @@ class ProductUomConversion(UuidPkMixin, Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
+    # EP-ERP-01-03 (mig 20260514_106) — sentido canónico de la conversión.
+    direction: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

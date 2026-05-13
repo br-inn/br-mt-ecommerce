@@ -305,6 +305,8 @@ export interface ProductUomConversion {
   uom_to: string;
   factor: number;
   is_active: boolean;
+  // EP-ERP-01-03 (mig 20260514_106) — sentido canónico de la conversión.
+  direction: "base_to_alt" | "alt_to_base" | "bidirectional" | null;
   created_at: string;
 }
 
@@ -333,6 +335,9 @@ export interface ProductCreatePayload {
   material?: string | null;
   type?: string | null;
   connection?: string | null;
+  brand?: string | null;
+  /** M1-08 — GS1 global trade item number (EAN-8/12/13/14). */
+  gtin?: string | null;
   weight_kg?: number | null;
   dimensions?: ProductDimensions | null;
   packaging?: ProductPackaging | null;

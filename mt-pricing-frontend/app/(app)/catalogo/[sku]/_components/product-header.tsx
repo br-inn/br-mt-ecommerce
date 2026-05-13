@@ -1,44 +1,34 @@
 "use client";
 
+import { useState } from "react";
+import type React from "react";
 import { useTranslations } from "next-intl";
 import { Pencil, Barcode, Ruler, Layers, GitBranch } from "lucide-react";
 import Link from "next/link";
-
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LifecycleStatusBadge } from "@/components/ui/lifecycle-status-badge";
+import { CompletenessRing } from "@/components/ui/completeness-ring";
 import { RbacGuard } from "@/components/auth/rbac-guard";
 import { DataQualityBadge } from "@/components/domain/data-quality-badge";
 import { TranslationStatusPill } from "@/components/domain/translation-status-pill";
 import { SkuActionsMenu } from "@/components/domain/sku-actions-menu";
 import { useProduct } from "@/lib/hooks/products/use-product";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { productsApi } from "@/lib/api/endpoints/products";
+import { productKeys } from "@/lib/hooks/products/query-keys";
 import { getProductName } from "@/lib/utils/product-display";
 import { isProductActive } from "@/lib/utils/product-lifecycle";
 import type { ProductLifecycleStatus } from "@/lib/api/endpoints/products";
-
-// SAP Fiori Semantic Colors — lifecycle status (UX-01)
-const LIFECYCLE_CONFIG: Record<
-  ProductLifecycleStatus,
-  { label: string; dotClass: string; badgeVariant: "default" | "secondary" | "destructive" | "outline" }
-> = {
-  draft:        { label: "Borrador",      dotClass: "bg-gray-400",   badgeVariant: "secondary"   },
-  in_review:    { label: "En Revisión",   dotClass: "bg-yellow-500", badgeVariant: "outline"     },
-  active:       { label: "Activo",        dotClass: "bg-green-500",  badgeVariant: "default"     },
-  deprecated:   { label: "Obsoleto",      dotClass: "bg-orange-500", badgeVariant: "outline"     },
-  replaced:     { label: "Reemplazado",   dotClass: "bg-orange-400", badgeVariant: "outline"     },
-  discontinued: { label: "Discontinuado", dotClass: "bg-red-500",    badgeVariant: "destructive" },
-};
-
-function LifecycleStatusBadge({ status }: { status: ProductLifecycleStatus | null | undefined }) {
-  if (!status) return null;
-  const cfg = LIFECYCLE_CONFIG[status] ?? LIFECYCLE_CONFIG.active;
-  return (
-    <Badge variant={cfg.badgeVariant} className="gap-1.5">
-      <span className={`inline-block h-2 w-2 rounded-full ${cfg.dotClass}`} />
-      {cfg.label}
-    </Badge>
-  );
-}
 
 // SAP Fiori Object Page — KVP row (UX-02)
 function KVP({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
@@ -50,13 +40,60 @@ function KVP({ label, value, mono = false }: { label: string; value: React.React
   );
 }
 
+const LIFECYCLE_OPTIONS: ProductLifecycleStatus[] = [
+  "draft", "in_review", "active", "deprecated", "replaced", "discontinued",
+];
+
 interface Props {
   sku: string;
 }
 
 export function ProductHeader({ sku }: Props) {
   const t = useTranslations("catalog");
+  const queryClient = useQueryClient();
   const { data: product, isLoading, isError } = useProduct(sku);
+
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState<{
+    name_es: string;
+    brand: string;
+    gtin: string;
+    lifecycle_status: ProductLifecycleStatus;
+  } | null>(null);
+
+  const patchMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => productsApi.update(sku, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: productKeys.detail(sku) });
+      setEditMode(false);
+      setDraft(null);
+    },
+  });
+
+  const enterEdit = () => {
+    if (!product) return;
+    setDraft({
+      name_es: (product.translations?.es?.name ?? "") as string,
+      brand: product.brand ?? "",
+      gtin: product.gtin ?? "",
+      lifecycle_status: (product.lifecycle_status ?? "active") as ProductLifecycleStatus,
+    });
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setDraft(null);
+  };
+
+  const saveEdit = () => {
+    if (!draft) return;
+    patchMutation.mutate({
+      brand: draft.brand || null,
+      gtin: draft.gtin || null,
+      lifecycle_status: draft.lifecycle_status,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -75,11 +112,14 @@ export function ProductHeader({ sku }: Props) {
     );
   }
 
+  const seriesLabel =
+    product.series_detail?.code ?? (product as { series?: string | null }).series ?? null;
+
   return (
     <div className="flex flex-col gap-4">
       {/* Row 1: identidad + acciones */}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">
               {product.sku}
@@ -105,10 +145,32 @@ export function ProductHeader({ sku }: Props) {
                 <GitBranch className="h-3 w-3" /> Variante de {product.parent_sku}
               </Link>
             ) : null}
-            {/* UX-01: LifecycleStatusBadge reemplaza el badge binario active/inactive */}
-            <LifecycleStatusBadge status={product.lifecycle_status} />
+            {editMode && draft ? (
+              <Select
+                value={draft.lifecycle_status}
+                onValueChange={(v) =>
+                  setDraft((d) => d ? { ...d, lifecycle_status: v as ProductLifecycleStatus } : d)
+                }
+              >
+                <SelectTrigger className="h-7 w-36 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LIFECYCLE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs capitalize">
+                      {opt.replace("_", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <LifecycleStatusBadge status={product.lifecycle_status} />
+            )}
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">{getProductName(product)}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">{getProductName(product)}</h1>
+            <CompletenessRing product={product} />
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <DataQualityBadge value={product.data_quality} />
             <TranslationStatusPill language="en" status="approved" />
@@ -117,60 +179,116 @@ export function ProductHeader({ sku }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <RbacGuard permissions={["products:write"]}>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/catalogo/${product.sku}/edit`}>
-                <Pencil className="h-4 w-4" /> {t("actions.edit")}
-              </Link>
-            </Button>
-          </RbacGuard>
-          <SkuActionsMenu
-            product={{
-              id: (product as { id?: string }).id ?? product.internal_id,
-              sku: product.sku,
-              active: isProductActive(product),
-            }}
-          />
+          {editMode ? (
+            <>
+              <Button
+                size="sm"
+                onClick={saveEdit}
+                disabled={patchMutation.isPending}
+              >
+                Guardar
+              </Button>
+              <Button variant="outline" size="sm" onClick={cancelEdit}>
+                Cancelar
+              </Button>
+            </>
+          ) : (
+            <>
+              <RbacGuard permissions={["products:write"]}>
+                <Button variant="outline" size="sm" onClick={enterEdit}>
+                  <Pencil className="h-4 w-4" /> Editar
+                </Button>
+              </RbacGuard>
+              <RbacGuard permissions={["products:write"]}>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/catalogo/${product.sku}/edit`}>
+                    {t("actions.edit")} completo
+                  </Link>
+                </Button>
+              </RbacGuard>
+              <SkuActionsMenu
+                product={{
+                  id: (product as { id?: string }).id ?? product.internal_id,
+                  sku: product.sku,
+                  active: isProductActive(product),
+                }}
+              />
+            </>
+          )}
         </div>
       </div>
 
-      {/* UX-02: Quick Facts — SAP Fiori Object Page KVPs */}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-3 lg:grid-cols-6">
-        <KVP label="DN" value={product.dn ? `DN ${product.dn}` : null} />
-        <KVP label="PN" value={product.pn ? `PN ${product.pn}` : null} />
-        <KVP
-          label="Bore"
-          value={
-            product.bore_mm != null
-              ? <span className="flex items-center gap-1">{product.bore_mm} mm</span>
-              : null
-          }
-        />
-        <KVP
-          label="UoM Base"
-          value={
-            <span className="flex items-center gap-1">
-              <Ruler className="h-3 w-3 text-muted-foreground" />
+      {/* UX-02: Quick Facts — 4 KVPs SAP Fiori Object Page */}
+      {editMode && draft ? (
+        <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Marca
+            </label>
+            <Input
+              value={draft.brand}
+              onChange={(e) => setDraft((d) => d ? { ...d, brand: e.target.value } : d)}
+              className="h-7 text-sm"
+              placeholder="—"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              GTIN
+            </label>
+            <Input
+              value={draft.gtin}
+              onChange={(e) => setDraft((d) => d ? { ...d, gtin: e.target.value } : d)}
+              className="h-7 font-mono text-sm"
+              placeholder="—"
+              maxLength={14}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              UoM Base
+            </label>
+            <span className="flex h-7 items-center gap-1 text-sm font-semibold text-muted-foreground">
+              <Ruler className="h-3 w-3" />
               {product.base_uom ?? "UNIT"}
             </span>
-          }
-        />
-        <KVP label="Marca" value={product.brand ?? (product as { brand_name?: string }).brand_name} />
-        <KVP
-          label="GTIN"
-          value={
-            product.gtin
-              ? (
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Serie
+            </label>
+            <span className="flex h-7 items-center text-sm font-semibold text-muted-foreground">
+              {seriesLabel ?? "—"}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-4">
+          <KVP
+            label="UoM Base"
+            value={
+              <span className="flex items-center gap-1">
+                <Ruler className="h-3 w-3 text-muted-foreground" />
+                {product.base_uom ?? "UNIT"}
+              </span>
+            }
+          />
+          <KVP
+            label="GTIN"
+            value={
+              product.gtin ? (
                 <span className="flex items-center gap-1">
                   <Barcode className="h-3 w-3 text-muted-foreground" />
                   {product.gtin}
                 </span>
-              )
-              : null
-          }
-          mono
-        />
-      </dl>
+              ) : null
+            }
+            mono
+          />
+          <KVP label="Marca" value={product.brand ?? (product as { brand_name?: string }).brand_name} />
+          <KVP label="Serie" value={seriesLabel} />
+        </dl>
+      )}
     </div>
   );
 }
