@@ -371,11 +371,6 @@ class InventoryPosition(UuidPkMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
     # EP-ERP-02-02: columnas 5D
-    product_id: Mapped[UUID | None] = mapped_column(
-        UUID_PG,
-        ForeignKey("products.id", ondelete="RESTRICT"),
-        nullable=True,
-    )
     warehouse_id: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         # FK a warehouses añadida en mig 108
@@ -466,9 +461,9 @@ class StockMovement(Base):
         ForeignKey("stock_movement_types.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    product_id: Mapped[UUID] = mapped_column(
-        UUID_PG,
-        ForeignKey("products.id", ondelete="RESTRICT"),
+    product_sku: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="RESTRICT"),
         nullable=False,
     )
     qty: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
@@ -518,7 +513,7 @@ class StockMovement(Base):
             "reference_type IN ('purchase_order','goods_receipt','sale_order') OR reference_type IS NULL",
             name="ck_sm_reference_type",
         ),
-        Index("idx_sm_product", "product_id"),
+        Index("idx_sm_product", "product_sku"),
         Index("idx_sm_type", "movement_type_id"),
         Index("idx_sm_posted_at", "posted_at"),
         Index("idx_sm_reference", "reference_id", "reference_type"),
@@ -574,9 +569,9 @@ class InventoryLot(Base):
         UUID_PG, primary_key=True, server_default=text("gen_random_uuid()")
     )
     lot_number: Mapped[str] = mapped_column(Text, nullable=False)
-    product_id: Mapped[UUID] = mapped_column(
-        UUID_PG,
-        ForeignKey("products.id", ondelete="RESTRICT"),
+    product_sku: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="RESTRICT"),
         nullable=False,
     )
     manufacture_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -599,8 +594,8 @@ class InventoryLot(Base):
             "quality_status IN ('released','hold','blocked')",
             name="ck_lot_quality_status",
         ),
-        UniqueConstraint("lot_number", "product_id", name="uq_lot_number_product"),
-        Index("idx_lots_product", "product_id"),
+        UniqueConstraint("lot_number", "product_sku", name="uq_lot_number_product"),
+        Index("idx_lots_product", "product_sku"),
         Index("idx_lots_quality_status", "quality_status"),
     )
 

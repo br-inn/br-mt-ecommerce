@@ -28,10 +28,6 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column(
         "inventory_positions",
-        sa.Column("product_id", sa.UUID(), nullable=True),
-    )
-    op.add_column(
-        "inventory_positions",
         sa.Column("warehouse_id", sa.UUID(), nullable=True),
     )
     op.add_column(
@@ -52,27 +48,17 @@ def upgrade() -> None:
         ),
     )
 
-    # FK product_id → products.id (nullable: filas legacy sin product_id)
-    op.create_foreign_key(
-        "fk_inv_pos_product",
-        "inventory_positions",
-        "products",
-        ["product_id"],
-        ["id"],
-        ondelete="RESTRICT",
-    )
-
     op.create_check_constraint(
         "ck_inv_pos_stock_type",
         "inventory_positions",
         "stock_type IN ('unrestricted','quality_inspection','restricted','in_transit')",
     )
 
-    # Índice único 5D (solo aplica cuando location_id y lot_id no son NULL)
+    # Índice único 5D — usa sku (PK de products) en lugar de product_id
     op.create_index(
         "uix_inv_pos_5d",
         "inventory_positions",
-        ["product_id", "warehouse_id", "location_id", "lot_id", "stock_type"],
+        ["sku", "warehouse_id", "location_id", "lot_id", "stock_type"],
         unique=True,
         postgresql_where=sa.text("location_id IS NOT NULL AND lot_id IS NOT NULL"),
     )
@@ -81,7 +67,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_inv_pos_unrestricted",
         "inventory_positions",
-        ["product_id", "warehouse_id"],
+        ["sku", "warehouse_id"],
         postgresql_where=sa.text("stock_type = 'unrestricted'"),
     )
 
@@ -90,9 +76,7 @@ def downgrade() -> None:
     op.drop_index("ix_inv_pos_unrestricted", table_name="inventory_positions")
     op.drop_index("uix_inv_pos_5d", table_name="inventory_positions")
     op.drop_constraint("ck_inv_pos_stock_type", "inventory_positions", type_="check")
-    op.drop_constraint("fk_inv_pos_product", "inventory_positions", type_="foreignkey")
     op.drop_column("inventory_positions", "stock_type")
     op.drop_column("inventory_positions", "location_id")
     op.drop_column("inventory_positions", "lot_id")
     op.drop_column("inventory_positions", "warehouse_id")
-    op.drop_column("inventory_positions", "product_id")
