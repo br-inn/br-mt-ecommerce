@@ -139,31 +139,23 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     # JobDefinition seeds — US-ERP-02-05/06/07
     # ------------------------------------------------------------------
-    now = datetime.now(tz=timezone.utc)
-    op.execute(
-        sa.text("""
+    op.execute(sa.text("""
         INSERT INTO job_definitions (id, code, task_name, description, owner, schedule_type, cron_expression, enabled, created_at, updated_at)
         VALUES
-          (:id1, 'lot_expiry_check',
+          (gen_random_uuid(), 'lot_expiry_check',
            'mt.inventory.check_lot_expiry_warnings',
            'Detectar lotes próximos a vencer y crear alertas LOT_EXPIRY_WARNING',
-           'inventory', 'cron', '0 6 * * *', true, :now, :now),
-          (:id2, 'rop_daily_check',
+           'business', 'cron', '0 6 * * *', true, now(), now()),
+          (gen_random_uuid(), 'rop_daily_check',
            'mt.inventory.run_rop_check',
            'ROP diario: crear PurchaseRequisitions automáticas cuando qty <= reorder_point',
-           'inventory', 'cron', '0 7 * * *', true, :now, :now),
-          (:id3, 'abc_monthly_classification',
+           'business', 'cron', '0 7 * * *', true, now(), now()),
+          (gen_random_uuid(), 'abc_monthly_classification',
            'mt.inventory.run_abc_classification',
            'Clasificación ABC mensual por valor de consumo anual',
-           'inventory', 'cron', '0 2 1 * *', true, :now, :now)
+           'business', 'cron', '0 2 1 * *', true, now(), now())
         ON CONFLICT (code) DO NOTHING
-        """).bindparams(
-            id1=str(uuid.uuid4()),
-            id2=str(uuid.uuid4()),
-            id3=str(uuid.uuid4()),
-            now=now,
-        )
-    )
+    """))
 
 
 def downgrade() -> None:
