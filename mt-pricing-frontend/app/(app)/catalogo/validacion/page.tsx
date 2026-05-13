@@ -1,13 +1,10 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   ArrowRight,
   ChevronLeft,
   Download,
-  FileText,
-  History,
   RefreshCcw,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,9 +13,9 @@ import {
   FilterChip,
   Kbd,
   MtButton,
-  Pill,
 } from "@/components/mt/primitives";
 import { CandidateCard } from "./_components/candidate-card";
+import { MtProductPanel } from "./_components/mt-product-panel";
 import { MtEmpty, MtError } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import {
@@ -27,7 +24,6 @@ import {
   useRefreshMatches,
   useValidateMatch,
 } from "@/lib/hooks/matches/use-matches";
-import { useProduct } from "@/lib/hooks/products/use-product";
 import { matchesApi } from "@/lib/api/endpoints/matches";
 import type {
   MatchCandidate,
@@ -98,32 +94,6 @@ const FILTER_TABS: Array<{ l: string; status: MatchStatus | "all" }> = [
   { l: "Validadas", status: "validated" },
   { l: "Descartadas", status: "discarded" },
 ];
-
-// ---------------------------------------------------------------------------
-// A5 — Product pills derived from data_quality and series_detail
-// ---------------------------------------------------------------------------
-
-function ProductPills({ sku }: { sku: string }) {
-  const { data: product } = useProduct(sku);
-
-  const tierLabel = product?.series_detail?.tier_id
-    ? `Tier ${product.series_detail.tier_id.slice(0, 4)}`
-    : "G1 propuesto";
-
-  const qualityLabel =
-    product?.data_quality === "complete"
-      ? "Calidad completa"
-      : product?.data_quality === "blocked"
-        ? "Bloqueado CG"
-        : "Pendiente CG";
-
-  return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      <Pill tone="brand">{tierLabel}</Pill>
-      <Pill>{qualityLabel}</Pill>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Main page
@@ -280,62 +250,17 @@ export default function ValidacionMatchesPage() {
 
       {/* Body */}
       <div className="flex items-start gap-[18px] px-6 pb-20 pt-5">
-        {/* Left panel — SKU info */}
-        <div
-          className="mt-card-lift flex w-[300px] shrink-0 flex-col self-start overflow-hidden rounded-lg border bg-mt-surface"
-          style={{ borderColor: MT.border }}
-        >
-          <div className="flex flex-col gap-3 p-3.5">
-            <div>
-              <div
-                className="mt-mono mb-1 text-[11px] tracking-[0.4px]"
-                style={{ color: MT.ink4 }}
-              >
-                REF.
-              </div>
-              <div className="mt-mono text-[14px] font-semibold leading-[1.3]" style={{ color: MT.ink }}>
-                {sku}
-              </div>
-              {/* A5 — Dynamic product pills */}
-              {queue.length > 0 ? (
-                <ProductPills sku={sku} />
-              ) : (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Pill tone="brand">G1 propuesto</Pill>
-                  <Pill>Pendiente CG</Pill>
-                </div>
-              )}
-            </div>
-            <div
-              className="rounded-[5px] border px-2.5 py-2 text-[11px]"
-              style={{ background: MT.surface2, borderColor: MT.border, color: MT.ink2 }}
-            >
-              Ficha técnica completa disponible en{" "}
-              <a
-                href={`/catalogo/${sku}`}
-                className="cursor-pointer underline"
-                style={{ color: MT.brand }}
-              >
-                /catalogo/{sku}
-              </a>
-            </div>
-            {/* A4 — Abrir ficha + Histórico with real hrefs */}
-            <div className="flex gap-1.5 pt-1">
-              <MtButton size="sm" className="flex-1 justify-center" asChild>
-                <Link href={`/catalogo/${sku}`}>
-                  <FileText className="size-3.5" />
-                  Abrir ficha
-                </Link>
-              </MtButton>
-              <MtButton size="sm" className="flex-1 justify-center" asChild>
-                <Link href={`/catalogo/${sku}/audit`}>
-                  <History className="size-3.5" />
-                  Histórico
-                </Link>
-              </MtButton>
-            </div>
+        {/* Left panel — ficha MT */}
+        {queue.length > 0 ? (
+          <MtProductPanel sku={sku} />
+        ) : (
+          <div
+            className="mt-card-lift flex w-[280px] shrink-0 items-center justify-center rounded-lg border bg-mt-surface py-12"
+            style={{ borderColor: MT.border, color: MT.ink4 }}
+          >
+            <span className="text-[12px]">Sin SKU seleccionado</span>
           </div>
-        </div>
+        )}
 
         {/* Candidates */}
         <div
