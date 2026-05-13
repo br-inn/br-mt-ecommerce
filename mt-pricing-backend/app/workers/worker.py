@@ -82,6 +82,10 @@ def make_celery() -> Celery:
             "app.workers.tasks.erp_sync",
             # EP-ERP-03 — Procurement P2P timeout escalation (US-ERP-03-02)
             "app.workers.tasks.procurement",
+            # EP-ERP-04 — Ventas O2C backorders re-evaluation
+            "app.workers.tasks.sales",
+            # EP-ERP-05 — Billing dunning + alertas entrega (US-ERP-05-03/05/06)
+            "app.workers.tasks.billing",
             # EP-ERP-06 — Finanzas: FX reval, period close, price variance (US-ERP-06-01..09)
             "app.workers.tasks.finance",
         ],
