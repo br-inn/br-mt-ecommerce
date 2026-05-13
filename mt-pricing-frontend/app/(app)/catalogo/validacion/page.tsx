@@ -305,7 +305,7 @@ export default function ValidacionMatchesPage() {
     ...(queue.length > 0 ? { sku } : {}),
     ...(statusFilter !== "all" ? { status: statusFilter } : {}),
   };
-  const { data, isLoading, isError, refetch, hasNextPage, fetchNextPage } = useMatches(filters);
+  const { data, isLoading, isError, refetch } = useMatches(filters);
 
   const items: MatchCandidate[] = React.useMemo(
     () => data?.pages.flatMap((p) => p.items) ?? [],
@@ -342,14 +342,11 @@ export default function ValidacionMatchesPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [goNext, goPrev]);
 
-  const pendingCount = items.filter((c) => c.status === "pending").length;
-  const validatedCount = items.filter((c) => c.status === "validated").length;
-  const discardedCount = items.filter((c) => c.status === "discarded").length;
   const tabCounts: Record<string, number | undefined> = {
-    all: total ?? undefined,
-    pending: pendingCount || undefined,
-    validated: validatedCount || undefined,
-    discarded: discardedCount || undefined,
+    all: statusFilter === "all" ? (total ?? undefined) : undefined,
+    pending: statusFilter === "pending" ? (total ?? undefined) : undefined,
+    validated: statusFilter === "validated" ? (total ?? undefined) : undefined,
+    discarded: statusFilter === "discarded" ? (total ?? undefined) : undefined,
   };
 
   return (
