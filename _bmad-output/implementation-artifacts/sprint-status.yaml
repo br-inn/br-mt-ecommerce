@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-12T00:00:00.000Z"  # US-F15-02-04 + US-F15-02-05 done — Price Sanity Check + Tradeling API (parallel S11)
+last_updated: "2026-05-13T00:00:00.000Z"  # ERP Best Practices S13+ agregado — 6 nuevas épicas, 35 stories, 280 SP total planificados
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -112,9 +112,103 @@ development_status:
   US-F15-03-04: done          # Cross-Encoder spike + ADR-075 — 5 SP ✅ S11 (decisión: DEFER)
   US-F15-03-05: done          # Weight tuning por familia + fix W-1/W-4 — 5 SP ✅ S11
 
+# ─── Épica EP-INV-01 — Inventory Costing & Purchase Orders (S12) ──────────────
+  epic-EP-INV-01: done           # Inventory Costing — MAP Engine + POs + GRs + ERP Adapter — CERRADA S12 (58 SP)
+
+# ─── Stories EP-INV-01 — S12 ──────────────────────────────────────────────────
+  US-INV-01-01: done            # Modelo de datos: POs, GRs, cost_lots, inventory_positions — 13 SP ✅ S12 W1
+  US-INV-01-02: done            # MAP Engine — cálculo automático en Goods Receipt — 8 SP ✅ S12 W2
+  US-INV-01-03: done            # Purchase Orders CRUD + UI — 8 SP ✅ S12 W2
+  US-INV-01-04: done            # Goods Receipts registro + UI — 8 SP ✅ S12 W2
+  US-INV-01-05: done            # Inventory Positions dashboard — 5 SP ✅ S12 W3
+  US-INV-01-06: done            # ERP Integration Adapter Layer (NoOp por defecto) — 8 SP ✅ S12 W3
+  US-INV-01-07: done            # ERP Webhooks outbound + event log — 5 SP ✅ S12 W4
+  US-INV-01-08: done            # Migración backwards-compat + seed inventory_positions — 3 SP ✅ S12 W1
+
 # ─── Retrospectivas ────────────────────────────────────────────────────────────
   sprint-6-retrospective: done
   sprint-7-retrospective: done
   sprint-8-retrospective: done
   sprint-9-retrospective: done
   sprint-10-retrospective: done  # S10 — KG Foundation (34 SP) + Amazon SP API (8 SP) completados 2026-05-12
+
+# ─── ERP Best Practices Series — S13+ (186 mejoras investigadas) ──────────────
+# Fuente: 8 archivos research en _bmad-output/planning-artifacts/research/
+# Epic file: epics-and-stories-ep-erp-best-practices.md
+
+# ─── EP-ERP-01 — UX Producto: SAP Fiori / Akeneo patterns ────────────────────
+  epic-EP-ERP-01: in-progress    # UX Producto — SAP Fiori/Akeneo — 34 SP total (S13-S14)
+
+  US-ERP-01-01: backlog          # LifecycleStatusBadge + Quick Facts header (UX-01+02) — 5 SP — S13
+  US-ERP-01-02: backlog          # Tab "Mercados" + product_releases + "Activar mercado" (UX-03+10) — 8 SP — S13
+  US-ERP-01-03: backlog          # Tab "Unidades" — base_uom + conversiones (UX-04) — 5 SP — S13
+  US-ERP-01-04: backlog          # GTIN en specs + lifecycle chip en listado (UX-05+07) — 3 SP — S13
+  US-ERP-01-05: backlog          # Completeness ring (Akeneo) + Breadcrumb navegable (UX-06+08) — 5 SP — S14
+  US-ERP-01-06: backlog          # Inline edit mode — toggle View/Edit (UX-09) — 8 SP — S14
+
+  epic-EP-ERP-01-retrospective: optional
+
+# ─── EP-ERP-02 — Inventario v2: Movement Types, Trazabilidad, Almacenes ───────
+  epic-EP-ERP-02: in-progress    # Inventario v2 — 55 SP total (S13-S16)
+
+  US-ERP-02-01: backlog          # Movement Types catalog + stock_movements + accounting doc (INV-01+02+03) — 8 SP — S13
+  US-ERP-02-02: backlog          # Stock types diferenciados + inventory_positions 5D (INV-05+12) — 8 SP — S13
+  US-ERP-02-03: backlog          # Lot tracking: inventory_lots + trazabilidad UP/DOWN (INV-06+07) — 8 SP — S14
+  US-ERP-02-04: backlog          # Jerarquía almacén: Warehouse → Zone → Location (INV-11+14) — 5 SP — S14
+  US-ERP-02-05: backlog          # FEFO automático en picking + alertas expiración Celery (INV-08+09) — 5 SP — S15
+  US-ERP-02-06: backlog          # Replenishment params por producto-almacén + job ROP (INV-15+16) — 8 SP — S15
+  US-ERP-02-07: backlog          # ABC classification automática + Cycle count schedule (INV-17+18+19) — 8 SP — S15
+  US-ERP-02-08: backlog          # Dashboard KPIs inventario: Turnover, DOH, Fill Rate (INV-23+25) — 5 SP — S16
+
+  epic-EP-ERP-02-retrospective: optional
+
+# ─── EP-ERP-03 — Compras P2P: PR, Approval Matrix, PIR, 3-Way Match ──────────
+  epic-EP-ERP-03: in-progress    # Compras P2P — 42 SP total (S13-S16)
+
+  US-ERP-03-01: backlog          # Purchase Requisition entity + lifecycle + log inmutable (PRC-01+02+07) — 8 SP — S13
+  US-ERP-03-02: backlog          # Approval matrix configurable + escalación automática (PRC-04+05+06) — 8 SP — S14
+  US-ERP-03-03: backlog          # PO types + Purchasing Info Record (precio proveedor) (PRC-08+11) — 5 SP — S14
+  US-ERP-03-04: backlog          # Three-way match + tolerance keys + payment block (PRC-17+18+20) — 8 SP — S15
+  US-ERP-03-05: backlog          # Source List (proveedores aprobados) + RFQ básico (PRC-12+14+16) — 8 SP — S15
+  US-ERP-03-06: backlog          # Dashboard KPIs procurement + spend analysis (PRC-21+22+23) — 5 SP — S16
+
+  epic-EP-ERP-03-retrospective: optional
+
+# ─── EP-ERP-04 — Ventas O2C: ATP, Credit Management, RMA ────────────────────
+  epic-EP-ERP-04: backlog        # Ventas O2C — 47 SP total (S14-S16)
+
+  US-ERP-04-01: backlog          # SO types + document chain reference completa (VEN-01+03) — 5 SP — S14
+  US-ERP-04-02: backlog          # ATP check en SO + soft reservation de stock (VEN-05+06+07+08) — 13 SP — S14
+  US-ERP-04-03: backlog          # Credit check automático + auto-release (VEN-09+10+11) — 8 SP — S15
+  US-ERP-04-04: backlog          # Outbound Delivery entity + Goods Issue → inventario + AR (VEN-12+15+16) — 8 SP — S15
+  US-ERP-04-05: backlog          # Returns RMA + Return Delivery + Credit Memo automático (VEN-17+18+19) — 8 SP — S15
+  US-ERP-04-06: backlog          # Dashboard O2C KPIs + Backorder report (VEN-20+21) — 5 SP — S16
+
+  epic-EP-ERP-04-retrospective: optional
+
+# ─── EP-ERP-05 — Billing & Facturación: Invoice Types, Dunning, e-Invoicing ──
+  epic-EP-ERP-05: backlog        # Billing & Facturación — 42 SP total (S14-S16)
+
+  US-ERP-05-01: backlog          # Billing types + doc chain + precio copiado del SO (BIL-01+02+03+04) — 5 SP — S14
+  US-ERP-05-02: backlog          # Asientos FI automáticos + desglose revenue + link acctg (BIL-05+06+07) — 8 SP — S14
+  US-ERP-05-03: backlog          # Dunning automático por aging buckets + payment terms (BIL-12+13) — 8 SP — S15
+  US-ERP-05-04: backlog          # CFDI 4.0 + ZATCA Fatoora + e_invoice_submissions audit (BIL-08+09+10+11) — 13 SP — S15
+  US-ERP-05-05: backlog          # AR Aging Report tiempo real + promesas de pago (BIL-14+15) — 5 SP — S16
+  US-ERP-05-06: backlog          # Dashboard KPIs billing: DSO, CEI + alerta 24h (BIL-19+20) — 3 SP — S16
+
+  epic-EP-ERP-05-retrospective: optional
+
+# ─── EP-ERP-06 — Finanzas: Universal Journal, CoA, Profit Centers, Period Close
+  epic-EP-ERP-06: in-progress    # Finanzas — 60 SP total (S13-S16)
+
+  US-ERP-06-01: backlog          # Chart of Accounts (200 cuentas) + Posting Periods control (FIN-02+03) — 5 SP — S13
+  US-ERP-06-02: backlog          # Cost Centers hierarchy + Profit Centers básicos (FIN-09+10) — 5 SP — S13
+  US-ERP-06-03: backlog          # Universal Journal — financial_entries table (FIN-01) — 8 SP — S14
+  US-ERP-06-04: backlog          # AP Aging automático + Payment Run configurable (FIN-04+05+06) — 8 SP — S14
+  US-ERP-06-05: backlog          # Standard Cost por SKU + varianza precio compra (FIN-11+12) — 8 SP — S15
+  US-ERP-06-06: backlog          # P&L real-time (vista materializada) + Balance Sheet recon (FIN-15+16) — 8 SP — S15
+  US-ERP-06-07: backlog          # Period Close Checklist automatizado + UAE CIT provisioning (FIN-14+19) — 5 SP — S15
+  US-ERP-06-08: backlog          # FX Revaluation al cierre + Journal SoD controls (FIN-20+21) — 5 SP — S16
+  US-ERP-06-09: backlog          # CO-PA contribution margin + Cash Flow + Budget vs Actual (FIN-13+17+22) — 8 SP — S16
+
+  epic-EP-ERP-06-retrospective: optional
