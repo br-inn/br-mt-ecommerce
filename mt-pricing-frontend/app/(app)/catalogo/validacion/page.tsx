@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Check,
@@ -13,6 +14,7 @@ import {
   RefreshCcw,
   X,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   FilterChip,
@@ -29,16 +31,73 @@ import {
   useRefreshMatches,
   useValidateMatch,
 } from "@/lib/hooks/matches/use-matches";
+import { useProduct } from "@/lib/hooks/products/use-product";
+import { matchesApi } from "@/lib/api/endpoints/matches";
 import type {
   MatchCandidate,
   MatchStatus,
 } from "@/lib/api/endpoints/matches";
 
-// Default SKU showcased; future picker (Sprint 4) replaces this state.
-const DEFAULT_SKU = "MTBR4001050";
+// ---------------------------------------------------------------------------
+// SKU queue — unique SKUs with pending matches, ordered by first appearance.
+// ---------------------------------------------------------------------------
+
+function usePendingSkuQueue() {
+  return useQuery<string[], Error>({
+    queryKey: ["matches", "pending-sku-queue"],
+    queryFn: async () => {
+      const res = await matchesApi.list({ status: "pending", limit: 200, include_total: false });
+      const seen = new Set<string>();
+      const skus: string[] = [];
+      for (const c of res.items) {
+        if (!seen.has(c.product_sku)) {
+          seen.add(c.product_sku);
+          skus.push(c.product_sku);
+        }
+      }
+      return skus;
+    },
+    staleTime: 60_000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 const fmtAED = (n: number | null) =>
   n == null ? "—" : `AED ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
+
+function exportToCsv(items: MatchCandidate[], sku: string) {
+  const headers: Array<keyof MatchCandidate> = [
+    "brand",
+    "external_id",
+    "title",
+    "kind",
+    "price_aed",
+    "score",
+    "status",
+    "delivery_text",
+  ];
+  const rows = items.map((c) =>
+    headers.map((h) => {
+      const v = c[h];
+      return `"${String(v ?? "").replace(/"/g, '""')}"`;
+    }).join(","),
+  );
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `matches-${sku}-${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
 
 function CompetitorTag({ kind, country }: { kind: MatchCandidate["kind"]; country?: string }) {
   const map = {
@@ -177,12 +236,16 @@ function CandidateRow({
               </button>
             </>
           )}
-          <span
-            className="mt-mono inline-flex h-[22px] cursor-pointer items-center justify-center gap-1 text-[10.5px]"
+          {/* A6 — Amazon UAE link via ASIN */}
+          <a
+            href={`https://www.amazon.ae/dp/${c.external_id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-mono inline-flex h-[22px] items-center justify-center gap-1 text-[10.5px] hover:underline"
             style={{ color: MT.ink3 }}
           >
             <ExternalLink className="size-3" /> Amazon UAE
-          </span>
+          </a>
         </div>
       </td>
     </tr>
@@ -196,16 +259,53 @@ const FILTER_TABS: Array<{ l: string; status: MatchStatus | "all" }> = [
   { l: "Descartadas", status: "discarded" },
 ];
 
+// ---------------------------------------------------------------------------
+// A5 — Product pills derived from data_quality and series_detail
+// ---------------------------------------------------------------------------
+
+function ProductPills({ sku }: { sku: string }) {
+  const { data: product } = useProduct(sku);
+
+  const tierLabel = product?.series_detail?.tier_id
+    ? `Tier ${product.series_detail.tier_id.slice(0, 4)}`
+    : "G1 propuesto";
+
+  const qualityLabel =
+    product?.data_quality === "complete"
+      ? "Calidad completa"
+      : product?.data_quality === "blocked"
+        ? "Bloqueado CG"
+        : "Pendiente CG";
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      <Pill tone="brand">{tierLabel}</Pill>
+      <Pill>{qualityLabel}</Pill>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function ValidacionMatchesPage() {
-  const [sku] = React.useState(DEFAULT_SKU);
+  // A1 — Dynamic SKU queue
+  const { data: queue = [] } = usePendingSkuQueue();
+  const [skuIndex, setSkuIndex] = React.useState(0);
+
+  // When queue loads, keep index in bounds
+  const clampedIndex = queue.length > 0 ? Math.min(skuIndex, queue.length - 1) : 0;
+  const sku = queue[clampedIndex] ?? "—";
+
   const [statusFilter, setStatusFilter] = React.useState<MatchStatus | "all">("pending");
 
-  const filters = {
-    sku,
+  const filters: import("@/lib/api/endpoints/matches").MatchFilters = {
     include_total: true,
+    ...(queue.length > 0 ? { sku } : {}),
     ...(statusFilter !== "all" ? { status: statusFilter } : {}),
   };
-  const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage } = useMatches(filters);
+  const { data, isLoading, isError, refetch, hasNextPage, fetchNextPage } = useMatches(filters);
 
   const items: MatchCandidate[] = React.useMemo(
     () => data?.pages.flatMap((p) => p.items) ?? [],
@@ -218,39 +318,72 @@ export default function ValidacionMatchesPage() {
   const discard = useDiscardMatch();
   const mutating = validate.isPending || discard.isPending;
 
+  // A2 — Prev / Next navigation
+  const canPrev = clampedIndex > 0;
+  const canNext = clampedIndex < queue.length - 1;
+
+  const goNext = React.useCallback(() => {
+    if (canNext) setSkuIndex((i) => i + 1);
+  }, [canNext]);
+
+  const goPrev = React.useCallback(() => {
+    if (canPrev) setSkuIndex((i) => i - 1);
+  }, [canPrev]);
+
+  // Keyboard nav: ← → for SKU navigation, V/X for validate/discard first pending
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goNext, goPrev]);
+
+  const pendingCount = items.filter((c) => c.status === "pending").length;
+  const validatedCount = items.filter((c) => c.status === "validated").length;
+  const discardedCount = items.filter((c) => c.status === "discarded").length;
+  const tabCounts: Record<string, number | undefined> = {
+    all: total ?? undefined,
+    pending: pendingCount || undefined,
+    validated: validatedCount || undefined,
+    discarded: discardedCount || undefined,
+  };
+
   return (
     <div className="h-full overflow-auto">
-      {/* Workflow header */}
-      <div className="relative overflow-hidden px-6 py-[18px] text-white mt-brand-gradient">
-        <span
-          className="pointer-events-none absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage:
-              "linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="relative flex items-end justify-between gap-4">
-          <div>
-            <div className="mt-mono mb-1 text-[10.5px] uppercase tracking-[1.2px] opacity-85">
-              Workflow · Pricing Manager · Amazon UAE
-            </div>
-            <div className="text-[21px] font-bold leading-[1.1] tracking-[-0.5px]">
-              Validación humana asistida — {sku}
-            </div>
-            <div className="mt-1 max-w-[560px] text-[12.5px] opacity-85">
-              Cada match se revisa contra ficha técnica MT y candidatos del scraper. La decisión queda registrada para auditoría a HQ Pallejà.
-            </div>
-          </div>
-          <MtButton
-            size="md"
-            icon={<RefreshCcw className="size-3.5" />}
-            onClick={() => refresh.mutate(sku)}
-            disabled={refresh.isPending}
-          >
-            {refresh.isPending ? "Re-scraping…" : "Re-scrape"}
-          </MtButton>
+      {/* Workflow header — barra delgada */}
+      <div
+        className="flex h-9 items-center justify-between gap-4 border-b px-5"
+        style={{ background: MT.surface2, borderColor: MT.border }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="mt-mono text-[10.5px] uppercase tracking-[1px]" style={{ color: MT.ink4 }}>
+            Validación
+          </span>
+          <span style={{ color: MT.border }}>›</span>
+          <span className="mt-mono text-[12px] font-semibold" style={{ color: MT.ink }}>
+            {sku === "—" ? "—" : sku}
+          </span>
+          {queue.length > 0 && (
+            <span
+              className="ml-1 inline-flex h-5 items-center rounded-[4px] border px-1.5 text-[10.5px] font-medium"
+              style={{ background: MT.surface3, borderColor: MT.border, color: MT.ink3 }}
+            >
+              {queue.length - clampedIndex} pendientes
+            </span>
+          )}
         </div>
+        <MtButton
+          size="sm"
+          icon={<RefreshCcw className="size-3" />}
+          onClick={() => queue.length > 0 && refresh.mutate(sku)}
+          disabled={refresh.isPending || queue.length === 0}
+        >
+          {refresh.isPending ? "Re-scraping…" : "Re-scrape"}
+        </MtButton>
       </div>
 
       {/* Toolbar */}
@@ -272,7 +405,11 @@ export default function ValidacionMatchesPage() {
               onClick={() => setStatusFilter(t.status)}
               className="cursor-pointer"
             >
-              <FilterChip label={t.l} active={statusFilter === t.status} />
+              <FilterChip
+                label={t.l}
+                count={tabCounts[t.status]}
+                active={statusFilter === t.status}
+              />
             </button>
           ))}
         </div>
@@ -283,7 +420,13 @@ export default function ValidacionMatchesPage() {
             </span>{" "}
             {total !== null ? `/ ${total} en total` : "candidatos"}
           </span>
-          <MtButton size="sm" icon={<Download className="size-3.5" />}>
+          {/* A7 — CSV export */}
+          <MtButton
+            size="sm"
+            icon={<Download className="size-3.5" />}
+            onClick={() => exportToCsv(items, sku)}
+            disabled={items.length === 0}
+          >
             Exportar
           </MtButton>
         </div>
@@ -300,6 +443,7 @@ export default function ValidacionMatchesPage() {
 
       {/* Body */}
       <div className="flex items-start gap-[18px] px-6 pb-20 pt-5">
+        {/* Left panel — SKU info */}
         <div
           className="mt-card-lift flex w-[300px] shrink-0 flex-col self-start overflow-hidden rounded-lg border bg-mt-surface"
           style={{ borderColor: MT.border }}
@@ -315,10 +459,15 @@ export default function ValidacionMatchesPage() {
               <div className="mt-mono text-[14px] font-semibold leading-[1.3]" style={{ color: MT.ink }}>
                 {sku}
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <Pill tone="brand">G1 propuesto</Pill>
-                <Pill>Pendiente CG</Pill>
-              </div>
+              {/* A5 — Dynamic product pills */}
+              {queue.length > 0 ? (
+                <ProductPills sku={sku} />
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Pill tone="brand">G1 propuesto</Pill>
+                  <Pill>Pendiente CG</Pill>
+                </div>
+              )}
             </div>
             <div
               className="rounded-[5px] border px-2.5 py-2 text-[11px]"
@@ -333,12 +482,19 @@ export default function ValidacionMatchesPage() {
                 /catalogo/{sku}
               </a>
             </div>
+            {/* A4 — Abrir ficha + Histórico with real hrefs */}
             <div className="flex gap-1.5 pt-1">
-              <MtButton size="sm" icon={<FileText className="size-3.5" />} className="flex-1 justify-center">
-                Abrir ficha
+              <MtButton size="sm" className="flex-1 justify-center" asChild>
+                <Link href={`/catalogo/${sku}`}>
+                  <FileText className="size-3.5" />
+                  Abrir ficha
+                </Link>
               </MtButton>
-              <MtButton size="sm" icon={<History className="size-3.5" />} className="flex-1 justify-center">
-                Histórico
+              <MtButton size="sm" className="flex-1 justify-center" asChild>
+                <Link href={`/catalogo/${sku}/audit`}>
+                  <History className="size-3.5" />
+                  Histórico
+                </Link>
               </MtButton>
             </div>
           </div>
@@ -356,9 +512,6 @@ export default function ValidacionMatchesPage() {
             <div>
               <div className="text-[13.5px] font-semibold" style={{ color: MT.ink }}>
                 Candidatos · {items.length} encontrados
-              </div>
-              <div className="mt-0.5 text-[11px]" style={{ color: MT.ink3 }}>
-                Ordenados por score descendente · Stubs Sprint 3 (scraper Amazon real en S4)
               </div>
             </div>
           </div>
@@ -416,7 +569,7 @@ export default function ValidacionMatchesPage() {
         </div>
       </div>
 
-      {/* Bottom nav */}
+      {/* Bottom nav — A2: prev/next + position indicator */}
       <div
         className="sticky bottom-0 flex items-center justify-between gap-4 border-t bg-mt-surface px-6 py-2.5"
         style={{
@@ -424,14 +577,31 @@ export default function ValidacionMatchesPage() {
           boxShadow: "0 -1px 0 rgba(15,23,42,.02), 0 -8px 16px -8px rgba(15,23,42,.04)",
         }}
       >
-        <MtButton size="sm" icon={<ChevronLeft className="size-3.5" />}>
+        <MtButton
+          size="sm"
+          icon={<ChevronLeft className="size-3.5" />}
+          onClick={goPrev}
+          disabled={!canPrev}
+        >
           Anterior
         </MtButton>
+
         <div className="flex items-center gap-3.5">
-          <span
-            className="mt-mono text-[11px] uppercase tracking-[0.6px]"
-            style={{ color: MT.ink4 }}
-          >
+          {/* Position indicator */}
+          {queue.length > 0 && (
+            <span className="mt-mono text-[11px]" style={{ color: MT.ink3 }}>
+              SKU{" "}
+              <span className="font-semibold" style={{ color: MT.ink }}>
+                {clampedIndex + 1}
+              </span>{" "}
+              de{" "}
+              <span className="font-semibold" style={{ color: MT.ink }}>
+                {queue.length}
+              </span>{" "}
+              pendientes
+            </span>
+          )}
+          <span className="mt-mono text-[11px] uppercase tracking-[0.6px]" style={{ color: MT.ink4 }}>
             SKU
           </span>
           <span className="mt-mono text-[14px] font-semibold" style={{ color: MT.ink }}>
@@ -446,12 +616,13 @@ export default function ValidacionMatchesPage() {
             <Kbd>X</Kbd> descartar
           </span>
         </div>
+
         <MtButton
           size="sm"
           tone="primary"
           icon={<ArrowRight className="size-3.5" />}
-          onClick={() => hasNextPage && fetchNextPage()}
-          disabled={!hasNextPage}
+          onClick={goNext}
+          disabled={!canNext}
         >
           Siguiente sin validar
         </MtButton>
