@@ -1125,6 +1125,35 @@
         "version": "Target version",
         "submit": "Train"
       }
+    },
+    "inventario": {
+      "kpis": {
+        "title": "Inventory KPIs",
+        "subtitle": "Real-time inventory health metrics.",
+        "computedAt": "Updated:",
+        "refresh": "Refresh",
+        "loadError": "Could not load inventory KPIs.",
+        "turnoverTitle": "Inventory turnover",
+        "turnoverDesc": "COGS / avg_value (30 days)",
+        "dohTitle": "Days on hand",
+        "dohDesc": "(avg_value / COGS) x 30",
+        "fillRateTitle": "Fill rate",
+        "fillRateDesc": "% orders fulfilled without stockout",
+        "stockoutTitle": "Stockouts",
+        "stockoutDesc": "Products with qty <= 0",
+        "expiryAlertTitle": "Expiry alerts",
+        "expiryAlertDesc": "Lots expiring within 30 days",
+        "ropBreachTitle": "ROP breaches",
+        "ropBreachDesc": "Products below reorder point",
+        "abcTableTitle": "Class A products",
+        "abcTableDesc": "Top products by annual consumption value (ABC classification).",
+        "abcEmpty": "No ABC classifications available.",
+        "colSku": "SKU",
+        "colClass": "Class",
+        "colValue": "Annual value (AED)",
+        "colPct": "% of total",
+        "colClassifiedAt": "Classified"
+      }
     }
   },
   "costsDashboard": {

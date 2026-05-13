@@ -1125,6 +1125,35 @@
         "version": "Versión objetivo",
         "submit": "Entrenar"
       }
+    },
+    "inventario": {
+      "kpis": {
+        "title": "KPIs de Inventario",
+        "subtitle": "Métricas en tiempo real del estado del inventario.",
+        "computedAt": "Actualizado:",
+        "refresh": "Actualizar",
+        "loadError": "No se pudieron cargar los KPIs de inventario.",
+        "turnoverTitle": "Rotación inventario",
+        "turnoverDesc": "COGS / valor_promedio (30 días)",
+        "dohTitle": "Días de stock",
+        "dohDesc": "(valor_promedio / COGS) × 30",
+        "fillRateTitle": "Fill rate",
+        "fillRateDesc": "% pedidos completados sin stockout",
+        "stockoutTitle": "Stockouts",
+        "stockoutDesc": "Productos con qty <= 0",
+        "expiryAlertTitle": "Alertas vencimiento",
+        "expiryAlertDesc": "Lotes que vencen en 30 días",
+        "ropBreachTitle": "Breaches ROP",
+        "ropBreachDesc": "Productos bajo punto de reorden",
+        "abcTableTitle": "Productos clase A",
+        "abcTableDesc": "Productos de mayor valor de consumo anual (clasificación ABC).",
+        "abcEmpty": "Sin clasificaciones ABC disponibles.",
+        "colSku": "SKU",
+        "colClass": "Clase",
+        "colValue": "Valor anual (AED)",
+        "colPct": "% del total",
+        "colClassifiedAt": "Clasificado"
+      }
     }
   },
   "costsDashboard": {

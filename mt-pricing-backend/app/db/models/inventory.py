@@ -6,6 +6,9 @@ Pipeline completo:
   Inventory Positions 5D (US-ERP-02-02)
   Lot tracking + trazabilidad (US-ERP-02-03)
   Warehouse → Zone → Location hierarchy (US-ERP-02-04)
+  FEFO + expiry alerts (US-ERP-02-05)
+  Replenishment params + ROP (US-ERP-02-06)
+  ABC classification + cycle count schedules (US-ERP-02-07)
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     String,
     Text,
@@ -692,4 +696,205 @@ class WarehouseLocation(UuidPkMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("zone_id", "bin_code", name="uq_location_zone_bin"),
         Index("idx_locations_zone", "zone_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-05: FEFO + expiry alerts
+# ---------------------------------------------------------------------------
+
+
+class ExpiryAlertThreshold(UuidPkMixin, TimestampMixin, Base):
+    """Umbral de alerta de vencimiento configurable por producto (default 30 días)."""
+
+    __tablename__ = "expiry_alert_thresholds"
+
+    product_sku: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    threshold_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("30")
+    )
+
+    __table_args__ = (
+        Index("idx_eat_sku", "product_sku"),
+    )
+
+
+class InventoryAlert(UuidPkMixin, TimestampMixin, Base):
+    """Alerta de inventario generada por jobs Celery (LOT_EXPIRY_WARNING, STOCKOUT, ROP_BREACH)."""
+
+    __tablename__ = "inventory_alerts"
+
+    alert_type: Mapped[str] = mapped_column(Text, nullable=False)
+    product_sku: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
+        nullable=False,
+    )
+    lot_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("inventory_lots.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    warehouse_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    severity: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'warning'")
+    )
+    payload: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "alert_type IN ('LOT_EXPIRY_WARNING','STOCKOUT','ROP_BREACH')",
+            name="ck_inv_alert_type",
+        ),
+        CheckConstraint(
+            "severity IN ('info','warning','critical')",
+            name="ck_inv_alert_severity",
+        ),
+        Index("idx_inv_alerts_sku", "product_sku"),
+        Index("idx_inv_alerts_type", "alert_type"),
+        Index(
+            "idx_inv_alerts_unresolved",
+            "resolved_at",
+            postgresql_where=text("resolved_at IS NULL"),
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-06: Replenishment params
+# ---------------------------------------------------------------------------
+
+
+class ReplenishmentParam(UuidPkMixin, TimestampMixin, Base):
+    """Parámetros de reaprovisionamiento por producto × almacén (ROP / safety stock)."""
+
+    __tablename__ = "replenishment_params"
+
+    product_sku: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
+        nullable=False,
+    )
+    warehouse_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    reorder_point: Mapped[Decimal] = mapped_column(
+        Numeric(12, 3), nullable=False, server_default=text("0")
+    )
+    safety_stock: Mapped[Decimal] = mapped_column(
+        Numeric(12, 3), nullable=False, server_default=text("0")
+    )
+    reorder_qty: Mapped[Decimal] = mapped_column(
+        Numeric(12, 3), nullable=False, server_default=text("1")
+    )
+    lead_time_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("7")
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("product_sku", "warehouse_id", name="uq_replenishment_params_sku_wh"),
+        CheckConstraint("reorder_point >= 0", name="ck_rp_reorder_point_nonneg"),
+        CheckConstraint("safety_stock >= 0", name="ck_rp_safety_stock_nonneg"),
+        CheckConstraint("reorder_qty > 0", name="ck_rp_reorder_qty_pos"),
+        CheckConstraint("lead_time_days >= 0", name="ck_rp_lead_time_nonneg"),
+        Index("idx_rp_sku", "product_sku"),
+        Index("idx_rp_warehouse", "warehouse_id"),
+        Index(
+            "idx_rp_active",
+            "is_active",
+            postgresql_where=text("is_active = true"),
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-07: ABC classification + cycle count schedules
+# ---------------------------------------------------------------------------
+
+
+class ProductAbcClassification(UuidPkMixin, Base):
+    """Clasificación ABC por valor de consumo anual (actualizada mensualmente)."""
+
+    __tablename__ = "product_abc_classifications"
+
+    product_sku: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
+        nullable=False,
+    )
+    warehouse_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    abc_class: Mapped[str] = mapped_column(Text, nullable=False)
+    annual_consumption_value: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), nullable=False, server_default=text("0")
+    )
+    pct_of_total: Mapped[Decimal] = mapped_column(
+        Numeric(7, 4), nullable=False, server_default=text("0")
+    )
+    classified_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("product_sku", "warehouse_id", name="uq_abc_sku_wh"),
+        CheckConstraint("abc_class IN ('A','B','C')", name="ck_abc_class"),
+        CheckConstraint("annual_consumption_value >= 0", name="ck_abc_value_nonneg"),
+        CheckConstraint(
+            "pct_of_total >= 0 AND pct_of_total <= 100", name="ck_abc_pct_range"
+        ),
+        Index("idx_abc_sku", "product_sku"),
+        Index("idx_abc_warehouse", "warehouse_id"),
+        Index("idx_abc_class", "abc_class"),
+    )
+
+
+class CycleCountSchedule(UuidPkMixin, TimestampMixin, Base):
+    """Calendario de conteos cíclicos por clase ABC y almacén."""
+
+    __tablename__ = "cycle_count_schedules"
+
+    warehouse_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    abc_class: Mapped[str] = mapped_column(Text, nullable=False)
+    frequency_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    next_count_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    last_count_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+
+    __table_args__ = (
+        CheckConstraint("abc_class IN ('A','B','C')", name="ck_ccs_abc_class"),
+        CheckConstraint("frequency_days > 0", name="ck_ccs_frequency_pos"),
+        Index("idx_ccs_warehouse", "warehouse_id"),
+        Index(
+            "idx_ccs_active",
+            "is_active",
+            postgresql_where=text("is_active = true"),
+        ),
     )

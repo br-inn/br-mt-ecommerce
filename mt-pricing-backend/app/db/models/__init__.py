@@ -61,13 +61,18 @@ from app.db.models.product import (
 )
 from app.db.models.inventory import (
     CostLot,
+    CycleCountSchedule,
     ERPSyncEvent,
+    ExpiryAlertThreshold,
     GoodsReceipt,
+    InventoryAlert,
     InventoryLot,
     InventoryPosition,
     JournalEntry,
+    ProductAbcClassification,
     PurchaseOrder,
     PurchaseOrderLine,
+    ReplenishmentParam,
     StockMovement,
     StockMovementType,
     Warehouse,
@@ -77,8 +82,27 @@ from app.db.models.inventory import (
 from app.db.models.procurement import (
     ApprovalDecision,
     ApprovalRule,
+    InvoiceTolerance,
     PurchaseRequisition,
+    RfqHeader,
+    RfqLine,
+    RfqVendorResponse,
+    SourceList,
+    VendorInvoice,
     VendorProductCondition,
+)
+from app.db.models.sales import (
+    AtpCheckingRule,
+    CreditMemo,
+    CustomerCreditLimit,
+    CustomerOpenItem,
+    OutboundDelivery,
+    OutboundDeliveryLine,
+    RmaHeader,
+    RmaLine,
+    SalesOrder,
+    SalesOrderLine,
+    StockReservation,
 )
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
@@ -245,4 +269,29 @@ __all__ = [
     "ApprovalDecision",
     "ApprovalRule",
     "VendorProductCondition",
+    # EP-ERP-03 stories 04-06 (migs. 20260523_110-111)
+    "VendorInvoice",
+    "InvoiceTolerance",
+    "SourceList",
+    "RfqHeader",
+    "RfqLine",
+    "RfqVendorResponse",
+    # EP-ERP-02 stories 05-08 (mig. 20260522_110)
+    "ExpiryAlertThreshold",
+    "InventoryAlert",
+    "ReplenishmentParam",
+    "ProductAbcClassification",
+    "CycleCountSchedule",
+    # EP-ERP-04 — Ventas O2C (migs. 20260524_110-114)
+    "SalesOrder",
+    "SalesOrderLine",
+    "StockReservation",
+    "AtpCheckingRule",
+    "CustomerCreditLimit",
+    "CustomerOpenItem",
+    "OutboundDelivery",
+    "OutboundDeliveryLine",
+    "RmaHeader",
+    "RmaLine",
+    "CreditMemo",
 ]

@@ -18,6 +18,24 @@ US-ERP-02-03 (Lots):
   GET   /inventory/lots/{lot_id}
   PATCH /inventory/lots/{lot_id}/quality-status
   GET   /inventory/lots/{lot_id}/traceability
+
+US-ERP-02-05 (FEFO + expiry alerts):
+  GET  /inventory/expiry-alerts
+  POST /inventory/picking/suggest
+
+US-ERP-02-06 (Replenishment params + ROP):
+  GET   /inventory/replenishment-params
+  POST  /inventory/replenishment-params
+  PATCH /inventory/replenishment-params/{id}
+  POST  /inventory/replenishment-params/run-rop-check
+
+US-ERP-02-07 (ABC classification + cycle count):
+  GET  /inventory/abc-classifications
+  GET  /inventory/cycle-count-schedules
+  POST /inventory/cycle-count-schedules
+
+US-ERP-02-08 (KPIs):
+  GET  /inventory/kpis
 """
 
 from __future__ import annotations
@@ -43,6 +61,20 @@ from app.schemas.inventory import (
     StockMovementCreate,
     StockMovementRead,
     StockMovementTypeRead,
+)
+from app.schemas.inventory_ops import (
+    AbcClassificationRunResult,
+    CycleCountScheduleCreate,
+    CycleCountScheduleRead,
+    ExpiryAlertGroupRead,
+    FEFOPickRequest,
+    FEFOPickSuggestion,
+    InventoryKpisRead,
+    ProductAbcClassificationRead,
+    ReplenishmentParamCreate,
+    ReplenishmentParamPatch,
+    ReplenishmentParamRead,
+    RopCheckResult,
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
@@ -289,3 +321,184 @@ async def get_lot_traceability(
     repo: InventoryRepository = Depends(_repo),
 ) -> LotTraceabilityRead:
     return await repo.get_lot_traceability(lot_id)
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-05: FEFO + expiry alerts
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/expiry-alerts",
+    response_model=list[ExpiryAlertGroupRead],
+    summary="Lotes próximos a vencer agrupados por producto",
+    operation_id="inventoryExpiryAlerts",
+)
+async def list_expiry_alerts(
+    warehouse_id: Annotated[UUID | None, Query()] = None,
+    threshold_days: Annotated[int, Query(ge=1, le=3650)] = 30,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> list[ExpiryAlertGroupRead]:
+    return await repo.list_expiry_alerts(
+        warehouse_id=warehouse_id,
+        threshold_days=threshold_days,
+    )
+
+
+@router.post(
+    "/picking/suggest",
+    response_model=FEFOPickSuggestion,
+    summary="Sugerencia de picking FEFO para un producto",
+    operation_id="inventoryPickingSuggest",
+)
+async def suggest_fefo_picking(
+    payload: FEFOPickRequest,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> FEFOPickSuggestion:
+    return await repo.suggest_fefo_picking(
+        product_sku=payload.product_sku,
+        warehouse_id=payload.warehouse_id,
+        qty_needed=payload.qty_needed,
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-06: Replenishment params + ROP
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/replenishment-params",
+    response_model=list[ReplenishmentParamRead],
+    summary="Listar parámetros de reaprovisionamiento",
+    operation_id="inventoryReplenishmentParamsList",
+)
+async def list_replenishment_params(
+    warehouse_id: Annotated[UUID | None, Query()] = None,
+    active_only: Annotated[bool, Query()] = True,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> list[ReplenishmentParamRead]:
+    return await repo.list_replenishment_params(
+        warehouse_id=warehouse_id,
+        active_only=active_only,
+    )
+
+
+@router.post(
+    "/replenishment-params",
+    response_model=ReplenishmentParamRead,
+    status_code=201,
+    summary="Crear parámetros de reaprovisionamiento",
+    operation_id="inventoryReplenishmentParamsCreate",
+)
+async def create_replenishment_param(
+    payload: ReplenishmentParamCreate,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> ReplenishmentParamRead:
+    return await repo.create_replenishment_param(payload)
+
+
+@router.post(
+    "/replenishment-params/run-rop-check",
+    response_model=RopCheckResult,
+    summary="Disparar manualmente el job ROP check",
+    operation_id="inventoryReplenishmentRopCheck",
+)
+async def run_rop_check_manual(
+    _user: User = Depends(require_permissions("purchases:write")),
+) -> RopCheckResult:
+    from app.workers.tasks.inventory import run_rop_check
+
+    result = run_rop_check.delay()
+    # Esperar resultado sincrónicamente para respuesta inmediata
+    data = result.get(timeout=120)
+    return RopCheckResult(**data)
+
+
+@router.patch(
+    "/replenishment-params/{param_id}",
+    response_model=ReplenishmentParamRead,
+    summary="Actualizar parámetros de reaprovisionamiento",
+    operation_id="inventoryReplenishmentParamsPatch",
+)
+async def patch_replenishment_param(
+    param_id: UUID,
+    payload: ReplenishmentParamPatch,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> ReplenishmentParamRead:
+    return await repo.patch_replenishment_param(param_id, payload)
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-07: ABC classification + cycle count schedules
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/abc-classifications",
+    response_model=list[ProductAbcClassificationRead],
+    summary="Clasificaciones ABC por almacén y clase",
+    operation_id="inventoryAbcClassifications",
+)
+async def list_abc_classifications(
+    warehouse_id: Annotated[UUID | None, Query()] = None,
+    abc_class: Annotated[str | None, Query(pattern="^[ABC]$")] = None,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> list[ProductAbcClassificationRead]:
+    return await repo.list_abc_classifications(
+        warehouse_id=warehouse_id,
+        abc_class=abc_class,
+    )
+
+
+@router.get(
+    "/cycle-count-schedules",
+    response_model=list[CycleCountScheduleRead],
+    summary="Listar calendarios de conteo cíclico",
+    operation_id="inventoryCycleCountSchedulesList",
+)
+async def list_cycle_count_schedules(
+    warehouse_id: Annotated[UUID | None, Query()] = None,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> list[CycleCountScheduleRead]:
+    return await repo.list_cycle_count_schedules(warehouse_id=warehouse_id)
+
+
+@router.post(
+    "/cycle-count-schedules",
+    response_model=CycleCountScheduleRead,
+    status_code=201,
+    summary="Crear calendario de conteo cíclico",
+    operation_id="inventoryCycleCountSchedulesCreate",
+)
+async def create_cycle_count_schedule(
+    payload: CycleCountScheduleCreate,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> CycleCountScheduleRead:
+    return await repo.create_cycle_count_schedule(payload)
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-08: KPIs de inventario
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/kpis",
+    response_model=InventoryKpisRead,
+    summary="KPIs de inventario (turnover, fill rate, stockouts, alertas)",
+    operation_id="inventoryKpis",
+)
+async def get_inventory_kpis(
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> InventoryKpisRead:
+    return await repo.get_inventory_kpis()

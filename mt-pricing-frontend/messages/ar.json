@@ -1125,6 +1125,35 @@
         "version": "الإصدار الهدف",
         "submit": "تدريب"
       }
+    },
+    "inventario": {
+      "kpis": {
+        "title": "مؤشرات أداء المخزون",
+        "subtitle": "مقاييس صحة المخزون في الوقت الفعلي.",
+        "computedAt": "تم التحديث:",
+        "refresh": "تحديث",
+        "loadError": "تعذّر تحميل مؤشرات أداء المخزون.",
+        "turnoverTitle": "معدل دوران المخزون",
+        "turnoverDesc": "تكلفة البضاعة المباعة / متوسط المخزون (30 يوماً)",
+        "dohTitle": "أيام التوافر",
+        "dohDesc": "(متوسط المخزون / تكلفة البضاعة) × 30",
+        "fillRateTitle": "معدل التغطية",
+        "fillRateDesc": "% الطلبات المنفّذة بدون نقص",
+        "stockoutTitle": "نفاد المخزون",
+        "stockoutDesc": "المنتجات ذات الكمية ≤ 0",
+        "expiryAlertTitle": "تنبيهات انتهاء الصلاحية",
+        "expiryAlertDesc": "الدفعات التي تنتهي خلال 30 يوماً",
+        "ropBreachTitle": "خروقات نقطة إعادة الطلب",
+        "ropBreachDesc": "منتجات دون نقطة إعادة الطلب",
+        "abcTableTitle": "منتجات الفئة A",
+        "abcTableDesc": "أعلى المنتجات بقيمة الاستهلاك السنوي (تصنيف ABC).",
+        "abcEmpty": "لا توجد تصنيفات ABC متاحة.",
+        "colSku": "رمز المنتج",
+        "colClass": "الفئة",
+        "colValue": "القيمة السنوية (درهم)",
+        "colPct": "% من الإجمالي",
+        "colClassifiedAt": "تاريخ التصنيف"
+      }
     }
   },
   "costsDashboard": {

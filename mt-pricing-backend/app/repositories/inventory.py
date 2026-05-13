@@ -5,6 +5,10 @@ Cubre:
   - Movement Types y Stock Movements
   - Lot tracking y trazabilidad
   - Warehouse CRUD
+  - FEFO + expiry alerts (US-ERP-02-05)
+  - Replenishment params + ROP (US-ERP-02-06)
+  - ABC classification + cycle count schedules (US-ERP-02-07)
+  - KPIs de inventario (US-ERP-02-08)
 """
 
 from __future__ import annotations
@@ -19,13 +23,20 @@ from sqlalchemy import and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+import datetime as _dt
+
 from app.db.models.inventory import (
+    CycleCountSchedule,
+    ExpiryAlertThreshold,
     GoodsReceipt,
+    InventoryAlert,
     InventoryLot,
     InventoryPosition,
     JournalEntry,
+    ProductAbcClassification,
     PurchaseOrder,
     PurchaseOrderLine,
+    ReplenishmentParam,
     StockMovement,
     StockMovementType,
     Warehouse,
@@ -51,6 +62,22 @@ from app.schemas.inventory import (
     WarehouseRead,
     WarehouseZoneCreate,
     WarehouseZoneRead,
+)
+from app.schemas.inventory_ops import (
+    AbcClassificationRunResult,
+    CriticalStockItem,
+    CycleCountScheduleCreate,
+    CycleCountScheduleRead,
+    ExpiryAlertGroupRead,
+    ExpiryAlertItem,
+    FEFOLotItem,
+    FEFOPickSuggestion,
+    InventoryKpisRead,
+    ProductAbcClassificationRead,
+    ReplenishmentParamCreate,
+    ReplenishmentParamPatch,
+    ReplenishmentParamRead,
+    RopCheckResult,
 )
 
 
@@ -543,3 +570,335 @@ class InventoryRepository:
         self.session.add(loc)
         await self.session.flush()
         return WarehouseLocationRead.model_validate(loc)
+
+    # -----------------------------------------------------------------------
+    # US-ERP-02-05: FEFO + expiry alerts
+    # -----------------------------------------------------------------------
+
+    async def list_expiry_alerts(
+        self,
+        warehouse_id: UUID | None = None,
+        threshold_days: int = 30,
+    ) -> list[ExpiryAlertGroupRead]:
+        """Retorna lotes próximos a vencer agrupados por producto SKU."""
+        today = _dt.date.today()
+        cutoff = today + _dt.timedelta(days=threshold_days)
+
+        stmt = (
+            select(InventoryLot, InventoryPosition)
+            .outerjoin(
+                InventoryPosition,
+                and_(
+                    InventoryPosition.lot_id == InventoryLot.id,
+                    InventoryPosition.stock_type == "unrestricted",
+                ),
+            )
+            .where(
+                InventoryLot.expiry_date.is_not(None),
+                InventoryLot.expiry_date <= cutoff,
+                InventoryLot.quality_status == "released",
+            )
+        )
+        if warehouse_id:
+            stmt = stmt.where(InventoryPosition.warehouse_id == warehouse_id)
+
+        result = await self.session.execute(stmt.order_by(InventoryLot.expiry_date.asc()))
+        rows = result.all()
+
+        # Agrupar por product_sku
+        groups: dict[str, list[ExpiryAlertItem]] = {}
+        for lot, pos in rows:
+            item = ExpiryAlertItem(
+                lot_id=lot.id,
+                lot_number=lot.lot_number,
+                expiry_date=lot.expiry_date,
+                days_until_expiry=(lot.expiry_date - today).days,
+                qty_on_hand=pos.qty_on_hand if pos else Decimal("0"),
+                warehouse_id=pos.warehouse_id if pos else None,
+                quality_status=lot.quality_status,
+            )
+            groups.setdefault(lot.product_sku, []).append(item)
+
+        # Obtener threshold configurado por SKU
+        thresh_q = await self.session.execute(select(ExpiryAlertThreshold))
+        thresholds = {t.product_sku: t.threshold_days for t in thresh_q.scalars().all()}
+
+        return [
+            ExpiryAlertGroupRead(
+                product_sku=sku,
+                threshold_days=thresholds.get(sku, threshold_days),
+                lots=items,
+            )
+            for sku, items in groups.items()
+        ]
+
+    async def suggest_fefo_picking(
+        self,
+        product_sku: str,
+        warehouse_id: UUID,
+        qty_needed: Decimal,
+    ) -> FEFOPickSuggestion:
+        """Sugiere lotes ordenados por FEFO para un picking."""
+        stmt = (
+            select(InventoryLot, InventoryPosition)
+            .join(
+                InventoryPosition,
+                and_(
+                    InventoryPosition.lot_id == InventoryLot.id,
+                    InventoryPosition.sku == product_sku,
+                    InventoryPosition.warehouse_id == warehouse_id,
+                    InventoryPosition.stock_type == "unrestricted",
+                    InventoryPosition.qty_on_hand > 0,
+                ),
+            )
+            .where(
+                InventoryLot.product_sku == product_sku,
+                InventoryLot.quality_status == "released",
+            )
+            .order_by(
+                InventoryLot.expiry_date.asc().nullslast()
+            )
+        )
+        result = await self.session.execute(stmt)
+        rows = result.all()
+
+        remaining = qty_needed
+        lot_items: list[FEFOLotItem] = []
+
+        for lot, pos in rows:
+            if remaining <= 0:
+                break
+            to_pick = min(pos.qty_on_hand, remaining)
+            lot_items.append(
+                FEFOLotItem(
+                    lot_id=lot.id,
+                    lot_number=lot.lot_number,
+                    expiry_date=lot.expiry_date,
+                    qty_available=pos.qty_on_hand,
+                    qty_to_pick=to_pick,
+                )
+            )
+            remaining -= to_pick
+
+        return FEFOPickSuggestion(
+            product_sku=product_sku,
+            warehouse_id=warehouse_id,
+            qty_needed=qty_needed,
+            lots=lot_items,
+        )
+
+    # -----------------------------------------------------------------------
+    # US-ERP-02-06: Replenishment params
+    # -----------------------------------------------------------------------
+
+    async def list_replenishment_params(
+        self,
+        warehouse_id: UUID | None = None,
+        active_only: bool = True,
+    ) -> list[ReplenishmentParamRead]:
+        stmt = select(ReplenishmentParam)
+        if warehouse_id:
+            stmt = stmt.where(ReplenishmentParam.warehouse_id == warehouse_id)
+        if active_only:
+            stmt = stmt.where(ReplenishmentParam.is_active.is_(True))
+        result = await self.session.execute(stmt.order_by(ReplenishmentParam.product_sku))
+        return [ReplenishmentParamRead.model_validate(r) for r in result.scalars().all()]
+
+    async def create_replenishment_param(
+        self, payload: ReplenishmentParamCreate
+    ) -> ReplenishmentParamRead:
+        rp = ReplenishmentParam(
+            product_sku=payload.product_sku,
+            warehouse_id=payload.warehouse_id,
+            reorder_point=payload.reorder_point,
+            safety_stock=payload.safety_stock,
+            reorder_qty=payload.reorder_qty,
+            lead_time_days=payload.lead_time_days,
+            is_active=payload.is_active,
+        )
+        self.session.add(rp)
+        try:
+            await self.session.flush()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya existen parámetros para este SKU × almacén.",
+            ) from exc
+        return ReplenishmentParamRead.model_validate(rp)
+
+    async def patch_replenishment_param(
+        self, param_id: UUID, payload: ReplenishmentParamPatch
+    ) -> ReplenishmentParamRead:
+        rp = await self.session.get(ReplenishmentParam, param_id)
+        if not rp:
+            raise HTTPException(status_code=404, detail="ReplenishmentParam no encontrado.")
+        if payload.reorder_point is not None:
+            rp.reorder_point = payload.reorder_point
+        if payload.safety_stock is not None:
+            rp.safety_stock = payload.safety_stock
+        if payload.reorder_qty is not None:
+            rp.reorder_qty = payload.reorder_qty
+        if payload.lead_time_days is not None:
+            rp.lead_time_days = payload.lead_time_days
+        if payload.is_active is not None:
+            rp.is_active = payload.is_active
+        rp.updated_at = _dt.datetime.now(tz=_dt.timezone.utc)
+        await self.session.flush()
+        return ReplenishmentParamRead.model_validate(rp)
+
+    # -----------------------------------------------------------------------
+    # US-ERP-02-07: ABC classification + cycle count schedules
+    # -----------------------------------------------------------------------
+
+    async def list_abc_classifications(
+        self,
+        warehouse_id: UUID | None = None,
+        abc_class: str | None = None,
+    ) -> list[ProductAbcClassificationRead]:
+        stmt = select(ProductAbcClassification)
+        if warehouse_id:
+            stmt = stmt.where(ProductAbcClassification.warehouse_id == warehouse_id)
+        if abc_class:
+            stmt = stmt.where(ProductAbcClassification.abc_class == abc_class)
+        stmt = stmt.order_by(
+            ProductAbcClassification.annual_consumption_value.desc()
+        )
+        result = await self.session.execute(stmt)
+        return [
+            ProductAbcClassificationRead.model_validate(r)
+            for r in result.scalars().all()
+        ]
+
+    async def list_cycle_count_schedules(
+        self,
+        warehouse_id: UUID | None = None,
+    ) -> list[CycleCountScheduleRead]:
+        stmt = select(CycleCountSchedule)
+        if warehouse_id:
+            stmt = stmt.where(CycleCountSchedule.warehouse_id == warehouse_id)
+        result = await self.session.execute(stmt.order_by(CycleCountSchedule.abc_class))
+        return [
+            CycleCountScheduleRead.model_validate(r)
+            for r in result.scalars().all()
+        ]
+
+    async def create_cycle_count_schedule(
+        self, payload: CycleCountScheduleCreate
+    ) -> CycleCountScheduleRead:
+        sched = CycleCountSchedule(
+            warehouse_id=payload.warehouse_id,
+            abc_class=payload.abc_class,
+            frequency_days=payload.frequency_days,
+            next_count_date=payload.next_count_date,
+            is_active=payload.is_active,
+        )
+        self.session.add(sched)
+        await self.session.flush()
+        return CycleCountScheduleRead.model_validate(sched)
+
+    # -----------------------------------------------------------------------
+    # US-ERP-02-08: KPIs de inventario
+    # -----------------------------------------------------------------------
+
+    async def get_inventory_kpis(self) -> InventoryKpisRead:
+        today = _dt.date.today()
+        now = _dt.datetime.now(tz=_dt.timezone.utc)
+        thirty_days_ago = now - _dt.timedelta(days=30)
+        expiry_cutoff = today + _dt.timedelta(days=30)
+
+        # Promedio de inventario (últimos 30 días — aproximado con posición actual)
+        avg_inv_stmt = select(
+            func.coalesce(
+                func.sum(InventoryPosition.total_stock_value_aed),
+                Decimal("0"),
+            )
+        ).where(InventoryPosition.stock_type == "unrestricted")
+        avg_inv_result = await self.session.execute(avg_inv_stmt)
+        avg_inventory_value: Decimal = avg_inv_result.scalar() or Decimal("0")
+
+        # COGS proxy: suma de (qty_received × actual_unit_price) en GRs procesados últimos 30d
+        cogs_stmt = select(
+            func.coalesce(
+                func.sum(GoodsReceipt.qty_received * func.coalesce(GoodsReceipt.actual_unit_price, Decimal("0"))),
+                Decimal("0"),
+            )
+        ).where(
+            GoodsReceipt.status == "processed",
+            GoodsReceipt.received_at >= thirty_days_ago,
+        )
+        cogs_result = await self.session.execute(cogs_stmt)
+        cogs: Decimal = cogs_result.scalar() or Decimal("0")
+
+        # Inventory turnover y days on hand
+        if cogs > 0 and avg_inventory_value > 0:
+            inventory_turnover = cogs / avg_inventory_value
+            days_on_hand = (avg_inventory_value / cogs) * 30
+        else:
+            inventory_turnover = None
+            days_on_hand = None
+
+        # Fill rate: GRs procesados sin qty_received < qty_ordered (proxy)
+        total_gr_stmt = select(func.count(GoodsReceipt.id)).where(
+            GoodsReceipt.received_at >= thirty_days_ago
+        )
+        total_gr = (await self.session.execute(total_gr_stmt)).scalar() or 0
+
+        complete_gr_stmt = select(func.count(GoodsReceipt.id)).where(
+            GoodsReceipt.received_at >= thirty_days_ago,
+            GoodsReceipt.status == "processed",
+        )
+        complete_gr = (await self.session.execute(complete_gr_stmt)).scalar() or 0
+
+        fill_rate = (
+            Decimal(str(complete_gr)) / Decimal(str(total_gr)) * 100
+            if total_gr > 0
+            else None
+        )
+
+        # Stockout count: posiciones unrestricted con qty_on_hand <= 0
+        stockout_stmt = select(func.count(InventoryPosition.id)).where(
+            InventoryPosition.stock_type == "unrestricted",
+            InventoryPosition.qty_on_hand <= 0,
+        )
+        stockout_count: int = (await self.session.execute(stockout_stmt)).scalar() or 0
+
+        # Expiry alert count: lotes próximos a vencer (< today + 30)
+        expiry_stmt = select(func.count(InventoryLot.id)).where(
+            InventoryLot.expiry_date.is_not(None),
+            InventoryLot.expiry_date <= expiry_cutoff,
+            InventoryLot.quality_status == "released",
+        )
+        expiry_alert_count: int = (await self.session.execute(expiry_stmt)).scalar() or 0
+
+        # ROP breach count: productos con qty_on_hand <= reorder_point activo
+        rop_breach_stmt = select(func.count(ReplenishmentParam.id)).where(
+            ReplenishmentParam.is_active.is_(True),
+        )
+        # Subconsulta de qty_on_hand por sku × warehouse
+        rop_params_q = await self.session.execute(
+            select(ReplenishmentParam).where(ReplenishmentParam.is_active.is_(True))
+        )
+        rop_params = rop_params_q.scalars().all()
+
+        rop_breach_count = 0
+        for rp in rop_params:
+            qty_q = await self.session.execute(
+                select(func.coalesce(func.sum(InventoryPosition.qty_on_hand), Decimal("0"))).where(
+                    InventoryPosition.sku == rp.product_sku,
+                    InventoryPosition.warehouse_id == rp.warehouse_id,
+                    InventoryPosition.stock_type == "unrestricted",
+                )
+            )
+            qty: Decimal = qty_q.scalar() or Decimal("0")
+            if qty <= rp.reorder_point:
+                rop_breach_count += 1
+
+        return InventoryKpisRead(
+            inventory_turnover=inventory_turnover,
+            days_on_hand=days_on_hand,
+            fill_rate_pct=fill_rate,
+            stockout_count=stockout_count,
+            expiry_alert_count=expiry_alert_count,
+            rop_breach_count=rop_breach_count,
+            computed_at=now,
+        )

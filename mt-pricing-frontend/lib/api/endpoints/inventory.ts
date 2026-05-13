@@ -329,4 +329,147 @@ export const inventoryApi = {
 
   listLocations: (warehouseId: string, zoneId: string): Promise<WarehouseLocationRead[]> =>
     authedFetch<WarehouseLocationRead[]>(`${WH_BASE}/${warehouseId}/zones/${zoneId}/locations`),
+
+  // US-ERP-02-05: FEFO + expiry alerts
+  listExpiryAlerts: (filters: { warehouse_id?: string; threshold_days?: number } = {}): Promise<ExpiryAlertGroupRead[]> =>
+    authedFetch<ExpiryAlertGroupRead[]>(`${BASE}/expiry-alerts${buildQuery(filters)}`),
+
+  suggestFefo: (payload: FEFOPickRequest): Promise<FEFOPickSuggestion> =>
+    authedFetch<FEFOPickSuggestion>(`${BASE}/picking/suggest`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // US-ERP-02-06: Replenishment params
+  listReplenishmentParams: (filters: { warehouse_id?: string; active_only?: boolean } = {}): Promise<ReplenishmentParamRead[]> =>
+    authedFetch<ReplenishmentParamRead[]>(`${BASE}/replenishment-params${buildQuery(filters)}`),
+
+  createReplenishmentParam: (payload: ReplenishmentParamCreate): Promise<ReplenishmentParamRead> =>
+    authedFetch<ReplenishmentParamRead>(`${BASE}/replenishment-params`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  patchReplenishmentParam: (id: string, payload: Partial<ReplenishmentParamCreate>): Promise<ReplenishmentParamRead> =>
+    authedFetch<ReplenishmentParamRead>(`${BASE}/replenishment-params/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  runRopCheck: (): Promise<RopCheckResult> =>
+    authedFetch<RopCheckResult>(`${BASE}/replenishment-params/run-rop-check`, {
+      method: "POST",
+    }),
+
+  // US-ERP-02-07: ABC classification + cycle count schedules
+  listAbcClassifications: (filters: { warehouse_id?: string; abc_class?: string } = {}): Promise<ProductAbcClassificationRead[]> =>
+    authedFetch<ProductAbcClassificationRead[]>(`${BASE}/abc-classifications${buildQuery(filters)}`),
+
+  listCycleCountSchedules: (filters: { warehouse_id?: string } = {}): Promise<CycleCountScheduleRead[]> =>
+    authedFetch<CycleCountScheduleRead[]>(`${BASE}/cycle-count-schedules${buildQuery(filters)}`),
+
+  // US-ERP-02-08: KPIs
+  getKpis: (): Promise<InventoryKpisRead> =>
+    authedFetch<InventoryKpisRead>(`${BASE}/kpis`),
 };
+
+// ---------------------------------------------------------------------------
+// Types — US-ERP-02-05/06/07/08
+// ---------------------------------------------------------------------------
+
+export interface ExpiryAlertItem {
+  lot_id: string;
+  lot_number: string;
+  expiry_date: string;
+  days_until_expiry: number;
+  qty_on_hand: string;
+  warehouse_id: string | null;
+  quality_status: string;
+}
+
+export interface ExpiryAlertGroupRead {
+  product_sku: string;
+  threshold_days: number;
+  lots: ExpiryAlertItem[];
+}
+
+export interface FEFOPickRequest {
+  product_sku: string;
+  warehouse_id: string;
+  qty_needed: number;
+}
+
+export interface FEFOLotItem {
+  lot_id: string;
+  lot_number: string;
+  expiry_date: string | null;
+  qty_available: string;
+  qty_to_pick: string;
+}
+
+export interface FEFOPickSuggestion {
+  product_sku: string;
+  warehouse_id: string;
+  qty_needed: string;
+  lots: FEFOLotItem[];
+}
+
+export interface ReplenishmentParamRead {
+  id: string;
+  product_sku: string;
+  warehouse_id: string;
+  reorder_point: string;
+  safety_stock: string;
+  reorder_qty: string;
+  lead_time_days: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReplenishmentParamCreate {
+  product_sku: string;
+  warehouse_id: string;
+  reorder_point?: number;
+  safety_stock?: number;
+  reorder_qty?: number;
+  lead_time_days?: number;
+  is_active?: boolean;
+}
+
+export interface RopCheckResult {
+  prs_created: number;
+  sku_breaches: string[];
+}
+
+export interface ProductAbcClassificationRead {
+  id: string;
+  product_sku: string;
+  warehouse_id: string;
+  abc_class: "A" | "B" | "C";
+  annual_consumption_value: string;
+  pct_of_total: string;
+  classified_at: string;
+}
+
+export interface CycleCountScheduleRead {
+  id: string;
+  warehouse_id: string;
+  abc_class: "A" | "B" | "C";
+  frequency_days: number;
+  next_count_date: string | null;
+  last_count_date: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryKpisRead {
+  inventory_turnover: string | null;
+  days_on_hand: string | null;
+  fill_rate_pct: string | null;
+  stockout_count: number;
+  expiry_alert_count: number;
+  rop_breach_count: number;
+  computed_at: string;
+}
