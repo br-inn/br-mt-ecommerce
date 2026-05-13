@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   Atom,
   Award,
+  BarChart3,
   Boxes,
   ChevronLeft,
   ChevronRight,
@@ -21,6 +22,7 @@ import {
   LayoutGrid,
   Network,
   Package,
+  PiggyBank,
   Receipt,
   ScrollText,
   Search,
@@ -54,29 +56,50 @@ interface NavItem {
   permissions?: string[];
 }
 
-const SECTION_OPS: readonly NavItem[] = [
+const SECTION_HOME: readonly NavItem[] = [
   { href: "/dashboard", label: "Inicio", icon: Home },
-  { href: "/catalogo", label: "Productos", icon: LayoutGrid, badge: "224" },
-  { href: "/proveedores", label: "Proveedores", icon: Truck, badge: "3", permissions: ["suppliers:read"] },
+] as const;
+
+const SECTION_PIM: readonly NavItem[] = [
+  { href: "/catalogo", label: "Productos", icon: LayoutGrid },
   { href: "/imports", label: "Importer PIM", icon: FileUp },
   { href: "/imports/costs", label: "Importer costos", icon: FileUp, permissions: ["imports:write"] },
   { href: "/imports/materials", label: "Importer materiales", icon: FileUp, permissions: ["imports:write"] },
-  { href: "/precios", label: "Precios", icon: Tags },
-  { href: "/canales", label: "Canales", icon: Network, badge: "5" },
-  { href: "/precios/aprobaciones", label: "Aprobaciones", icon: ShieldCheck, badge: 45 },
-  { href: "/costos", label: "Cobertura costes", icon: Receipt, permissions: ["costs:read"] },
 ] as const;
 
 const SECTION_COMPRAS: readonly NavItem[] = [
+  { href: "/proveedores", label: "Proveedores", icon: Truck, permissions: ["suppliers:read"] },
   { href: "/compras/requisiciones", label: "Requisiciones", icon: ClipboardList, permissions: ["purchases:write"] },
-  { href: "/compras/pedidos", label: "Pedidos", icon: Package, permissions: ["purchases:write"] },
+  { href: "/compras/pedidos", label: "Pedidos de compra", icon: Package, permissions: ["purchases:write"] },
   { href: "/compras/recepciones", label: "Recepciones", icon: Truck, permissions: ["purchases:write"] },
   { href: "/inventario", label: "Inventario", icon: Boxes, permissions: ["purchases:write"] },
+] as const;
+
+const SECTION_PRECIOS: readonly NavItem[] = [
+  { href: "/precios", label: "Precios", icon: Tags },
+  { href: "/canales", label: "Canales", icon: Network },
+  { href: "/costos", label: "Cobertura costes", icon: Receipt, permissions: ["costs:read"] },
+  { href: "/precios/aprobaciones", label: "Aprobaciones", icon: ShieldCheck },
 ] as const;
 
 const SECTION_VENTAS: readonly NavItem[] = [
   { href: "/ventas/dashboard", label: "Dashboard O2C", icon: TrendingUp, permissions: ["sales:read"] },
   { href: "/ventas/pedidos", label: "Pedidos de venta", icon: ScrollText, permissions: ["sales:read"] },
+] as const;
+
+// EP-ERP-06 — Finanzas (US-ERP-06-01..09). Rol gerente.
+const SECTION_FINANZAS: readonly NavItem[] = [
+  { href: "/finanzas/cuentas", label: "Plan de cuentas", icon: Layers, permissions: ["gerente"] },
+  { href: "/finanzas/periodos", label: "Períodos contables", icon: Timer, permissions: ["gerente"] },
+  { href: "/finanzas/asientos", label: "Universal Journal", icon: ScrollText, permissions: ["gerente"] },
+  { href: "/finanzas/ap-aging", label: "AP Aging", icon: ClipboardList, permissions: ["gerente"] },
+  { href: "/finanzas/pagos", label: "Payment Runs", icon: PiggyBank, permissions: ["gerente"] },
+  { href: "/finanzas/costos-estandar", label: "Costos estándar", icon: Coins, permissions: ["gerente"] },
+  { href: "/finanzas/pl", label: "P&L", icon: TrendingUp, permissions: ["gerente"] },
+  { href: "/finanzas/balance", label: "Balance Sheet", icon: BarChart3, permissions: ["gerente"] },
+  { href: "/finanzas/cierre", label: "Cierre de período", icon: ShieldCheck, permissions: ["gerente"] },
+  { href: "/finanzas/presupuestos", label: "Presupuestos", icon: Receipt, permissions: ["gerente"] },
+  { href: "/finanzas/copa", label: "CO-PA", icon: BarChart3, permissions: ["gerente"] },
 ] as const;
 
 const SECTION_QA: readonly NavItem[] = [
@@ -322,21 +345,35 @@ export function Sidebar() {
       </button>
 
       <nav className={cn("flex flex-1 flex-col gap-px overflow-y-auto", collapsed ? "px-2 py-3" : "px-3 py-3")}>
-        <SectionLabel collapsed={collapsed}>Operación</SectionLabel>
-        {SECTION_OPS.map((item) => (
+        {SECTION_HOME.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
 
-        <RbacGuard permissions={["purchases:write"]}>
-          <SectionLabel collapsed={collapsed}>Compras</SectionLabel>
-          {SECTION_COMPRAS.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={collapsed} />
-          ))}
-        </RbacGuard>
+        <SectionLabel collapsed={collapsed}>PIM</SectionLabel>
+        {SECTION_PIM.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={collapsed} />
+        ))}
+
+        <SectionLabel collapsed={collapsed}>Compras</SectionLabel>
+        {SECTION_COMPRAS.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={collapsed} />
+        ))}
+
+        <SectionLabel collapsed={collapsed}>Precios</SectionLabel>
+        {SECTION_PRECIOS.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={collapsed} />
+        ))}
 
         <RbacGuard permissions={["sales:read"]}>
           <SectionLabel collapsed={collapsed}>Ventas</SectionLabel>
           {SECTION_VENTAS.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} />
+          ))}
+        </RbacGuard>
+
+        <RbacGuard permissions={["gerente"]}>
+          <SectionLabel collapsed={collapsed}>Finanzas</SectionLabel>
+          {SECTION_FINANZAS.map((item) => (
             <NavLink key={item.href} item={item} collapsed={collapsed} />
           ))}
         </RbacGuard>

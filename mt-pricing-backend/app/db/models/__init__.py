@@ -106,6 +106,22 @@ from app.db.models.sales import (
 )
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
+from app.db.models.finance import (
+    GlAccount,
+    PostingPeriod,
+    CostCenter,
+    ProfitCenter,
+    FinancialEntry,
+    VendorOpenItem,
+    PaymentRun,
+    PaymentRunItem,
+    StandardCost,
+    PriceVariance,
+    PeriodCloseChecklist,
+    TaxProvision,
+    JournalEntryControl,
+    Budget,
+)
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -294,4 +310,19 @@ __all__ = [
     "RmaHeader",
     "RmaLine",
     "CreditMemo",
+    # EP-ERP-06 — Finanzas (migs. 20260527_110-118)
+    "GlAccount",
+    "PostingPeriod",
+    "CostCenter",
+    "ProfitCenter",
+    "FinancialEntry",
+    "VendorOpenItem",
+    "PaymentRun",
+    "PaymentRunItem",
+    "StandardCost",
+    "PriceVariance",
+    "PeriodCloseChecklist",
+    "TaxProvision",
+    "JournalEntryControl",
+    "Budget",
 ]
