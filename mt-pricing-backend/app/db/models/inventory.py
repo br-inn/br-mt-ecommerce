@@ -69,6 +69,11 @@ class PurchaseOrder(UuidPkMixin, TimestampMixin, Base):
         ForeignKey("currencies.code", ondelete="RESTRICT"),
         nullable=True,
     )
+    po_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default=text("'STANDARD'"),
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -90,6 +95,10 @@ class PurchaseOrder(UuidPkMixin, TimestampMixin, Base):
         CheckConstraint(
             "status IN ('draft','confirmed','partial','received','cancelled')",
             name="ck_po_status",
+        ),
+        CheckConstraint(
+            "po_type IN ('STANDARD','BLANKET','CONTRACT','SCHEDULING')",
+            name="ck_po_type",
         ),
         Index("idx_po_supplier", "supplier_code", "status"),
         Index(
@@ -134,6 +143,11 @@ class PurchaseOrderLine(UuidPkMixin, TimestampMixin, Base):
     landed_cost_breakdown: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
+    price_source: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        server_default=text("'manual'"),
+    )
 
     purchase_order: Mapped[PurchaseOrder] = relationship(
         "PurchaseOrder",
@@ -151,6 +165,7 @@ class PurchaseOrderLine(UuidPkMixin, TimestampMixin, Base):
         CheckConstraint("qty_ordered > 0", name="ck_pol_qty_ordered_pos"),
         CheckConstraint("qty_received >= 0", name="ck_pol_qty_received_nonneg"),
         CheckConstraint("unit_price >= 0", name="ck_pol_unit_price_nonneg"),
+        CheckConstraint("price_source IN ('manual','pir')", name="ck_pol_price_source"),
         Index("idx_pol_po", "po_id"),
         Index("idx_pol_sku", "sku"),
     )

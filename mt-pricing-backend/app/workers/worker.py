@@ -80,6 +80,8 @@ def make_celery() -> Celery:
             "app.workers.tasks.inventory",
             # EP-INV-01 — ERP outbox processor (US-INV-01-07)
             "app.workers.tasks.erp_sync",
+            # EP-ERP-03 — Procurement P2P timeout escalation (US-ERP-03-02)
+            "app.workers.tasks.procurement",
         ],
     )
 
@@ -120,6 +122,13 @@ def make_celery() -> Celery:
         },
         # --- Beat (ADR-046 — scheduler custom sobre job_definitions) ---
         beat_scheduler="app.scheduler.database_scheduler:DatabaseScheduler",
+        beat_schedule={
+            "check-approval-timeouts": {
+                "task": "mt.procurement.check_approval_timeouts",
+                "schedule": 3600,  # cada hora
+                "options": {"queue": "default"},
+            },
+        },
     )
 
     return app

@@ -74,6 +74,12 @@ from app.db.models.inventory import (
     WarehouseLocation,
     WarehouseZone,
 )
+from app.db.models.procurement import (
+    ApprovalDecision,
+    ApprovalRule,
+    PurchaseRequisition,
+    VendorProductCondition,
+)
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
 from app.db.models.taxonomy_registry import (
@@ -228,14 +234,15 @@ __all__ = [
     "CostLot",
     "ERPSyncEvent",
     "InventoryPosition",
-    # EP-ERP-02: Movement Types + Movements (US-ERP-02-01 — mig. 105)
     "StockMovementType",
     "StockMovement",
     "JournalEntry",
-    # EP-ERP-02: Lot tracking (US-ERP-02-03 — mig. 107)
     "InventoryLot",
-    # EP-ERP-02: Warehouse hierarchy (US-ERP-02-04 — mig. 108)
     "Warehouse",
     "WarehouseZone",
     "WarehouseLocation",
+    "PurchaseRequisition",
+    "ApprovalDecision",
+    "ApprovalRule",
+    "VendorProductCondition",
 ]

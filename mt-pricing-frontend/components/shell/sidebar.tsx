@@ -9,6 +9,7 @@ import {
   Boxes,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Coins,
   Construction,
   Database,
@@ -66,6 +67,7 @@ const SECTION_OPS: readonly NavItem[] = [
 ] as const;
 
 const SECTION_COMPRAS: readonly NavItem[] = [
+  { href: "/compras/requisiciones", label: "Requisiciones", icon: ClipboardList, permissions: ["purchases:write"] },
   { href: "/compras/pedidos", label: "Pedidos", icon: Package, permissions: ["purchases:write"] },
   { href: "/compras/recepciones", label: "Recepciones", icon: Truck, permissions: ["purchases:write"] },
   { href: "/inventario", label: "Inventario", icon: Boxes, permissions: ["purchases:write"] },
@@ -102,6 +104,8 @@ const SECTION_SYS_NON_TAXONOMY: readonly NavItem[] = [
   { href: "/admin/almacenes", label: "Almacenes", icon: Warehouse, permissions: ["purchases:write"] },
   { href: "/admin/flags", label: "Feature flags", icon: Flag, permissions: ["admin:read"] },
   { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
+  { href: "/admin/approval-rules", label: "Reglas aprobación", icon: ShieldCheck, permissions: ["purchases:write"] },
+  { href: "/admin/condiciones-proveedor", label: "PIR / Condiciones", icon: ClipboardList, permissions: ["purchases:write"] },
   { href: "/ajustes", label: "Configuración", icon: Settings },
 ] as const;
 
