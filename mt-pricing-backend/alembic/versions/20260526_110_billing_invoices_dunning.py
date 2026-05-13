@@ -202,21 +202,21 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.execute(
         """
-        INSERT INTO job_definitions (id, name, task_name, cron_expression, queue, owner, is_active, description)
+        INSERT INTO job_definitions (id, code, task_name, description, owner, schedule_type, cron_expression, enabled, created_at, updated_at)
         VALUES
           (gen_random_uuid(), 'billing_dunning_check',
            'mt.billing.run_dunning_check',
-           '0 8 * * *', 'default', 'business', true,
-           'EP-ERP-05-03: Evalúa invoices en mora y registra historial de dunning'),
+           'EP-ERP-05-03: Evalúa invoices en mora y registra historial de dunning',
+           'business', 'cron', '0 8 * * *', true, now(), now()),
           (gen_random_uuid(), 'billing_check_unposted_deliveries',
            'mt.billing.check_unposted_deliveries',
-           '0 */4 * * *', 'default', 'business', true,
-           'EP-ERP-05-06: Alerta deliveries shipped sin invoice en 24h'),
+           'EP-ERP-05-06: Alerta deliveries shipped sin invoice en 24h',
+           'business', 'cron', '0 */4 * * *', true, now(), now()),
           (gen_random_uuid(), 'billing_mark_broken_promises',
            'mt.billing.mark_broken_promises',
-           '0 8 * * *', 'default', 'business', true,
-           'EP-ERP-05-05: Marca promesas de pago vencidas como broken')
-        ON CONFLICT (name) DO NOTHING
+           'EP-ERP-05-05: Marca promesas de pago vencidas como broken',
+           'business', 'cron', '0 8 * * *', true, now(), now())
+        ON CONFLICT (code) DO NOTHING
         """
     )
 
@@ -226,7 +226,7 @@ def downgrade() -> None:
     op.execute(
         """
         DELETE FROM job_definitions
-        WHERE name IN ('billing_dunning_check','billing_check_unposted_deliveries','billing_mark_broken_promises')
+        WHERE code IN ('billing_dunning_check','billing_check_unposted_deliveries','billing_mark_broken_promises')
         """
     )
 
