@@ -16,6 +16,7 @@ import {
 } from "@/components/mt/primitives";
 import { CandidateCard } from "./_components/candidate-card";
 import { MtProductPanel } from "./_components/mt-product-panel";
+import { SkuQueuePanel, type SkuQueueEntry } from "./_components/sku-queue-panel";
 import { MtEmpty, MtError } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import {
@@ -127,6 +128,35 @@ export default function ValidacionMatchesPage() {
   const validate = useValidateMatch();
   const discard = useDiscardMatch();
   const mutating = validate.isPending || discard.isPending;
+
+  // SKU queue stats — candidate count + best score per SKU
+  const { data: queueStats } = useQuery<{ sku: string; count: number; best: number }[]>({
+    queryKey: ["matches", "sku-queue-stats"],
+    queryFn: async () => {
+      const res = await matchesApi.list({ status: "pending", limit: 200, include_total: false });
+      const map = new Map<string, { count: number; best: number }>();
+      for (const c of res.items) {
+        const prev = map.get(c.product_sku);
+        map.set(c.product_sku, {
+          count: (prev?.count ?? 0) + 1,
+          best: Math.max(prev?.best ?? 0, c.score),
+        });
+      }
+      return Array.from(map.entries()).map(([sku, v]) => ({ sku, ...v }));
+    },
+    staleTime: 60_000,
+  });
+
+  const queueEntries: SkuQueueEntry[] = React.useMemo(
+    () =>
+      queue.map((s) => {
+        const stats = queueStats?.find((q) => q.sku === s);
+        return { sku: s, candidateCount: stats?.count ?? 0, bestScore: stats?.best ?? null };
+      }),
+    [queue, queueStats],
+  );
+
+  const [queueCollapsed, setQueueCollapsed] = React.useState(false);
 
   // A2 — Prev / Next navigation
   const canPrev = clampedIndex > 0;
@@ -250,6 +280,15 @@ export default function ValidacionMatchesPage() {
 
       {/* Body */}
       <div className="flex items-start gap-[18px] px-6 pb-20 pt-5">
+        {/* SKU queue panel — colapsable */}
+        <SkuQueuePanel
+          entries={queueEntries}
+          selectedIndex={clampedIndex}
+          onSelect={setSkuIndex}
+          collapsed={queueCollapsed}
+          onToggle={() => setQueueCollapsed((v) => !v)}
+        />
+
         {/* Left panel — ficha MT */}
         {queue.length > 0 ? (
           <MtProductPanel sku={sku} />
