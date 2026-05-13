@@ -32,6 +32,7 @@ import {
   Tags,
   Timer,
   Truck,
+  TrendingUp,
   Users,
   Warehouse,
   type LucideIcon,
@@ -71,6 +72,11 @@ const SECTION_COMPRAS: readonly NavItem[] = [
   { href: "/compras/pedidos", label: "Pedidos", icon: Package, permissions: ["purchases:write"] },
   { href: "/compras/recepciones", label: "Recepciones", icon: Truck, permissions: ["purchases:write"] },
   { href: "/inventario", label: "Inventario", icon: Boxes, permissions: ["purchases:write"] },
+] as const;
+
+const SECTION_VENTAS: readonly NavItem[] = [
+  { href: "/ventas/dashboard", label: "Dashboard O2C", icon: TrendingUp, permissions: ["sales:read"] },
+  { href: "/ventas/pedidos", label: "Pedidos de venta", icon: ScrollText, permissions: ["sales:read"] },
 ] as const;
 
 const SECTION_QA: readonly NavItem[] = [
@@ -324,6 +330,13 @@ export function Sidebar() {
         <RbacGuard permissions={["purchases:write"]}>
           <SectionLabel collapsed={collapsed}>Compras</SectionLabel>
           {SECTION_COMPRAS.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} />
+          ))}
+        </RbacGuard>
+
+        <RbacGuard permissions={["sales:read"]}>
+          <SectionLabel collapsed={collapsed}>Ventas</SectionLabel>
+          {SECTION_VENTAS.map((item) => (
             <NavLink key={item.href} item={item} collapsed={collapsed} />
           ))}
         </RbacGuard>

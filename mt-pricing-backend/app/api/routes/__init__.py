@@ -11,6 +11,7 @@ from app.api.routes import (
     admin,
     admin_calibrator,
     admin_erp,
+    sales,
     admin_erp_eventos,
     admin_flags,
     admin_manufacturers,
@@ -182,3 +183,5 @@ router.include_router(admin_erp.router)
 router.include_router(admin_erp_eventos.router)
 router.include_router(warehouses.router)
 router.include_router(procurement.router)
+# EP-ERP-04 — Ventas O2C (US-ERP-04-01 … 06)
+router.include_router(sales.router)
