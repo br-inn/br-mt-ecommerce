@@ -41,6 +41,10 @@ def make_engine(url: str | None = None, *, echo: bool | None = None) -> AsyncEng
             "server_settings": {
                 "application_name": settings.APP_NAME,
                 "timezone": "UTC",
+                # Termina transacciones idle para evitar locks huérfanos.
+                "idle_in_transaction_session_timeout": str(
+                    settings.DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS
+                ),
             },
             # Supabase pgbouncer en modo transaction no soporta prepared
             # statements server-side cacheadas — debe ser 0.

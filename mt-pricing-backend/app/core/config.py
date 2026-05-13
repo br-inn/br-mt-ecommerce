@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW: int = 20
     DATABASE_POOL_PRE_PING: bool = True
     DATABASE_ECHO: bool = False
+    # Tiempo máximo (ms) que una transacción puede quedarse idle antes de
+    # ser terminada automáticamente. Protege de bugs que dejan locks abiertos.
+    DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS: int = 30_000
 
     # --- Redis / Celery ---
     REDIS_URL: RedisDsn = Field(default="redis://localhost:6379/0")  # type: ignore[arg-type]
@@ -219,6 +222,24 @@ class Settings(BaseSettings):
     # Path al YAML de pesos por familia. Relativo al CWD (raíz del proyecto).
     # Si no existe → scorer_weights.py usa pesos hardcoded + logger.warning.
     SCORER_WEIGHTS_PATH: str = "config/scorer_weights_by_family.yaml"
+
+    # --- ERP Integration (EP-INV-01 / US-INV-01-01) ---
+    # Adapter activo: "noop" (default dev), "sap", "odoo".
+    ERP_ADAPTER: str = "noop"
+    # Secret HMAC para webhooks entrantes del ERP (US-INV-01-07). Vacío = sin verificación.
+    ERP_WEBHOOK_SECRET: str = ""
+    ERP_DEBUG: bool = False
+    # SAP NW RFC connection (pyrfc)
+    SAP_HOST: str = ""
+    SAP_SYSTEM_NUMBER: str = ""
+    SAP_CLIENT: str = ""
+    SAP_USER: str = ""
+    SAP_PASSWORD: str = ""
+    # Odoo JSON-RPC
+    ODOO_URL: str = ""
+    ODOO_DB: str = ""
+    ODOO_USERNAME: str = ""
+    ODOO_PASSWORD: str = ""
 
     @property
     def is_prod(self) -> bool:

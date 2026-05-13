@@ -6,11 +6,11 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, exists, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import and_, exists, func, or_, select, update as sa_update
+from sqlalchemy.orm import noload, selectinload
 
 from app.db.enums import DataQuality
-from app.db.models.product import Product, ProductImage, ProductTranslation
+from app.db.models.product import Product, ProductBoreDimension, ProductImage, ProductTranslation
 from app.db.models.vocabularies import (
     Division,
     Material,
@@ -120,7 +120,19 @@ class ProductRepository(BaseRepository[Product]):
         sobre los mismos filtros (sin cursor) y lo devuelve como tercer
         elemento de la tupla.
         """
-        stmt = select(Product)
+        stmt = select(Product).options(
+            selectinload(Product.translations),
+            noload(Product.assets),
+            noload(Product.product_certifications),
+            noload(Product.product_applications),
+            noload(Product.materials),
+            noload(Product.connections),
+            noload(Product.tech_tables),
+            noload(Product.compatibilities_outgoing),
+            noload(Product.compatibilities_incoming),
+            noload(Product.product_divisions),
+            noload(Product.bore_dimensions),
+        )
 
         # Filtros principales
         clauses: list[Any] = []
@@ -294,36 +306,27 @@ class ProductRepository(BaseRepository[Product]):
     async def search_by_text(
         self, query: str, *, limit: int = 10
     ) -> Sequence[Product]:
-        """Full-text simple: pg_trgm sobre product_translations(en).name + ILIKE prefix sobre sku.
+        """Full-text simple: pg_trgm sobre product_translations(lang='en').name + ILIKE sobre sku.
 
-        Fase B (mig 065): name_en se eliminó de products; ahora viene de
-        product_translations(lang='en').
+        Usa JOIN directo sobre product_translations para que el planner pueda
+        usar idx_pt_name_en_trgm (GIN trgm index parcial WHERE lang='en').
         """
         term = query.strip()
         like_pattern = f"{term}%"
-        tr_alias = ProductTranslation.__table__.alias("pt_en_textsrch")
-        en_name = (
-            select(tr_alias.c.name)
-            .where(
-                tr_alias.c.sku == Product.sku,
-                tr_alias.c.lang == "en",
-            )
-            .correlate(Product)
-            .scalar_subquery()
-        )
+        pt = ProductTranslation.__table__.alias("pt_en_textsrch")
         stmt = (
             select(Product)
+            .join(pt, (pt.c.sku == Product.sku) & (pt.c.lang == "en"), isouter=True)
             .where(
                 Product.deleted_at.is_(None),
                 or_(
                     Product.sku.ilike(like_pattern),
-                    en_name.op("%")(term),
+                    pt.c.name.op("%")(term),
                 ),
             )
             .order_by(
-                # ranking: prefix match SKU primero, luego similarity name.
                 Product.sku.ilike(like_pattern).desc(),
-                func.similarity(en_name, term).desc(),
+                func.similarity(pt.c.name, term).desc(),
             )
             .limit(limit)
         )
@@ -345,22 +348,19 @@ class ProductRepository(BaseRepository[Product]):
         return result.scalars().all()
 
     async def search_by_name(self, query: str, *, limit: int = 50) -> Sequence[Product]:
-        """Búsqueda por similaridad pg_trgm sobre product_translations(en).name."""
-        tr_alias = ProductTranslation.__table__.alias("pt_en_byname")
-        en_name = (
-            select(tr_alias.c.name)
-            .where(
-                tr_alias.c.sku == Product.sku,
-                tr_alias.c.lang == "en",
-            )
-            .correlate(Product)
-            .scalar_subquery()
-        )
+        """Búsqueda por similaridad pg_trgm sobre product_translations(lang='en').name.
+
+        JOIN directo para usar idx_pt_name_en_trgm (GIN trgm index parcial).
+        """
+        pt = ProductTranslation.__table__.alias("pt_en_byname")
         stmt = (
             select(Product)
-            .where(en_name.op("%")(query))
-            .where(Product.deleted_at.is_(None))
-            .order_by(func.similarity(en_name, query).desc())
+            .join(pt, (pt.c.sku == Product.sku) & (pt.c.lang == "en"))
+            .where(
+                pt.c.name.op("%")(query),
+                Product.deleted_at.is_(None),
+            )
+            .order_by(func.similarity(pt.c.name, query).desc())
             .limit(limit)
         )
         result = await self.session.execute(stmt)
@@ -384,6 +384,25 @@ class ProductRepository(BaseRepository[Product]):
             )
             .order_by(Product.sku.asc())
             .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+
+class ProductBoreDimensionRepository(BaseRepository[ProductBoreDimension]):
+    model = ProductBoreDimension
+    pk_field = "id"
+    soft_delete_field = None
+
+    async def list_for_sku(self, product_sku: str) -> Sequence[ProductBoreDimension]:
+        stmt = (
+            select(ProductBoreDimension)
+            .where(ProductBoreDimension.product_sku == product_sku)
+            .order_by(
+                ProductBoreDimension.is_primary.desc(),
+                ProductBoreDimension.standard_system.asc(),
+                ProductBoreDimension.standard_code.asc(),
+            )
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
@@ -418,17 +437,30 @@ class ProductTranslationRepository(BaseRepository[ProductTranslation]):
         lang: str,
         **fields: Any,
     ) -> tuple[ProductTranslation, bool]:
-        """Inserta o actualiza una traducción. Devuelve `(row, created)`."""
-        existing = await self.get_one(sku, lang)
-        if existing is None:
-            row = ProductTranslation(sku=sku, lang=lang, **fields)
-            self.session.add(row)
-            await self.session.flush()
-            return row, True
-        for k, v in fields.items():
-            setattr(existing, k, v)
-        await self.session.flush()
-        return existing, False
+        """Inserta o actualiza una traducción — operación atómica (INSERT ON CONFLICT).
+
+        Elimina el doble roundtrip SELECT→INSERT/UPDATE que permite duplicados
+        bajo concurrencia. Devuelve `(row, created)`.
+        """
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        insert_values = {"sku": sku, "lang": lang, **fields}
+        update_values = {k: v for k, v in fields.items()}
+
+        stmt = (
+            pg_insert(ProductTranslation)
+            .values(**insert_values)
+            .on_conflict_do_update(
+                index_elements=["sku", "lang"],
+                set_={**update_values, "updated_at": func.now()},
+            )
+            .returning(ProductTranslation)
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalars().one()
+        # Heurística: si created_at == updated_at la fila es nueva.
+        created = row.created_at >= row.updated_at
+        return row, created
 
 
 class ProductImageRepository(BaseRepository[ProductImage]):
@@ -458,18 +490,21 @@ class ProductImageRepository(BaseRepository[ProductImage]):
         return result.scalar_one_or_none()
 
     async def set_primary(self, product_sku: str, image_id: Any) -> ProductImage | None:
-        """Marca una imagen como primaria — al resto las pone is_primary=False.
+        """Marca una imagen como primaria en un solo UPDATE — desmarca el resto.
 
-        Idempotente: si la imagen ya es primaria, no falla.
+        Reemplaza el loop Python previo (list_for_sku + N writes individuales)
+        con un único UPDATE que asigna is_primary = (id = :image_id) para todo
+        el SKU, resultando en 1 roundtrip en lugar de 2+N.
         """
         target = await self.get_for_product(product_sku, image_id)
         if target is None:
             return None
-        # Demote others (mismo sku) — flush antes de promote para respetar
-        # cualquier unique partial index futuro sobre (sku, is_primary=true).
-        for img in await self.list_for_sku(product_sku):
-            if img.id != image_id and img.is_primary:
-                img.is_primary = False
-        target.is_primary = True
+        await self.session.execute(
+            sa_update(ProductImage)
+            .where(ProductImage.sku == product_sku)
+            .values(is_primary=(ProductImage.id == image_id))
+            .execution_options(synchronize_session="fetch")
+        )
         await self.session.flush()
+        await self.session.refresh(target)
         return target
