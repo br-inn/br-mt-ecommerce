@@ -279,7 +279,7 @@ export default function ValidacionMatchesPage() {
       ) : null}
 
       {/* Body */}
-      <div className="flex items-start gap-[18px] px-6 pb-20 pt-5">
+      <div className="flex items-start gap-3 px-4 pb-20 pt-4">
         {/* SKU queue panel — colapsable */}
         <SkuQueuePanel
           entries={queueEntries}
@@ -380,7 +380,14 @@ export default function ValidacionMatchesPage() {
           <span className="mt-mono text-[11px] uppercase tracking-[0.6px]" style={{ color: MT.ink4 }}>
             SKU
           </span>
-          <span className="mt-mono text-[14px] font-semibold" style={{ color: MT.ink }}>
+          <span
+            className="mt-mono cursor-pointer text-[14px] font-semibold hover:underline"
+            style={{ color: MT.ink }}
+            title={sku !== "—" ? `Copiar: ${sku}` : undefined}
+            onClick={() => {
+              if (sku !== "—") void navigator.clipboard.writeText(sku);
+            }}
+          >
             {sku}
           </span>
           <span className="h-[18px] w-px" style={{ background: MT.border }} />
