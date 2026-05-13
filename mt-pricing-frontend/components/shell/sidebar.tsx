@@ -12,7 +12,9 @@ import {
   ClipboardList,
   Coins,
   Construction,
+  CreditCard,
   Database,
+  FileText,
   FileUp,
   Flag,
   GitCompare,
@@ -77,6 +79,11 @@ const SECTION_COMPRAS: readonly NavItem[] = [
 const SECTION_VENTAS: readonly NavItem[] = [
   { href: "/ventas/dashboard", label: "Dashboard O2C", icon: TrendingUp, permissions: ["sales:read"] },
   { href: "/ventas/pedidos", label: "Pedidos de venta", icon: ScrollText, permissions: ["sales:read"] },
+] as const;
+
+const SECTION_BILLING: readonly NavItem[] = [
+  { href: "/billing/dashboard", label: "Dashboard Billing", icon: CreditCard, permissions: ["sales:read"] },
+  { href: "/billing/facturas", label: "Facturas", icon: FileText, permissions: ["sales:read"] },
 ] as const;
 
 const SECTION_QA: readonly NavItem[] = [
@@ -337,6 +344,13 @@ export function Sidebar() {
         <RbacGuard permissions={["sales:read"]}>
           <SectionLabel collapsed={collapsed}>Ventas</SectionLabel>
           {SECTION_VENTAS.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} />
+          ))}
+        </RbacGuard>
+
+        <RbacGuard permissions={["sales:read"]}>
+          <SectionLabel collapsed={collapsed}>Billing</SectionLabel>
+          {SECTION_BILLING.map((item) => (
             <NavLink key={item.href} item={item} collapsed={collapsed} />
           ))}
         </RbacGuard>

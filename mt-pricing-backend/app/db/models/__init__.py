@@ -104,6 +104,14 @@ from app.db.models.sales import (
     SalesOrderLine,
     StockReservation,
 )
+from app.db.models.billing import (
+    DunningHistory,
+    DunningLevel,
+    EInvoiceSubmission,
+    Invoice,
+    InvoiceLine,
+    PaymentPromise,
+)
 from app.db.models.supplier import Supplier
 from app.db.models.user import Permission, Role, RolePermission, User
 from app.db.models.taxonomy_registry import (
@@ -294,4 +302,11 @@ __all__ = [
     "RmaHeader",
     "RmaLine",
     "CreditMemo",
+    # EP-ERP-05 — Billing & Facturación (mig. 20260526_110)
+    "Invoice",
+    "InvoiceLine",
+    "DunningLevel",
+    "DunningHistory",
+    "EInvoiceSubmission",
+    "PaymentPromise",
 ]
