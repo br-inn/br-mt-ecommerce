@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type React from "react";
 import { Globe, Plus, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -13,7 +14,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -25,6 +37,210 @@ import {
 import { RbacGuard } from "@/components/auth/rbac-guard";
 import { productsApi } from "@/lib/api/endpoints/products";
 import type { ProductRelease, ReleaseStatus } from "@/lib/api/endpoints/products";
+
+// ---- Tipos para el Dialog multi-step ----------------------------------
+type Step = 1 | 2 | 3;
+
+interface ReleaseFormState {
+  market_code: string;
+  currency: string;
+  local_price: string;
+  tax_code: string;
+}
+
+const EMPTY_FORM: ReleaseFormState = {
+  market_code: "",
+  currency: "",
+  local_price: "",
+  tax_code: "",
+};
+
+function AgregarMercadoDialog({
+  sku,
+  onSuccess,
+}: {
+  sku: string;
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<Step>(1);
+  const [form, setForm] = useState<ReleaseFormState>(EMPTY_FORM);
+  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      productsApi.createRelease(sku, {
+        market_code: form.market_code.toUpperCase(),
+        price_currency: form.currency || null,
+        list_price: form.local_price ? Number(form.local_price) : null,
+        tax_class: form.tax_code || null,
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      setStep(1);
+      setForm(EMPTY_FORM);
+      setError(null);
+      onSuccess();
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof Error ? err.message : "Error al crear el release.";
+      setError(msg);
+    },
+  });
+
+  const handleOpenChange = (v: boolean) => {
+    if (!v) {
+      setStep(1);
+      setForm(EMPTY_FORM);
+      setError(null);
+    }
+    setOpen(v);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Plus className="h-4 w-4" /> Agregar mercado
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Activar mercado — Paso {step} de 3</DialogTitle>
+          <DialogDescription>
+            {step === 1 && "Identifica el mercado destino."}
+            {step === 2 && "Precio local y datos fiscales."}
+            {step === 3 && "Confirma la configuración antes de activar."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === 1 && (
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="market_code">Código de mercado</Label>
+              <Input
+                id="market_code"
+                placeholder="UAE, KSA, MX, ES…"
+                value={form.market_code}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, market_code: e.target.value }))
+                }
+                maxLength={10}
+                className="uppercase"
+              />
+              <p className="text-xs text-muted-foreground">
+                Código ISO o código interno de mercado (2-10 caracteres).
+              </p>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="currency">Moneda (ISO 4217)</Label>
+              <Input
+                id="currency"
+                placeholder="AED, SAR, MXN…"
+                value={form.currency}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, currency: e.target.value.toUpperCase() }))
+                }
+                maxLength={3}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="local_price">Precio de lista local</Label>
+              <Input
+                id="local_price"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={form.local_price}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, local_price: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="tax_code">Clase fiscal</Label>
+              <Input
+                id="tax_code"
+                placeholder="VAT_5_UAE, IVA_16_MX, EXEMPT…"
+                value={form.tax_code}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, tax_code: e.target.value }))
+                }
+                maxLength={50}
+              />
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="grid gap-3 py-4 text-sm">
+            <dl className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/30 p-3">
+              <dt className="text-muted-foreground">Mercado</dt>
+              <dd className="font-medium">{form.market_code.toUpperCase() || "—"}</dd>
+              <dt className="text-muted-foreground">Moneda</dt>
+              <dd className="font-medium">{form.currency || "—"}</dd>
+              <dt className="text-muted-foreground">Precio local</dt>
+              <dd className="font-medium">
+                {form.local_price
+                  ? `${Number(form.local_price).toLocaleString()} ${form.currency}`
+                  : "—"}
+              </dd>
+              <dt className="text-muted-foreground">Clase fiscal</dt>
+              <dd className="font-medium font-mono text-xs">{form.tax_code || "—"}</dd>
+            </dl>
+            {error ? (
+              <p className="text-sm text-destructive">{error}</p>
+            ) : null}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2">
+          {step > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setStep((s) => (s - 1) as Step)}
+              disabled={createMutation.isPending}
+            >
+              Anterior
+            </Button>
+          )}
+          {step < 3 && (
+            <Button
+              size="sm"
+              onClick={() => {
+                if (step === 1 && !form.market_code.trim()) {
+                  setError("El código de mercado es obligatorio.");
+                  return;
+                }
+                setError(null);
+                setStep((s) => (s + 1) as Step);
+              }}
+            >
+              Siguiente
+            </Button>
+          )}
+          {step === 3 && (
+            <Button
+              size="sm"
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? "Activando…" : "Activar mercado"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // SAP Fiori Semantic Colors para release status
 const RELEASE_STATUS_CONFIG: Record<
@@ -130,9 +346,14 @@ export function MercadosClient({ sku }: Props) {
           </CardDescription>
         </div>
         <RbacGuard permissions={["products:write"]}>
-          <Button variant="outline" size="sm" disabled>
-            <Plus className="h-4 w-4" /> Agregar mercado
-          </Button>
+          <AgregarMercadoDialog
+            sku={sku}
+            onSuccess={() =>
+              void queryClient.invalidateQueries({
+                queryKey: ["product-releases", sku],
+              })
+            }
+          />
         </RbacGuard>
       </CardHeader>
 

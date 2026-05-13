@@ -118,6 +118,7 @@ export function UnidadesClient({ sku }: Props) {
                   <TableHead></TableHead>
                   <TableHead>A</TableHead>
                   <TableHead className="text-right">Factor</TableHead>
+                  <TableHead>Dirección</TableHead>
                   <TableHead>Estado</TableHead>
                   <RbacGuard permissions={["products:write"]}>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -142,6 +143,9 @@ export function UnidadesClient({ sku }: Props) {
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold">
                       × {conv.factor}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {conv.direction ?? "—"}
                     </TableCell>
                     <TableCell>
                       {conv.is_active ? (

@@ -257,6 +257,8 @@ class ProductPatch(BaseModel):
     pn: str | None = Field(default=None, max_length=8)
     connection: str | None = Field(default=None, max_length=64)
     brand: str | None = Field(default=None, max_length=64)
+    # M1-08 (mig 097) — GS1 global trade item number (EAN-8/12/13/14).
+    gtin: str | None = Field(default=None, max_length=14)
     specs: dict[str, Any] | None = None
     dimensions: dict[str, Any] | None = None
     weight: Decimal | None = Field(default=None, ge=0)
@@ -332,6 +334,15 @@ class ProductPatch(BaseModel):
             return v
         if v not in ALLOWED_DATA_QUALITY:
             raise ValueError(f"data_quality inválido: {v}")
+        return v
+
+    @field_validator("gtin")
+    @classmethod
+    def _validate_gtin(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not v.isdigit() or len(v) not in (8, 12, 13, 14):
+            raise ValueError("gtin debe ser numérico y de 8, 12, 13 o 14 dígitos")
         return v
 
     @field_validator("lifecycle_status")
@@ -609,6 +620,8 @@ class ProductUomConversionResponse(ProductUomConversionBase):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     product_sku: str
+    # EP-ERP-01-03 (mig 20260514_106) — sentido canónico de la conversión.
+    direction: str | None = None
     created_at: datetime
 
 

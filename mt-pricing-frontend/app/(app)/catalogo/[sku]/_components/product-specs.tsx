@@ -118,7 +118,28 @@ export function ProductSpecs({ sku }: { sku: string }) {
               <Row label={tFields("ean_box")} value={pkg?.ean_box} mono />
               <Row
                 label="GTIN (GS1)"
-                value={data.gtin ?? null}
+                value={
+                  data.gtin ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="font-mono">{data.gtin}</span>
+                      {data.gtin.length === 13 ? (
+                        <span
+                          className="rounded-sm bg-green-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-green-700"
+                          title="EAN-13 válido"
+                        >
+                          EAN-13
+                        </span>
+                      ) : (
+                        <span
+                          className="rounded-sm bg-muted px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
+                          title={`${data.gtin.length} dígitos`}
+                        >
+                          {data.gtin.length}d
+                        </span>
+                      )}
+                    </span>
+                  ) : null
+                }
                 mono
               />
               <Row label={tFields("moq")} value={pkg?.moq} />

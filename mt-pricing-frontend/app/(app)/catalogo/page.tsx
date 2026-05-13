@@ -20,6 +20,7 @@ import {
 import { materialsApi } from "@/lib/api/endpoints/materials";
 import { seriesApi } from "@/lib/api/endpoints/series";
 import { seriesTiersApi } from "@/lib/api/endpoints/series-tiers";
+import { LifecycleStatusBadge } from "@/components/ui/lifecycle-status-badge";
 
 import {
   Kbd,
@@ -546,6 +547,7 @@ export default function CatalogPage() {
               <MtTh className="text-right" style={{ width: 60 }}>
                 PN
               </MtTh>
+              <MtTh style={{ width: 100 }}>Estado</MtTh>
               <MtTh style={{ width: 70 }}>Calidad</MtTh>
               <MtTh style={{ width: 70 }}>Trad</MtTh>
               <MtTh style={{ width: 90 }}>Actualizado</MtTh>
@@ -556,7 +558,7 @@ export default function CatalogPage() {
             {isLoading
               ? Array.from({ length: 12 }).map((_, i) => (
                   <tr key={`sk-${i}`}>
-                    {Array.from({ length: 14 }).map((__, j) => (
+                    {Array.from({ length: 15 }).map((__, j) => (
                       <MtTd key={j}>
                         <MtSkeleton width={j === 3 ? 180 : 60} />
                       </MtTd>
@@ -668,6 +670,9 @@ export default function CatalogPage() {
                       </MtTd>
                       <MtTd mono className="text-right" style={{ color: MT.ink3 }}>
                         {r.pn ?? "—"}
+                      </MtTd>
+                      <MtTd>
+                        <LifecycleStatusBadge status={r.lifecycle_status} />
                       </MtTd>
                       <MtTd>
                         <QualityBadge v={r.data_quality} />
