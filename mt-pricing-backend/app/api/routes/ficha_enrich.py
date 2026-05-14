@@ -26,6 +26,7 @@ from app.services.ficha_enrichment import (
     FichaEnrichmentDiffer,
     FichaEnrichmentExtractor,
 )
+from app.services.importer_datasheets.pdf_extractor import extract_pdf_metadata
 
 router = APIRouter(tags=["products", "ficha-enrich"])
 
@@ -65,7 +66,6 @@ async def preview_ficha_enrich(
     differ = FichaEnrichmentDiffer()
     diffs = differ.compute(product, extraction)
 
-    from app.services.importer_datasheets.pdf_extractor import extract_pdf_metadata
     meta = extract_pdf_metadata(pdf_bytes)
 
     return FichaEnrichPreviewResponse(
