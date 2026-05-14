@@ -296,7 +296,13 @@ class FichaEnrichmentExtractor:
     def _is_enabled(self) -> bool:
         return bool(self._api_key) and _live_enabled()
 
-    async def extract(self, *, pdf_bytes: bytes, filename: str = "ficha.pdf") -> FichaExtractionResult:
+    async def extract(
+        self,
+        *,
+        pdf_bytes: bytes,
+        filename: str = "ficha.pdf",
+        classify_pages: bool = False,
+    ) -> FichaExtractionResult:
         meta = extract_pdf_metadata(pdf_bytes)
         text: str = meta.get("text", "") or ""
         tables: list[dict] = meta.get("tables", []) or []
@@ -343,8 +349,9 @@ class FichaEnrichmentExtractor:
         tool_input = _parse_tool_response(response)
         result = _build_result(tool_input, raw_text=text)
 
-        # Page classification (only if enabled and PDF has content)
-        if self._is_enabled() and pdf_bytes:
+        # Page classification es opcional — caro en tiempo (N llamadas visión en paralelo).
+        # Los endpoints de preview la omiten; se puede activar explícitamente.
+        if classify_pages and pdf_bytes:
             try:
                 import anthropic as _anthropic
                 client2 = _anthropic.AsyncAnthropic(api_key=self._api_key)
@@ -359,64 +366,88 @@ class FichaEnrichmentExtractor:
 
         return result
 
+    async def _classify_page(
+        self,
+        idx: int,
+        png: bytes,
+        client: Any,
+    ) -> tuple[PageClassification | None, ExtractedAsset | None, list[dict[str, float]]]:
+        """Clasifica una sola página — se llama en paralelo via asyncio.gather."""
+        b64 = base64.b64encode(png).decode("ascii")
+        try:
+            resp = await client.messages.create(
+                model=self._model,
+                max_tokens=256,
+                tools=[_PAGE_CLASSIFICATION_TOOL],
+                tool_choice={"type": "tool", "name": "classify_pdf_page"},
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": _PAGE_CLASSIFICATION_PROMPT},
+                        {"type": "image", "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": b64,
+                        }},
+                    ],
+                }],
+            )
+        except Exception as exc:
+            logger.warning("page_classify failed idx=%d err=%s", idx, exc)
+            return None, None, []
+
+        tool_input = _parse_tool_response(resp)
+        kind = tool_input.get("kind", "other")
+        clf = PageClassification(
+            page_index=idx,
+            kind=kind,
+            confidence=float(tool_input.get("confidence", 0.5)),
+            description=tool_input.get("description", ""),
+        )
+        asset: ExtractedAsset | None = None
+        if kind in _ASSET_KIND_MAP:
+            asset = ExtractedAsset(
+                page_index=idx,
+                asset_kind=_ASSET_KIND_MAP[kind],
+                description=clf.description,
+                mime_type="image/png",
+            )
+        pt_points: list[dict[str, float]] = []
+        if kind == "pt_curve":
+            pt_points = await self._extract_pt_curve(png, client)
+        return clf, asset, pt_points
+
     async def _classify_pages_and_extract(
         self,
         pdf_bytes: bytes,
         client: Any,
         max_pages: int = 9,
     ) -> tuple[list[PageClassification], list[ExtractedAsset], list[dict[str, float]]]:
+        import asyncio
         from app.services.importer_datasheets.vision_extractor import _render_pdf_pages
 
         pngs = _render_pdf_pages(pdf_bytes, max_pages=max_pages, resolution=120)
+
+        # Clasificar todas las páginas en paralelo — reduce N×15s a ~15s.
+        page_results = await asyncio.gather(
+            *[self._classify_page(idx, png, client) for idx, png in enumerate(pngs)],
+            return_exceptions=True,
+        )
+
         classifications: list[PageClassification] = []
         assets: list[ExtractedAsset] = []
         pt_points: list[dict[str, float]] = []
 
-        for idx, png in enumerate(pngs):
-            b64 = base64.b64encode(png).decode("ascii")
-            try:
-                resp = await client.messages.create(
-                    model=self._model,
-                    max_tokens=256,
-                    tools=[_PAGE_CLASSIFICATION_TOOL],
-                    tool_choice={"type": "tool", "name": "classify_pdf_page"},
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": _PAGE_CLASSIFICATION_PROMPT},
-                            {"type": "image", "source": {
-                                "type": "base64",
-                                "media_type": "image/png",
-                                "data": b64,
-                            }},
-                        ],
-                    }],
-                )
-            except Exception as exc:
-                logger.warning("page_classify failed idx=%d err=%s", idx, exc)
+        for res in page_results:
+            if isinstance(res, BaseException):
+                logger.warning("page_classify task raised: %s", res)
                 continue
-
-            tool_input = _parse_tool_response(resp)
-            kind = tool_input.get("kind", "other")
-            clf = PageClassification(
-                page_index=idx,
-                kind=kind,
-                confidence=float(tool_input.get("confidence", 0.5)),
-                description=tool_input.get("description", ""),
-            )
-            classifications.append(clf)
-
-            if kind in _ASSET_KIND_MAP:
-                assets.append(ExtractedAsset(
-                    page_index=idx,
-                    asset_kind=_ASSET_KIND_MAP[kind],
-                    description=clf.description,
-                    mime_type="image/png",
-                ))
-
-            if kind == "pt_curve":
-                pts = await self._extract_pt_curve(png, client)
-                pt_points.extend(pts)
+            clf, asset, pts = res
+            if clf:
+                classifications.append(clf)
+            if asset:
+                assets.append(asset)
+            pt_points.extend(pts)
 
         return classifications, assets, pt_points
 
