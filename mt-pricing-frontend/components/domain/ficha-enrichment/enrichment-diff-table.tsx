@@ -103,12 +103,12 @@ export function EnrichmentDiffTable({
           <table className="w-full border-separate border-spacing-0">
             <thead>
               <tr>
-                <MtTh style={{ width: "2.5rem" }}>{/* checkbox col */}</MtTh>
-                <MtTh>Campo</MtTh>
-                <MtTh>
+                <MtTh scope="col" style={{ width: "2.5rem" }}>{/* checkbox col */}</MtTh>
+                <MtTh scope="col">Campo</MtTh>
+                <MtTh scope="col">
                   <span style={{ color: MT.ink3 }}>Valor actual</span>
                 </MtTh>
-                <MtTh>
+                <MtTh scope="col">
                   <span style={{ color: MT.brand }}>Valor extraído</span>
                 </MtTh>
               </tr>
@@ -142,8 +142,8 @@ export function EnrichmentDiffTable({
             <table className="w-full border-separate border-spacing-0">
               <thead>
                 <tr>
-                  <MtTh>Campo</MtTh>
-                  <MtTh>Valor actual</MtTh>
+                  <MtTh scope="col">Campo</MtTh>
+                  <MtTh scope="col">Valor actual</MtTh>
                 </tr>
               </thead>
               <tbody>
@@ -179,11 +179,20 @@ interface DiffRowProps {
 function DiffRow({ diff, checked, onToggle }: DiffRowProps) {
   return (
     <tr
+      role="button"
+      tabIndex={0}
+      aria-label={`Toggle ${FIELD_LABELS[diff.field_name] ?? diff.field_name}`}
       className="cursor-pointer transition-colors"
       style={{
         backgroundColor: checked ? `${MT.brand}0d` : undefined,
       }}
       onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
     >
       {/* Checkbox */}
       <MtTd>
