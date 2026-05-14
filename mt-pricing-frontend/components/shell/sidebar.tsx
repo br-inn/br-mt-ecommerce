@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   Atom,
   Award,
+  BarChart2,
   BarChart3,
   Boxes,
   ChevronLeft,
@@ -62,11 +63,10 @@ const SECTION_HOME: readonly NavItem[] = [
   { href: "/dashboard", label: "Inicio", icon: Home },
 ] as const;
 
-const SECTION_PIM: readonly NavItem[] = [
+const SECTION_CATALOGO: readonly NavItem[] = [
   { href: "/catalogo", label: "Productos", icon: LayoutGrid },
-  { href: "/imports", label: "Importer PIM", icon: FileUp },
-  { href: "/imports/costs", label: "Importer costos", icon: FileUp, permissions: ["imports:write"] },
-  { href: "/imports/materials", label: "Importer materiales", icon: FileUp, permissions: ["imports:write"] },
+  { href: "/catalogo/validacion", label: "Validación", icon: GitCompare },
+  { href: "/fichas", label: "Fichas técnicas", icon: FileText },
 ] as const;
 
 const SECTION_COMPRAS: readonly NavItem[] = [
@@ -87,14 +87,12 @@ const SECTION_PRECIOS: readonly NavItem[] = [
 const SECTION_VENTAS: readonly NavItem[] = [
   { href: "/ventas/dashboard", label: "Dashboard O2C", icon: TrendingUp, permissions: ["sales:read"] },
   { href: "/ventas/pedidos", label: "Pedidos de venta", icon: ScrollText, permissions: ["sales:read"] },
-] as const;
-
-const SECTION_BILLING: readonly NavItem[] = [
-  { href: "/billing/dashboard", label: "Dashboard Billing", icon: CreditCard, permissions: ["sales:read"] },
   { href: "/billing/facturas", label: "Facturas", icon: FileText, permissions: ["sales:read"] },
+  { href: "/billing/dashboard", label: "Dashboard Facturación", icon: CreditCard, permissions: ["sales:read"] },
 ] as const;
 
 // EP-ERP-06 — Finanzas (US-ERP-06-01..09). Rol gerente.
+// Orden R2R: configuración → operación diaria → AP → costes → reporting → planificación → cierre
 const SECTION_FINANZAS: readonly NavItem[] = [
   { href: "/finanzas/cuentas", label: "Plan de cuentas", icon: Layers, permissions: ["gerente"] },
   { href: "/finanzas/periodos", label: "Períodos contables", icon: Timer, permissions: ["gerente"] },
@@ -104,14 +102,14 @@ const SECTION_FINANZAS: readonly NavItem[] = [
   { href: "/finanzas/costos-estandar", label: "Costos estándar", icon: Coins, permissions: ["gerente"] },
   { href: "/finanzas/pl", label: "P&L", icon: TrendingUp, permissions: ["gerente"] },
   { href: "/finanzas/balance", label: "Balance Sheet", icon: BarChart3, permissions: ["gerente"] },
-  { href: "/finanzas/cierre", label: "Cierre de período", icon: ShieldCheck, permissions: ["gerente"] },
-  { href: "/finanzas/presupuestos", label: "Presupuestos", icon: Receipt, permissions: ["gerente"] },
   { href: "/finanzas/copa", label: "CO-PA", icon: BarChart3, permissions: ["gerente"] },
+  { href: "/finanzas/presupuestos", label: "Presupuestos", icon: Receipt, permissions: ["gerente"] },
+  { href: "/finanzas/cierre", label: "Cierre de período", icon: ShieldCheck, permissions: ["gerente"] },
 ] as const;
 
 const SECTION_QA: readonly NavItem[] = [
-  { href: "/catalogo/validacion", label: "Validación", icon: GitCompare },
   { href: "/auditoria", label: "Auditoría", icon: ScrollText },
+  { href: "/admin/pim-quality", label: "Calidad PIM", icon: BarChart2, permissions: ["admin:read"] },
 ] as const;
 
 // Comparator (ADR-012) — research workstream. La entrada del sidebar sólo
@@ -129,20 +127,32 @@ const COMPARATOR_NAV_ITEM: NavItem = {
   badge: "Investigación",
 };
 
-// Items NO-taxonómicos del sidebar SISTEMA. Los items de taxonomía se
-// renderizan dinámicamente desde /taxonomies/registry vía useTaxonomyRegistry.
-const SECTION_SYS_NON_TAXONOMY: readonly NavItem[] = [
+// SISTEMA — tres sub-secciones
+// 1. Importaciones: herramientas de carga de datos
+const SECTION_SYS_IMPORTACIONES: readonly NavItem[] = [
+  { href: "/imports", label: "Importar PIM", icon: FileUp },
+  { href: "/imports/costs", label: "Importar costos", icon: FileUp, permissions: ["imports:write"] },
+  { href: "/imports/materials", label: "Importar materiales", icon: FileUp, permissions: ["imports:write"] },
+  { href: "/admin/imports", label: "Historial importaciones", icon: Database, permissions: ["imports:read"] },
+] as const;
+
+// 2. Configuración: parámetros de negocio y sistema
+const SECTION_SYS_CONFIG: readonly NavItem[] = [
   { href: "/admin/divisas", label: "Divisas", icon: Coins, permissions: ["currencies:manage"] },
   { href: "/admin/fx-rates", label: "Tasas FX", icon: Coins, permissions: ["fx:read"] },
-  { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },
-  { href: "/admin/jobs", label: "Jobs", icon: Timer, permissions: ["jobs:read"] },
-  { href: "/admin/imports", label: "Importaciones", icon: Database, permissions: ["imports:read"] },
   { href: "/admin/almacenes", label: "Almacenes", icon: Warehouse, permissions: ["purchases:write"] },
-  { href: "/admin/flags", label: "Feature flags", icon: Flag, permissions: ["admin:read"] },
-  { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
   { href: "/admin/approval-rules", label: "Reglas aprobación", icon: ShieldCheck, permissions: ["purchases:write"] },
   { href: "/admin/condiciones-proveedor", label: "PIR / Condiciones", icon: ClipboardList, permissions: ["purchases:write"] },
-  { href: "/ajustes", label: "Configuración", icon: Settings },
+  { href: "/admin/flags", label: "Feature flags", icon: Flag, permissions: ["admin:read"] },
+  { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
+  { href: "/ajustes", label: "Ajustes generales", icon: Settings },
+] as const;
+
+// 3. Administración: usuarios y procesos técnicos
+const SECTION_SYS_ADMIN: readonly NavItem[] = [
+  { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },
+  { href: "/admin/jobs", label: "Jobs", icon: Timer, permissions: ["jobs:read"] },
+  { href: "/admin/scraper", label: "Scraper", icon: Search, permissions: ["products:read"] },
 ] as const;
 
 // --- Mapeo data-driven: icon string (de ui_layout.icon en backend) → componente lucide.
@@ -356,8 +366,8 @@ export function Sidebar() {
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
 
-        <SectionLabel collapsed={collapsed}>PIM</SectionLabel>
-        {SECTION_PIM.map((item) => (
+        <SectionLabel collapsed={collapsed}>Catálogo</SectionLabel>
+        {SECTION_CATALOGO.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
 
@@ -374,13 +384,6 @@ export function Sidebar() {
         <RbacGuard permissions={["sales:read"]}>
           <SectionLabel collapsed={collapsed}>Ventas</SectionLabel>
           {SECTION_VENTAS.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={collapsed} />
-          ))}
-        </RbacGuard>
-
-        <RbacGuard permissions={["sales:read"]}>
-          <SectionLabel collapsed={collapsed}>Billing</SectionLabel>
-          {SECTION_BILLING.map((item) => (
             <NavLink key={item.href} item={item} collapsed={collapsed} />
           ))}
         </RbacGuard>
@@ -404,10 +407,14 @@ export function Sidebar() {
           />
         ) : null}
 
-        <SectionLabel collapsed={collapsed}>Sistema</SectionLabel>
-        {/* Taxonomías: data-driven desde /taxonomies/registry. Agregar una nueva
-            dimensión (mercados/certificaciones/aplicaciones) = INSERT en
-            taxonomy_types + reload — sin tocar código frontend. */}
+        <SectionLabel collapsed={collapsed}>Importaciones</SectionLabel>
+        {SECTION_SYS_IMPORTACIONES.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={collapsed} />
+        ))}
+
+        <SectionLabel collapsed={collapsed}>Taxonomías</SectionLabel>
+        {/* Data-driven desde /taxonomies/registry. Agregar una nueva dimensión =
+            INSERT en taxonomy_types + reload — sin tocar código frontend. */}
         {taxonomyLoading && !taxonomyTypes ? (
           <SidebarTaxonomySkeleton collapsed={collapsed} />
         ) : (
@@ -415,8 +422,14 @@ export function Sidebar() {
             <NavLink key={`tax-${item.href}`} item={item} collapsed={collapsed} />
           ))
         )}
-        {/* Items NO-taxonómicos (divisas, FX, jobs, etc.) hardcoded */}
-        {SECTION_SYS_NON_TAXONOMY.map((item) => (
+
+        <SectionLabel collapsed={collapsed}>Configuración</SectionLabel>
+        {SECTION_SYS_CONFIG.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={collapsed} />
+        ))}
+
+        <SectionLabel collapsed={collapsed}>Administración</SectionLabel>
+        {SECTION_SYS_ADMIN.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
       </nav>
