@@ -110,6 +110,17 @@ class FichaEnrichmentDiffer:
 
         return diffs
 
+    def compute_batch(
+        self,
+        products: list,  # list[Product]
+        extraction: "FichaExtractionResult",
+    ) -> list:  # list[SkuDiffResult]
+        from app.schemas.ficha_enrich import SkuDiffResult
+        return [
+            SkuDiffResult(sku=p.sku, diffs=self.compute(p, extraction))
+            for p in products
+        ]
+
 
 def _values_differ(current: Any, extracted: Any) -> bool:
     if current is None and extracted is None:

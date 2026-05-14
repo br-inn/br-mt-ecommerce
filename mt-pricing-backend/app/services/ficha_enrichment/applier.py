@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.ficha_enrich import FichaEnrichApplyRequest, FichaEnrichApplyResponse
+from app.schemas.ficha_enrich import FichaEnrichApplyRequest, SkuApplyResult
 from app.services.ficha_enrichment.differ import _specs_to_dict
 
 logger = logging.getLogger(__name__)
@@ -30,19 +30,19 @@ class FichaEnrichmentApplier:
         request: FichaEnrichApplyRequest,
         actor: Any,  # User ORM object — has .id
         pdf_bytes: bytes | None = None,
-    ) -> FichaEnrichApplyResponse:
+    ) -> SkuApplyResult:
         applied: list[str] = []
         skipped: list[str] = []
-        errors: list[str] = []
+        warnings: list[str] = []
 
         product = await self._load_product(sku)
         if product is None:
-            errors.append(f"product_not_found: {sku}")
-            return FichaEnrichApplyResponse(
+            warnings.append(f"product_not_found: {sku}")
+            return SkuApplyResult(
                 sku=sku,
                 applied_fields=[],
                 skipped_fields=[],
-                errors=errors,
+                warnings=warnings,
             )
 
         # --- scalars ---
@@ -67,7 +67,7 @@ class FichaEnrichmentApplier:
                     setattr(product, field, value)
                     applied.append(field)
                 except Exception as exc:
-                    errors.append(f"{field}: {exc}")
+                    warnings.append(f"{field}: {exc}")
 
         # --- specs JSONB merge ---
         if request.apply_specs:
@@ -86,7 +86,7 @@ class FichaEnrichmentApplier:
                 applied.append("materials")
             except Exception as exc:
                 logger.warning("materials apply failed sku=%s err=%s", sku, exc)
-                errors.append(f"materials: {exc}")
+                warnings.append(f"materials: {exc}")
 
         # --- dimensions tech-table ---
         if request.apply_dimensions and request.extraction.dimensions:
@@ -95,7 +95,7 @@ class FichaEnrichmentApplier:
                 applied.append("dimensions_by_dn")
             except Exception as exc:
                 logger.warning("dimensions apply failed sku=%s err=%s", sku, exc)
-                errors.append(f"dimensions_by_dn: {exc}")
+                warnings.append(f"dimensions_by_dn: {exc}")
 
         # --- translations ---
         if request.apply_translations and request.extraction.translations:
@@ -104,7 +104,7 @@ class FichaEnrichmentApplier:
                 applied.append("translations")
             except Exception as exc:
                 logger.warning("translations apply failed sku=%s err=%s", sku, exc)
-                errors.append(f"translations: {exc}")
+                warnings.append(f"translations: {exc}")
 
         # --- P/T curve ---
         if request.apply_pt_curve and request.extraction.pt_curve_points:
@@ -113,7 +113,7 @@ class FichaEnrichmentApplier:
                 applied.append(f"pt_curve({len(request.extraction.pt_curve_points)} pts)")
             except Exception as exc:
                 logger.warning("pt_curve apply failed sku=%s err=%s", sku, exc)
-                errors.append(f"pt_curve: {exc}")
+                warnings.append(f"pt_curve: {exc}")
 
         # --- assets (PNG pages) ---
         if request.apply_assets and request.extraction.extracted_assets and pdf_bytes:
@@ -125,13 +125,13 @@ class FichaEnrichmentApplier:
                     applied.append(f"assets({len(uploaded)})")
             except Exception as exc:
                 logger.warning("assets apply failed sku=%s err=%s", sku, exc)
-                errors.append(f"assets: {exc}")
+                warnings.append(f"assets: {exc}")
 
-        return FichaEnrichApplyResponse(
+        return SkuApplyResult(
             sku=sku,
             applied_fields=applied,
             skipped_fields=skipped,
-            errors=errors,
+            warnings=warnings,
         )
 
     async def _load_product(self, sku: str) -> Any:

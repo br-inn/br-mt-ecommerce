@@ -101,13 +101,20 @@ class FieldDiff(BaseModel):
     validation_error: str | None = None
 
 
+class SkuDiffResult(BaseModel):
+    """Diffs de un SKU concreto dentro de la serie."""
+    sku: str
+    diffs: list[FieldDiff]
+
+
 class FichaEnrichPreviewResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    sku: str
+    sku: str          # SKU anchor (el del URL)
+    series: str       # prefijo de serie detectado, ej. "4097"
     filename: str
     extraction: FichaExtractionResult
-    diffs: list[FieldDiff]
+    series_skus: list[SkuDiffResult]   # un entry por cada SKU de la serie
     model_gaps: list[str]
     page_count: int
     confidence: float
@@ -117,26 +124,35 @@ class FichaEnrichApplyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     extraction: FichaExtractionResult
+    apply_to_skus: list[str] = Field(
+        description="SKUs a los que aplicar. Vacío = ninguno."
+    )
     apply_scalars: bool = True
     apply_specs: bool = True
     apply_materials: bool = True
     apply_dimensions: bool = True
     apply_translations: bool = False
-    apply_assets: bool = True
-    apply_pt_curve: bool = True
+    apply_assets: bool = False
+    apply_pt_curve: bool = False
     selected_scalar_fields: list[str] = Field(
         default_factory=list,
         description="Si vacío aplica todos los scalars extraídos; si hay lista, solo esos.",
     )
 
 
-class FichaEnrichApplyResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
+class SkuApplyResult(BaseModel):
+    """Resultado de aplicar la extracción a un SKU concreto."""
     sku: str
     applied_fields: list[str]
     skipped_fields: list[str]
-    errors: list[str]
+    warnings: list[str]
+
+
+class FichaEnrichApplyResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    series: str
+    results: list[SkuApplyResult]
 
 
 __all__ = [
@@ -149,7 +165,9 @@ __all__ = [
     "ExtractedSpecs",
     "FichaExtractionResult",
     "FieldDiff",
+    "SkuDiffResult",
     "FichaEnrichPreviewResponse",
     "FichaEnrichApplyRequest",
+    "SkuApplyResult",
     "FichaEnrichApplyResponse",
 ]

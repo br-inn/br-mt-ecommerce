@@ -50,6 +50,7 @@ async def test_apply_scalars_updates_product():
             specs=ExtractedSpecs(),
             confidence=0.9,
         ),
+        apply_to_skus=["4097015"],
         apply_scalars=True,
         apply_specs=False,
         apply_materials=False,
@@ -63,7 +64,7 @@ async def test_apply_scalars_updates_product():
     assert "temp_min_c" in result.applied_fields
     assert product.pn == "30"
     assert product.temp_min_c == -20
-    assert result.errors == []
+    assert result.warnings == []
 
 
 @pytest.mark.asyncio
@@ -80,11 +81,12 @@ async def test_apply_product_not_found():
             specs=ExtractedSpecs(),
             confidence=0.9,
         ),
+        apply_to_skus=["9999999"],
         apply_assets=False,
         apply_pt_curve=False,
     )
     result = await applier.apply("9999999", req, _make_actor())
-    assert any("product_not_found" in e for e in result.errors)
+    assert any("product_not_found" in e for e in result.warnings)
 
 
 @pytest.mark.asyncio
@@ -99,6 +101,7 @@ async def test_apply_locked_field_skipped():
             specs=ExtractedSpecs(),
             confidence=0.9,
         ),
+        apply_to_skus=["4097015"],
         apply_materials=False,
         apply_dimensions=False,
         apply_assets=False,
@@ -121,6 +124,7 @@ async def test_apply_selected_fields_only():
             specs=ExtractedSpecs(),
             confidence=0.9,
         ),
+        apply_to_skus=["4097015"],
         apply_scalars=True,
         apply_specs=False,
         apply_materials=False,
