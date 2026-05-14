@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -104,6 +104,7 @@ class FieldDiff(BaseModel):
 class SkuDiffResult(BaseModel):
     """Diffs de un SKU concreto dentro de la serie."""
     sku: str
+    status: Literal["existing", "new"] = "existing"
     diffs: list[FieldDiff]
 
 
@@ -155,6 +156,47 @@ class FichaEnrichApplyResponse(BaseModel):
     results: list[SkuApplyResult]
 
 
+class FichaSeriesPreviewResponse(BaseModel):
+    """Respuesta de preview serie-level (sin SKU anchor)."""
+    model_config = ConfigDict(extra="ignore")
+
+    series: str
+    filename: str
+    extraction: FichaExtractionResult
+    series_skus: list[SkuDiffResult]
+    model_gaps: list[str]
+    page_count: int
+    confidence: float
+
+
+class FichaSeriesApplyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    extraction: FichaExtractionResult
+    apply_to_skus: list[str]
+    series: str
+    pdf_filename: str = ""
+    apply_scalars: bool = True
+    apply_specs: bool = True
+    apply_materials: bool = True
+    apply_dimensions: bool = True
+    apply_translations: bool = False
+    apply_assets: bool = False
+    apply_pt_curve: bool = False
+    selected_scalar_fields: list[str] = Field(default_factory=list)
+    save_document: bool = True
+
+
+class FichaSeriesApplyResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    series: str
+    results: list[SkuApplyResult]
+    document_id: str | None = None
+    skus_created: list[str] = Field(default_factory=list)
+    skus_updated: list[str] = Field(default_factory=list)
+
+
 __all__ = [
     "ExtractedScalars",
     "ExtractedMaterial",
@@ -170,4 +212,7 @@ __all__ = [
     "FichaEnrichApplyRequest",
     "SkuApplyResult",
     "FichaEnrichApplyResponse",
+    "FichaSeriesPreviewResponse",
+    "FichaSeriesApplyRequest",
+    "FichaSeriesApplyResponse",
 ]
