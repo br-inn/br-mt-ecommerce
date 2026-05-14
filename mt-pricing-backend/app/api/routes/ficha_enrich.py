@@ -24,12 +24,21 @@ from app.schemas.ficha_enrich import (
     FichaEnrichApplyRequest,
     FichaEnrichApplyResponse,
     FichaEnrichPreviewResponse,
+    FichaSeriesApplyRequest,
+    FichaSeriesApplyResponse,
+    FichaSeriesPreviewResponse,
     SkuApplyResult,
 )
 from app.services.ficha_enrichment import (
     FichaEnrichmentApplier,
     FichaEnrichmentDiffer,
     FichaEnrichmentExtractor,
+)
+from app.services.ficha_enrichment.document_saver import save_ficha_document
+from app.services.ficha_enrichment.product_creator import create_product_from_extraction
+from app.services.ficha_enrichment.series_resolver import (
+    extract_series_prefix,
+    resolve_series,
 )
 from app.services.importer_datasheets.pdf_extractor import extract_pdf_metadata
 
@@ -161,6 +170,120 @@ async def apply_ficha_enrich(
                 raise
 
     return FichaEnrichApplyResponse(series=series, results=results)
+
+
+@router.post(
+    "/ficha-enrich/series/preview",
+    response_model=FichaSeriesPreviewResponse,
+    summary="Vista previa serie completa — detecta SKUs existentes y nuevos desde el PDF",
+    responses={
+        422: {"model": ProblemDetails},
+        413: {"model": ProblemDetails},
+    },
+)
+async def preview_ficha_series(
+    file: Annotated[UploadFile, File(description="PDF ficha técnica (≤ 50 MB)")],
+    _user: Annotated[User, Depends(require_permissions("products:write"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> FichaSeriesPreviewResponse:
+    if file.filename is None:
+        raise HTTPException(status_code=422, detail={"code": "missing_filename", "title": "Filename requerido"})
+
+    pdf_bytes = await file.read()
+    if len(pdf_bytes) > _MAX_PDF_BYTES:
+        raise HTTPException(status_code=413, detail={"code": "pdf_too_large", "title": "PDF > 50 MB"})
+    if not pdf_bytes.lstrip().startswith(b"%PDF"):
+        raise HTTPException(status_code=422, detail={"code": "not_a_pdf", "title": "No es un PDF válido"})
+
+    series = extract_series_prefix(file.filename)
+    if not series:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "no_series", "title": "No se pudo detectar la serie del filename. Formato esperado: MTFT_XXXX.pdf"},
+        )
+
+    extractor = FichaEnrichmentExtractor()
+    extraction = await extractor.extract(pdf_bytes=pdf_bytes, filename=file.filename)
+
+    series_skus = await resolve_series(session, series, extraction)
+    meta = extract_pdf_metadata(pdf_bytes)
+
+    return FichaSeriesPreviewResponse(
+        series=series,
+        filename=file.filename,
+        extraction=extraction,
+        series_skus=series_skus,
+        model_gaps=extraction.model_gaps,
+        page_count=meta.get("page_count", 0),
+        confidence=extraction.confidence,
+    )
+
+
+@router.post(
+    "/ficha-enrich/series/apply",
+    response_model=FichaSeriesApplyResponse,
+    summary="Aplicar ficha técnica — crea SKUs nuevos + actualiza existentes + guarda Document",
+    responses={
+        422: {"model": ProblemDetails},
+    },
+)
+async def apply_ficha_series(
+    body: FichaSeriesApplyRequest,
+    user: Annotated[User, Depends(require_permissions("products:write"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> FichaSeriesApplyResponse:
+    if not body.apply_to_skus:
+        raise HTTPException(status_code=422, detail={"code": "no_skus", "title": "apply_to_skus vacío"})
+
+    results: list[SkuApplyResult] = []
+    skus_created: list[str] = []
+    skus_updated: list[str] = []
+
+    # Determinar cuáles existen
+    from sqlalchemy import select as _select
+    existing_result = await session.execute(
+        _select(Product).where(Product.sku.in_(body.apply_to_skus))
+    )
+    existing_skus = {p.sku for p in existing_result.scalars().all()}
+
+    for target_sku in body.apply_to_skus:
+        if target_sku in existing_skus:
+            try:
+                applier = FichaEnrichmentApplier(session)
+                result = await applier.apply(target_sku, body, user)
+                results.append(result)
+                skus_updated.append(target_sku)
+            except HTTPException as exc:
+                results.append(SkuApplyResult(
+                    sku=target_sku, applied_fields=[], skipped_fields=[],
+                    warnings=[f"Error {exc.status_code}: {exc.detail}"],
+                ))
+        else:
+            result = await create_product_from_extraction(session, target_sku, body.extraction)
+            results.append(result)
+            if not result.warnings:
+                skus_created.append(target_sku)
+
+    document_id: str | None = None
+    if body.save_document and body.pdf_filename:
+        all_processed_skus = skus_created + skus_updated
+        document_id = await save_ficha_document(
+            session=session,
+            pdf_bytes=b"",  # PDF bytes not re-sent in apply; document saved without binary
+            filename=body.pdf_filename,
+            series=body.series,
+            skus=all_processed_skus,
+        )
+
+    await session.commit()
+
+    return FichaSeriesApplyResponse(
+        series=body.series,
+        results=results,
+        document_id=document_id,
+        skus_created=skus_created,
+        skus_updated=skus_updated,
+    )
 
 
 __all__ = ["router"]
