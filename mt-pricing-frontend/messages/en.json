@@ -238,7 +238,8 @@
         "costs": "Costs",
         "datasheets": "Documents",
         "spareParts": "Spare parts",
-        "audit": "Audit"
+        "audit": "Audit",
+        "enrich": "Enrich"
       },
       "fields": {
         "sku": "SKU",

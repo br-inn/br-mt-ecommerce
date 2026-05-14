@@ -238,7 +238,8 @@
         "costs": "Costos",
         "datasheets": "Documentos",
         "spareParts": "Recambios",
-        "audit": "Auditoría"
+        "audit": "Auditoría",
+        "enrich": "Enriquecer"
       },
       "fields": {
         "sku": "SKU",
@@ -1124,6 +1125,52 @@
         "datasetPath": "Dataset path",
         "version": "Versión objetivo",
         "submit": "Entrenar"
+      }
+    },
+    "scraper": {
+      "title": "Scraper Amazon UAE",
+      "description": "Ejecuta búsquedas de precios en Amazon UAE para los productos del catálogo",
+      "run": {
+        "title": "Ejecutar scraping",
+        "skusLabel": "SKUs a escanear (separados por coma o salto de línea)",
+        "skusPlaceholder": "SKU-001, SKU-002, SKU-003",
+        "allProducts": "Todos los productos activos",
+        "force": "Re-escanear aunque ya existan candidatos recientes",
+        "submit": "Ejecutar scraping",
+        "submitting": "Ejecutando..."
+      },
+      "job": {
+        "title": "Estado del trabajo",
+        "id": "Job ID",
+        "progress": "Progreso",
+        "newScan": "Nuevo escaneo",
+        "statuses": {
+          "pending": "En cola",
+          "running": "Ejecutando",
+          "completed": "Completado",
+          "failed": "Error"
+        }
+      },
+      "cola": {
+        "title": "Cola de validación",
+        "description": "Candidatos en zona gris que requieren validación humana (score 30-74 o veredicto visual incierto)",
+        "emptyTitle": "Sin candidatos pendientes",
+        "emptyHint": "Cuando el scraper encuentre coincidencias inciertas, aparecerán aquí para revisión",
+        "columns": {
+          "sku": "SKU",
+          "asin": "ASIN",
+          "score": "Score",
+          "method": "Método",
+          "actions": "Acciones"
+        },
+        "actions": {
+          "validate": "Validar",
+          "reject": "Rechazar"
+        }
+      },
+      "errors": {
+        "runFailed": "Error al ejecutar el scraping",
+        "jobFailed": "Error al consultar el estado del trabajo"
       }
     },
     "inventario": {

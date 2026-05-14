@@ -238,7 +238,8 @@
         "costs": "التكاليف",
         "datasheets": "المستندات",
         "spareParts": "قطع الغيار",
-        "audit": "سجل التدقيق"
+        "audit": "سجل التدقيق",
+        "enrich": "إثراء"
       },
       "fields": {
         "sku": "SKU",

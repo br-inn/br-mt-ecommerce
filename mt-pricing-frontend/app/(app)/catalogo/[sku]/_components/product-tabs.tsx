@@ -60,6 +60,11 @@ export function ProductTabs({ sku }: Props) {
       label: t("audit"),
       match: (p: string) => p.startsWith(`/catalogo/${sku}/audit`),
     },
+    {
+      href: `/catalogo/${sku}/enriquecer`,
+      label: t("enrich"),
+      match: (p: string) => p.startsWith(`/catalogo/${sku}/enriquecer`),
+    },
   ];
 
   return (
