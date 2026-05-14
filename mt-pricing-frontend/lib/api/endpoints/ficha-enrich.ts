@@ -100,6 +100,7 @@ export interface FieldDiff {
 
 export interface SkuDiffResult {
   sku: string;
+  status: "existing" | "new";
   diffs: FieldDiff[];
 }
 
@@ -137,6 +138,38 @@ export interface FichaEnrichApplyRequest {
 export interface FichaEnrichApplyResponse {
   series: string;
   results: SkuApplyResult[];     // un entry por SKU aplicado
+}
+
+export interface FichaSeriesPreviewResponse {
+  series: string;
+  filename: string;
+  extraction: FichaExtractionResult;
+  series_skus: SkuDiffResult[];
+  model_gaps: string[];
+  page_count: number;
+  confidence: number;
+}
+
+export interface FichaSeriesApplyRequest {
+  extraction: FichaExtractionResult;
+  apply_to_skus: string[];
+  series: string;
+  pdf_filename?: string;
+  apply_scalars?: boolean;
+  apply_specs?: boolean;
+  apply_materials?: boolean;
+  apply_dimensions?: boolean;
+  apply_translations?: boolean;
+  selected_scalar_fields?: string[];
+  save_document?: boolean;
+}
+
+export interface FichaSeriesApplyResponse {
+  series: string;
+  results: SkuApplyResult[];
+  document_id: string | null;
+  skus_created: string[];
+  skus_updated: string[];
 }
 
 export class FichaEnrichApiError extends Error {
@@ -202,6 +235,26 @@ export async function applyFichaEnrich(
 ): Promise<FichaEnrichApplyResponse> {
   return authedFetch<FichaEnrichApplyResponse>(
     `/api/v1/products/${encodeURIComponent(sku)}/ficha-enrich/apply`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+export async function previewFichaSeries(
+  file: File,
+): Promise<FichaSeriesPreviewResponse> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return authedFetch<FichaSeriesPreviewResponse>(
+    `/api/v1/ficha-enrich/series/preview`,
+    { method: "POST", body: fd },
+  );
+}
+
+export async function applyFichaSeries(
+  body: FichaSeriesApplyRequest,
+): Promise<FichaSeriesApplyResponse> {
+  return authedFetch<FichaSeriesApplyResponse>(
+    `/api/v1/ficha-enrich/series/apply`,
     { method: "POST", body: JSON.stringify(body) },
   );
 }
