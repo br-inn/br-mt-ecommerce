@@ -12,6 +12,7 @@ from app.api.routes import (
     admin_calibrator,
     admin_erp,
     billing,
+    ficha_enrich,
     finance,
     sales,
     admin_erp_eventos,
@@ -55,6 +56,8 @@ from app.api.routes import (
     products,
     purchase_orders,
     roles,
+    schemes,
+    scraper,
     suppliers,
     translations_workflow,
     users,
@@ -191,3 +194,9 @@ router.include_router(sales.router)
 router.include_router(billing.router)
 # EP-ERP-06 — Finanzas (US-ERP-06-01 … 09)
 router.include_router(finance.router)
+# US-1A-04-S4 — Schemes (cost_components_template dinámico para el frontend)
+router.include_router(schemes.router)
+# EP-SCR-01 — Scraper Amazon UAE (batch scraping + job status)
+router.include_router(scraper.router)
+# Ficha técnica enrichment — preview + apply (PDF → campos estructurados)
+router.include_router(ficha_enrich.router)
