@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 import { UploadCloud, CheckCircle2, AlertTriangle, ChevronLeft, RefreshCw } from "lucide-react";
 
 import { EnrichmentDiffTable } from "@/components/domain/ficha-enrichment/enrichment-diff-table";
@@ -101,6 +102,7 @@ function Dropzone({ onFile, isPending, error }: DropzoneProps) {
         type="file"
         accept="application/pdf"
         className="sr-only"
+        aria-label="Subir ficha técnica PDF"
         onChange={handleChange}
       />
 
@@ -125,9 +127,10 @@ interface DiffStepProps {
   sku: string;
   preview: FichaEnrichPreviewResponse;
   onReset: () => void;
+  onApplySuccess: () => void;
 }
 
-function DiffStep({ sku, preview, onReset }: DiffStepProps) {
+function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
   const applyMutation = useApplyFichaEnrich(sku);
 
   // Auto-select all changed diffs on mount
@@ -166,15 +169,26 @@ function DiffStep({ sku, preview, onReset }: DiffStepProps) {
     const hasDimensions = selectedFields.has("dimensions_by_dn");
     const hasTranslations = selectedFields.has("translations");
 
-    applyMutation.mutate({
-      extraction: preview.extraction,
-      apply_scalars: selectedScalarFields.length > 0,
-      apply_specs: hasSpec,
-      apply_materials: hasMaterials,
-      apply_dimensions: hasDimensions,
-      apply_translations: hasTranslations,
-      selected_scalar_fields: selectedScalarFields,
-    });
+    applyMutation.mutate(
+      {
+        extraction: preview.extraction,
+        apply_scalars: selectedScalarFields.length > 0,
+        apply_specs: hasSpec,
+        apply_materials: hasMaterials,
+        apply_dimensions: hasDimensions,
+        apply_translations: hasTranslations,
+        selected_scalar_fields: selectedScalarFields,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Campos aplicados correctamente");
+          onApplySuccess();
+        },
+        onError: (err) => {
+          toast.error(err.message || "Error al aplicar los campos");
+        },
+      },
+    );
   };
 
   if (applyMutation.isSuccess) {
@@ -269,12 +283,12 @@ function DiffStep({ sku, preview, onReset }: DiffStepProps) {
 // ---------------------------------------------------------------------------
 
 interface ResultStepProps {
-  result: { applied_fields: string[]; skipped_fields: string[]; errors: string[] };
+  result: { applied_fields: string[]; skipped_fields: string[]; warnings: string[] };
   onReset: () => void;
 }
 
 function ResultStep({ result, onReset }: ResultStepProps) {
-  const hasErrors = result.errors.length > 0;
+  const hasWarnings = result.warnings.length > 0;
 
   return (
     <div className="flex flex-col items-center gap-6 py-10">
@@ -282,11 +296,11 @@ function ResultStep({ result, onReset }: ResultStepProps) {
         <CheckCircle2
           size={40}
           strokeWidth={1.5}
-          style={{ color: hasErrors ? MT.warning : MT.success }}
+          style={{ color: hasWarnings ? MT.warning : MT.success }}
         />
         <div>
           <p className="text-[15px] font-semibold" style={{ color: MT.ink }}>
-            {hasErrors ? "Aplicado con advertencias" : "Enriquecimiento aplicado"}
+            {hasWarnings ? "Aplicado con advertencias" : "Enriquecimiento aplicado"}
           </p>
           <p className="mt-1 text-[12.5px]" style={{ color: MT.ink3 }}>
             {result.applied_fields.length} campo{result.applied_fields.length !== 1 ? "s" : ""} actualizados
@@ -327,20 +341,20 @@ function ResultStep({ result, onReset }: ResultStepProps) {
         </div>
       ) : null}
 
-      {/* Errors */}
-      {result.errors.length > 0 ? (
+      {/* Warnings */}
+      {result.warnings.length > 0 ? (
         <div
           className="w-full max-w-md rounded-lg border px-4 py-3"
-          style={{ borderColor: MT.dangerBorder, backgroundColor: MT.dangerSoft }}
+          style={{ borderColor: MT.warningBorder, backgroundColor: MT.warningSoft }}
         >
-          <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.5px]" style={{ color: MT.danger }}>
-            Errores
+          <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.5px]" style={{ color: MT.warning }}>
+            Advertencias
           </p>
           <ul className="space-y-1">
-            {result.errors.map((e, i) => (
-              <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: MT.danger }}>
+            {result.warnings.map((w, i) => (
+              <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: MT.warning }}>
                 <AlertTriangle size={12} className="mt-px shrink-0" />
-                {e}
+                {w}
               </li>
             ))}
           </ul>
@@ -364,9 +378,11 @@ interface FichaEnrichClientProps {
 
 export function FichaEnrichClient({ sku }: FichaEnrichClientProps) {
   const previewMutation = usePreviewFichaEnrich(sku);
+  const [applyDone, setApplyDone] = React.useState(false);
 
   const reset = React.useCallback(() => {
     previewMutation.reset();
+    setApplyDone(false);
   }, [previewMutation]);
 
   return (
@@ -378,8 +394,8 @@ export function FichaEnrichClient({ sku }: FichaEnrichClientProps) {
             i === 0
               ? !previewMutation.isSuccess
               : i === 1
-                ? previewMutation.isSuccess
-                : false;
+                ? previewMutation.isSuccess && !applyDone
+                : applyDone;
           return (
             <React.Fragment key={label}>
               {i > 0 ? (
@@ -401,7 +417,7 @@ export function FichaEnrichClient({ sku }: FichaEnrichClientProps) {
 
       {/* Step content */}
       {previewMutation.isSuccess ? (
-        <DiffStep sku={sku} preview={previewMutation.data} onReset={reset} />
+        <DiffStep sku={sku} preview={previewMutation.data} onReset={reset} onApplySuccess={() => setApplyDone(true)} />
       ) : (
         <Dropzone
           onFile={(file) => previewMutation.mutate(file)}

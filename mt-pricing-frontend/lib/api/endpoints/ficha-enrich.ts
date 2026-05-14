@@ -124,7 +124,7 @@ export interface FichaEnrichApplyResponse {
   sku: string;
   applied_fields: string[];
   skipped_fields: string[];
-  errors: string[];
+  warnings: string[];
 }
 
 export class FichaEnrichApiError extends Error {
