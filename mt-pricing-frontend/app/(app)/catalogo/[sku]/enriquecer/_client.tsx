@@ -6,7 +6,7 @@ import { UploadCloud, CheckCircle2, AlertTriangle, ChevronLeft, RefreshCw } from
 
 import { EnrichmentDiffTable } from "@/components/domain/ficha-enrichment/enrichment-diff-table";
 import { usePreviewFichaEnrich, useApplyFichaEnrich } from "@/lib/hooks/ficha-enrichment/use-ficha-enrich";
-import type { FichaEnrichPreviewResponse } from "@/lib/api/endpoints/ficha-enrich";
+import type { FichaEnrichPreviewResponse, FichaEnrichApplyResponse } from "@/lib/api/endpoints/ficha-enrich";
 import { MtButton, Pill, SectionCard } from "@/components/mt/primitives";
 import { MT } from "@/components/mt/tokens";
 
@@ -133,12 +133,27 @@ interface DiffStepProps {
 function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
   const applyMutation = useApplyFichaEnrich(sku);
 
+  // Use diffs from the first SKU in the series (common fields are the same for all)
+  const firstSkuDiffs = preview.series_skus[0]?.diffs ?? [];
+
   // Auto-select all changed diffs on mount
   const changedFields = React.useMemo(
-    () => new Set(preview.diffs.filter((d) => d.has_change).map((d) => d.field_name)),
-    [preview.diffs],
+    () => new Set(firstSkuDiffs.filter((d) => d.has_change).map((d) => d.field_name)),
+    [firstSkuDiffs],
   );
   const [selectedFields, setSelectedFields] = React.useState<Set<string>>(changedFields);
+
+  // SKU selection — all selected by default
+  const [selectedSkus, setSelectedSkus] = React.useState<Set<string>>(
+    new Set(preview.series_skus.map((s) => s.sku)),
+  );
+  const toggleSku = (sku: string) => {
+    setSelectedSkus((prev) => {
+      const next = new Set(prev);
+      next.has(sku) ? next.delete(sku) : next.add(sku);
+      return next;
+    });
+  };
 
   const toggle = React.useCallback((fieldName: string) => {
     setSelectedFields((prev) => {
@@ -172,6 +187,7 @@ function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
     applyMutation.mutate(
       {
         extraction: preview.extraction,
+        apply_to_skus: [...selectedSkus],
         apply_scalars: selectedScalarFields.length > 0,
         apply_specs: hasSpec,
         apply_materials: hasMaterials,
@@ -195,7 +211,9 @@ function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
     return <ResultStep result={applyMutation.data} onReset={onReset} />;
   }
 
-  const changedCount = preview.diffs.filter((d) => d.has_change).length;
+  const changedCount = firstSkuDiffs.filter((d) => d.has_change).length;
+  const skuCount = selectedSkus.size;
+  const fieldCount = selectedFields.size;
 
   return (
     <div className="space-y-5">
@@ -215,6 +233,9 @@ function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
             <Pill tone="neutral" mono>
               {preview.page_count} págs
             </Pill>
+            <Pill tone="brand" mono>
+              Serie {preview.series} · {preview.series_skus.length} SKUs
+            </Pill>
           </div>
         </div>
 
@@ -227,11 +248,13 @@ function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
           <MtButton
             tone="primary"
             size="md"
-            disabled={selectedFields.size === 0 || applyMutation.isPending}
+            disabled={fieldCount === 0 || skuCount === 0 || applyMutation.isPending}
             onClick={handleApply}
             icon={applyMutation.isPending ? <RefreshCw size={13} className="animate-spin" /> : undefined}
           >
-            {applyMutation.isPending ? "Aplicando…" : `Aplicar ${selectedFields.size} campo${selectedFields.size !== 1 ? "s" : ""}`}
+            {applyMutation.isPending
+              ? "Aplicando…"
+              : `Aplicar a ${skuCount} SKU${skuCount !== 1 ? "s" : ""} (${fieldCount} campo${fieldCount !== 1 ? "s" : ""})`}
           </MtButton>
         </div>
       </div>
@@ -261,17 +284,45 @@ function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
         </div>
       ) : null}
 
-      {/* Diff table */}
+      {/* Diff table — campos comunes (primer SKU de la serie) */}
       <SectionCard
         title="Diferencias campo a campo"
         subtitle={`${changedCount} campo${changedCount !== 1 ? "s" : ""} con cambios detectados`}
       >
         <div className="p-4">
           <EnrichmentDiffTable
-            diffs={preview.diffs}
+            diffs={firstSkuDiffs}
             selectedFields={selectedFields}
             onToggleField={toggle}
           />
+        </div>
+      </SectionCard>
+
+      {/* SKU selection */}
+      <SectionCard title={`SKUs en serie "${preview.series}" — ${preview.series_skus.length} encontrados`}>
+        <div className="px-4 py-3 flex flex-wrap gap-2">
+          {preview.series_skus.map((s) => {
+            const diffCount = s.diffs.filter((d) => d.has_change).length;
+            const isSelected = selectedSkus.has(s.sku);
+            return (
+              <button
+                key={s.sku}
+                type="button"
+                onClick={() => toggleSku(s.sku)}
+                className="flex items-center gap-1.5 rounded border px-2.5 py-1 text-[12px] font-medium transition-colors"
+                style={{
+                  borderColor: isSelected ? MT.brand : MT.border,
+                  backgroundColor: isSelected ? MT.brandSofter : MT.surface2,
+                  color: isSelected ? MT.brand : MT.ink3,
+                }}
+              >
+                <span className="mt-mono">{s.sku}</span>
+                {diffCount > 0 && (
+                  <span style={{ color: MT.ink3 }}>({diffCount}↑)</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </SectionCard>
     </div>
@@ -283,12 +334,13 @@ function DiffStep({ sku, preview, onReset, onApplySuccess }: DiffStepProps) {
 // ---------------------------------------------------------------------------
 
 interface ResultStepProps {
-  result: { applied_fields: string[]; skipped_fields: string[]; warnings: string[] };
+  result: FichaEnrichApplyResponse;
   onReset: () => void;
 }
 
 function ResultStep({ result, onReset }: ResultStepProps) {
-  const hasWarnings = result.warnings.length > 0;
+  const totalApplied = result.results.reduce((sum, r) => sum + r.applied_fields.length, 0);
+  const hasWarnings = result.results.some((r) => r.warnings.length > 0);
 
   return (
     <div className="flex flex-col items-center gap-6 py-10">
@@ -300,66 +352,37 @@ function ResultStep({ result, onReset }: ResultStepProps) {
         />
         <div>
           <p className="text-[15px] font-semibold" style={{ color: MT.ink }}>
-            {hasWarnings ? "Aplicado con advertencias" : "Enriquecimiento aplicado"}
+            {hasWarnings ? "Aplicado con advertencias" : "Serie enriquecida"}
           </p>
           <p className="mt-1 text-[12.5px]" style={{ color: MT.ink3 }}>
-            {result.applied_fields.length} campo{result.applied_fields.length !== 1 ? "s" : ""} actualizados
-            {result.skipped_fields.length > 0
-              ? `, ${result.skipped_fields.length} omitido${result.skipped_fields.length !== 1 ? "s" : ""}`
-              : ""}
+            {result.results.length} SKU{result.results.length !== 1 ? "s" : ""} · {totalApplied} campos actualizados
           </p>
         </div>
       </div>
 
-      {/* Applied fields */}
-      {result.applied_fields.length > 0 ? (
-        <div className="w-full max-w-md">
-          <SectionCard title="Campos aplicados">
-            <div className="flex flex-wrap gap-1.5 p-4">
-              {result.applied_fields.map((f) => (
-                <Pill key={f} tone="success" mono>
-                  {f}
-                </Pill>
-              ))}
+      {/* Tabla por SKU */}
+      <div className="w-full max-w-lg space-y-2">
+        {result.results.map((r) => (
+          <div
+            key={r.sku}
+            className="flex items-start justify-between rounded-lg border px-3 py-2 text-[12px]"
+            style={{ borderColor: MT.border }}
+          >
+            <span className="mt-mono font-medium" style={{ color: MT.ink }}>{r.sku}</span>
+            <div className="flex gap-2">
+              {r.applied_fields.length > 0 && (
+                <Pill tone="success" mono>{r.applied_fields.length} aplicados</Pill>
+              )}
+              {r.skipped_fields.length > 0 && (
+                <Pill tone="neutral" mono>{r.skipped_fields.length} omitidos</Pill>
+              )}
+              {r.warnings.length > 0 && (
+                <Pill tone="warning" mono>{r.warnings.length} avisos</Pill>
+              )}
             </div>
-          </SectionCard>
-        </div>
-      ) : null}
-
-      {/* Skipped fields */}
-      {result.skipped_fields.length > 0 ? (
-        <div className="w-full max-w-md">
-          <SectionCard title="Campos omitidos">
-            <div className="flex flex-wrap gap-1.5 p-4">
-              {result.skipped_fields.map((f) => (
-                <Pill key={f} tone="neutral" mono>
-                  {f}
-                </Pill>
-              ))}
-            </div>
-          </SectionCard>
-        </div>
-      ) : null}
-
-      {/* Warnings */}
-      {result.warnings.length > 0 ? (
-        <div
-          className="w-full max-w-md rounded-lg border px-4 py-3"
-          style={{ borderColor: MT.warningBorder, backgroundColor: MT.warningSoft }}
-        >
-          <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.5px]" style={{ color: MT.warning }}>
-            Advertencias
-          </p>
-          <ul className="space-y-1">
-            {result.warnings.map((w, i) => (
-              <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: MT.warning }}>
-                <AlertTriangle size={12} className="mt-px shrink-0" />
-                {w}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+          </div>
+        ))}
+      </div>
 
       <MtButton tone="neutral" size="md" onClick={onReset}>
         Enriquecer con otro PDF

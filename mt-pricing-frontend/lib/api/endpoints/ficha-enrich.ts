@@ -98,11 +98,24 @@ export interface FieldDiff {
   validation_error?: string | null;
 }
 
+export interface SkuDiffResult {
+  sku: string;
+  diffs: FieldDiff[];
+}
+
+export interface SkuApplyResult {
+  sku: string;
+  applied_fields: string[];
+  skipped_fields: string[];
+  warnings: string[];
+}
+
 export interface FichaEnrichPreviewResponse {
   sku: string;
+  series: string;               // prefijo de serie, ej. "4097"
   filename: string;
   extraction: FichaExtractionResult;
-  diffs: FieldDiff[];
+  series_skus: SkuDiffResult[]; // un entry por cada SKU de la serie
   model_gaps: string[];
   page_count: number;
   confidence: number;
@@ -110,6 +123,7 @@ export interface FichaEnrichPreviewResponse {
 
 export interface FichaEnrichApplyRequest {
   extraction: FichaExtractionResult;
+  apply_to_skus: string[];       // SKUs a aplicar
   apply_scalars?: boolean;
   apply_specs?: boolean;
   apply_materials?: boolean;
@@ -121,10 +135,8 @@ export interface FichaEnrichApplyRequest {
 }
 
 export interface FichaEnrichApplyResponse {
-  sku: string;
-  applied_fields: string[];
-  skipped_fields: string[];
-  warnings: string[];
+  series: string;
+  results: SkuApplyResult[];     // un entry por SKU aplicado
 }
 
 export class FichaEnrichApiError extends Error {
