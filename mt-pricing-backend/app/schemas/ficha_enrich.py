@@ -1,0 +1,155 @@
+"""Schemas para el módulo de enriquecimiento desde ficha técnica."""
+
+from __future__ import annotations
+
+from typing import Any
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ExtractedScalars(BaseModel):
+    """Campos escalares extraídos del PDF — mapean 1:1 a ProductPatch."""
+    model_config = ConfigDict(extra="allow")
+
+    family: str | None = None
+    subfamily: str | None = None
+    type: str | None = None
+    material: str | None = None
+    dn: str | None = None
+    pn: str | None = None
+    connection: str | None = None
+    brand: str | None = None
+    weight: float | None = None
+    weight_unit: str | None = None
+    temp_min_c: int | None = None
+    temp_max_c: int | None = None
+    pressure_max_bar: float | None = None
+    size: str | None = None
+
+
+class ExtractedMaterial(BaseModel):
+    component: str
+    position: int = 0
+    material: str
+    observations: str | None = None
+
+
+class ExtractedDimensionRow(BaseModel):
+    dn_label: str
+    values: dict[str, float | str]
+
+
+class ExtractedTranslation(BaseModel):
+    lang: str
+    name: str | None = None
+    description: str | None = None
+
+
+class PageClassification(BaseModel):
+    page_index: int
+    kind: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    description: str = ""
+
+
+class ExtractedAsset(BaseModel):
+    page_index: int
+    asset_kind: str
+    storage_path: str = ""
+    mime_type: str = "image/png"
+    description: str = ""
+
+
+class ExtractedSpecs(BaseModel):
+    seat_material: str | None = None
+    seal_material: str | None = None
+    stem_material: str | None = None
+    standards: list[str] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list)
+    no_frost: bool | None = None
+    actuation_type: str | None = None
+    bore_type: str | None = None
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
+class FichaExtractionResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    scalars: ExtractedScalars
+    specs: ExtractedSpecs
+    materials: list[ExtractedMaterial] = Field(default_factory=list)
+    dimensions: list[ExtractedDimensionRow] = Field(default_factory=list)
+    translations: list[ExtractedTranslation] = Field(default_factory=list)
+    page_classifications: list[PageClassification] = Field(default_factory=list)
+    extracted_assets: list[ExtractedAsset] = Field(default_factory=list)
+    pt_curve_points: list[dict[str, float]] = Field(
+        default_factory=list,
+        description="Puntos de curva P/T: [{temperature_c, pressure_max_bar}]",
+    )
+    model_gaps: list[str] = Field(
+        default_factory=list,
+        description="Campos detectados en PDF sin mapeo al modelo actual.",
+    )
+    confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+    raw_text_preview: str = ""
+
+
+class FieldDiff(BaseModel):
+    field_name: str
+    current_value: Any = None
+    extracted_value: Any
+    has_change: bool
+    validation_error: str | None = None
+
+
+class FichaEnrichPreviewResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    sku: str
+    filename: str
+    extraction: FichaExtractionResult
+    diffs: list[FieldDiff]
+    model_gaps: list[str]
+    page_count: int
+    confidence: float
+
+
+class FichaEnrichApplyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    extraction: FichaExtractionResult
+    apply_scalars: bool = True
+    apply_specs: bool = True
+    apply_materials: bool = True
+    apply_dimensions: bool = True
+    apply_translations: bool = False
+    apply_assets: bool = True
+    apply_pt_curve: bool = True
+    selected_scalar_fields: list[str] = Field(
+        default_factory=list,
+        description="Si vacío aplica todos los scalars extraídos; si hay lista, solo esos.",
+    )
+
+
+class FichaEnrichApplyResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    sku: str
+    applied_fields: list[str]
+    skipped_fields: list[str]
+    errors: list[str]
+
+
+__all__ = [
+    "ExtractedScalars",
+    "ExtractedMaterial",
+    "ExtractedDimensionRow",
+    "ExtractedTranslation",
+    "PageClassification",
+    "ExtractedAsset",
+    "ExtractedSpecs",
+    "FichaExtractionResult",
+    "FieldDiff",
+    "FichaEnrichPreviewResponse",
+    "FichaEnrichApplyRequest",
+    "FichaEnrichApplyResponse",
+]
