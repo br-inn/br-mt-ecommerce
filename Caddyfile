@@ -65,9 +65,10 @@
 			header_up X-Request-ID {http.request.header.X-Request-ID}
 
 			# Timeouts más generosos — imports y recálculos pueden tardar.
+			# response_header_timeout: 300s para cubrir extracción Claude (PDF grande ~90s).
 			transport http {
 				dial_timeout 5s
-				response_header_timeout 60s
+				response_header_timeout 300s
 				read_timeout 600s
 			}
 		}
