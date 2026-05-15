@@ -547,8 +547,16 @@ def _ways_score(
     sku_ways = _extract_ways(sku_type_text)
     cand_ways = _extract_ways(cand_title) or _extract_ways(str(cand_specs.get("valve_type", "")))
 
-    if sku_ways is None or cand_ways is None:
-        return Decimal("0.5"), notes  # sin datos suficientes
+    if sku_ways is None and cand_ways is None:
+        return Decimal("0.5"), notes  # sin datos en ninguno de los dos
+
+    if cand_ways is None:
+        return Decimal("0.5"), notes  # candidato sin datos de vías — no determinar
+
+    # SKU no declara vías → asumir 2-way (estándar para válvulas de bola/globo).
+    # Un candidato que explícitamente dice "3-way" no es el mismo producto.
+    if sku_ways is None:
+        sku_ways = 2
 
     if sku_ways == cand_ways:
         return Decimal("1.0"), notes
