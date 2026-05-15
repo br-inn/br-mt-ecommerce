@@ -206,6 +206,46 @@ export interface ProductSeriesDetail {
   code: string;
   name_en: string;
   tier_id?: string | null;
+  thread_standard?: string | null;
+  revision?: string | null;
+  revision_date?: string | null;
+}
+
+export interface ProductModelDetail {
+  id: string;
+  series_id: string | null;
+  code: string;
+  color_label: string | null;
+  connection_type: string | null;
+  thread_standard: string | null;
+  active: boolean;
+  variant_of_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CertificateItem {
+  id: string;
+  model_id: string | null;
+  cert_number: string;
+  issuer: string | null;
+  issued_at: string | null;
+  expires_at: string | null;
+  status: "valid" | "expiring_soon" | "critical" | "expired" | "renewing";
+  signatory_name: string | null;
+  signatory_role: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ModelFlowDataItem {
+  id: string;
+  model_id: string;
+  dn_mm: number;
+  kv: number | null;
+  cv: number | null;
+  mesh_mm: number | null;
 }
 
 export interface Product extends ProductListItem {
@@ -242,6 +282,9 @@ export interface Product extends ProductListItem {
   // mig. 099 — bore real y estándar dimensional
   bore_mm?: number | null;
   dimensional_standard?: string | null;
+  // product_models hierarchy (sprint 2026-05-15)
+  model_id?: string | null;
+  model_detail?: ProductModelDetail | null;
 }
 
 // Mig 099 — Bore dimensions por norma
@@ -796,6 +839,15 @@ export const productsApi = {
       `/api/v1/products/${sku}/releases/${marketCode}/deactivate`,
       { method: "POST" },
     ),
+  // Data Quality — transición con audit trail
+  patchDataQuality: (
+    sku: string,
+    payload: { new_value: DataQuality; reason?: string },
+  ): Promise<Product> =>
+    authedFetch<Product>(`/api/v1/products/${sku}/data_quality`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
   // Mig 099 — Bore Dimensions
   listBoreDimensions: (sku: string): Promise<BoreDimension[]> =>
     authedFetch<BoreDimension[]>(`/api/v1/products/${sku}/bore-dimensions`),
@@ -821,6 +873,12 @@ export const productsApi = {
       `/api/v1/products/${sku}/uom-conversions/${uomFrom}/${uomTo}`,
       { method: "DELETE" },
     ),
+  // product_models hierarchy — certificates + flow data (sprint 2026-05-15)
+  getCertificates: (sku: string): Promise<CertificateItem[]> =>
+    authedFetch<CertificateItem[]>(`/api/v1/products/${sku}/certificates`),
+
+  getFlowData: (sku: string): Promise<ModelFlowDataItem[]> =>
+    authedFetch<ModelFlowDataItem[]>(`/api/v1/products/${sku}/flow-data`),
 };
 
 export const PRODUCT_FAMILIES = [
