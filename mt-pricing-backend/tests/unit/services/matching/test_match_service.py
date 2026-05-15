@@ -43,6 +43,8 @@ class _FakeProduct:
     def __init__(self, sku: str, **kw: Any) -> None:
         self.sku = sku
         self.name_en = kw.get("name_en", f"Product {sku}")
+        self.type = kw.get("type", None)
+        self.erp_name = kw.get("erp_name", None)
         self.family = kw.get("family", "ball_valve")
         self.subfamily = kw.get("subfamily")
         self.material = kw.get("material", "brass")
@@ -51,6 +53,7 @@ class _FakeProduct:
         self.connection = kw.get("connection", "BSP")
         self.brand = kw.get("brand", "Pegler")
         self.specs = kw.get("specs", {"norma": "EN13828"})
+        self.materials = kw.get("materials", [])  # product_materials relationship
 
 
 class _FakeMatchRow:
@@ -162,6 +165,9 @@ class _InMemoryProductRepo:
     async def get_by_sku(self, sku: str) -> _FakeProduct | None:
         return self._by_sku.get(sku)
 
+    async def get_by_sku_for_matching(self, sku: str) -> _FakeProduct | None:
+        return self._by_sku.get(sku)
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -169,11 +175,24 @@ class _InMemoryProductRepo:
 def _make_service(
     *, products: dict[str, _FakeProduct] | None = None
 ) -> tuple[MatchService, _InMemoryMatchRepo]:
+    from unittest.mock import AsyncMock
+    from app.services.matching.material_normalizer import MaterialNormalizer
+
     products = products or {
         "MTBR4001050": _FakeProduct("MTBR4001050"),
     }
-    fake_session = MagicMock()  # nunca se usa porque mockeamos los repos
-    svc = MatchService(fake_session)
+    # AsyncMock permite que get_or_generate_query pueda awaitar session.execute()
+    # y commit() sin errores. El resultado devuelve scalar_one_or_none() → None,
+    # lo que hace que el LLM path se salte silenciosamente en tests unitarios.
+    fake_result = MagicMock()
+    fake_result.scalar_one_or_none.return_value = None
+    fake_result.scalars.return_value.all.return_value = []  # para MaterialNormalizer.from_db
+    fake_session = AsyncMock()
+    fake_session.execute = AsyncMock(return_value=fake_result)
+    fake_session.commit = AsyncMock(return_value=None)
+    # MaterialNormalizer sin aliases — normalize() hace passthrough del material.
+    fake_normalizer = MaterialNormalizer(alias_map={})
+    svc = MatchService(fake_session, material_normalizer=fake_normalizer)
     matches_repo = _InMemoryMatchRepo()
     products_repo = _InMemoryProductRepo(products)
     svc._matches_repo = matches_repo  # type: ignore[assignment]
@@ -302,3 +321,35 @@ async def test_refresh_candidates_synthesizes_for_unknown_sku() -> None:
     svc, _ = _make_service(products=products)
     rows = await svc.refresh_candidates("MT-V-NEW")
     assert len(rows) == 8  # 5 amazon synthetic + 3 noon synthetic
+
+
+def test_product_repo_get_by_sku_for_matching_returns_product_with_model() -> None:
+    """get_by_sku_for_matching devuelve producto con .model accesible — _product_to_dict extrae model_code."""
+    from unittest.mock import MagicMock
+    from app.services.matching.match_service import MatchService
+    from app.db.models.product_models import ProductModel
+
+    mock_model = MagicMock(spec=ProductModel)
+    mock_model.code = "4295"
+    mock_model.connection_type = "thread_bsp"
+    mock_model.thread_standard = "BSP"
+
+    mock_product = MagicMock()
+    mock_product.sku = "MTBR4001050"
+    mock_product.model = mock_model
+    mock_product.specs = {}
+    mock_product.materials = []
+    mock_product.type = "Ball Valve M-F PN25"
+    mock_product.erp_name = "Brass ball valve DN50 BSP"
+    mock_product.family = "ball_valve"
+    mock_product.subfamily = None
+    mock_product.material = "brass"
+    mock_product.dn = "DN50"
+    mock_product.pn = "PN25"
+    mock_product.connection = "BSP"
+    mock_product.brand = "Pegler"
+
+    result = MatchService._product_to_dict(mock_product)
+    assert result["model_code"] == "4295"
+    assert result["model_connection_type"] == "thread_bsp"
+    assert result["model_thread_standard"] == "BSP"

@@ -42,6 +42,19 @@ class ProductRepository(BaseRepository[Product]):
         """Alias canónico — devuelve producto por PK SKU."""
         return await self.get(sku)
 
+    async def get_by_sku_for_matching(self, sku: str) -> Product | None:
+        """Like get_by_sku but eager-loads product.model for matching pipeline."""
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+
+        stmt = (
+            select(Product)
+            .options(selectinload(Product.model))
+            .where(Product.sku == sku)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_full(self, sku: str) -> Product | None:
         """Carga producto + traducciones + imágenes (eager)."""
         return await self.get_with_translations_and_images(sku)
