@@ -160,6 +160,9 @@ class FichaEnrichmentApplier:
                 position=m.position,
                 material=m.material,
                 observations=m.observations,
+                material_grade=getattr(m, "material_grade", None),
+                material_standard=getattr(m, "material_standard", None),
+                surface_treatment=getattr(m, "surface_treatment", None),
             )
             self._session.add(row)
         await self._session.flush()

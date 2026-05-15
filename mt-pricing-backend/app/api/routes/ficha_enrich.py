@@ -28,6 +28,7 @@ from app.schemas.ficha_enrich import (
     FichaSeriesApplyResponse,
     FichaSeriesPreviewResponse,
     SkuApplyResult,
+    SkuDiffResult,
 )
 from app.services.ficha_enrichment import (
     FichaEnrichmentApplier,
@@ -38,6 +39,7 @@ from app.services.ficha_enrichment.document_saver import save_ficha_document
 from app.services.ficha_enrichment.product_creator import create_product_from_extraction
 from app.services.ficha_enrichment.series_resolver import (
     extract_series_prefix,
+    resolve_all_series,
     resolve_series,
 )
 from app.services.importer_datasheets.pdf_extractor import extract_pdf_metadata
@@ -195,24 +197,51 @@ async def preview_ficha_series(
     if not pdf_bytes.lstrip().startswith(b"%PDF"):
         raise HTTPException(status_code=422, detail={"code": "not_a_pdf", "title": "No es un PDF válido"})
 
-    series = extract_series_prefix(file.filename)
-    if not series:
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "no_series", "title": "No se pudo detectar la serie del filename. Formato esperado: MTFT_XXXX.pdf"},
-        )
+    filename_series = extract_series_prefix(file.filename)
 
     extractor = FichaEnrichmentExtractor()
     extraction = await extractor.extract(pdf_bytes=pdf_bytes, filename=file.filename)
 
-    series_skus = await resolve_series(session, series, extraction)
     meta = extract_pdf_metadata(pdf_bytes)
+    pdf_text: str = meta.get("text", "") or ""
+
+    series_groups = await resolve_all_series(
+        session, pdf_text, extraction, filename_prefix=filename_series
+    )
+
+    if not series_groups:
+        if not filename_series:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "no_series",
+                    "title": "No se pudo detectar la serie. Formato esperado: MTFT_XXXX.pdf",
+                },
+            )
+        series_skus = await resolve_series(session, filename_series, extraction)
+        primary_series = filename_series
+        detected_series: list[str] = [filename_series]
+    else:
+        # Flatten all SKUs for backward-compat series_skus field
+        flat: list[SkuDiffResult] = []
+        for g in series_groups:
+            flat.extend(g.base_skus)
+            flat.extend(g.variant_skus)
+        series_skus = flat
+        primary_series = series_groups[0].base_series
+        detected_series = []
+        for g in series_groups:
+            detected_series.append(g.base_series)
+            if g.variant_series:
+                detected_series.append(g.variant_series)
 
     return FichaSeriesPreviewResponse(
-        series=series,
+        series=primary_series,
         filename=file.filename,
         extraction=extraction,
         series_skus=series_skus,
+        series_groups=series_groups,
+        detected_series=detected_series,
         model_gaps=extraction.model_gaps,
         page_count=meta.get("page_count", 0),
         confidence=extraction.confidence,
@@ -259,10 +288,21 @@ async def apply_ficha_series(
                     warnings=[f"Error {exc.status_code}: {exc.detail}"],
                 ))
         else:
-            result = await create_product_from_extraction(session, target_sku, body.extraction)
+            variant_of = body.variant_links.get(target_sku)
+            result = await create_product_from_extraction(
+                session,
+                target_sku,
+                body.extraction,
+                is_variant=variant_of is not None,
+                display_pair_sku=variant_of,
+            )
             results.append(result)
             if not result.warnings:
                 skus_created.append(target_sku)
+
+    # Write model-level data (dimensions, P/T curves, certificates, flow data)
+    from app.services.ficha_enrichment.model_writer import write_model_data
+    await write_model_data(session, body.series, body.extraction)
 
     document_id: str | None = None
     if body.save_document and body.pdf_filename:
