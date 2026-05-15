@@ -353,3 +353,31 @@ def test_product_repo_get_by_sku_for_matching_returns_product_with_model() -> No
     assert result["model_code"] == "4295"
     assert result["model_connection_type"] == "thread_bsp"
     assert result["model_thread_standard"] == "BSP"
+
+
+def test_product_to_dict_without_model_returns_none_model_fields() -> None:
+    """Producto sin model_id devuelve None para los campos del modelo."""
+    from unittest.mock import MagicMock
+    from app.services.matching.match_service import MatchService
+
+    mock_product = MagicMock()
+    mock_product.sku = "MTSS1001025"
+    mock_product.model = None
+    mock_product.specs = {}
+    mock_product.materials = []
+    mock_product.type = "Gate Valve PN16"
+    mock_product.erp_name = "Gate Valve SS PN16 DN25"
+    mock_product.family = "gate_valve"
+    mock_product.subfamily = None
+    mock_product.material = "stainless_steel"
+    mock_product.dn = "DN25"
+    mock_product.pn = "PN16"
+    mock_product.connection = "BSP"
+    mock_product.brand = "Giacomini"
+
+    result = MatchService._product_to_dict(mock_product)
+    assert result["model_code"] is None
+    assert result["model_connection_type"] is None
+    assert result["model_thread_standard"] is None
+    assert result["sku"] == "MTSS1001025"
+    assert result["family"] == "gate_valve"

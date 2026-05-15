@@ -724,6 +724,16 @@ class MatchService:
                 # Componentes de material para scoring compuesto body/ball/seat.
                 "product_materials": product_materials,
             }
+            # model hierarchy — populated when get_by_sku_for_matching() was used
+            _model = getattr(product, "model", None)
+            if _model is not None:
+                base["model_code"] = getattr(_model, "code", None)
+                base["model_connection_type"] = getattr(_model, "connection_type", None)
+                base["model_thread_standard"] = getattr(_model, "thread_standard", None)
+            else:
+                base["model_code"] = None
+                base["model_connection_type"] = None
+                base["model_thread_standard"] = None
         # Alias `thread` ⇄ `connection` para que scoring lea ambos.
         if base.get("thread") is None and base.get("connection") is not None:
             base["thread"] = base["connection"]
