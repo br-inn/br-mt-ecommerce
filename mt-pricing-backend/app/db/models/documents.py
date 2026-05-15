@@ -35,6 +35,7 @@ DOCUMENT_TYPES = (
     "ficha_tecnica",
     "manual",
     "declaracion_ce",
+    "declaracion_conformidad",
     "certificado",
     "catalogo",
 )
@@ -55,6 +56,12 @@ class Document(UuidPkMixin, Base):
         nullable=False,
     )
     issued_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    doc_number: Mapped[str | None] = mapped_column(Text, nullable=True)
+    series_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG, ForeignKey("series.id", ondelete="SET NULL"), nullable=True
+    )
+    signatory_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    signatory_role: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -76,4 +83,5 @@ class Document(UuidPkMixin, Base):
         ),
         Index("ix_doc_type", "type"),
         Index("ix_doc_asset", "asset_id"),
+        Index("ix_doc_series", "series_id"),
     )

@@ -179,6 +179,11 @@ class Product(Base):
     series_id: Mapped[UUID | None] = mapped_column(
         UUID_PG, ForeignKey("series.id", ondelete="RESTRICT"), nullable=True
     )
+    model_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("product_models.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     material_id: Mapped[UUID | None] = mapped_column(
         UUID_PG, ForeignKey("materials.id", ondelete="RESTRICT"), nullable=True
     )

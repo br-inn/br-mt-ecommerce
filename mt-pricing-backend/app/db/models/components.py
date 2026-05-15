@@ -47,6 +47,18 @@ class ProductMaterial(Base):
     )
     material: Mapped[str] = mapped_column(Text, nullable=False)
     observations: Mapped[str | None] = mapped_column(Text)
+    material_grade: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="ej. EN-GJL-250, AISI 304, CW617N"
+    )
+    material_standard: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="ej. ASTM A307, UNE-EN-12165"
+    )
+    surface_treatment: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="ej. Epoxy, Nickel, Zinc, None"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

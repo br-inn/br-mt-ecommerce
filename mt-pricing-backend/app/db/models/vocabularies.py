@@ -449,6 +449,12 @@ class Series(UuidPkMixin, Base):
     sort_order: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
+    thread_standard: Mapped[str | None] = mapped_column(
+        String(32), nullable=True,
+        comment="ISO 228-1 (BSP) | ISO 7/1 (BSPT) | ASME B1.20.1 (NPT)"
+    )
+    revision: Mapped[str | None] = mapped_column(Text, nullable=True)
+    revision_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
