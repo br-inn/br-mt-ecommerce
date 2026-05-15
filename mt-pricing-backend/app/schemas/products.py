@@ -31,6 +31,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas.product_models import ProductModelResponse
+
 # Wave 1: import asset schemas — must be before ProductDetail definition.
 from app.schemas.assets import (
     ProductAssetConfirmRequest,
@@ -474,6 +476,7 @@ class ProductResponse(BaseModel):
     material_id: UUID | None = None
     display_pair_sku: str | None = None
     division_codes: list[str] = Field(default_factory=list)
+    model_id: UUID | None = None
 
     # Fase B (mig 066): active deriva de lifecycle_status para preservar
     # contrato API (FE puede seguir leyendo `.active`) mientras
@@ -508,6 +511,7 @@ class ProductDetail(ProductResponse):
     series_detail: "SeriesResponse | None" = None
     material_detail: "MaterialResponse | None" = None
     display_pair: ProductMini | None = None
+    model_detail: ProductModelResponse | None = None
 
 
 # ---------------------------------------------------------------------------
