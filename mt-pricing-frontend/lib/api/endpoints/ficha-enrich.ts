@@ -48,11 +48,15 @@ export interface ExtractedMaterial {
   position: number;
   material: string;
   observations?: string | null;
+  material_grade?: string | null;
+  material_standard?: string | null;
+  surface_treatment?: string | null;
 }
 
 export interface ExtractedDimensionRow {
   dn_label: string;
   values: Record<string, number | string>;
+  dn_secondary_label?: string | null;
 }
 
 export interface ExtractedTranslation {
@@ -76,6 +80,23 @@ export interface ExtractedAsset {
   description: string;
 }
 
+export interface ExtractedCertificate {
+  certification_code: string;
+  cert_number?: string | null;
+  issuer?: string | null;
+  issued_at?: string | null;
+  expires_at?: string | null;
+  signatory_name?: string | null;
+  signatory_role?: string | null;
+}
+
+export interface ExtractedFlowData {
+  dn_label: string;
+  kv?: number | null;
+  cv?: number | null;
+  mesh_mm?: number | null;
+}
+
 export interface FichaExtractionResult {
   scalars: ExtractedScalars;
   specs: ExtractedSpecs;
@@ -85,6 +106,8 @@ export interface FichaExtractionResult {
   page_classifications: PageClassification[];
   extracted_assets: ExtractedAsset[];
   pt_curve_points: Record<string, number>[];
+  certificates: ExtractedCertificate[];
+  flow_data: ExtractedFlowData[];
   model_gaps: string[];
   confidence: number;
   raw_text_preview: string;
@@ -140,11 +163,20 @@ export interface FichaEnrichApplyResponse {
   results: SkuApplyResult[];     // un entry por SKU aplicado
 }
 
+export interface SeriesGroupResult {
+  base_series: string;
+  variant_series: string | null;
+  base_skus: SkuDiffResult[];
+  variant_skus: SkuDiffResult[];
+}
+
 export interface FichaSeriesPreviewResponse {
   series: string;
   filename: string;
   extraction: FichaExtractionResult;
-  series_skus: SkuDiffResult[];
+  series_skus: SkuDiffResult[];        // todos flat (compat)
+  series_groups: SeriesGroupResult[];  // agrupados por serie
+  detected_series: string[];
   model_gaps: string[];
   page_count: number;
   confidence: number;
@@ -162,6 +194,7 @@ export interface FichaSeriesApplyRequest {
   apply_translations?: boolean;
   selected_scalar_fields?: string[];
   save_document?: boolean;
+  variant_links?: Record<string, string>; // variant_sku → base_sku
 }
 
 export interface FichaSeriesApplyResponse {
