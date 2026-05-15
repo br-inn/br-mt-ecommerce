@@ -415,9 +415,8 @@ async def invalidate_model_enriched_cache(
     """
     from app.db.models.search_query import ProductSearchQuery  # noqa: PLC0415
     from app.db.models.product import Product  # noqa: PLC0415
-    from sqlalchemy import select as _select  # noqa: PLC0415
 
-    skus_with_model = _select(Product.sku).where(Product.model_id.is_not(None)).scalar_subquery()
+    skus_with_model = select(Product.sku).where(Product.model_id.is_not(None)).scalar_subquery()
     stmt = sa_delete(ProductSearchQuery).where(
         ProductSearchQuery.sku.in_(skus_with_model)
     )
