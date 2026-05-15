@@ -63,6 +63,7 @@ class ProductRepository(BaseRepository[Product]):
                 selectinload(Product.product_divisions).selectinload(
                     ProductDivision.division
                 ),
+                selectinload(Product.model),
             )
         )
         result = await self.session.execute(stmt)
