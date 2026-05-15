@@ -26,13 +26,14 @@ _BASE_VALVE_BLOCKERS: frozenset[str] = frozenset({
     "dn_mismatch",
     "material_mismatch",
     "product_type_mismatch",
+    "ways_mismatch",
     "pn_below_sku_requirement",
     "pn_too_far_above",
 })
 
+# ball_valve añade mini_mismatch (mini/micro son productos distintos de precio incomparable)
 _FULL_VALVE_BLOCKERS: frozenset[str] = _BASE_VALVE_BLOCKERS | frozenset({
     "mini_mismatch",
-    "ways_mismatch",
 })
 
 # ---------------------------------------------------------------------------
@@ -102,10 +103,7 @@ TAXONOMY_PROFILES: dict[str, TaxonomyProfile] = {
     "gate_valve":      TaxonomyProfile(_BASE_VALVE_BLOCKERS, _VALVE_WEIGHTS),
     "globe_valve":     TaxonomyProfile(_BASE_VALVE_BLOCKERS, _VALVE_WEIGHTS),
     "check_valve":     TaxonomyProfile(_BASE_VALVE_BLOCKERS, _VALVE_WEIGHTS),
-    "butterfly_valve": TaxonomyProfile(
-        _BASE_VALVE_BLOCKERS | frozenset({"ways_mismatch"}),
-        _VALVE_WEIGHTS,
-    ),
+    "butterfly_valve": TaxonomyProfile(_BASE_VALVE_BLOCKERS, _VALVE_WEIGHTS),
     # ── Filtros / strainers ──────────────────────────────────────────────────
     "strainer":  TaxonomyProfile(_BASE_VALVE_BLOCKERS, _STRAINER_WEIGHTS),
     "FILTROS":   TaxonomyProfile(_BASE_VALVE_BLOCKERS, _STRAINER_WEIGHTS),
