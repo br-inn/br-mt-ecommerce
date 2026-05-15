@@ -253,12 +253,10 @@ class MatchService:
         # candidato sin mismatch en el pool. Si hay alternativas sin mismatch,
         # los candidatos con mismatch se eliminan completamente.
         # Si TODOS tienen mismatch → se muestran pero con confidence -15.
-        sku_specs_dict = sku_dict.get("specs") or {}
-        sku_has_handle = bool(
-            (sku_specs_dict.get("handle_color") or "").strip()
-            or (sku_specs_dict.get("handle_material") or "").strip()
-        )
-        if sku_has_handle and persisted:
+        # No necesita check previo de sku_has_handle: si _handle_score no detectó
+        # datos de maneta en el SKU, ningún candidato tendrá la nota y
+        # mismatch_rows quedará vacío.
+        if persisted:
             mismatch_rows: list[MatchCandidate] = []
             ok_count = 0
             for row in persisted:
@@ -384,6 +382,11 @@ class MatchService:
                 if any(kw in _title_lower for kw in _keywords):
                     cand_dict["material"] = _mat
                     break
+
+        # Pasar description_text al candidato para que _handle_score pueda extraer
+        # color/tipo de maneta desde texto cuando no está en specs estructurados.
+        if not cand_dict.get("description_text"):
+            cand_dict["description_text"] = (raw.raw_payload or {}).get("description_text", "")
 
         if self._material_normalizer is None:
             self._material_normalizer = await MaterialNormalizer.from_db(self.session)

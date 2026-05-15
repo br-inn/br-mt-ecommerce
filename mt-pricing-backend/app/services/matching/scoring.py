@@ -565,35 +565,92 @@ def _ways_score(
     return Decimal("0.0"), notes
 
 
+# ── Extracción de maneta desde texto libre ────────────────────────────────────
+
+_HANDLE_COLORS: frozenset[str] = frozenset({
+    "red", "blue", "black", "yellow", "green", "orange", "white", "grey", "gray",
+})
+
+_HANDLE_TYPES: frozenset[str] = frozenset({
+    "butterfly", "lever", "t-bar", "wing", "ergonomic", "lockable",
+})
+
+
+def _extract_handle_color(text: str | None) -> str | None:
+    """Extrae color de maneta buscando colores dentro de ±3 palabras de 'handle'."""
+    if not text:
+        return None
+    words = re.split(r"\W+", text.lower())
+    for i, w in enumerate(words):
+        if w == "handle":
+            window = words[max(0, i - 3): i + 4]
+            for cw in window:
+                if cw in _HANDLE_COLORS:
+                    return cw
+    return None
+
+
+def _extract_handle_type(text: str | None) -> str | None:
+    """Extrae tipo de maneta buscando keywords en contexto de 'handle'."""
+    if not text:
+        return None
+    t = text.lower()
+    for htype in _HANDLE_TYPES:
+        # Match "butterfly handle" o "handle ergonomic" (hasta 20 chars entre ellos)
+        if re.search(
+            rf"\b{re.escape(htype)}\b.{{0,20}}handle|handle.{{0,20}}\b{re.escape(htype)}\b",
+            t,
+        ):
+            return htype
+    return None
+
+
 def _handle_score(
     sku_specs: dict | None,
     cand_specs: dict,
+    *,
+    sku_text: str | None = None,
+    cand_text: str | None = None,
 ) -> list[str]:
-    """Detecta mismatch de color/material de maneta. Solo emite nota, no afecta score.
+    """Detecta mismatch de color/tipo de maneta. Solo emite nota, no afecta score.
 
-    Retorna ["handle_mismatch"] si ambos lados tienen dato y difieren.
-    Si el SKU no tiene datos de maneta, no se compara (return []).
-    Si el candidato no tiene datos, tampoco se puede determinar mismatch.
-    El impacto real (drop o baja de confianza) se aplica en match_service
-    con lógica pool-relativa después de procesar todos los candidatos.
+    Fuentes en orden de prioridad:
+    1. specs estructurados (handle_color / handle_material)
+    2. texto libre: erp_name + product_type del SKU; title + description del candidato
+
+    El impacto real se aplica en match_service con lógica pool-relativa.
     """
     sku_s = sku_specs or {}
-    sku_color = (sku_s.get("handle_color") or "").strip().lower()
-    sku_material = (sku_s.get("handle_material") or "").strip().lower()
 
-    if not sku_color and not sku_material:
+    # Color — specs primero, fallback a texto
+    sku_color = (sku_s.get("handle_color") or "").strip().lower() or _extract_handle_color(sku_text)
+    cand_color = (cand_specs.get("handle_color") or "").strip().lower() or _extract_handle_color(cand_text)
+
+    # Tipo/material — specs primero, fallback a texto
+    sku_type = (
+        sku_s.get("handle_material") or sku_s.get("handle_type") or ""
+    ).strip().lower() or _extract_handle_type(sku_text)
+    cand_type = (
+        cand_specs.get("handle_material") or cand_specs.get("handle_type") or ""
+    ).strip().lower() or _extract_handle_type(cand_text)
+
+    if not sku_color and not sku_type:
         return []  # SKU sin datos de maneta — no comparar
 
-    cand_color = (cand_specs.get("handle_color") or "").strip().lower()
-    cand_material = (cand_specs.get("handle_material") or "").strip().lower()
-
-    if not cand_color and not cand_material:
+    if not cand_color and not cand_type:
         return []  # Candidato sin datos — no se puede determinar mismatch
 
-    if sku_color and cand_color and sku_color != cand_color:
+    # Cuando ambos lados tienen COLOR: el color es suficiente para evaluar.
+    # - Mismos colores → PASS (mismo segmento de precio, independiente del tipo)
+    # - Colores distintos → NO es hard block (solo afecta confidence; el tipo
+    #   no aplica cuando hay datos de color en ambos lados)
+    if sku_color and cand_color:
+        return []
+
+    # Sin color en alguno de los lados → el TIPO determina si es mismatch.
+    if sku_type and cand_type and sku_type != cand_type:
         return ["handle_mismatch"]
-    if sku_material and cand_material and sku_material != cand_material:
-        return ["handle_mismatch"]
+
     return []
 
 
@@ -754,7 +811,21 @@ def compute_scoring(
     ways_score, ways_notes = _ways_score(sku_type_text, cand_title, cand_specs)
 
     # ── Maneta (handle) — nota pool-relativa, sin peso propio ─────────────────
-    handle_notes = _handle_score(sku.get("specs"), cand_specs)
+    # Textos del SKU: erp_name + product_type (contienen color/tipo de maneta)
+    _sku_handle_text = " ".join(filter(None, [
+        sku.get("erp_name"), sku.get("product_type"), sku.get("name_en"),
+    ])) or None
+    # Textos del candidato: título + description_text almacenado
+    _cand_handle_text = " ".join(filter(None, [
+        candidate.get("title"),
+        candidate.get("description_text"),
+        str(cand_specs.get("_description_text") or ""),
+    ])) or None
+    handle_notes = _handle_score(
+        sku.get("specs"), cand_specs,
+        sku_text=_sku_handle_text,
+        cand_text=_cand_handle_text,
+    )
 
     # ── Norma / estándar ──────────────────────────────────────────────────────
     sku_norma = sku.get("norma") or (sku.get("specs") or {}).get("norma")
