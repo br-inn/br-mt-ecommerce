@@ -69,6 +69,11 @@ from app.schemas.products import (
     ProductUomConversionResponse,
 )
 from app.schemas.facets import FacetsResponse
+from app.schemas.product_models import (
+    CertificateResponse,
+    ModelFlowDataResponse,
+    ProductModelResponse,
+)
 from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 from app.services.assets import AssetService
 from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
@@ -221,19 +226,23 @@ async def _build_product_detail(
         if pd.division is not None
     ]
 
+    photo_assets = [i for i in prod.assets if i.kind == "photo"]
+    primary_image_url = next(
+        (i.original_url for i in photo_assets if i.is_primary),
+        next((i.original_url for i in photo_assets), None),
+    )
+
     detail_data: dict[str, Any] = {
         **base,
         "translations": [
             ProductTranslationResponse.model_validate(t) for t in prod.translations
         ],
-        "images": [
-            ProductImageResponse.model_validate(i)
-            for i in prod.assets
-            if i.kind == "photo"
-        ],
+        "images": [ProductImageResponse.model_validate(i) for i in photo_assets],
+        "primary_image_url": primary_image_url,
         "series_detail": None,
         "material_detail": None,
         "display_pair": None,
+        "model_detail": None,
     }
 
     # Cargar Series si tenemos series_id.
@@ -270,6 +279,9 @@ async def _build_product_detail(
                 primary_image_url=None,
             )
 
+    if prod.model is not None:
+        detail_data["model_detail"] = ProductModelResponse.model_validate(prod.model)
+
     return ProductDetail.model_validate(detail_data)
 
 
@@ -293,6 +305,128 @@ async def get_specs_schema(
     """
     return _specs_registry.get_schema(family, subfamily)
 
+
+
+# ==========================================================================
+# Export
+# ==========================================================================
+@router.get(
+    "/export",
+    summary="Exportar catálogo a CSV",
+    response_class=Response,
+)
+async def export_products_csv(
+    family: Annotated[str | None, Query()] = None,
+    subfamily: Annotated[str | None, Query(max_length=64)] = None,
+    type: Annotated[  # noqa: A002
+        str | None, Query(max_length=64, alias="type")
+    ] = None,
+    brand: Annotated[str | None, Query()] = None,
+    translation_status: Annotated[str | None, Query(pattern=r"^(pending|draft|approved)$")] = None,
+    lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
+    data_quality: Annotated[
+        str | None, Query(pattern=r"^(complete|partial|blocked|migrated_demo)$")
+    ] = None,
+    active: Annotated[bool | None, Query()] = None,
+    dn: Annotated[str | None, Query(max_length=8)] = None,
+    pn: Annotated[str | None, Query(max_length=8)] = None,
+    material: Annotated[str | None, Query(max_length=64)] = None,
+    created_after: Annotated[str | None, Query(description="ISO-8601 datetime")] = None,
+    created_before: Annotated[str | None, Query(description="ISO-8601 datetime")] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=128, alias="q")] = None,
+    division: Annotated[str | None, Query(max_length=64, description="division.code o slug")] = None,
+    series_id: Annotated[
+        str | None,
+        Query(max_length=64, description="series.id (UUID) o slug del registry"),
+    ] = None,
+    material_id: Annotated[
+        str | None,
+        Query(max_length=64, description="materials.id (UUID) o slug del registry"),
+    ] = None,
+    tier_code: Annotated[str | None, Query(max_length=32, description="series_tiers.code")] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    service: ProductService = Depends(get_product_service),
+) -> Response:
+    """Exporta el catálogo filtrado como CSV (máx. 10 000 filas).
+
+    Acepta los mismos filtros que ``GET /products``. No devuelve paginación:
+    retorna hasta 10 000 registros ordenados por SKU ASC.
+    """
+    import csv
+    import io
+    from datetime import datetime as _dt
+
+    def _parse_iso(value: str | None, field: str) -> _dt | None:
+        if value is None:
+            return None
+        try:
+            return _dt.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "invalid_datetime",
+                    "title": f"`{field}` no es ISO-8601 válido",
+                    "detail": str(exc),
+                },
+            ) from exc
+
+    rows, _next_sku, _total = await service.list_products(
+        family=family,
+        subfamily=subfamily,
+        type_=type,
+        brand=brand,
+        translation_status=translation_status,
+        translation_lang=lang,
+        data_quality=data_quality,
+        active=active,
+        dn=dn,
+        pn=pn,
+        material=material,
+        created_after=_parse_iso(created_after, "created_after"),
+        created_before=_parse_iso(created_before, "created_before"),
+        search=q,
+        cursor=None,
+        limit=10_000,
+        include_total=False,
+        division_code=division,
+        series_id=series_id,
+        material_id=material_id,
+        tier_code=tier_code,
+    )
+
+    _EXPORT_FIELDS = [
+        "sku", "name_en", "family", "subfamily", "type", "brand",
+        "material", "dn", "pn", "lifecycle_status", "data_quality",
+        "created_at", "updated_at",
+    ]
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=_EXPORT_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    for p in rows:
+        writer.writerow({
+            "sku": p.sku,
+            "name_en": p.name_en or "",
+            "family": p.family or "",
+            "subfamily": p.subfamily or "",
+            "type": getattr(p, "type", None) or "",
+            "brand": p.brand or "",
+            "material": p.material or "",
+            "dn": p.dn or "",
+            "pn": p.pn or "",
+            "lifecycle_status": p.lifecycle_status or "",
+            "data_quality": p.data_quality or "",
+            "created_at": str(p.created_at or ""),
+            "updated_at": str(p.updated_at or ""),
+        })
+
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="products-export.csv"',
+        },
+    )
 
 
 # ==========================================================================
@@ -586,6 +720,66 @@ async def get_product(
     except ProductDomainError as e:
         _raise_domain(e)
     return await _build_product_detail(prod, service.session)
+
+
+@router.get(
+    "/{sku}/certificates",
+    response_model=list[CertificateResponse],
+    summary="Certificados del modelo al que pertenece el SKU",
+)
+async def get_product_certificates(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _: Annotated[User, Depends(require_permissions("products:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[CertificateResponse]:
+    from sqlalchemy import select as _select
+    from app.db.models.certificates import Certificate
+    from app.db.models.product import Product as _Prod
+
+    result = await session.execute(
+        _select(_Prod.model_id).where(_Prod.sku == sku)
+    )
+    model_id = result.scalar_one_or_none()
+    if not model_id:
+        return []
+    certs = (
+        await session.execute(
+            _select(Certificate)
+            .where(Certificate.model_id == model_id)
+            .order_by(Certificate.expires_at.nulls_last(), Certificate.cert_number)
+        )
+    ).scalars().all()
+    return [CertificateResponse.model_validate(c) for c in certs]
+
+
+@router.get(
+    "/{sku}/flow-data",
+    response_model=list[ModelFlowDataResponse],
+    summary="Coeficientes de flujo Kv/Cv del modelo del SKU",
+)
+async def get_product_flow_data(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _: Annotated[User, Depends(require_permissions("products:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[ModelFlowDataResponse]:
+    from sqlalchemy import select as _select
+    from app.db.models.product_models import ModelFlowData
+    from app.db.models.product import Product as _Prod
+
+    result = await session.execute(
+        _select(_Prod.model_id).where(_Prod.sku == sku)
+    )
+    model_id = result.scalar_one_or_none()
+    if not model_id:
+        return []
+    rows = (
+        await session.execute(
+            _select(ModelFlowData)
+            .where(ModelFlowData.model_id == model_id)
+            .order_by(ModelFlowData.dn_mm)
+        )
+    ).scalars().all()
+    return [ModelFlowDataResponse.model_validate(r) for r in rows]
 
 
 @router.patch(
