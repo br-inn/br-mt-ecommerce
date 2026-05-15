@@ -13,12 +13,32 @@ import {
 import type {
   FichaSeriesPreviewResponse,
   FichaSeriesApplyResponse,
+  SeriesGroupResult,
+  SkuDiffResult,
+  ExtractedCertificate,
+  ExtractedFlowData,
 } from "@/lib/api/endpoints/ficha-enrich";
 
 const SCALAR_FIELDS = [
   "family", "subfamily", "type", "material", "dn", "pn", "connection", "brand",
   "weight", "weight_unit", "temp_min_c", "temp_max_c", "pressure_max_bar", "size",
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Certificate badge
+// ---------------------------------------------------------------------------
+function CertificateBadge({ cert }: { cert: ExtractedCertificate }) {
+  const expiresLabel = cert.expires_at
+    ? new Date(cert.expires_at).toLocaleDateString("es-ES", { year: "numeric", month: "short" })
+    : null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium">
+      <span className="font-semibold">{cert.certification_code}</span>
+      {cert.cert_number && <span className="text-muted-foreground">#{cert.cert_number}</span>}
+      {expiresLabel && <span className="text-muted-foreground">exp. {expiresLabel}</span>}
+    </span>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Step 0: Dropzone
@@ -87,6 +107,105 @@ function Dropzone({ onFile, isPending, error }: {
 }
 
 // ---------------------------------------------------------------------------
+// SKU picker chip con badge de estado y variante
+// ---------------------------------------------------------------------------
+function SkuChip({ skuDiff, isVariant, isSelected, onClick }: {
+  skuDiff: SkuDiffResult;
+  isVariant: boolean;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const diffCount = skuDiff.diffs.filter(d => d.has_change).length;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded border px-2.5 py-1 text-[12px] font-medium transition-colors"
+      style={{
+        borderColor: isSelected ? MT.brand : MT.border,
+        backgroundColor: isSelected ? MT.brandSofter : MT.surface2,
+        color: isSelected ? MT.brand : MT.ink3,
+      }}
+    >
+      <span className="mt-mono">{skuDiff.sku}</span>
+      {isVariant && (
+        <span
+          className="rounded px-1 text-[10px] font-semibold"
+          style={{ backgroundColor: "#dbeafe", color: "#1d4ed8" }}
+        >
+          azul
+        </span>
+      )}
+      {skuDiff.status === "new" && (
+        <span
+          className="rounded px-1 text-[10px] font-semibold"
+          style={{ backgroundColor: MT.warningSoft, color: MT.warning }}
+        >
+          new
+        </span>
+      )}
+      {diffCount > 0 && (
+        <span style={{ color: MT.ink3 }}>({diffCount}↑)</span>
+      )}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Serie group — picker de SKUs de una serie (base + variante)
+// ---------------------------------------------------------------------------
+function SeriesGroupPicker({ group, selectedSkus, onToggle }: {
+  group: SeriesGroupResult;
+  selectedSkus: Set<string>;
+  onToggle: (sku: string) => void;
+}) {
+  const totalSkus = group.base_skus.length + group.variant_skus.length;
+  const hasVariant = group.variant_series !== null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="mt-mono text-[12px] font-semibold" style={{ color: MT.ink }}>
+          Serie {group.base_series}
+        </span>
+        {hasVariant && (
+          <>
+            <span style={{ color: MT.ink3 }}>/</span>
+            <span className="mt-mono text-[12px] font-semibold" style={{ color: "#1d4ed8" }}>
+              {group.variant_series}
+            </span>
+            <Pill tone="neutral" mono>par de color</Pill>
+          </>
+        )}
+        <span className="text-[11px]" style={{ color: MT.ink3 }}>
+          {totalSkus} SKU{totalSkus !== 1 ? "s" : ""}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {group.base_skus.map(s => (
+          <SkuChip
+            key={s.sku}
+            skuDiff={s}
+            isVariant={false}
+            isSelected={selectedSkus.has(s.sku)}
+            onClick={() => onToggle(s.sku)}
+          />
+        ))}
+        {group.variant_skus.map(s => (
+          <SkuChip
+            key={s.sku}
+            skuDiff={s}
+            isVariant={true}
+            isSelected={selectedSkus.has(s.sku)}
+            onClick={() => onToggle(s.sku)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Step 1: Serie review
 // ---------------------------------------------------------------------------
 function SerieStep({ preview, onReset, onApplySuccess }: {
@@ -126,8 +245,23 @@ function SerieStep({ preview, onReset, onApplySuccess }: {
     }
   };
 
+  // Build variant_links: variant_sku → base_sku (by matching DN suffix)
+  const variantLinks = React.useMemo(() => {
+    const links: Record<string, string> = {};
+    for (const group of preview.series_groups ?? []) {
+      if (!group.variant_series) continue;
+      for (const vs of group.variant_skus) {
+        const dnSuffix = vs.sku.slice(-3);
+        const baseSku = group.base_series + dnSuffix;
+        links[vs.sku] = baseSku;
+      }
+    }
+    return links;
+  }, [preview.series_groups]);
+
   const existingCount = preview.series_skus.filter(s => s.status === "existing").length;
   const newCount = preview.series_skus.filter(s => s.status === "new").length;
+  const hasMultiSeries = (preview.series_groups?.length ?? 0) > 1;
 
   const handleApply = () => {
     const scalarFields = [...selectedFields].filter(
@@ -145,10 +279,11 @@ function SerieStep({ preview, onReset, onApplySuccess }: {
       apply_translations: selectedFields.has("translations"),
       selected_scalar_fields: scalarFields,
       save_document: true,
+      variant_links: variantLinks,
     }, {
       onSuccess: (result) => {
         toast.success(
-          `Serie ${preview.series} procesada: ${result.skus_created.length} creados, ${result.skus_updated.length} actualizados`,
+          `${result.skus_created.length} creados, ${result.skus_updated.length} actualizados`,
         );
         onApplySuccess(result);
       },
@@ -174,7 +309,11 @@ function SerieStep({ preview, onReset, onApplySuccess }: {
               {Math.round(preview.confidence * 100)}% confianza
             </Pill>
             <Pill tone="neutral" mono>{preview.page_count} págs</Pill>
-            <Pill tone="brand" mono>Serie {preview.series}</Pill>
+            {hasMultiSeries ? (
+              <Pill tone="brand" mono>{preview.detected_series.length} series</Pill>
+            ) : (
+              <Pill tone="brand" mono>Serie {preview.series}</Pill>
+            )}
           </div>
         </div>
 
@@ -201,6 +340,43 @@ function SerieStep({ preview, onReset, onApplySuccess }: {
         </div>
       </div>
 
+      {/* Certificate badges */}
+      {preview.extraction.certificates.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          <span className="text-xs text-muted-foreground self-center">Certs:</span>
+          {preview.extraction.certificates.map((cert, i) => (
+            <CertificateBadge key={i} cert={cert} />
+          ))}
+        </div>
+      )}
+
+      {/* Kv/flow table */}
+      {preview.extraction.flow_data.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">Coeficientes de flujo</p>
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="bg-muted/40 text-left">
+                <th className="px-2 py-1 border font-medium">DN</th>
+                <th className="px-2 py-1 border font-medium text-right">Kv (m³/h)</th>
+                <th className="px-2 py-1 border font-medium text-right">Cv</th>
+                <th className="px-2 py-1 border font-medium text-right">Malla (mm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.extraction.flow_data.map((fd: ExtractedFlowData, i: number) => (
+                <tr key={i} className="border-b last:border-0">
+                  <td className="px-2 py-1 border font-mono">{fd.dn_label}</td>
+                  <td className="px-2 py-1 border text-right">{fd.kv ?? "—"}</td>
+                  <td className="px-2 py-1 border text-right">{fd.cv ?? "—"}</td>
+                  <td className="px-2 py-1 border text-right">{fd.mesh_mm ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Model gaps */}
       {preview.model_gaps.length > 0 && (
         <div
@@ -223,41 +399,37 @@ function SerieStep({ preview, onReset, onApplySuccess }: {
         </div>
       )}
 
-      {/* SKU picker */}
+      {/* SKU picker — agrupado por serie si hay múltiples, flat si solo una */}
       <SectionCard
-        title={`SKUs en serie "${preview.series}" — ${preview.series_skus.length} detectados`}
+        title={
+          hasMultiSeries
+            ? `${preview.detected_series.length} series detectadas — ${preview.series_skus.length} SKUs totales`
+            : `SKUs en serie "${preview.series}" — ${preview.series_skus.length} detectados`
+        }
       >
-        <div className="px-4 py-3 flex flex-wrap gap-2">
-          {preview.series_skus.map(s => {
-            const isSelected = selectedSkus.has(s.sku);
-            const diffCount = s.diffs.filter(d => d.has_change).length;
-            return (
-              <button
-                key={s.sku}
-                type="button"
-                onClick={() => toggleSku(s.sku)}
-                className="flex items-center gap-1.5 rounded border px-2.5 py-1 text-[12px] font-medium transition-colors"
-                style={{
-                  borderColor: isSelected ? MT.brand : MT.border,
-                  backgroundColor: isSelected ? MT.brandSofter : MT.surface2,
-                  color: isSelected ? MT.brand : MT.ink3,
-                }}
-              >
-                <span className="mt-mono">{s.sku}</span>
-                {s.status === "new" && (
-                  <span
-                    className="rounded px-1 text-[10px] font-semibold"
-                    style={{ backgroundColor: MT.warningSoft, color: MT.warning }}
-                  >
-                    new
-                  </span>
-                )}
-                {diffCount > 0 && (
-                  <span style={{ color: MT.ink3 }}>({diffCount}↑)</span>
-                )}
-              </button>
-            );
-          })}
+        <div className="px-4 py-3 space-y-4">
+          {(preview.series_groups?.length ?? 0) > 0 ? (
+            preview.series_groups.map(group => (
+              <SeriesGroupPicker
+                key={group.base_series}
+                group={group}
+                selectedSkus={selectedSkus}
+                onToggle={toggleSku}
+              />
+            ))
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {preview.series_skus.map(s => (
+                <SkuChip
+                  key={s.sku}
+                  skuDiff={s}
+                  isVariant={false}
+                  isSelected={selectedSkus.has(s.sku)}
+                  onClick={() => toggleSku(s.sku)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </SectionCard>
 
