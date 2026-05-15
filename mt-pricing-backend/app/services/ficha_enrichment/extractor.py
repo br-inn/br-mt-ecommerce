@@ -13,7 +13,9 @@ from typing import Any
 
 from app.schemas.ficha_enrich import (
     ExtractedAsset,
+    ExtractedCertificate,
     ExtractedDimensionRow,
+    ExtractedFlowData,
     ExtractedMaterial,
     ExtractedScalars,
     ExtractedSpecs,
@@ -59,7 +61,13 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "no_frost": {"type": "boolean"},
                     "actuation_type": {"type": "string"},
                     "bore_type": {"type": "string"},
-                    "extra": {"type": "object"},
+                    "extra": {
+                        "type": "object",
+                        "description": (
+                            "Campos adicionales sin campo propio. "
+                            "Usar 'product_line' para líneas de producto (ej. 'Gold Series')."
+                        ),
+                    },
                 },
             },
             "materials": {
@@ -72,6 +80,18 @@ _TOOL_SCHEMA: dict[str, Any] = {
                         "position": {"type": "integer", "default": 0},
                         "material": {"type": "string"},
                         "observations": {"type": "string"},
+                        "material_grade": {
+                            "type": "string",
+                            "description": "Grado material según norma (ej. EN-GJL-250, CW617N, AISI 304)"
+                        },
+                        "material_standard": {
+                            "type": "string",
+                            "description": "Norma del material (ej. UNE-EN-12165, ASTM A307)"
+                        },
+                        "surface_treatment": {
+                            "type": "string",
+                            "description": "Tratamiento superficial (ej. Nickel, Epoxy, Zinc, None)"
+                        },
                     },
                 },
             },
@@ -83,18 +103,27 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "properties": {
                         "dn_label": {"type": "string"},
                         "values": {"type": "object"},
+                        "dn_secondary_label": {
+                            "type": "string",
+                            "description": "DN salida para reductores (ej. '3/8\"' en una reducción 1/2 x 3/8)"
+                        },
                     },
                 },
             },
             "translations": {
                 "type": "array",
+                "description": (
+                    "Nombre y descripción del producto por idioma. "
+                    "Extrae SIEMPRE si el PDF tiene texto bilingüe. "
+                    "Incluye lang='es' para español y lang='en' para inglés."
+                ),
                 "items": {
                     "type": "object",
                     "required": ["lang"],
                     "properties": {
                         "lang": {"type": "string", "enum": ["es", "ar", "en"]},
-                        "name": {"type": "string"},
-                        "description": {"type": "string"},
+                        "name": {"type": "string", "description": "Nombre comercial del producto en este idioma"},
+                        "description": {"type": "string", "description": "Descripción técnica en este idioma"},
                     },
                 },
             },
@@ -102,6 +131,40 @@ _TOOL_SCHEMA: dict[str, Any] = {
                 "type": "array",
                 "items": {"type": "string"},
                 "description": "Información en PDF sin campo en el modelo (validación del modelo).",
+            },
+            "certificates": {
+                "type": "array",
+                "description": "Certificados emitidos detectados en el PDF (ACS, WRAS, PZH, CE/PED, etc.)",
+                "items": {
+                    "type": "object",
+                    "required": ["certification_code"],
+                    "properties": {
+                        "certification_code": {
+                            "type": "string",
+                            "description": "Código: ACS | WRAS | PZH | CE | FM | ISO9001 | WRAS"
+                        },
+                        "cert_number": {"type": "string"},
+                        "issuer": {"type": "string", "description": "Organismo emisor (ej. Carso, BSI, TÜV)"},
+                        "issued_at": {"type": "string", "description": "Fecha emisión ISO (YYYY-MM-DD)"},
+                        "expires_at": {"type": "string", "description": "Fecha caducidad ISO (YYYY-MM-DD)"},
+                        "signatory_name": {"type": "string"},
+                        "signatory_role": {"type": "string"},
+                    },
+                },
+            },
+            "flow_data": {
+                "type": "array",
+                "description": "Coeficientes Kv/Cv y malla de filtración por DN (coladores/filtros)",
+                "items": {
+                    "type": "object",
+                    "required": ["dn_label"],
+                    "properties": {
+                        "dn_label": {"type": "string", "description": "Etiqueta DN como aparece en la tabla"},
+                        "kv": {"type": "number", "description": "Coeficiente de flujo Kv (m³/h)"},
+                        "cv": {"type": "number", "description": "Coeficiente de flujo Cv (US gpm)"},
+                        "mesh_mm": {"type": "number", "description": "Tamaño malla en mm (ej. 1.8, 1.0)"},
+                    },
+                },
             },
             "confidence": {
                 "type": "number",
@@ -159,7 +222,14 @@ _SYSTEM_PROMPT = (
     "Sé preciso: si no ves el dato claramente, no lo incluyas. "
     "Para materiales, usa nombres canónicos en inglés lowercase (brass_cw617n, ss316, ptfe, nbr, epdm). "
     "Para dn/pn, usa solo el número sin prefijo (ej. '30' no 'PN30'). "
-    "El campo model_gaps es IMPORTANTE: lista todo lo que encuentres en el PDF que no tenga campo "
+    "\n\nTRADUCCIONES: Si el PDF tiene texto bilingüe (ej. español e inglés en columnas o secciones paralelas), "
+    "extrae el nombre comercial y descripción del producto en ambos idiomas. Usa lang='es' y lang='en'. "
+    "Ejemplo: un PDF con 'Válvula de esfera / Ball valve' → extrae ambas traducciones. "
+    "\n\nLÍNEA DE PRODUCTO: Si encuentras un nombre de línea o gama (ej. 'GOLD SERIES', 'Línea Premium', "
+    "'Serie ORO'), guárdalo en specs.extra.product_line. "
+    "\n\nTAMAÑOS: El campo 'size' debe ser el rango completo (ej. '3/8\" a 2\"'). "
+    "El campo 'dn' debe ser el tamaño nominal principal en mm (ej. '15' para DN15). "
+    "\n\nEl campo model_gaps es IMPORTANTE: lista todo lo que encuentres en el PDF que no tenga campo "
     "correspondiente en el modelo (ej. 'tabla de par de apriete', 'curva Kv', 'certificado CE número X')."
 )
 
@@ -256,16 +326,23 @@ def _build_result(data: dict[str, Any], raw_text: str) -> FichaExtractionResult:
     )
     materials = [
         ExtractedMaterial(
-            component=m["component"],
+            component=m.get("component", "body"),
             position=m.get("position", 0),
-            material=m["material"],
+            material=m.get("material", ""),
             observations=m.get("observations"),
+            material_grade=m.get("material_grade"),
+            material_standard=m.get("material_standard"),
+            surface_treatment=m.get("surface_treatment"),
         )
         for m in (data.get("materials") or [])
         if m.get("component") and m.get("material")
     ]
     dimensions = [
-        ExtractedDimensionRow(dn_label=d["dn_label"], values=d.get("values", {}))
+        ExtractedDimensionRow(
+            dn_label=d.get("dn_label", ""),
+            values=d.get("values", {}),
+            dn_secondary_label=d.get("dn_secondary_label"),
+        )
         for d in (data.get("dimensions") or [])
         if d.get("dn_label")
     ]
@@ -274,12 +351,24 @@ def _build_result(data: dict[str, Any], raw_text: str) -> FichaExtractionResult:
         for t in (data.get("translations") or [])
         if t.get("lang")
     ]
+    certificates = [
+        ExtractedCertificate(**{k: v for k, v in c.items() if k in ExtractedCertificate.model_fields})
+        for c in (data.get("certificates") or [])
+        if c.get("certification_code")
+    ]
+    flow_data = [
+        ExtractedFlowData(**{k: v for k, v in fd.items() if k in ExtractedFlowData.model_fields})
+        for fd in (data.get("flow_data") or [])
+        if fd.get("dn_label")
+    ]
     return FichaExtractionResult(
         scalars=scalars,
         specs=specs,
         materials=materials,
         dimensions=dimensions,
         translations=translations,
+        certificates=certificates,
+        flow_data=flow_data,
         model_gaps=data.get("model_gaps") or [],
         confidence=float(data.get("confidence") or 0.0),
         raw_text_preview=raw_text[:500],
@@ -490,6 +579,7 @@ __all__ = [
     "_build_result",
     "_format_tables",
     "_parse_tool_response",
+    "_TOOL_SCHEMA",
     "_PAGE_CLASSIFICATION_TOOL",
     "_PT_CURVE_TOOL",
 ]
