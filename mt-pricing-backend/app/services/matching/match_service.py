@@ -249,9 +249,10 @@ class MatchService:
         persisted.sort(key=lambda r: r.score, reverse=True)
 
         # ── Pool-relativa: maneta (handle) ────────────────────────────────────
-        # Si el SKU tiene datos de maneta:
-        #   - Algún candidato SIN handle_mismatch → los que tienen pasan a kind=drop
-        #   - TODOS con handle_mismatch → bajar price_confidence_score 15 puntos
+        # Regla: candidatos con handle_mismatch solo se listan si NO hay ningún
+        # candidato sin mismatch en el pool. Si hay alternativas sin mismatch,
+        # los candidatos con mismatch se eliminan completamente.
+        # Si TODOS tienen mismatch → se muestran pero con confidence -15.
         sku_specs_dict = sku_dict.get("specs") or {}
         sku_has_handle = bool(
             (sku_specs_dict.get("handle_color") or "").strip()
@@ -268,15 +269,18 @@ class MatchService:
                     ok_count += 1
 
             if ok_count > 0 and mismatch_rows:
+                # Hay mejores alternativas → excluir los de handle distinto
                 for row in mismatch_rows:
-                    row.kind = "drop"
-                    await self.session.flush()
+                    persisted.remove(row)
+                    await self.session.delete(row)
+                await self.session.flush()
             elif mismatch_rows and ok_count == 0:
+                # Sin alternativas → mantenerlos pero bajar confianza
                 for row in mismatch_rows:
                     row.price_confidence_score = max(
                         0, (row.price_confidence_score or 0) - 15
                     )
-                    await self.session.flush()
+                await self.session.flush()
 
         return persisted
 
