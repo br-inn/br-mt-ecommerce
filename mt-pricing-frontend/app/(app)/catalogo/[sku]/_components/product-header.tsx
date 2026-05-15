@@ -28,7 +28,8 @@ import { productsApi } from "@/lib/api/endpoints/products";
 import { productKeys } from "@/lib/hooks/products/query-keys";
 import { getProductName } from "@/lib/utils/product-display";
 import { isProductActive } from "@/lib/utils/product-lifecycle";
-import type { ProductLifecycleStatus } from "@/lib/api/endpoints/products";
+import type { ProductLifecycleStatus, DataQuality } from "@/lib/api/endpoints/products";
+import { usePatchDataQuality } from "@/lib/hooks/products/use-patch-data-quality";
 
 // SAP Fiori Object Page — KVP row (UX-02)
 function KVP({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
@@ -69,6 +70,8 @@ export function ProductHeader({ sku }: Props) {
       setDraft(null);
     },
   });
+
+  const patchQuality = usePatchDataQuality(sku);
 
   const enterEdit = () => {
     if (!product) return;
@@ -173,6 +176,21 @@ export function ProductHeader({ sku }: Props) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <DataQualityBadge value={product.data_quality} />
+            <RbacGuard permissions={["products:write"]}>
+              <select
+                value={product.data_quality}
+                onChange={(e) =>
+                  patchQuality.mutate({ new_value: e.target.value as DataQuality })
+                }
+                disabled={patchQuality.isPending}
+                className="rounded border bg-background px-1 py-0.5 text-xs text-foreground disabled:opacity-50"
+                aria-label="Cambiar calidad de datos"
+              >
+                <option value="partial">Parcial</option>
+                <option value="complete">Completa</option>
+                <option value="blocked">Bloqueada</option>
+              </select>
+            </RbacGuard>
             <TranslationStatusPill language="en" status="approved" />
             <TranslationStatusPill language="es" status={product.translation_status_es} />
             <TranslationStatusPill language="ar" status={product.translation_status_ar} />
@@ -287,6 +305,29 @@ export function ProductHeader({ sku }: Props) {
           />
           <KVP label="Marca" value={product.brand ?? (product as { brand_name?: string }).brand_name} />
           <KVP label="Serie" value={seriesLabel} />
+          {product.model_detail ? (
+            <>
+              <KVP
+                label="Modelo"
+                value={
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-mono">{product.model_detail.code}</span>
+                    {product.model_detail.color_label ? (
+                      <Badge variant="outline" className="text-[10px] capitalize">
+                        {product.model_detail.color_label}
+                      </Badge>
+                    ) : null}
+                  </span>
+                }
+              />
+              {product.model_detail.connection_type ? (
+                <KVP
+                  label="Conexión"
+                  value={product.model_detail.connection_type}
+                />
+              ) : null}
+            </>
+          ) : null}
         </dl>
       )}
     </div>

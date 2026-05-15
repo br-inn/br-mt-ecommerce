@@ -3,6 +3,8 @@ import { PressureTemperatureChart } from "@/components/domain/pressure-temperatu
 import { ProductBoreDimensions } from "./_components/product-bore-dimensions";
 import { ProductSpecs } from "./_components/product-specs";
 import { ProductSpecsCardEAVConnected } from "./_components/product-specs-eav-connected";
+import { ProductCertificates } from "./_components/product-certificates";
+import { ProductFlowData } from "./_components/product-flow-data";
 
 export default async function ProductSpecsPage({
   params,
@@ -37,6 +39,8 @@ export default async function ProductSpecsPage({
         </h2>
         <PressureTemperatureChart sku={sku} />
       </section>
+      <ProductFlowData sku={sku} />
+      <ProductCertificates sku={sku} />
     </div>
   );
 }
