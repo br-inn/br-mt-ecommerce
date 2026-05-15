@@ -117,3 +117,25 @@ def test_build_for_sku_handles_int_dn() -> None:
     queries = build_queries(sku)
     spec_q = next(q for q in queries if q.type == "spec")
     assert '2"' in spec_q.text or "DN50" in spec_q.text
+
+
+def test_build_for_sku_uses_model_thread_standard_in_spec_query() -> None:
+    """Cuando model_thread_standard está presente, aparece en el spec query."""
+    sku = dict(SAMPLE_SKU)
+    sku["model_thread_standard"] = "BSP"
+    sku["model_connection_type"] = "thread_bsp"
+
+    queries = build_queries(sku)
+    spec_q = next(q for q in queries if q.type == "spec")
+    assert "BSP" in spec_q.text, f"Expected BSP in spec query, got: {spec_q.text!r}"
+
+
+def test_build_for_sku_model_fields_none_does_not_crash() -> None:
+    """Cuando model_* son None, el builder funciona igual que antes."""
+    sku = dict(SAMPLE_SKU)
+    sku["model_code"] = None
+    sku["model_connection_type"] = None
+    sku["model_thread_standard"] = None
+
+    queries = build_queries(sku)
+    assert any(q.type == "spec" for q in queries)
