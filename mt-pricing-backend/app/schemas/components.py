@@ -52,6 +52,9 @@ class ProductMaterialBase(BaseModel):
     position: int = Field(default=0, ge=0, le=99)
     material: MaterialStr
     observations: str | None = Field(default=None, max_length=512)
+    material_grade: str | None = Field(default=None, max_length=128)
+    material_standard: str | None = Field(default=None, max_length=64)
+    surface_treatment: str | None = Field(default=None, max_length=128)
 
 
 class ProductMaterialCreate(ProductMaterialBase):
@@ -65,6 +68,9 @@ class ProductMaterialPatch(BaseModel):
 
     material: MaterialStr | None = None
     observations: str | None = Field(default=None, max_length=512)
+    material_grade: str | None = Field(default=None, max_length=128)
+    material_standard: str | None = Field(default=None, max_length=64)
+    surface_treatment: str | None = Field(default=None, max_length=128)
 
 
 class ProductMaterialResponse(ProductMaterialBase):

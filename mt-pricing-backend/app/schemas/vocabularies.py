@@ -602,6 +602,9 @@ class SeriesResponse(BaseModel):
     active: bool
     created_at: datetime
     updated_at: datetime
+    thread_standard: str | None = None
+    revision: str | None = None
+    revision_date: date | None = None
 
 
 class SeriesTranslationUpsert(BaseModel):
