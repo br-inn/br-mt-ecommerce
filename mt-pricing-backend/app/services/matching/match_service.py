@@ -341,6 +341,25 @@ class MatchService:
             if title_dn:
                 cand_dict["size"] = title_dn
 
+        # Fallback: extraer PN del título / description_text cuando el PDP no lo tiene.
+        # Muchos listings de Amazon no incluyen maximum_pressure en specs estructuradas
+        # pero sí en el título ("PN30") o en la descripción ("Full Flow PN30").
+        if not cand_dict.get("pn"):
+            _pn_text = (raw.title or "") + " " + (raw.raw_payload or {}).get("description_text", "")
+            _pn_from_text = _pdp_pn_parse(_pn_text)
+            if _pn_from_text:
+                cand_dict["pn"] = _pn_from_text
+
+        # Fallback: extraer rosca/thread del título cuando specs no lo tiene.
+        # El título suele incluir "BSP", "NPT", "BSPP", etc.
+        if not cand_dict.get("thread"):
+            _thread_src = (raw.title or "") + " " + (raw.raw_payload or {}).get("description_text", "")
+            _thread_src_upper = _thread_src.upper()
+            for _std in ("BSPT", "BSPP", "BSP", "NPTF", "NPT"):
+                if _std in _thread_src_upper:
+                    cand_dict["thread"] = _std
+                    break
+
         # Fallback: detectar material desde el título cuando SERP-only (sin PDP).
         # curl_cffi no renderiza JS y no accede al PDP; el título suele mencionar
         # el material. Necesario para que material_mismatch dispare como blocker.
