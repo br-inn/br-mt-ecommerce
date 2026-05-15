@@ -247,6 +247,37 @@ class MatchService:
 
         # Sort por score DESC (best first), estable.
         persisted.sort(key=lambda r: r.score, reverse=True)
+
+        # ── Pool-relativa: maneta (handle) ────────────────────────────────────
+        # Si el SKU tiene datos de maneta:
+        #   - Algún candidato SIN handle_mismatch → los que tienen pasan a kind=drop
+        #   - TODOS con handle_mismatch → bajar price_confidence_score 15 puntos
+        sku_specs_dict = sku_dict.get("specs") or {}
+        sku_has_handle = bool(
+            (sku_specs_dict.get("handle_color") or "").strip()
+            or (sku_specs_dict.get("handle_material") or "").strip()
+        )
+        if sku_has_handle and persisted:
+            mismatch_rows: list[MatchCandidate] = []
+            ok_count = 0
+            for row in persisted:
+                _notes = (row.specs_jsonb or {}).get("_scoring", {}).get("notes", [])
+                if "handle_mismatch" in _notes:
+                    mismatch_rows.append(row)
+                else:
+                    ok_count += 1
+
+            if ok_count > 0 and mismatch_rows:
+                for row in mismatch_rows:
+                    row.kind = "drop"
+                    await self.session.flush()
+            elif mismatch_rows and ok_count == 0:
+                for row in mismatch_rows:
+                    row.price_confidence_score = max(
+                        0, (row.price_confidence_score or 0) - 15
+                    )
+                    await self.session.flush()
+
         return persisted
 
     async def _purge_stale_pending(

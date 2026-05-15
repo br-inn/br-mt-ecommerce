@@ -22,7 +22,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import re
+
+if TYPE_CHECKING:
+    from app.services.matching.material_normalizer import MaterialNormalizer
 
 # ---------------------------------------------------------------------------
 # G1 / G2 constantes de negocio
@@ -44,12 +49,13 @@ G2_MULTIPLIERS: dict[str, Decimal] = {
 # TODO(ADR-MATCH-WEIGHTS): mover pesos a `comparator_config` con override por
 # canal/familia. Ver `mt-product-matching-pipeline-detail.md` §7.1.
 SCORING_WEIGHTS: dict[str, Decimal] = {
-    "material": Decimal("0.20"),
-    "pn": Decimal("0.15"),
-    "thread": Decimal("0.15"),  # connection / rosca
-    "norma": Decimal("0.15"),
-    "brand_tier": Decimal("0.20"),
-    "delivery": Decimal("0.15"),
+    "material":          Decimal("0.18"),
+    "pn":                Decimal("0.14"),
+    "thread":            Decimal("0.14"),  # connection / rosca
+    "norma":             Decimal("0.14"),
+    "brand_tier":        Decimal("0.18"),
+    "delivery":          Decimal("0.14"),
+    "data_completeness": Decimal("0.08"),
 }
 DEFAULT_WEIGHTS = SCORING_WEIGHTS  # alias público
 
@@ -188,42 +194,395 @@ def _starts_or_contains(haystack: str | None, needle: str | None) -> bool:
     return str(needle).strip().lower() in str(haystack).strip().lower()
 
 
-def _material_score(sku_material: str | None, cand_material: str | None) -> Decimal:
-    if sku_material is None and cand_material is None:
+# Pesos por componente para scoring compuesto de material.
+# Si el SKU no especifica un componente, se omite de la ponderación.
+_COMPONENT_WEIGHTS: dict[str, Decimal] = {
+    "body": Decimal("0.50"),
+    "ball": Decimal("0.30"),
+    "seat": Decimal("0.15"),
+    "stem": Decimal("0.05"),
+}
+
+
+def _material_score_pair(
+    a: str | None,
+    b: str | None,
+    norm: "MaterialNormalizer",
+) -> Decimal:
+    """Score 0-1 entre dos strings de material usando homologación."""
+    if a is None and b is None:
         return Decimal("0.5")
-    if sku_material is None or cand_material is None:
+    if a is None or b is None:
         return Decimal("0.3")
-    if _eq_norm(sku_material, cand_material):
+    if norm.same_canonical(a, b):
         return Decimal("1.0")
-    # `brass_CW617N` ↔ `brass` debería matchear parcialmente.
-    s = sku_material.lower()
-    c = cand_material.lower()
-    if s.split("_")[0] == c.split("_")[0]:
-        return Decimal("0.85")
+    if norm.same_family(a, b):
+        # Misma familia (ej. brass vs brass_cw617n) — match parcial.
+        return Decimal("0.75")
     return Decimal("0.0")
 
 
-def _pn_score(sku_pn: str | None, cand_pn: str | None) -> Decimal:
-    """PN: candidato igual o superior al SKU = OK; inferior penaliza."""
-    if sku_pn is None or cand_pn is None:
-        return Decimal("0.5")
+def _material_score(
+    sku_material: str | None,
+    cand_material: str | None,
+    norm: "MaterialNormalizer | None" = None,
+    sku_components: list[dict[str, str]] | None = None,
+    cand_components: dict[str, str] | None = None,
+) -> Decimal:
+    """Score de material con soporte para composición body/ball/seat.
+
+    Cuando el SKU tiene componentes definidos (product_materials), el score
+    se pondera por componente. Si el candidato no especifica un componente,
+    se trata como desconocido (score parcial 0.4), no como mismatch.
+
+    Args:
+        sku_material: campo plano ``products.material`` (fallback).
+        cand_material: campo plano del candidato.
+        norm: normalizador de homologación. Si None, usa STATIC_NORMALIZER.
+        sku_components: lista [{component, material}] de product_materials.
+        cand_components: dict {component: material_str} del candidato.
+    """
+    from app.services.matching.material_normalizer import STATIC_NORMALIZER
+    n = norm or STATIC_NORMALIZER
+
+    # ── Scoring compuesto (body/ball/seat) cuando hay datos de componentes ──
+    if sku_components:
+        # Agrupar por componente — tomar posición 0 (primaria).
+        sku_by_comp: dict[str, str] = {}
+        for row in sku_components:
+            comp = (row.get("component") or "").lower()
+            if comp in _COMPONENT_WEIGHTS and comp not in sku_by_comp:
+                sku_by_comp[comp] = row.get("material", "")
+
+        if sku_by_comp:
+            total_w = Decimal("0")
+            weighted = Decimal("0")
+            for comp, w in _COMPONENT_WEIGHTS.items():
+                sku_mat = sku_by_comp.get(comp)
+                if sku_mat is None:
+                    continue  # componente no definido en SKU — omitir
+                total_w += w
+                cand_mat = (cand_components or {}).get(comp)
+                if cand_mat is None:
+                    # Candidato no especifica este componente — penalización leve.
+                    weighted += w * Decimal("0.4")
+                else:
+                    weighted += w * _material_score_pair(sku_mat, cand_mat, n)
+            if total_w > 0:
+                return weighted / total_w
+
+    # ── Fallback: comparación plana ──────────────────────────────────────────
+    return _material_score_pair(sku_material, cand_material, n)
+
+
+# Escala estándar de PN — usada para calcular distancia de grados.
+_PN_GRADES: tuple[int, ...] = (6, 10, 16, 25, 40, 63, 100, 160, 250, 400)
+# Máximo de grados por encima aceptables sin penalización dura.
+# +1 → 0.85, +2 → 0.55, +3 → 0.20, +4 o más → 0.0 (pn_too_far_above)
+_PN_MAX_GRADE_ABOVE = 3
+
+
+def _parse_pn(pn: str | None) -> int | None:
+    if pn is None:
+        return None
     try:
-        s = int(str(sku_pn).replace("PN", "").strip())
-        c = int(str(cand_pn).replace("PN", "").strip())
+        return int(str(pn).upper().replace("PN", "").strip())
     except (TypeError, ValueError):
-        return Decimal("0.5")
-    if c == s:
-        return Decimal("1.0")
-    if c > s:
-        return Decimal("0.9")  # sobredimensionado pero compatible
-    # PN menor = no soporta presión → penalización fuerte.
-    return Decimal("0.0")
+        return None
 
 
-def _thread_score(sku_thread: str | None, cand_thread: str | None) -> Decimal:
-    if sku_thread is None or cand_thread is None:
-        return Decimal("0.5")
-    return Decimal("1.0") if _eq_norm(sku_thread, cand_thread) else Decimal("0.0")
+def _pn_grade_distance(a: int, b: int) -> int | None:
+    """Distancia en grados de escala entre dos PN. Positivo = b mayor que a."""
+    try:
+        ia = _PN_GRADES.index(a)
+        ib = _PN_GRADES.index(b)
+        return ib - ia
+    except ValueError:
+        return None
+
+
+def _pn_score(sku_pn: str | None, cand_pn: str | None) -> tuple[Decimal, list[str]]:
+    """PN score + notas. Retorna (score, notes).
+
+    Reglas:
+    - Igual → 1.0
+    - Superior hasta +3 grados → score degradado (0.85 / 0.55 / 0.20)
+    - Superior +4 grados → 0.0 + nota pn_too_far_above (precio fuera de rango)
+    - Inferior → 0.0 + nota pn_below_sku_requirement
+    - Sin datos → 0.5
+    """
+    notes: list[str] = []
+    s_int = _parse_pn(sku_pn)
+    c_int = _parse_pn(cand_pn)
+
+    if s_int is None or c_int is None:
+        return Decimal("0.5"), notes
+
+    if c_int == s_int:
+        return Decimal("1.0"), notes
+
+    if c_int < s_int:
+        notes.append("pn_below_sku_requirement")
+        return Decimal("0.0"), notes
+
+    # Candidato superior — verificar distancia de grados
+    dist = _pn_grade_distance(s_int, c_int)
+    if dist is None:
+        # Valores fuera de la escala estándar — diferencia porcentual
+        ratio = c_int / s_int
+        if ratio <= 1.6:
+            return Decimal("0.85"), notes
+        if ratio <= 2.5:
+            return Decimal("0.40"), notes
+        notes.append("pn_too_far_above")
+        return Decimal("0.0"), notes
+
+    grade_scores = {1: Decimal("0.85"), 2: Decimal("0.55"), 3: Decimal("0.20")}
+    if dist <= _PN_MAX_GRADE_ABOVE:
+        return grade_scores.get(dist, Decimal("0.20")), notes
+
+    notes.append("pn_too_far_above")
+    return Decimal("0.0"), notes
+
+
+# ── Estándar de rosca ────────────────────────────────────────────────────────
+
+_THREAD_STD_PATTERNS: dict[str, frozenset[str]] = {
+    "bsp":    frozenset({"bsp", "bspp", "bspt", "g thread", "g-thread", "rp", "rc", "iso 228", "en iso 228"}),
+    "npt":    frozenset({"npt", "nptf", "ansi b1.20"}),
+    "metric": frozenset({"metric", "din", "m10", "m12", "m14", "m16", "m20"}),
+}
+
+
+def _extract_thread_standard(text: str | None) -> str | None:
+    if not text:
+        return None
+    t = text.lower()
+    for std, patterns in _THREAD_STD_PATTERNS.items():
+        if any(p in t for p in patterns):
+            return std
+    return None
+
+
+def _thread_score(sku_thread: str | None, cand_thread: str | None) -> tuple[Decimal, list[str]]:
+    """Retorna (score, notes). Estándar de rosca es blocker duro."""
+    notes: list[str] = []
+    sku_std = _extract_thread_standard(sku_thread)
+    cand_std = _extract_thread_standard(cand_thread)
+
+    if sku_std is None or cand_std is None:
+        # Sin información suficiente — score neutro, no blocker
+        if sku_thread and cand_thread:
+            # Hay texto pero no se reconoció estándar — comparación literal
+            score = Decimal("1.0") if _eq_norm(sku_thread, cand_thread) else Decimal("0.3")
+            return score, notes
+        return Decimal("0.5"), notes
+
+    if sku_std == cand_std:
+        return Decimal("1.0"), notes
+
+    notes.append("thread_standard_mismatch")
+    return Decimal("0.0"), notes
+
+
+# ── DN / Tamaño ───────────────────────────────────────────────────────────────
+
+_DN_INCH_RE = re.compile(r'(\d+(?:[/-]\d+)?)\s*["“”]')  # "  o comillas tipográficas
+_DN_INCH_WORD_RE = re.compile(r'(\d+(?:[/-]\d+)?)\s*(?:inch|in\b)', re.IGNORECASE)
+_DN_METRIC_RE = re.compile(r'\bDN\s*(\d{1,4})\b', re.IGNORECASE)
+_DN_INT_RE = re.compile(r'^\s*(\d{1,4})\s*$')
+
+# DN métrico → pulgadas canónicas (para comparar ambos formatos)
+_DN_TO_INCH: dict[int, str] = {
+    8: "1/4", 10: "3/8", 15: "1/2", 20: "3/4", 25: "1",
+    32: "1-1/4", 40: "1-1/2", 50: "2", 65: "2-1/2", 80: "3",
+    100: "4", 125: "5", 150: "6", 200: "8", 250: "10", 300: "12",
+}
+_INCH_TO_DN: dict[str, int] = {v: k for k, v in _DN_TO_INCH.items()}
+
+
+def _normalize_dn(text: str | None) -> str | None:
+    """Normaliza DN a pulgadas canónicas para comparación cross-format.
+
+    Soporta: '1/2"', '1/2 inch', '1/2in', 'DN15', '15', '1-1/2"'.
+    Usado tanto para campos de spec limpios como para extracción desde títulos.
+    """
+    if not text:
+        return None
+    t = text.strip()
+
+    # Formato pulgadas con símbolo: '1/2"', '1"', '1-1/2"' (ASCII o tipográfico)
+    m = _DN_INCH_RE.search(t)
+    if m:
+        return m.group(1).replace(" ", "").lower()
+
+    # Formato DN métrico: 'DN50', 'DN 15'
+    m = _DN_METRIC_RE.search(t)
+    if m:
+        dn_int = int(m.group(1))
+        return _DN_TO_INCH.get(dn_int, f"dn{dn_int}")
+
+    # Formato "inch" word: '1/2 inch', '1/2in', '3/4 Inch'
+    m = _DN_INCH_WORD_RE.search(t)
+    if m:
+        return m.group(1).replace(" ", "").lower()
+
+    # Entero puro (campo spec): '15', '50'
+    m = _DN_INT_RE.match(t)
+    if m:
+        dn_int = int(m.group(1))
+        return _DN_TO_INCH.get(dn_int, f"dn{dn_int}")
+
+    return t.lower()
+
+
+def _dn_score(sku_dn: str | None, cand_dn: str | None) -> tuple[Decimal, list[str]]:
+    """DN debe coincidir. Retorna (score, notes)."""
+    notes: list[str] = []
+    if sku_dn is None or cand_dn is None:
+        return Decimal("0.5"), notes
+
+    sku_norm = _normalize_dn(sku_dn)
+    cand_norm = _normalize_dn(cand_dn)
+
+    if sku_norm == cand_norm:
+        return Decimal("1.0"), notes
+
+    notes.append("dn_mismatch")
+    return Decimal("0.0"), notes
+
+
+# ── Tipo de producto + mini qualifier ─────────────────────────────────────────
+
+_MINI_TOKENS: frozenset[str] = frozenset({"mini", "miniball", "mini-ball", "compact ball", "minibola"})
+
+# Familia → palabras clave en título del candidato
+_FAMILY_TO_KEYWORDS: dict[str, frozenset[str]] = {
+    "ball_valve":      frozenset({"ball valve", "ball-valve", "kugelhahn", "válvula bola", "bola"}),
+    "valves_ball":     frozenset({"ball valve", "ball-valve", "válvula bola"}),
+    "gate_valve":      frozenset({"gate valve", "válvula compuerta", "schieber"}),
+    "globe_valve":     frozenset({"globe valve", "válvula globo"}),
+    "check_valve":     frozenset({"check valve", "non-return valve", "válvula retención", "clapet"}),
+    "butterfly_valve": frozenset({"butterfly valve", "válvula mariposa", "absperrklappen"}),
+    "strainer":        frozenset({"strainer", "y-strainer", "filtro y", "filter"}),
+    "pressure_gauge":  frozenset({"pressure gauge", "manometer", "manómetro", "pressure meter"}),
+    "HIDROSANITARIO":  frozenset({"ball valve", "ball-valve", "válvula bola"}),
+    "FILTROS":         frozenset({"strainer", "y-strainer"}),
+    "MANOMETROS":      frozenset({"pressure gauge", "manometer", "manómetro"}),
+}
+
+_WAYS_RE = re.compile(
+    r'\b([23])\s*-?\s*(?:way|port|vías?|wege)\b|\b(?:two|three)\s*-?\s*way\b',
+    re.IGNORECASE,
+)
+_WAYS_WORD: dict[str, int] = {"two": 2, "three": 3}
+
+
+def _extract_ways(text: str | None) -> int | None:
+    if not text:
+        return None
+    m = _WAYS_RE.search(text)
+    if not m:
+        return None
+    raw = m.group(1)
+    if raw:
+        return int(raw)
+    word = m.group(0).split("-")[0].split()[0].lower()
+    return _WAYS_WORD.get(word)
+
+
+def _has_mini(text: str | None) -> bool:
+    if not text:
+        return False
+    t = text.lower()
+    return any(tok in t for tok in _MINI_TOKENS)
+
+
+def _product_type_score(
+    sku_family: str | None,
+    sku_type_text: str | None,
+    cand_title: str | None,
+    cand_specs: dict,
+) -> tuple[Decimal, list[str]]:
+    """Score de tipo de producto y mini qualifier. Retorna (score, notes)."""
+    notes: list[str] = []
+
+    # ── Mini qualifier ───────────────────────────────────────────────────────
+    sku_is_mini = _has_mini(sku_type_text)
+    cand_is_mini = _has_mini(cand_title) or _has_mini(str(cand_specs.get("valve_type", "")))
+    if sku_is_mini != cand_is_mini:
+        notes.append("mini_mismatch")
+        return Decimal("0.0"), notes
+
+    # ── Tipo de producto via familia MT ─────────────────────────────────────
+    if not sku_family:
+        return Decimal("0.5"), notes
+
+    keywords = _FAMILY_TO_KEYWORDS.get(sku_family) or _FAMILY_TO_KEYWORDS.get(sku_family.upper())
+    if not keywords:
+        return Decimal("0.5"), notes
+
+    candidate_text = f"{cand_title or ''} {cand_specs.get('valve_type', '')}".lower()
+    if any(kw in candidate_text for kw in keywords):
+        return Decimal("1.0"), notes
+
+    # El candidato no menciona el tipo esperado → mismatch de producto
+    notes.append("product_type_mismatch")
+    return Decimal("0.0"), notes
+
+
+# ── Número de vías ────────────────────────────────────────────────────────────
+
+def _ways_score(
+    sku_type_text: str | None,
+    cand_title: str | None,
+    cand_specs: dict,
+) -> tuple[Decimal, list[str]]:
+    """Score de vías (2-way vs 3-way). Retorna (score, notes)."""
+    notes: list[str] = []
+    sku_ways = _extract_ways(sku_type_text)
+    cand_ways = _extract_ways(cand_title) or _extract_ways(str(cand_specs.get("valve_type", "")))
+
+    if sku_ways is None or cand_ways is None:
+        return Decimal("0.5"), notes  # sin datos suficientes
+
+    if sku_ways == cand_ways:
+        return Decimal("1.0"), notes
+
+    notes.append("ways_mismatch")
+    return Decimal("0.0"), notes
+
+
+def _handle_score(
+    sku_specs: dict | None,
+    cand_specs: dict,
+) -> list[str]:
+    """Detecta mismatch de color/material de maneta. Solo emite nota, no afecta score.
+
+    Retorna ["handle_mismatch"] si ambos lados tienen dato y difieren.
+    Si el SKU no tiene datos de maneta, no se compara (return []).
+    Si el candidato no tiene datos, tampoco se puede determinar mismatch.
+    El impacto real (drop o baja de confianza) se aplica en match_service
+    con lógica pool-relativa después de procesar todos los candidatos.
+    """
+    sku_s = sku_specs or {}
+    sku_color = (sku_s.get("handle_color") or "").strip().lower()
+    sku_material = (sku_s.get("handle_material") or "").strip().lower()
+
+    if not sku_color and not sku_material:
+        return []  # SKU sin datos de maneta — no comparar
+
+    cand_color = (cand_specs.get("handle_color") or "").strip().lower()
+    cand_material = (cand_specs.get("handle_material") or "").strip().lower()
+
+    if not cand_color and not cand_material:
+        return []  # Candidato sin datos — no se puede determinar mismatch
+
+    if sku_color and cand_color and sku_color != cand_color:
+        return ["handle_mismatch"]
+    if sku_material and cand_material and sku_material != cand_material:
+        return ["handle_mismatch"]
+    return []
 
 
 def _norma_score(sku_norma: str | None, cand_norma: str | None) -> Decimal:
@@ -283,57 +642,139 @@ def _delivery_score(delivery_text: str | None) -> Decimal:
     return Decimal("0.5")
 
 
+# Campos clave cuya presencia mide qué tan bien se puede puntuar un candidato.
+_COMPLETENESS_FIELDS = 6
+
+
+def _data_completeness_score(candidate: dict[str, Any]) -> Decimal:
+    """Porcentaje de campos clave presentes: 1.0=completo, 0.0=sin datos.
+
+    Penaliza candidatos donde todos los scores serían 0.5 neutral por falta
+    de datos, distinguiéndolos de candidatos con specs reales que confirman
+    el match.
+    """
+    specs = candidate.get("specs") or {}
+    fields = [
+        candidate.get("material") or specs.get("material") or specs.get("material_type"),
+        candidate.get("pn") or specs.get("pn") or specs.get("maximum_pressure"),
+        (
+            candidate.get("thread") or candidate.get("connection")
+            or specs.get("thread") or specs.get("thread_type") or specs.get("connection_type")
+        ),
+        candidate.get("dn") or candidate.get("size") or specs.get("dn") or specs.get("size"),
+        candidate.get("brand"),
+        candidate.get("delivery_text"),
+    ]
+    present = sum(1 for f in fields if f)
+    return Decimal(str(present)) / Decimal(str(_COMPLETENESS_FIELDS))
+
+
 def compute_scoring(
     sku: dict[str, Any],
     candidate: dict[str, Any],
     *,
     weights: dict[str, Decimal] | None = None,
+    material_normalizer: "MaterialNormalizer | None" = None,
 ) -> ScoringBreakdown:
-    """Calcula score 0-100 del candidato vs SKU.
+    """Calcula score 0-100 del candidato vs SKU con reglas de taxonomía.
 
     Args:
-        sku: dict con ``material``, ``pn``, ``thread``/``connection``,
-            ``norma``, ``brand``.
-        candidate: dict con las mismas claves más ``delivery_text``.
-        weights: override de pesos (defaults en :data:`SCORING_WEIGHTS`).
+        sku: dict con campos del producto MT. Campos usados:
+            material, pn, dn, thread/connection, family, product_type/type,
+            erp_name, norma, brand, product_materials (lista componentes).
+        candidate: dict con campos del candidato + delivery_text.
+        weights: override de pesos. Si None, se resuelve por perfil de familia.
+        material_normalizer: instancia de MaterialNormalizer.
     """
-    w = weights or SCORING_WEIGHTS
+    from app.services.matching.taxonomy_rules import get_profile
+
+    family = sku.get("family") or ""
+    profile = get_profile(family)
+    w = weights or profile.weights or SCORING_WEIGHTS
+
     cand_specs = candidate.get("specs") or {}
 
+    # ── Material ─────────────────────────────────────────────────────────────
     sku_material = sku.get("material")
     cand_material = candidate.get("material") or cand_specs.get("material")
-
-    sku_pn = sku.get("pn")
-    cand_pn = candidate.get("pn") or cand_specs.get("pn")
-
-    sku_thread = sku.get("thread") or sku.get("connection")
-    cand_thread = (
-        candidate.get("thread")
-        or candidate.get("connection")
-        or cand_specs.get("thread")
-        or cand_specs.get("connection")
+    sku_components: list[dict[str, str]] = sku.get("product_materials") or []
+    cand_components: dict[str, str] = {
+        k: str(v)
+        for k, v in (cand_specs.get("material_components") or {}).items()
+        if v
+    }
+    mat_score = _material_score(
+        sku_material, cand_material,
+        norm=material_normalizer,
+        sku_components=sku_components or None,
+        cand_components=cand_components or None,
     )
 
+    # ── PN ───────────────────────────────────────────────────────────────────
+    sku_pn = sku.get("pn")
+    cand_pn = candidate.get("pn") or cand_specs.get("pn")
+    pn_score, pn_notes = _pn_score(sku_pn, cand_pn)
+
+    # ── DN / Tamaño ──────────────────────────────────────────────────────────
+    sku_dn = sku.get("dn")
+    # Check top-level "size" too — _score_and_upsert may set it from thread_size
+    # or title fallback without propagating it into cand_dict["specs"].
+    cand_dn = (
+        candidate.get("dn") or candidate.get("size")
+        or cand_specs.get("dn") or cand_specs.get("size")
+    )
+    dn_score, dn_notes = _dn_score(sku_dn, cand_dn)
+
+    # ── Estándar de rosca ─────────────────────────────────────────────────────
+    sku_thread = sku.get("thread") or sku.get("connection")
+    cand_thread = (
+        candidate.get("thread") or candidate.get("connection")
+        or cand_specs.get("thread") or cand_specs.get("connection")
+    )
+    thread_score, thread_notes = _thread_score(sku_thread, cand_thread)
+
+    # ── Tipo de producto + mini qualifier ─────────────────────────────────────
+    sku_type_text = sku.get("product_type") or sku.get("erp_name") or ""
+    cand_title = candidate.get("title") or ""
+    pt_score, pt_notes = _product_type_score(family, sku_type_text, cand_title, cand_specs)
+
+    # ── Número de vías ────────────────────────────────────────────────────────
+    ways_score, ways_notes = _ways_score(sku_type_text, cand_title, cand_specs)
+
+    # ── Maneta (handle) — nota pool-relativa, sin peso propio ─────────────────
+    handle_notes = _handle_score(sku.get("specs"), cand_specs)
+
+    # ── Norma / estándar ──────────────────────────────────────────────────────
     sku_norma = sku.get("norma") or (sku.get("specs") or {}).get("norma")
     cand_norma = candidate.get("norma") or cand_specs.get("norma")
+    norma_s = _norma_score(sku_norma, cand_norma)
 
-    sku_brand = sku.get("brand")
-    cand_brand = candidate.get("brand")
+    # ── Brand tier ────────────────────────────────────────────────────────────
+    brand_s = _brand_score(sku.get("brand"), candidate.get("brand"))
 
-    delivery_text = candidate.get("delivery_text")
+    # ── Delivery ──────────────────────────────────────────────────────────────
+    delivery_s = _delivery_score(candidate.get("delivery_text"))
+
+    # ── Completitud de datos del candidato ───────────────────────────────────
+    completeness_s = _data_completeness_score(candidate)
 
     dim_scores: dict[str, Decimal] = {
-        "material": _material_score(sku_material, cand_material),
-        "pn": _pn_score(sku_pn, cand_pn),
-        "thread": _thread_score(sku_thread, cand_thread),
-        "norma": _norma_score(sku_norma, cand_norma),
-        "brand_tier": _brand_score(sku_brand, cand_brand),
-        "delivery": _delivery_score(delivery_text),
+        "material":          mat_score,
+        "pn":                pn_score,
+        "dn":                dn_score,
+        "product_type":      pt_score,
+        "thread_standard":   thread_score,
+        "ways":              ways_score,
+        "norma":             norma_s,
+        "brand_tier":        brand_s,
+        "delivery":          delivery_s,
+        "data_completeness": completeness_s,
     }
 
     weighted = Decimal("0")
     for dim, raw in dim_scores.items():
-        weighted += raw * w.get(dim, Decimal("0"))
+        dim_w = w.get(dim, Decimal("0"))
+        weighted += raw * dim_w
 
     score_int = int(_round(weighted * Decimal("100"), 0))
     score_int = max(0, min(100, score_int))
@@ -341,12 +782,11 @@ def compute_scoring(
     breakdown = {dim: float(_round(s, 4)) for dim, s in dim_scores.items()}
     weights_out = {dim: float(w.get(dim, Decimal("0"))) for dim in dim_scores}
 
-    notes: list[str] = []
-    if sku_pn and cand_pn and dim_scores["pn"] == Decimal("0.0"):
-        notes.append("pn_below_sku_requirement")
-    if sku_thread and cand_thread and dim_scores["thread"] == Decimal("0.0"):
-        notes.append("thread_mismatch")
-    if dim_scores["material"] == Decimal("0.0"):
+    # Acumular todas las notas de los sub-scorers
+    notes: list[str] = list(
+        pn_notes + dn_notes + thread_notes + pt_notes + ways_notes + handle_notes
+    )
+    if mat_score == Decimal("0.0") and (sku_material or cand_material):
         notes.append("material_mismatch")
 
     return ScoringBreakdown(
