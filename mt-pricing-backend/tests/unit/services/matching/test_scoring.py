@@ -152,12 +152,12 @@ def test_score_thread_mismatch_flagged() -> None:
         "brand": "Pegler",
     }
     result = compute_scoring(sku, candidate)
-    assert "thread_mismatch" in result.notes
+    assert "thread_standard_mismatch" in result.notes
 
 
 def test_score_breakdown_contains_all_dimensions() -> None:
     result = compute_scoring(_sku_pegler(), {"material": "brass"})
-    expected = {"material", "pn", "thread", "norma", "brand_tier", "delivery"}
+    expected = {"material", "pn", "thread_standard", "norma", "brand_tier", "delivery"}
     assert expected <= set(result.breakdown.keys())
 
 
