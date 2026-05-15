@@ -130,6 +130,13 @@ from app.db.models.finance import (
     JournalEntryControl,
     Budget,
 )
+from app.db.models.product_models import (  # noqa: F401
+    ModelDimensionRow,
+    ModelFlowData,
+    ModelTechTable,
+    ProductModel,
+)
+from app.db.models.certificates import Certificate, CertificateScope  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -340,4 +347,11 @@ __all__ = [
     "TaxProvision",
     "JournalEntryControl",
     "Budget",
+    # Product model hierarchy (plan 2026-05-15)
+    "ProductModel",
+    "ModelDimensionRow",
+    "ModelFlowData",
+    "ModelTechTable",
+    "Certificate",
+    "CertificateScope",
 ]
