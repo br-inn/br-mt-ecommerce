@@ -246,6 +246,13 @@ class Product(Base):
         lazy="selectin",
     )
 
+    # Plan 2026-05-15 — model hierarchy link
+    model: Mapped["ProductModel | None"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "ProductModel",
+        foreign_keys="[Product.model_id]",
+        lazy="select",
+    )
+
     # Wave 3 — componentes (materiales por componente, conexiones múltiples).
     materials: Mapped[list["ProductMaterial"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "ProductMaterial",
