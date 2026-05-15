@@ -518,7 +518,11 @@ def _product_type_score(
     if not sku_family:
         return Decimal("0.5"), notes
 
-    keywords = _FAMILY_TO_KEYWORDS.get(sku_family) or _FAMILY_TO_KEYWORDS.get(sku_family.upper())
+    keywords = (
+        _FAMILY_TO_KEYWORDS.get(sku_family)
+        or _FAMILY_TO_KEYWORDS.get(sku_family.upper())
+        or _FAMILY_TO_KEYWORDS.get(sku_family.strip().lower().replace(" ", "_"))
+    )
     if not keywords:
         return Decimal("0.5"), notes
 

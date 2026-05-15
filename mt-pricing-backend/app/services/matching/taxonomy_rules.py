@@ -125,9 +125,17 @@ TAXONOMY_PROFILES: dict[str, TaxonomyProfile] = {
 
 
 def get_profile(family: str | None) -> TaxonomyProfile:
-    """Devuelve el perfil de taxonomía para una familia. Fallback a _default."""
+    """Devuelve el perfil de taxonomía para una familia. Fallback a _default.
+
+    Normaliza "Ball Valve" → "ball_valve" para tolerar variantes de naming en DB.
+    """
     if family:
         p = TAXONOMY_PROFILES.get(family) or TAXONOMY_PROFILES.get(family.upper())
+        if p:
+            return p
+        # Normalizar espacios a guiones bajos: "Ball Valve" → "ball_valve"
+        slug = family.strip().lower().replace(" ", "_")
+        p = TAXONOMY_PROFILES.get(slug)
         if p:
             return p
     return TAXONOMY_PROFILES["_default"]
