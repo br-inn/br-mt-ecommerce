@@ -31,11 +31,15 @@ class ExtractedMaterial(BaseModel):
     position: int = 0
     material: str
     observations: str | None = None
+    material_grade: str | None = None
+    material_standard: str | None = None
+    surface_treatment: str | None = None
 
 
 class ExtractedDimensionRow(BaseModel):
     dn_label: str
     values: dict[str, float | str]
+    dn_secondary_label: str | None = None
 
 
 class ExtractedTranslation(BaseModel):
@@ -71,6 +75,25 @@ class ExtractedSpecs(BaseModel):
     extra: dict[str, Any] = Field(default_factory=dict)
 
 
+class ExtractedCertificate(BaseModel):
+    """Certificado emitido detectado en el PDF."""
+    certification_code: str  # e.g. "ACS", "WRAS", "PZH", "CE"
+    cert_number: str | None = None
+    issuer: str | None = None
+    issued_at: str | None = None   # ISO date string "YYYY-MM-DD"
+    expires_at: str | None = None  # ISO date string "YYYY-MM-DD"
+    signatory_name: str | None = None
+    signatory_role: str | None = None
+
+
+class ExtractedFlowData(BaseModel):
+    """Coeficiente de flujo Kv/Cv + malla por DN."""
+    dn_label: str
+    kv: float | None = None
+    cv: float | None = None
+    mesh_mm: float | None = None
+
+
 class FichaExtractionResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -85,6 +108,8 @@ class FichaExtractionResult(BaseModel):
         default_factory=list,
         description="Puntos de curva P/T: [{temperature_c, pressure_max_bar}]",
     )
+    certificates: list[ExtractedCertificate] = Field(default_factory=list)
+    flow_data: list[ExtractedFlowData] = Field(default_factory=list)
     model_gaps: list[str] = Field(
         default_factory=list,
         description="Campos detectados en PDF sin mapeo al modelo actual.",
@@ -156,6 +181,14 @@ class FichaEnrichApplyResponse(BaseModel):
     results: list[SkuApplyResult]
 
 
+class SeriesGroupResult(BaseModel):
+    """Grupo de serie base + variante de color opcional (ej. 4097 rojo + 40972 azul)."""
+    base_series: str
+    variant_series: str | None = None
+    base_skus: list[SkuDiffResult]
+    variant_skus: list[SkuDiffResult] = Field(default_factory=list)
+
+
 class FichaSeriesPreviewResponse(BaseModel):
     """Respuesta de preview serie-level (sin SKU anchor)."""
     model_config = ConfigDict(extra="ignore")
@@ -163,7 +196,9 @@ class FichaSeriesPreviewResponse(BaseModel):
     series: str
     filename: str
     extraction: FichaExtractionResult
-    series_skus: list[SkuDiffResult]
+    series_skus: list[SkuDiffResult]          # todos los SKUs flat (compat)
+    series_groups: list[SeriesGroupResult] = Field(default_factory=list)  # agrupados
+    detected_series: list[str] = Field(default_factory=list)
     model_gaps: list[str]
     page_count: int
     confidence: float
@@ -185,6 +220,10 @@ class FichaSeriesApplyRequest(BaseModel):
     apply_pt_curve: bool = False
     selected_scalar_fields: list[str] = Field(default_factory=list)
     save_document: bool = True
+    variant_links: dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapa variant_sku→base_sku para vincular variantes de color al crear.",
+    )
 
 
 class FichaSeriesApplyResponse(BaseModel):
@@ -205,9 +244,12 @@ __all__ = [
     "PageClassification",
     "ExtractedAsset",
     "ExtractedSpecs",
+    "ExtractedCertificate",
+    "ExtractedFlowData",
     "FichaExtractionResult",
     "FieldDiff",
     "SkuDiffResult",
+    "SeriesGroupResult",
     "FichaEnrichPreviewResponse",
     "FichaEnrichApplyRequest",
     "SkuApplyResult",
