@@ -141,6 +141,7 @@ from app.db.models.unmatched_offer import UnmatchedOffer  # noqa: F401
 from app.db.models.price_history import PriceHistoryRaw  # noqa: F401
 from app.db.models.price_alerts import PriceAlert  # noqa: F401
 from app.db.models.hitl_queue import HitlQueue  # noqa: F401
+from app.db.models.taxonomy_profile import TaxonomyProfile  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -366,4 +367,6 @@ __all__ = [
     "PriceAlert",
     # EP-SCR-04-08b — HITL queue uncertainty×value (US-SCR-04-08b)
     "HitlQueue",
+    # Match Rule Engine — taxonomy profiles table (mig. 20260517_137)
+    "TaxonomyProfile",
 ]
