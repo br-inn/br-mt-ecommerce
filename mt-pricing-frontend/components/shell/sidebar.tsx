@@ -9,6 +9,7 @@ import {
   BarChart2,
   BarChart3,
   Boxes,
+  Building2,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -16,6 +17,7 @@ import {
   Construction,
   CreditCard,
   Database,
+  DatabaseZap,
   FileText,
   FileUp,
   Flag,
@@ -127,6 +129,13 @@ const COMPARATOR_NAV_ITEM: NavItem = {
   badge: "Investigación",
 };
 
+const COMPARATOR_POOL_NAV_ITEM: NavItem = {
+  href: "/comparator/pool",
+  label: "Pool scrapeado",
+  icon: DatabaseZap,
+  permissions: ["matches:read"],
+};
+
 // SISTEMA — tres sub-secciones
 // 1. Importaciones: herramientas de carga de datos
 const SECTION_SYS_IMPORTACIONES: readonly NavItem[] = [
@@ -153,6 +162,7 @@ const SECTION_SYS_ADMIN: readonly NavItem[] = [
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },
   { href: "/admin/jobs", label: "Jobs", icon: Timer, permissions: ["jobs:read"] },
   { href: "/admin/scraper", label: "Scraper", icon: Search, permissions: ["products:read"] },
+  { href: "/admin/competitor-brands", label: "Marcas competidoras", icon: Building2, permissions: ["products:read"] },
 ] as const;
 
 // --- Mapeo data-driven: icon string (de ui_layout.icon en backend) → componente lucide.
@@ -406,6 +416,11 @@ export function Sidebar() {
             collapsed={collapsed}
           />
         ) : null}
+        <NavLink
+          key={COMPARATOR_POOL_NAV_ITEM.href}
+          item={COMPARATOR_POOL_NAV_ITEM}
+          collapsed={collapsed}
+        />
 
         <SectionLabel collapsed={collapsed}>Importaciones</SectionLabel>
         {SECTION_SYS_IMPORTACIONES.map((item) => (

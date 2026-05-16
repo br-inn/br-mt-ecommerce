@@ -1201,6 +1201,57 @@
           "reject": "رفض"
         }
       }
+    },
+    "competitorBrands": {
+      "title": "العلامات التجارية المنافسة",
+      "description": "إدارة العلامات التجارية للمنافسين لأداة استخراج بيانات أمازون الإمارات",
+      "brandSingular": "علامة تجارية",
+      "brandPlural": "علامات تجارية",
+      "addBrand": "إضافة علامة تجارية",
+      "runScrape": "تشغيل الاستخراج",
+      "runningScrape": "جارٍ التشغيل...",
+      "empty": "لا توجد علامات تجارية مضافة",
+      "emptyHint": "أضف علامة تجارية منافسة لبدء تتبع أسعارها على أمازون الإمارات",
+      "never": "أبداً",
+      "noActiveBrands": "لا توجد علامات تجارية نشطة للاستخراج",
+      "scrapeQueued": "بدأ الاستخراج لـ {count} علامة تجارية",
+      "scrapeFailed": "فشل تشغيل الاستخراج",
+      "columns": {
+        "name": "الاسم",
+        "dept": "القسم",
+        "categoryNode": "عقدة الفئة",
+        "lastScraped": "آخر استخراج",
+        "active": "نشط",
+        "actions": "إجراءات"
+      },
+      "actions": {
+        "edit": "تعديل",
+        "activate": "تفعيل",
+        "deactivate": "تعطيل"
+      },
+      "form": {
+        "createTitle": "علامة تجارية منافسة جديدة",
+        "editTitle": "تعديل علامة تجارية منافسة",
+        "name": "اسم العلامة التجارية",
+        "namePlaceholder": "مثال: Nibco, Kitz, Crane...",
+        "amazonSearchTerm": "مصطلح البحث في أمازون",
+        "amazonSearchTermPlaceholder": "اتركه فارغاً لاستخدام اسم العلامة التجارية",
+        "amazonSearchTermHint": "إذا أعطى البحث بالاسم نتائج ضعيفة، حدد المصطلح الدقيق هنا",
+        "amazonDept": "قسم أمازون",
+        "amazonDeptPlaceholder": "industrial",
+        "amazonCategoryNode": "عقدة الفئة",
+        "amazonCategoryNodePlaceholder": "مثال: 16118159031",
+        "isActive": "العلامة التجارية نشطة",
+        "notes": "ملاحظات داخلية",
+        "notesPlaceholder": "ملاحظات حول هذه العلامة التجارية...",
+        "cancel": "إلغاء",
+        "save": "حفظ",
+        "saving": "جارٍ الحفظ...",
+        "created": "تم إنشاء العلامة التجارية بنجاح",
+        "createFailed": "فشل إنشاء العلامة التجارية",
+        "updated": "تم تحديث العلامة التجارية بنجاح",
+        "updateFailed": "فشل تحديث العلامة التجارية"
+      }
     }
   },
   "costsDashboard": {

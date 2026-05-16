@@ -1201,6 +1201,57 @@
         "colPct": "% del total",
         "colClassifiedAt": "Clasificado"
       }
+    },
+    "competitorBrands": {
+      "title": "Marcas competidoras",
+      "description": "Gestiona las marcas de la competencia para el scraper de Amazon UAE",
+      "brandSingular": "marca",
+      "brandPlural": "marcas",
+      "addBrand": "Agregar marca",
+      "runScrape": "Ejecutar scraping",
+      "runningScrape": "Ejecutando...",
+      "empty": "Sin marcas configuradas",
+      "emptyHint": "Agrega una marca competidora para comenzar a rastrear sus precios en Amazon UAE",
+      "never": "Nunca",
+      "noActiveBrands": "No hay marcas activas para escanear",
+      "scrapeQueued": "Scraping iniciado para {count} marca(s)",
+      "scrapeFailed": "Error al iniciar el scraping",
+      "columns": {
+        "name": "Nombre",
+        "dept": "Dept.",
+        "categoryNode": "Nodo categoría",
+        "lastScraped": "Último scraping",
+        "active": "Activa",
+        "actions": "Acciones"
+      },
+      "actions": {
+        "edit": "Editar",
+        "activate": "Activar",
+        "deactivate": "Desactivar"
+      },
+      "form": {
+        "createTitle": "Nueva marca competidora",
+        "editTitle": "Editar marca competidora",
+        "name": "Nombre de la marca",
+        "namePlaceholder": "Ej. Nibco, Kitz, Crane...",
+        "amazonSearchTerm": "Término de búsqueda en Amazon",
+        "amazonSearchTermPlaceholder": "Dejar en blanco para usar el nombre",
+        "amazonSearchTermHint": "Si la búsqueda por nombre da malos resultados, especifica aquí el término exacto",
+        "amazonDept": "Departamento Amazon",
+        "amazonDeptPlaceholder": "industrial",
+        "amazonCategoryNode": "Nodo de categoría",
+        "amazonCategoryNodePlaceholder": "Ej. 16118159031",
+        "isActive": "Marca activa",
+        "notes": "Notas internas",
+        "notesPlaceholder": "Observaciones sobre esta marca...",
+        "cancel": "Cancelar",
+        "save": "Guardar",
+        "saving": "Guardando...",
+        "created": "Marca creada correctamente",
+        "createFailed": "Error al crear la marca",
+        "updated": "Marca actualizada correctamente",
+        "updateFailed": "Error al actualizar la marca"
+      }
     }
   },
   "costsDashboard": {

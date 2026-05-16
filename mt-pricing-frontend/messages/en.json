@@ -1201,6 +1201,57 @@
           "reject": "Reject"
         }
       }
+    },
+    "competitorBrands": {
+      "title": "Competitor brands",
+      "description": "Manage competitor brands for the Amazon UAE scraper",
+      "brandSingular": "brand",
+      "brandPlural": "brands",
+      "addBrand": "Add brand",
+      "runScrape": "Run scraping",
+      "runningScrape": "Running...",
+      "empty": "No brands configured",
+      "emptyHint": "Add a competitor brand to start tracking their prices on Amazon UAE",
+      "never": "Never",
+      "noActiveBrands": "No active brands to scrape",
+      "scrapeQueued": "Scraping started for {count} brand(s)",
+      "scrapeFailed": "Failed to start scraping",
+      "columns": {
+        "name": "Name",
+        "dept": "Dept.",
+        "categoryNode": "Category node",
+        "lastScraped": "Last scraped",
+        "active": "Active",
+        "actions": "Actions"
+      },
+      "actions": {
+        "edit": "Edit",
+        "activate": "Activate",
+        "deactivate": "Deactivate"
+      },
+      "form": {
+        "createTitle": "New competitor brand",
+        "editTitle": "Edit competitor brand",
+        "name": "Brand name",
+        "namePlaceholder": "E.g. Nibco, Kitz, Crane...",
+        "amazonSearchTerm": "Amazon search term",
+        "amazonSearchTermPlaceholder": "Leave blank to use brand name",
+        "amazonSearchTermHint": "If searching by name gives poor results, specify the exact term here",
+        "amazonDept": "Amazon department",
+        "amazonDeptPlaceholder": "industrial",
+        "amazonCategoryNode": "Category node",
+        "amazonCategoryNodePlaceholder": "E.g. 16118159031",
+        "isActive": "Brand active",
+        "notes": "Internal notes",
+        "notesPlaceholder": "Notes about this brand...",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving...",
+        "created": "Brand created successfully",
+        "createFailed": "Failed to create brand",
+        "updated": "Brand updated successfully",
+        "updateFailed": "Failed to update brand"
+      }
     }
   },
   "costsDashboard": {
