@@ -651,9 +651,9 @@ async def update_source_list(
 @router.delete(
     "/source-list/{sl_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Eliminar entrada de Source List",
     operation_id="procurementSourceListDelete",
-    responses={404: {"model": ProblemDetails}},
 )
 async def delete_source_list(
     sl_id: UUID,

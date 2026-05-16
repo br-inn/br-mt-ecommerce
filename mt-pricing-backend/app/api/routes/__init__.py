@@ -12,6 +12,7 @@ from app.api.routes import (
     admin_calibrator,
     admin_erp,
     billing,
+    competitor_brands,
     ficha_enrich,
     finance,
     sales,
@@ -48,6 +49,7 @@ from app.api.routes import (
     jobs,
     matches,
     parallel_run,
+    unmatched_offers,
     pricing,
     pricing_admin,
     pricing_dashboard,
@@ -200,3 +202,7 @@ router.include_router(schemes.router)
 router.include_router(scraper.router)
 # Ficha técnica enrichment — preview + apply (PDF → campos estructurados)
 router.include_router(ficha_enrich.router)
+# Unmatched offers pool — listado + stats
+router.include_router(unmatched_offers.router)
+# EP-SCR-02 — Competitor Brands CRUD + brand scrape trigger
+router.include_router(competitor_brands.router)
