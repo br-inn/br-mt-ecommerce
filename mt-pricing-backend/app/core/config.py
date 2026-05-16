@@ -223,6 +223,16 @@ class Settings(BaseSettings):
     # Si no existe → scorer_weights.py usa pesos hardcoded + logger.warning.
     SCORER_WEIGHTS_PATH: str = "config/scorer_weights_by_family.yaml"
 
+    # --- Scraper (EP-SCR-03/04) ---
+    # Rate limiter: requests por minuto por dominio (token bucket Redis).
+    SCRAPER_RATE_LIMIT_RPM: int = 20
+    # User-Agent pool separado por "||". Vacío = usar pool interno por defecto.
+    SCRAPER_UA_POOL: str = ""
+    # Circuit breaker: fallos consecutivos antes de abrir el circuit (OPEN state).
+    SCRAPER_CB_FAILURE_THRESHOLD: int = 5
+    # Circuit breaker: segundos en OPEN antes de intentar HALF_OPEN.
+    SCRAPER_CB_RECOVERY_TIMEOUT: int = 60
+
     # --- ERP Integration (EP-INV-01 / US-INV-01-01) ---
     # Adapter activo: "noop" (default dev), "sap", "odoo".
     ERP_ADAPTER: str = "noop"

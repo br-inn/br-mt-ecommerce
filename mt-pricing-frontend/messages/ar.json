@@ -1241,7 +1241,8 @@
         "categoryNode": "عقدة الفئة",
         "lastScraped": "آخر استخراج",
         "active": "نشط",
-        "actions": "إجراءات"
+        "actions": "إجراءات",
+        "monitoring": "المراقبة"
       },
       "actions": {
         "edit": "تعديل",
@@ -1270,6 +1271,54 @@
         "createFailed": "فشل إنشاء العلامة التجارية",
         "updated": "تم تحديث العلامة التجارية بنجاح",
         "updateFailed": "فشل تحديث العلامة التجارية"
+      },
+      "monitoringActive": "المراقبة المستمرة",
+      "monitoringEnabled": "المراقبة مفعلة",
+      "monitoringDisabled": "المراقبة معطلة",
+      "toggleMonitoring": "تبديل المراقبة",
+      "toggleMonitoringSuccess": "تم تحديث المراقبة",
+      "toggleMonitoringFailed": "فشل تحديث المراقبة"
+    },
+    "scraperHealth": {
+      "title": "صحة أداة الاستخراج",
+      "description": "حالة قاطع الدائرة وإحصاءات النطاق وإدارة مجموعة الوكلاء",
+      "noPermission": "ليس لديك إذن لعرض هذا القسم.",
+      "loading": "جارٍ التحميل...",
+      "refresh": "تحديث",
+      "cancel": "إلغاء",
+      "config": {
+        "rateLimitRpm": "حد المعدل: {rpm} طلب/دقيقة",
+        "proxyCount": "الوكلاء: {count}",
+        "cbThreshold": "قاطع الدائرة: {threshold} فشل / {timeout} ثانية استرداد"
+      },
+      "domains": {
+        "title": "حالة النطاق",
+        "domain": "النطاق",
+        "circuitState": "الدائرة",
+        "failures": "الأعطال",
+        "requests24h": "الطلبات (24 ساعة)",
+        "errorRate": "معدل الأخطاء",
+        "actions": "إجراءات"
+      },
+      "circuit": {
+        "reset": "إعادة تعيين",
+        "resetSuccess": "تم إعادة تعيين الدائرة لـ {domain}",
+        "resetFailed": "فشل إعادة تعيين الدائرة"
+      },
+      "proxies": {
+        "title": "مجموعة الوكلاء",
+        "add": "إضافة وكيل",
+        "addTitle": "إضافة وكيل إلى المجموعة",
+        "addConfirm": "إضافة",
+        "addSuccess": "تمت إضافة الوكيل إلى المجموعة",
+        "addFailed": "فشل إضافة الوكيل",
+        "remove": "حذف",
+        "removeSuccess": "تمت إزالة الوكيل من المجموعة",
+        "removeFailed": "فشل إزالة الوكيل",
+        "empty": "لا توجد وكلاء مكوّنون — يستخدم أداة الاستخراج اتصالات مباشرة",
+        "proxyUrl": "رابط الوكيل",
+        "proxyUrlHint": "الصيغة: http://user:password@host:port",
+        "actions": "إجراءات"
       }
     }
   },

@@ -293,9 +293,52 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
                     logger.info("scraper.brand.inactive", extra={"brand_id": brand_id})
                     return {"brand_id": brand_id, "status": "inactive", "upserted": 0}
 
+                # ── Rate limiter + circuit breaker ──────────────────────────
+                from urllib.parse import urlparse
+
+                from app.services.scraper.circuit_breaker import (
+                    ScraperCircuitOpenError,
+                    get_circuit_breaker,
+                    get_proxy_pool,
+                )
+                from app.services.scraper.rate_limiter import get_rate_limiter
+
                 fetcher = get_fetcher("amazon_uae")
                 query = _build_brand_query(brand)
-                candidates = await fetcher.fetch(query)
+
+                # Determinar dominio para rate limiter / circuit breaker
+                _domain = "amazon_uae"
+
+                rate_limiter = get_rate_limiter()
+                circuit_breaker = get_circuit_breaker()
+                proxy_pool = get_proxy_pool()
+
+                try:
+                    await circuit_breaker.check_and_raise(_domain)
+                except ScraperCircuitOpenError:
+                    logger.warning(
+                        "scraper.brand.circuit_open",
+                        extra={"brand_id": brand_id, "domain": _domain},
+                    )
+                    return {"brand_id": brand_id, "status": "circuit_open", "upserted": 0}
+
+                # Adquirir token de rate limiter antes de hacer el request
+                await rate_limiter.acquire(_domain)
+
+                # Obtener proxy rotativo si está disponible
+                _proxy = await proxy_pool.get_proxy()
+                if _proxy:
+                    logger.debug(
+                        "scraper.brand.using_proxy",
+                        extra={"brand_id": brand_id, "proxy": _proxy[:30]},
+                    )
+
+                try:
+                    candidates = await fetcher.fetch(query)
+                    await circuit_breaker.record_success(_domain)
+                except Exception as fetch_exc:
+                    await circuit_breaker.record_failure(_domain)
+                    raise fetch_exc
 
                 for candidate in candidates:
                     await repo.upsert_listing(candidate, competitor_brand_id=brand.id)

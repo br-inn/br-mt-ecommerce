@@ -34,6 +34,8 @@ class CompetitorBrandRead(BaseModel):
     is_active: bool
     notes: str | None
     last_scraped_at: datetime | None
+    # US-SCR-04-03: monitoreo continuo de precios activo para esta marca
+    monitoring_active: bool = False
     created_at: datetime
     updated_at: datetime
 

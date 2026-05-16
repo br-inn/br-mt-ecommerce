@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-16T22:00:00.000Z"  # US-ERP-02-03/04 + 03-02/03 + 04-01/02 + 05-01/02 + 06-03/04 review (S14 ERP backend)
+last_updated: "2026-05-16T22:30:00.000Z"  # US-SCR-03-03/04/05 + 04-01/02/03/04 review (S14 EP-SCR scraper infrastructure + price monitoring)
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -260,3 +260,16 @@ development_status:
   US-ERP-06-09: backlog          # CO-PA contribution margin + Cash Flow + Budget vs Actual (FIN-13+17+22) — 8 SP — S16
 
   epic-EP-ERP-06-retrospective: optional
+
+# ─── EP-SCR — Scraper, Matching & Comparador de Precios (S14) ────────────────
+  epic-EP-SCR: in-progress    # Scraper infrastructure + price monitoring — S13-S16
+
+  US-SCR-03-03: review         # Rate limiter Redis token bucket + UA rotation — 5 SP — S14 ⬆ 2026-05-16
+  US-SCR-03-04: review         # Circuit breaker per-domain + proxy pool distribuido Redis — 8 SP — S14 ⬆ 2026-05-16
+  US-SCR-03-05: review         # Dashboard salud canales + CRUD proxies UI sin redeploy — 8 SP — S14 ⬆ 2026-05-16
+  US-SCR-04-01: review         # price_history_raw (partitioned PG) + price_daily_stats matview + mig 134 — 8 SP — S14 ⬆ 2026-05-16
+  US-SCR-04-02: review         # price_monitor_task + cola scraper.price_monitor — 8 SP — S14 ⬆ 2026-05-16
+  US-SCR-04-03: review         # Bootstrap coordinator + UI diferenciación monitoring — 8 SP — S14 ⬆ 2026-05-16
+  US-SCR-04-04: review         # Job definitions automáticos al crear marca + Noon UAE verificado — 5 SP — S14 ⬆ 2026-05-16
+
+  epic-EP-SCR-retrospective: optional

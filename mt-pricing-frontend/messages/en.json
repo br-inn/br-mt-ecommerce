@@ -1241,7 +1241,8 @@
         "categoryNode": "Category node",
         "lastScraped": "Last scraped",
         "active": "Active",
-        "actions": "Actions"
+        "actions": "Actions",
+        "monitoring": "Monitoring"
       },
       "actions": {
         "edit": "Edit",
@@ -1270,6 +1271,54 @@
         "createFailed": "Failed to create brand",
         "updated": "Brand updated successfully",
         "updateFailed": "Failed to update brand"
+      },
+      "monitoringActive": "Continuous monitoring",
+      "monitoringEnabled": "Monitoring on",
+      "monitoringDisabled": "Monitoring off",
+      "toggleMonitoring": "Toggle monitoring",
+      "toggleMonitoringSuccess": "Monitoring updated",
+      "toggleMonitoringFailed": "Failed to update monitoring"
+    },
+    "scraperHealth": {
+      "title": "Scraper health",
+      "description": "Circuit breaker status, domain stats, and proxy pool management",
+      "noPermission": "You do not have permission to view this section.",
+      "loading": "Loading...",
+      "refresh": "Refresh",
+      "cancel": "Cancel",
+      "config": {
+        "rateLimitRpm": "Rate limit: {rpm} req/min",
+        "proxyCount": "Proxies: {count}",
+        "cbThreshold": "Circuit breaker: {threshold} failures / {timeout}s recovery"
+      },
+      "domains": {
+        "title": "Domain status",
+        "domain": "Domain",
+        "circuitState": "Circuit",
+        "failures": "Failures",
+        "requests24h": "Requests (24h)",
+        "errorRate": "Error rate",
+        "actions": "Actions"
+      },
+      "circuit": {
+        "reset": "Reset",
+        "resetSuccess": "Circuit reset for {domain}",
+        "resetFailed": "Failed to reset circuit"
+      },
+      "proxies": {
+        "title": "Proxy pool",
+        "add": "Add proxy",
+        "addTitle": "Add proxy to pool",
+        "addConfirm": "Add",
+        "addSuccess": "Proxy added to pool",
+        "addFailed": "Failed to add proxy",
+        "remove": "Remove",
+        "removeSuccess": "Proxy removed from pool",
+        "removeFailed": "Failed to remove proxy",
+        "empty": "No proxies configured — scraper uses direct connections",
+        "proxyUrl": "Proxy URL",
+        "proxyUrlHint": "Format: http://user:password@host:port",
+        "actions": "Actions"
       }
     }
   },

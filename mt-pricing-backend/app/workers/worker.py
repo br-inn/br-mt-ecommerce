@@ -36,6 +36,8 @@ _QUEUE_NAMES: tuple[str, ...] = (
     "comparator",
     "notifications",
     "audit",
+    "scraper",
+    "scraper.price_monitor",  # EP-SCR-04 — cola dedicada monitoreo de precios
 )
 
 QUEUES: tuple[Queue, ...] = tuple(
@@ -88,6 +90,12 @@ def make_celery() -> Celery:
             "app.workers.tasks.billing",
             # EP-ERP-06 — Finanzas: FX reval, period close, price variance (US-ERP-06-01..09)
             "app.workers.tasks.finance",
+            # EP-SCR-01 — Scraper Amazon UAE (batch scraping semanal)
+            "app.workers.tasks.scraper",
+            # EP-SCR-04 — Price monitor tasks (US-SCR-04-02/03)
+            "app.workers.tasks.price_monitor",
+            # Silver layer — re-matching periódico del candidate pool
+            "app.workers.tasks.rematch_pool",
         ],
     )
 
@@ -125,6 +133,10 @@ def make_celery() -> Celery:
             "mt.calibrator.*": {"queue": "comparator"},
             "ml.*": {"queue": "comparator"},
             "mt.inventory.*": {"queue": "default"},
+            "mt.scraper.*": {"queue": "scraper"},
+            "mt.scraper.price_monitor": {"queue": "scraper.price_monitor"},
+            "mt.scraper.bootstrap_price_monitoring": {"queue": "scraper.price_monitor"},
+            "mt.scraper.refresh_price_daily_stats": {"queue": "scraper.price_monitor"},
         },
         # --- Beat (ADR-046 — scheduler custom sobre job_definitions) ---
         beat_scheduler="app.scheduler.database_scheduler:DatabaseScheduler",
