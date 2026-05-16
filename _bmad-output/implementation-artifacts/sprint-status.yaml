@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-16T22:30:00.000Z"  # US-SCR-03-03/04/05 + 04-01/02/03/04 review (S14 EP-SCR scraper infrastructure + price monitoring)
+last_updated: "2026-05-16T23:59:00.000Z"  # S15+S16 ERP: EP-ERP-02(05-08) + EP-ERP-03(04-06) + EP-ERP-04(03-06) + EP-ERP-05(03-06) + EP-ERP-06(05-09) → review
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -203,10 +203,10 @@ development_status:
   US-ERP-02-02: review           # Stock types diferenciados + inventory_positions 5D (INV-05+12) — 8 SP — S13 ⬆ 2026-05-16
   US-ERP-02-03: review           # Lot tracking: inventory_lots + trazabilidad UP/DOWN (INV-06+07) — 8 SP — S14 ⬆ 2026-05-16
   US-ERP-02-04: review           # Jerarquía almacén: Warehouse → Zone → Location (INV-11+14) — 5 SP — S14 ⬆ 2026-05-16
-  US-ERP-02-05: backlog          # FEFO automático en picking + alertas expiración Celery (INV-08+09) — 5 SP — S15
-  US-ERP-02-06: backlog          # Replenishment params por producto-almacén + job ROP (INV-15+16) — 8 SP — S15
-  US-ERP-02-07: backlog          # ABC classification automática + Cycle count schedule (INV-17+18+19) — 8 SP — S15
-  US-ERP-02-08: backlog          # Dashboard KPIs inventario: Turnover, DOH, Fill Rate (INV-23+25) — 5 SP — S16
+  US-ERP-02-05: review           # FEFO automático en picking + alertas expiración Celery (INV-08+09) — 5 SP — S15 ⬆ 2026-05-16
+  US-ERP-02-06: review           # Replenishment params por producto-almacén + job ROP (INV-15+16) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-02-07: review           # ABC classification automática + Cycle count schedule (INV-17+18+19) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-02-08: review           # Dashboard KPIs inventario: Turnover, DOH, Fill Rate (INV-23+25) — 5 SP — S16 ⬆ 2026-05-16
 
   epic-EP-ERP-02-retrospective: optional
 
@@ -216,9 +216,9 @@ development_status:
   US-ERP-03-01: review           # Purchase Requisition entity + lifecycle + log inmutable (PRC-01+02+07) — 8 SP — S13 ⬆ 2026-05-16
   US-ERP-03-02: review           # Approval matrix configurable + escalación automática (PRC-04+05+06) — 8 SP — S14 ⬆ 2026-05-16
   US-ERP-03-03: review           # PO types + Purchasing Info Record (precio proveedor) (PRC-08+11) — 5 SP — S14 ⬆ 2026-05-16
-  US-ERP-03-04: backlog          # Three-way match + tolerance keys + payment block (PRC-17+18+20) — 8 SP — S15
-  US-ERP-03-05: backlog          # Source List (proveedores aprobados) + RFQ básico (PRC-12+14+16) — 8 SP — S15
-  US-ERP-03-06: backlog          # Dashboard KPIs procurement + spend analysis (PRC-21+22+23) — 5 SP — S16
+  US-ERP-03-04: review           # Three-way match + tolerance keys + payment block (PRC-17+18+20) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-03-05: review           # Source List (proveedores aprobados) + RFQ básico (PRC-12+14+16) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-03-06: review           # Dashboard KPIs procurement + spend analysis (PRC-21+22+23) — 5 SP — S16 ⬆ 2026-05-16
 
   epic-EP-ERP-03-retrospective: optional
 
@@ -227,10 +227,10 @@ development_status:
 
   US-ERP-04-01: review           # SO types + document chain reference completa (VEN-01+03) — 5 SP — S14 ⬆ 2026-05-16
   US-ERP-04-02: review           # ATP check en SO + soft reservation de stock (VEN-05+06+07+08) — 13 SP — S14 ⬆ 2026-05-16
-  US-ERP-04-03: backlog          # Credit check automático + auto-release (VEN-09+10+11) — 8 SP — S15
-  US-ERP-04-04: backlog          # Outbound Delivery entity + Goods Issue → inventario + AR (VEN-12+15+16) — 8 SP — S15
-  US-ERP-04-05: backlog          # Returns RMA + Return Delivery + Credit Memo automático (VEN-17+18+19) — 8 SP — S15
-  US-ERP-04-06: backlog          # Dashboard O2C KPIs + Backorder report (VEN-20+21) — 5 SP — S16
+  US-ERP-04-03: review           # Credit check automático + auto-release (VEN-09+10+11) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-04-04: review           # Outbound Delivery entity + Goods Issue → inventario + AR (VEN-12+15+16) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-04-05: review           # Returns RMA + Return Delivery + Credit Memo automático (VEN-17+18+19) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-04-06: review           # Dashboard O2C KPIs + Backorder report (VEN-20+21) — 5 SP — S16 ⬆ 2026-05-16
 
   epic-EP-ERP-04-retrospective: optional
 
@@ -239,10 +239,10 @@ development_status:
 
   US-ERP-05-01: review           # Billing types + doc chain + precio copiado del SO (BIL-01+02+03+04) — 5 SP — S14 ⬆ 2026-05-16
   US-ERP-05-02: review           # Asientos FI automáticos + desglose revenue + link acctg (BIL-05+06+07) — 8 SP — S14 ⬆ 2026-05-16
-  US-ERP-05-03: backlog          # Dunning automático por aging buckets + payment terms (BIL-12+13) — 8 SP — S15
-  US-ERP-05-04: backlog          # CFDI 4.0 + ZATCA Fatoora + e_invoice_submissions audit (BIL-08+09+10+11) — 13 SP — S15
-  US-ERP-05-05: backlog          # AR Aging Report tiempo real + promesas de pago (BIL-14+15) — 5 SP — S16
-  US-ERP-05-06: backlog          # Dashboard KPIs billing: DSO, CEI + alerta 24h (BIL-19+20) — 3 SP — S16
+  US-ERP-05-03: review           # Dunning automático por aging buckets + payment terms (BIL-12+13) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-05-04: review           # CFDI 4.0 + ZATCA Fatoora + e_invoice_submissions audit (BIL-08+09+10+11) — 13 SP — S15 ⬆ 2026-05-16
+  US-ERP-05-05: review           # AR Aging Report tiempo real + promesas de pago (BIL-14+15) — 5 SP — S16 ⬆ 2026-05-16
+  US-ERP-05-06: review           # Dashboard KPIs billing: DSO, CEI + alerta 24h (BIL-19+20) — 3 SP — S16 ⬆ 2026-05-16
 
   epic-EP-ERP-05-retrospective: optional
 
@@ -253,11 +253,11 @@ development_status:
   US-ERP-06-02: review           # Cost Centers hierarchy + Profit Centers básicos (FIN-09+10) — 5 SP — S13 ⬆ 2026-05-16
   US-ERP-06-03: review           # Universal Journal — financial_entries table (FIN-01) — 8 SP — S14 ⬆ 2026-05-16
   US-ERP-06-04: review           # AP Aging automático + Payment Run configurable (FIN-04+05+06) — 8 SP — S14 ⬆ 2026-05-16
-  US-ERP-06-05: backlog          # Standard Cost por SKU + varianza precio compra (FIN-11+12) — 8 SP — S15
-  US-ERP-06-06: backlog          # P&L real-time (vista materializada) + Balance Sheet recon (FIN-15+16) — 8 SP — S15
-  US-ERP-06-07: backlog          # Period Close Checklist automatizado + UAE CIT provisioning (FIN-14+19) — 5 SP — S15
-  US-ERP-06-08: backlog          # FX Revaluation al cierre + Journal SoD controls (FIN-20+21) — 5 SP — S16
-  US-ERP-06-09: backlog          # CO-PA contribution margin + Cash Flow + Budget vs Actual (FIN-13+17+22) — 8 SP — S16
+  US-ERP-06-05: review           # Standard Cost por SKU + varianza precio compra (FIN-11+12) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-06-06: review           # P&L real-time (vista materializada) + Balance Sheet recon (FIN-15+16) — 8 SP — S15 ⬆ 2026-05-16
+  US-ERP-06-07: review           # Period Close Checklist automatizado + UAE CIT provisioning (FIN-14+19) — 5 SP — S15 ⬆ 2026-05-16
+  US-ERP-06-08: review           # FX Revaluation al cierre + Journal SoD controls (FIN-20+21) — 5 SP — S16 ⬆ 2026-05-16
+  US-ERP-06-09: review           # CO-PA contribution margin + Cash Flow + Budget vs Actual (FIN-13+17+22) — 8 SP — S16 ⬆ 2026-05-16
 
   epic-EP-ERP-06-retrospective: optional
 
