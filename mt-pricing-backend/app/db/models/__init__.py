@@ -142,6 +142,8 @@ from app.db.models.price_history import PriceHistoryRaw  # noqa: F401
 from app.db.models.price_alerts import PriceAlert  # noqa: F401
 from app.db.models.hitl_queue import HitlQueue  # noqa: F401
 from app.db.models.taxonomy_profile import TaxonomyProfile  # noqa: F401
+from app.db.models.comparator_config import ComparatorConfig  # noqa: F401
+from app.db.models.unit_transform import UnitTransform  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -369,4 +371,7 @@ __all__ = [
     "HitlQueue",
     # Match Rule Engine — taxonomy profiles table (mig. 20260517_137)
     "TaxonomyProfile",
+    # Match Rule Engine — comparator config + unit transforms (migs. 20260517_138-139)
+    "ComparatorConfig",
+    "UnitTransform",
 ]
