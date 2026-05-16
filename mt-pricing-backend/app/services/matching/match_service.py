@@ -16,14 +16,18 @@ de routes los traduzca a HTTP 4xx (mismo patrón que ``ProductDomainError``).
 
 from __future__ import annotations
 
+import logging
 import re as _re
 from collections.abc import Sequence
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from app.services.matching.enhanced_match_service import EnhancedMatchResult
+    from app.repositories.unmatched_offers import UnmatchedOfferRepository
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +38,6 @@ from app.repositories.matches import MatchCandidateRepository
 from app.repositories.product import ProductRepository
 from app.services.matching.adapters import (
     AmazonUaeStubFetcher,
-    NoonUaeStubFetcher,
 )
 from app.services.matching.delivery_classifier import classify_delivery
 from app.services.matching.ports import CandidateRaw, FetcherPort, Query
@@ -158,18 +161,20 @@ class MatchService:
         fetchers: Sequence[FetcherPort] | None = None,
         query_builder: QueryBuilder | None = None,
         material_normalizer: MaterialNormalizer | None = None,
+        unmatched_repo: "UnmatchedOfferRepository | None" = None,
     ) -> None:
         self.session = session
         self.fetchers: list[FetcherPort] = list(
             fetchers
             if fetchers is not None
-            else (AmazonUaeStubFetcher(), NoonUaeStubFetcher())
+            else (AmazonUaeStubFetcher(),)  # Noon UAE no implementado aún
         )
         self.query_builder = query_builder or QueryBuilder()
         self._matches_repo = MatchCandidateRepository(session)
         self._products_repo = ProductRepository(session)
         # Normalizer se carga lazy desde DB la primera vez que se necesita.
         self._material_normalizer: MaterialNormalizer | None = material_normalizer
+        self._unmatched_repo = unmatched_repo
 
     # ----------------------------------------------------------------------
     # Refresh
@@ -234,6 +239,15 @@ class MatchService:
                     # taxonomy rule (kind="unknown" = product type mismatch, PN
                     # below requirement, etc.). Taxonomy blockers supersede score.
                     if row.score < DROP_SCORE_THRESHOLD or row.kind == "unknown":
+                        if self._unmatched_repo is not None:
+                            try:
+                                await self._unmatched_repo.upsert_from_raw(raw, source_sku=sku)
+                            except Exception:
+                                logger.warning(
+                                    "unmatched_offer.upsert_failed",
+                                    extra={"external_id": raw.external_id, "channel": raw.source},
+                                    exc_info=True,
+                                )
                         await self.session.delete(row)
                         await self.session.flush()
                         continue
@@ -247,6 +261,42 @@ class MatchService:
 
         # Sort por score DESC (best first), estable.
         persisted.sort(key=lambda r: r.score, reverse=True)
+
+        # ── Cross-encoder re-ranking (US-SCR-04-08a) ──────────────────────────
+        # Aplica ms-marco-MiniLM-L-6-v2 si está disponible. Degradación
+        # graceful: si sentence-transformers no está instalado o Redis no
+        # disponible, se mantiene el orden por score determinista.
+        if persisted and sku_dict.get("name"):
+            try:
+                from app.services.matching.cross_encoder_reranker import rerank_candidates  # noqa: PLC0415
+
+                # Convertir a dicts para el reranker
+                cand_dicts = [
+                    {
+                        "id": str(c.id),
+                        "title": c.title or "",
+                        "_idx": i,
+                    }
+                    for i, c in enumerate(persisted)
+                ]
+                reranked_dicts = await rerank_candidates(
+                    query=str(sku_dict.get("name", "")),
+                    candidates=cand_dicts,
+                    text_field="title",
+                    redis_client=None,  # Redis opt-in: pasar redis_client cuando esté wired
+                )
+                # Reordenar persisted según nuevo ranking del cross-encoder
+                idx_order = [d["_idx"] for d in reranked_dicts]
+                persisted = [persisted[i] for i in idx_order]
+                logger.debug(
+                    "cross_encoder.reranked",
+                    extra={"sku": sku, "n": len(persisted)},
+                )
+            except Exception as _ce_exc:
+                logger.debug(
+                    "cross_encoder.skipped",
+                    extra={"reason": str(_ce_exc)[:120]},
+                )
 
         # ── Pool-relativa: maneta (handle) ────────────────────────────────────
         # Regla: candidatos con handle_mismatch solo se listan si NO hay ningún
@@ -430,7 +480,7 @@ class MatchService:
         from app.services.matching.extractors.pdp_extractor import parse_pack_units  # noqa: PLC0415
         pack_units = parse_pack_units(raw.title, raw.specs or {})
 
-        return await self._matches_repo.upsert_candidate(
+        candidate = await self._matches_repo.upsert_candidate(
             product_sku=str(sku_dict.get("sku")),
             channel=raw.source,
             external_id=raw.external_id,
@@ -447,6 +497,74 @@ class MatchService:
             price_confidence_score=delivery.price_confidence_score,
             pack_units=pack_units,
         )
+
+        # ── Auto-enqueue HITL: confidence < 0.6 AND price > 1000 AED ──────
+        await self._maybe_enqueue_hitl(candidate, raw)
+
+        return candidate
+
+    async def _maybe_enqueue_hitl(self, candidate: MatchCandidate, raw: "CandidateRaw") -> None:
+        """Inserta en hitl_queue si confidence < 0.6 Y product_value > 1000 AED.
+
+        Idempotente: no inserta si ya existe un item ``pending`` para ese match_id
+        (índice parcial único en la migración). No propaga excepciones — el
+        encolado HITL es best-effort y no debe romper el pipeline de matching.
+        """
+        try:
+            await self.__maybe_enqueue_hitl_impl(candidate, raw)
+        except Exception as _hitl_exc:
+            logger.warning(
+                "hitl_queue.enqueue_failed",
+                extra={"error": str(_hitl_exc)[:120]},
+            )
+
+    async def __maybe_enqueue_hitl_impl(self, candidate: MatchCandidate, raw: "CandidateRaw") -> None:
+        """Implementación interna — ver _maybe_enqueue_hitl."""
+        from decimal import Decimal
+
+        from app.db.models.hitl_queue import HitlQueue, HITL_CONFIDENCE_THRESHOLD, HITL_VALUE_THRESHOLD_AED
+        from sqlalchemy import select as _select
+
+        # Determinar uncertainty_score (defensivo: FakeMatchRow en tests puede no tener el atributo)
+        conf = getattr(candidate, "calibrated_confidence", None)
+        if conf is not None:
+            uncertainty = Decimal("1") - conf
+        else:
+            uncertainty = Decimal("1")  # confianza desconocida → máxima incertidumbre
+
+        if float(uncertainty) > (1.0 - HITL_CONFIDENCE_THRESHOLD):
+            # Solo encolar si hay precio suficientemente alto
+            price_val = raw.price_aed
+            if price_val is not None and float(price_val) > HITL_VALUE_THRESHOLD_AED:
+                # Comprobar si ya está en cola
+                existing_stmt = _select(HitlQueue.id).where(
+                    HitlQueue.match_id == candidate.id,
+                    HitlQueue.status == "pending",
+                )
+                existing = await self.session.execute(existing_stmt)
+                if existing.first() is not None:
+                    return  # ya en cola
+
+                priority = uncertainty * Decimal(str(price_val))
+                hitl_item = HitlQueue(
+                    match_id=candidate.id,
+                    uncertainty_score=uncertainty,
+                    product_value_aed=Decimal(str(price_val)),
+                    priority_score=priority,
+                    status="pending",
+                )
+                self.session.add(hitl_item)
+                await self.session.flush()
+                logger.info(
+                    "hitl_queue.auto_enqueued",
+                    extra={
+                        "match_id": str(candidate.id),
+                        "sku": candidate.product_sku,
+                        "uncertainty": float(uncertainty),
+                        "price_aed": float(price_val),
+                        "priority_score": float(priority),
+                    },
+                )
 
     # ----------------------------------------------------------------------
     # Listing / detail
@@ -731,6 +849,83 @@ class MatchService:
         # Ordenar por score DESC
         results.sort(key=lambda pair: pair[0].score, reverse=True)
         return results
+
+    async def rematch_from_pool(
+        self,
+        sku: str,
+        pool_candidates: list,  # list[UnmatchedOffer] — evitamos import circular
+    ) -> list[MatchCandidate]:
+        """Re-intenta matching de ofertas del pool contra un SKU del catálogo.
+
+        Reconstruye un CandidateRaw desde cada UnmatchedOffer y lo pasa por
+        el pipeline de scoring existente (_score_and_upsert). Las que pasen
+        el umbral quedan en match_candidates; las que no, incrementan
+        match_attempts en el pool.
+
+        Returns:
+            Lista de MatchCandidate que pasaron el umbral (score >= DROP_SCORE_THRESHOLD).
+        """
+        product = await self._products_repo.get_by_sku_for_matching(sku)
+        if product is None:
+            raise MatchSkuNotFoundError(sku)
+        sku_dict = self._product_to_dict(product)
+
+        if self._material_normalizer is None:
+            self._material_normalizer = await MaterialNormalizer.from_db(self.session)
+
+        matched: list[MatchCandidate] = []
+
+        for offer in pool_candidates:
+            # Reconstruir CandidateRaw desde los datos almacenados
+            raw = CandidateRaw(
+                source=offer.marketplace,
+                external_id=offer.external_id,
+                title=offer.title,
+                brand=offer.brand,
+                price_aed=offer.price_aed,
+                delivery_text=offer.delivery_text,
+                specs=dict(offer.specs_jsonb or {}),
+                raw_payload={
+                    "image_url": offer.image_url or "",
+                    "url": offer.source_url or "",
+                    "description_text": (offer.specs_jsonb or {}).get("_description_text", ""),
+                },
+            )
+
+            try:
+                row = await self._score_and_upsert(sku_dict, raw)
+            except Exception:
+                logger.warning(
+                    "rematch_from_pool.score_failed",
+                    extra={"offer_id": str(offer.id), "sku": sku},
+                    exc_info=True,
+                )
+                if self._unmatched_repo is not None:
+                    await self._unmatched_repo.increment_attempts(offer.id)
+                continue
+
+            if row.score < DROP_SCORE_THRESHOLD or row.kind == "unknown":
+                # Sigue sin matchear — incrementar intentos y eliminar de match_candidates
+                if self._unmatched_repo is not None:
+                    await self._unmatched_repo.increment_attempts(offer.id)
+                await self.session.delete(row)
+                await self.session.flush()
+            else:
+                # Match exitoso — marcar en el pool
+                if self._unmatched_repo is not None:
+                    await self._unmatched_repo.mark_matched(offer.id)
+                matched.append(row)
+                logger.info(
+                    "rematch_from_pool.matched",
+                    extra={
+                        "sku": sku,
+                        "offer_id": str(offer.id),
+                        "score": row.score,
+                        "external_id": offer.external_id,
+                    },
+                )
+
+        return matched
 
     # ----------------------------------------------------------------------
     # Helpers

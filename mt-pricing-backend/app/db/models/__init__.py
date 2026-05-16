@@ -139,6 +139,8 @@ from app.db.models.product_models import (  # noqa: F401
 from app.db.models.certificates import Certificate, CertificateScope  # noqa: F401
 from app.db.models.unmatched_offer import UnmatchedOffer  # noqa: F401
 from app.db.models.price_history import PriceHistoryRaw  # noqa: F401
+from app.db.models.price_alerts import PriceAlert  # noqa: F401
+from app.db.models.hitl_queue import HitlQueue  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -360,4 +362,8 @@ __all__ = [
     "CertificateScope",
     # EP-SCR-04 — price history raw scraping (US-SCR-04-01)
     "PriceHistoryRaw",
+    # EP-SCR-04-05 — price alerts + pg_notify + heartbeat (US-SCR-04-05)
+    "PriceAlert",
+    # EP-SCR-04-08b — HITL queue uncertainty×value (US-SCR-04-08b)
+    "HitlQueue",
 ]
