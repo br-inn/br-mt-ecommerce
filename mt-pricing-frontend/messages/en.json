@@ -1155,6 +1155,52 @@
         "colPct": "% of total",
         "colClassifiedAt": "Classified"
       }
+    },
+    "scraper": {
+      "title": "Amazon UAE Scraper",
+      "description": "Run price searches on Amazon UAE for catalog products",
+      "run": {
+        "title": "Run scraping",
+        "allProducts": "All active products",
+        "skusLabel": "SKUs to scan (separated by comma or newline)",
+        "skusPlaceholder": "SKU-001, SKU-002, SKU-003",
+        "force": "Re-scan even if recent candidates already exist",
+        "submit": "Run scraping",
+        "submitting": "Running..."
+      },
+      "job": {
+        "title": "Job status",
+        "id": "Job ID",
+        "progress": "Progress",
+        "newScan": "New scan",
+        "statuses": {
+          "pending": "Queued",
+          "running": "Running",
+          "completed": "Completed",
+          "failed": "Failed"
+        }
+      },
+      "errors": {
+        "runFailed": "Error running scraping",
+        "jobFailed": "Error checking job status"
+      },
+      "cola": {
+        "title": "Validation queue",
+        "description": "Grey-zone candidates requiring human validation (score 30-74 or uncertain visual verdict)",
+        "emptyTitle": "No pending candidates",
+        "emptyHint": "When the scraper finds uncertain matches, they will appear here for review",
+        "columns": {
+          "sku": "SKU",
+          "asin": "ASIN",
+          "score": "Score",
+          "method": "Method",
+          "actions": "Actions"
+        },
+        "actions": {
+          "validate": "Validate",
+          "reject": "Reject"
+        }
+      }
     }
   },
   "costsDashboard": {

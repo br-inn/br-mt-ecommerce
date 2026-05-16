@@ -1155,6 +1155,52 @@
         "colPct": "% من الإجمالي",
         "colClassifiedAt": "تاريخ التصنيف"
       }
+    },
+    "scraper": {
+      "title": "أداة كشط Amazon UAE",
+      "description": "تشغيل عمليات بحث عن الأسعار في Amazon UAE لمنتجات الكتالوج",
+      "run": {
+        "title": "تشغيل الكشط",
+        "allProducts": "جميع المنتجات النشطة",
+        "skusLabel": "رموز SKU للمسح (مفصولة بفاصلة أو سطر جديد)",
+        "skusPlaceholder": "SKU-001, SKU-002, SKU-003",
+        "force": "إعادة المسح حتى لو كانت هناك مرشحات حديثة",
+        "submit": "تشغيل الكشط",
+        "submitting": "جارٍ التشغيل..."
+      },
+      "job": {
+        "title": "حالة المهمة",
+        "id": "معرّف المهمة",
+        "progress": "التقدم",
+        "newScan": "مسح جديد",
+        "statuses": {
+          "pending": "في الانتظار",
+          "running": "قيد التشغيل",
+          "completed": "مكتمل",
+          "failed": "فشل"
+        }
+      },
+      "errors": {
+        "runFailed": "خطأ في تشغيل الكشط",
+        "jobFailed": "خطأ في التحقق من حالة المهمة"
+      },
+      "cola": {
+        "title": "قائمة انتظار التحقق",
+        "description": "المرشحون في المنطقة الرمادية الذين يحتاجون إلى تحقق بشري",
+        "emptyTitle": "لا يوجد مرشحون معلقون",
+        "emptyHint": "عندما يجد الكاشط تطابقات غير مؤكدة، ستظهر هنا للمراجعة",
+        "columns": {
+          "sku": "SKU",
+          "asin": "ASIN",
+          "score": "النتيجة",
+          "method": "الطريقة",
+          "actions": "الإجراءات"
+        },
+        "actions": {
+          "validate": "تحقق",
+          "reject": "رفض"
+        }
+      }
     }
   },
   "costsDashboard": {
