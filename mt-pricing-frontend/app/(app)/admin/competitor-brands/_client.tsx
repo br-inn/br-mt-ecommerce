@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
+  Activity,
   Building2,
   Edit2,
   Loader2,
@@ -31,6 +32,7 @@ import {
   useCompetitorBrands,
   useCreateCompetitorBrand,
   useRunBrandScrape,
+  useToggleCompetitorBrandMonitoring,
   useUpdateCompetitorBrand,
 } from "@/lib/hooks/admin/use-competitor-brands";
 import type { CompetitorBrandRead } from "@/lib/api/endpoints/competitor-brands";
@@ -217,6 +219,7 @@ export function CompetitorBrandsClient() {
   const { data: brands = [], isLoading } = useCompetitorBrands();
   const createMutation = useCreateCompetitorBrand();
   const updateMutation = useUpdateCompetitorBrand();
+  const toggleMonitoringMutation = useToggleCompetitorBrandMonitoring();
   const runMutation = useRunBrandScrape();
 
   // Dialog state
@@ -272,6 +275,15 @@ export function CompetitorBrandsClient() {
       });
     } catch {
       toast.error(t("form.updateFailed"));
+    }
+  };
+
+  const handleToggleMonitoring = async (brand: CompetitorBrandRead) => {
+    try {
+      await toggleMonitoringMutation.mutateAsync(brand.id);
+      toast.success(t("toggleMonitoringSuccess"));
+    } catch {
+      toast.error(t("toggleMonitoringFailed"));
     }
   };
 
@@ -372,6 +384,9 @@ export function CompetitorBrandsClient() {
                 <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
                   {t("columns.active")}
                 </th>
+                <th className="hidden px-4 py-2.5 text-center font-medium text-muted-foreground lg:table-cell">
+                  {t("columns.monitoring")}
+                </th>
                 {canWrite ? (
                   <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
                     {t("columns.actions")}
@@ -432,6 +447,47 @@ export function CompetitorBrandsClient() {
                       >
                         {brand.is_active ? "✓" : "—"}
                       </span>
+                    )}
+                  </td>
+                  {/* Monitoring badge */}
+                  <td className="hidden px-4 py-3 text-center lg:table-cell">
+                    {canWrite ? (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleMonitoring(brand)}
+                        disabled={toggleMonitoringMutation.isPending}
+                        title={t("toggleMonitoring")}
+                        className="inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {brand.monitoring_active ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-blue-500/40 text-blue-700 bg-blue-50 text-xs cursor-pointer"
+                          >
+                            <Activity className="h-3 w-3" />
+                            {t("monitoringEnabled")}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 text-muted-foreground text-xs cursor-pointer"
+                          >
+                            {t("monitoringDisabled")}
+                          </Badge>
+                        )}
+                      </button>
+                    ) : (
+                      brand.monitoring_active ? (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-blue-500/40 text-blue-700 bg-blue-50 text-xs"
+                        >
+                          <Activity className="h-3 w-3" />
+                          {t("monitoringEnabled")}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{t("monitoringDisabled")}</span>
+                      )
                     )}
                   </td>
                   {canWrite ? (

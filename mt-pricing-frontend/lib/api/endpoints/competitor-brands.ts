@@ -24,8 +24,15 @@ export interface CompetitorBrandRead {
   is_active: boolean;
   notes: string | null;
   last_scraped_at: string | null;
+  /** US-SCR-04-03: monitoreo continuo de precios activo */
+  monitoring_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface MonitoringToggleResponse {
+  brand_id: string;
+  monitoring_active: boolean;
 }
 
 export interface CompetitorBrandCreate {
@@ -122,4 +129,11 @@ export const competitorBrandsApi = {
       method: "POST",
       body: JSON.stringify(req),
     }),
+
+  /** US-SCR-04-03: toggle monitoreo continuo de precios para una marca */
+  toggleMonitoring: (id: string): Promise<MonitoringToggleResponse> =>
+    authedFetch<MonitoringToggleResponse>(
+      `/api/v1/competitor-brands/${encodeURIComponent(id)}/toggle-monitoring`,
+      { method: "POST" },
+    ),
 };

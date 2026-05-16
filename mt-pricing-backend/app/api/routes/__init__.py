@@ -11,6 +11,7 @@ from app.api.routes import (
     admin,
     admin_calibrator,
     admin_erp,
+    admin_scraper,
     billing,
     competitor_brands,
     ficha_enrich,
@@ -206,3 +207,5 @@ router.include_router(ficha_enrich.router)
 router.include_router(unmatched_offers.router)
 # EP-SCR-02 — Competitor Brands CRUD + brand scrape trigger
 router.include_router(competitor_brands.router)
+# EP-SCR-03/04 — Scraper health dashboard + CRUD proxies (US-SCR-03-05)
+router.include_router(admin_scraper.router)

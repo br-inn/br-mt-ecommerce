@@ -9,6 +9,7 @@ import {
   type CompetitorBrandCreate,
   type CompetitorBrandRead,
   type CompetitorBrandUpdate,
+  type MonitoringToggleResponse,
 } from "@/lib/api/endpoints/competitor-brands";
 
 const KEYS = {
@@ -47,6 +48,15 @@ export function useUpdateCompetitorBrand() {
 export function useRunBrandScrape() {
   return useMutation<BrandScrapeRunResponse, Error, BrandScrapeRunRequest>({
     mutationFn: (req) => competitorBrandsApi.run(req),
+  });
+}
+
+/** US-SCR-04-03: toggle monitoreo continuo */
+export function useToggleCompetitorBrandMonitoring() {
+  const qc = useQueryClient();
+  return useMutation<MonitoringToggleResponse, Error, string>({
+    mutationFn: (id) => competitorBrandsApi.toggleMonitoring(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.all() }),
   });
 }
 

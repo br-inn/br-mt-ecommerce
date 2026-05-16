@@ -83,6 +83,10 @@ class CompetitorBrand(UuidPkMixin, TimestampMixin, Base):
     last_scraped_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # US-SCR-04-03: monitoreo continuo de precios activo para esta marca
+    monitoring_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     __table_args__ = (
         Index("ux_competitor_brands_name", func.lower(name), unique=True),

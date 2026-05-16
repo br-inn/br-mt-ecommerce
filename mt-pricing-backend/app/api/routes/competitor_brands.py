@@ -6,6 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
@@ -50,8 +51,60 @@ async def create_brand(
         is_active=body.is_active,
         notes=body.notes,
     )
+
+    # US-SCR-04-04 — Auto-crear job_definition para scraping diario de esta marca
+    await _auto_create_brand_job(session, brand_name=body.name, brand_id=str(brand.id))
+
     await session.commit()
     return CompetitorBrandRead.model_validate(brand)
+
+
+async def _auto_create_brand_job(session: AsyncSession, brand_name: str, brand_id: str) -> None:
+    """Crea un job_definition de scraping diario para la nueva marca competidora.
+
+    Usa ON CONFLICT DO NOTHING para idempotencia (código único por marca).
+    """
+    from sqlalchemy import text
+
+    safe_name = brand_name.lower().replace(" ", "_").replace("-", "_")[:40]
+    job_code = f"scrape_brand_{safe_name}"
+
+    try:
+        await session.execute(
+            text("""
+                INSERT INTO job_definitions (
+                    code, task_name, description, owner, schedule_type,
+                    cron_expression, queue, kwargs, enabled
+                )
+                VALUES (
+                    :code,
+                    'mt.scraper.scrape_brand',
+                    :description,
+                    'business',
+                    'cron',
+                    '0 2 * * *',
+                    'scraper',
+                    :kwargs::jsonb,
+                    true
+                )
+                ON CONFLICT (code) DO NOTHING
+            """),
+            {
+                "code": job_code,
+                "description": f"Scraping diario de marca competidora '{brand_name}' en Amazon UAE.",
+                "kwargs": f'{{"brand_id": "{brand_id}"}}',
+            },
+        )
+        logger.info(
+            "scraper.brand_job_created",
+            extra={"brand_id": brand_id, "job_code": job_code},
+        )
+    except Exception as exc:
+        # Non-fatal: la marca se creó pero sin job automático
+        logger.warning(
+            "scraper.brand_job_create_failed",
+            extra={"brand_id": brand_id, "error": str(exc)[:120]},
+        )
 
 
 @router.get(
@@ -143,3 +196,39 @@ async def run_brand_scrape(
         total_brands=len(brands),
         status="queued",
     )
+
+
+class MonitoringToggleResponse(BaseModel):
+    brand_id: str
+    monitoring_active: bool
+
+
+@router.post(
+    "/{brand_id}/toggle-monitoring",
+    response_model=MonitoringToggleResponse,
+    operation_id="toggleBrandMonitoring",
+)
+async def toggle_brand_monitoring(
+    brand_id: UUID,
+    _user: Annotated[User, Depends(require_permissions("products:write"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> MonitoringToggleResponse:
+    """Activa o desactiva el monitoreo continuo de precios para una marca competidora.
+
+    Cuando ``monitoring_active=True``, el job ``bootstrap_price_monitoring``
+    incluirá esta marca en el siguiente ciclo de scraping de precios.
+    """
+    repo = CompetitorBrandRepository(session)
+    brand = await repo.get(brand_id)
+    if not brand:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brand not found")
+
+    new_state = not brand.monitoring_active
+    await repo.update(brand, monitoring_active=new_state)
+    await session.commit()
+
+    logger.info(
+        "scraper.brand.monitoring_toggled",
+        extra={"brand_id": str(brand_id), "monitoring_active": new_state},
+    )
+    return MonitoringToggleResponse(brand_id=str(brand_id), monitoring_active=new_state)
