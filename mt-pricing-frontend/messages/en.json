@@ -289,6 +289,23 @@
       "intrastat": {
         "title": "Customs / Intrastat",
         "subtitle": "Export and customs declaration data."
+      },
+      "inlineEdit": {
+        "edit": "Edit",
+        "save": "Save",
+        "cancel": "Discard",
+        "nameLabel": "Product name (ES)",
+        "namePlaceholder": "Name in Spanish…"
+      },
+      "completeness": {
+        "label": "Profile completeness: {percentage}%",
+        "allComplete": "All fields complete.",
+        "groups": {
+          "basic": "Basic data",
+          "translations": "Translations",
+          "image": "Image",
+          "specs": "Specifications"
+        }
       }
     },
     "create": {

@@ -5,6 +5,7 @@ import type React from "react";
 import { useTranslations } from "next-intl";
 import { Pencil, Barcode, Ruler, Layers, GitBranch } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,10 @@ export function ProductHeader({ sku }: Props) {
       void queryClient.invalidateQueries({ queryKey: productKeys.detail(sku) });
       setEditMode(false);
       setDraft(null);
+      toast.success(t("edit.success"));
+    },
+    onError: () => {
+      toast.error(t("errors.saveFailed"));
     },
   });
 
@@ -91,11 +96,22 @@ export function ProductHeader({ sku }: Props) {
 
   const saveEdit = () => {
     if (!draft) return;
-    patchMutation.mutate({
-      brand: draft.brand || null,
-      gtin: draft.gtin || null,
+    // Build dirty fields only (skip unchanged values)
+    const original = product;
+    const originalNameEs = (original?.translations?.es?.name ?? "") as string;
+    const payload: Record<string, unknown> = {
       lifecycle_status: draft.lifecycle_status,
-    });
+    };
+    if (draft.brand !== (original?.brand ?? "")) {
+      payload.brand = draft.brand || null;
+    }
+    if (draft.gtin !== (original?.gtin ?? "")) {
+      payload.gtin = draft.gtin || null;
+    }
+    if (draft.name_es !== originalNameEs && draft.name_es.trim()) {
+      payload.translations = { es: { name: draft.name_es.trim() } };
+    }
+    patchMutation.mutate(payload);
   };
 
   if (isLoading) {
@@ -171,7 +187,17 @@ export function ProductHeader({ sku }: Props) {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{getProductName(product)}</h1>
+            {editMode && draft ? (
+              <Input
+                value={draft.name_es}
+                onChange={(e) => setDraft((d) => d ? { ...d, name_es: e.target.value } : d)}
+                className="h-9 text-xl font-semibold"
+                placeholder={t("product.inlineEdit.namePlaceholder")}
+                aria-label={t("product.inlineEdit.nameLabel")}
+              />
+            ) : (
+              <h1 className="text-2xl font-semibold tracking-tight">{getProductName(product)}</h1>
+            )}
             <CompletenessRing product={product} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -204,17 +230,17 @@ export function ProductHeader({ sku }: Props) {
                 onClick={saveEdit}
                 disabled={patchMutation.isPending}
               >
-                Guardar
+                {patchMutation.isPending ? t("edit.saving") : t("product.inlineEdit.save")}
               </Button>
-              <Button variant="outline" size="sm" onClick={cancelEdit}>
-                Cancelar
+              <Button variant="outline" size="sm" onClick={cancelEdit} disabled={patchMutation.isPending}>
+                {t("product.inlineEdit.cancel")}
               </Button>
             </>
           ) : (
             <>
               <RbacGuard permissions={["products:write"]}>
                 <Button variant="outline" size="sm" onClick={enterEdit}>
-                  <Pencil className="h-4 w-4" /> Editar
+                  <Pencil className="h-4 w-4" /> {t("product.inlineEdit.edit")}
                 </Button>
               </RbacGuard>
               <RbacGuard permissions={["products:write"]}>

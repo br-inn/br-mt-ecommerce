@@ -289,6 +289,23 @@
       "intrastat": {
         "title": "الجمارك / Intrastat",
         "subtitle": "بيانات التصدير والإقرارات الجمركية."
+      },
+      "inlineEdit": {
+        "edit": "تعديل",
+        "save": "حفظ",
+        "cancel": "تجاهل",
+        "nameLabel": "اسم المنتج (ES)",
+        "namePlaceholder": "الاسم بالإسبانية…"
+      },
+      "completeness": {
+        "label": "اكتمال الملف: {percentage}%",
+        "allComplete": "جميع الحقول مكتملة.",
+        "groups": {
+          "basic": "البيانات الأساسية",
+          "translations": "الترجمات",
+          "image": "الصورة",
+          "specs": "المواصفات"
+        }
       }
     },
     "create": {

@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-16T20:00:00.000Z"  # US-ERP-02-01/02 + US-ERP-03-01 + US-ERP-06-01/02 review
+last_updated: "2026-05-16T21:00:00.000Z"  # US-ERP-01-05/06 review (S14 frontend)
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -191,8 +191,8 @@ development_status:
   US-ERP-01-02: review           # Tab "Mercados" + product_releases + "Activar mercado" (UX-03+10) — 8 SP — S13 ⬆ 2026-05-31
   US-ERP-01-03: review           # Tab "Unidades" — base_uom + conversiones (UX-04) — 5 SP — S13 ⬆ 2026-05-31
   US-ERP-01-04: review           # GTIN en specs + lifecycle chip en listado (UX-05+07) — 3 SP — S13 ⬆ 2026-05-31
-  US-ERP-01-05: backlog          # Completeness ring (Akeneo) + Breadcrumb navegable (UX-06+08) — 5 SP — S14
-  US-ERP-01-06: backlog          # Inline edit mode — toggle View/Edit (UX-09) — 8 SP — S14
+  US-ERP-01-05: review           # Completeness ring (Akeneo) + Breadcrumb navegable (UX-06+08) — 5 SP — S14 ⬆ 2026-05-16
+  US-ERP-01-06: review           # Inline edit mode — toggle View/Edit (UX-09) — 8 SP — S14 ⬆ 2026-05-16
 
   epic-EP-ERP-01-retrospective: optional
 

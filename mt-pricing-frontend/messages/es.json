@@ -289,6 +289,23 @@
       "intrastat": {
         "title": "Aduanas / Intrastat",
         "subtitle": "Datos para exportación y declaraciones aduaneras."
+      },
+      "inlineEdit": {
+        "edit": "Editar",
+        "save": "Guardar",
+        "cancel": "Descartar",
+        "nameLabel": "Nombre del producto (ES)",
+        "namePlaceholder": "Nombre en español…"
+      },
+      "completeness": {
+        "label": "Completitud del perfil: {percentage}%",
+        "allComplete": "Todos los campos completos.",
+        "groups": {
+          "basic": "Datos básicos",
+          "translations": "Traducciones",
+          "image": "Imagen",
+          "specs": "Especificaciones"
+        }
       }
     },
     "create": {
