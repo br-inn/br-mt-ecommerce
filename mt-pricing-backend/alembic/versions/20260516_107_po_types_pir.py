@@ -40,7 +40,7 @@ def upgrade() -> None:
         CREATE TABLE vendor_product_conditions (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             vendor_id TEXT NOT NULL,
-            product_id UUID NOT NULL REFERENCES products(id),
+            product_sku TEXT NOT NULL REFERENCES products(sku),
             price NUMERIC(18,4) NOT NULL,
             uom TEXT NOT NULL DEFAULT 'UNIT',
             moq INT NOT NULL DEFAULT 1,
@@ -50,13 +50,13 @@ def upgrade() -> None:
             currency CHAR(3) NOT NULL DEFAULT 'AED',
             is_active BOOL DEFAULT true,
             created_at TIMESTAMPTZ DEFAULT NOW(),
-            UNIQUE(vendor_id, product_id, valid_from)
+            UNIQUE(vendor_id, product_sku, valid_from)
         );
     """)
 
     op.execute("""
         CREATE INDEX idx_vpc_vendor_product
-            ON vendor_product_conditions(vendor_id, product_id)
+            ON vendor_product_conditions(vendor_id, product_sku)
             WHERE is_active = true;
     """)
     op.execute("""

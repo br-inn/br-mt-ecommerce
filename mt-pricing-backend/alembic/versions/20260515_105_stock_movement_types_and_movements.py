@@ -52,7 +52,7 @@ def upgrade() -> None:
         "stock_movements",
         sa.Column("id", sa.UUID(), server_default=sa.text("gen_random_uuid()"), nullable=False),
         sa.Column("movement_type_id", sa.UUID(), nullable=False),
-        sa.Column("product_id", sa.UUID(), nullable=False),
+        sa.Column("product_sku", sa.Text(), nullable=False),
         sa.Column("qty", sa.Numeric(18, 4), nullable=False),
         sa.Column("lot_id", sa.UUID(), nullable=True),        # FK real en mig 107
         sa.Column("warehouse_id", sa.UUID(), nullable=True),  # FK real en mig 108
@@ -72,7 +72,7 @@ def upgrade() -> None:
             ["movement_type_id"], ["stock_movement_types.id"], ondelete="RESTRICT"
         ),
         sa.ForeignKeyConstraint(
-            ["product_id"], ["products.id"], ondelete="RESTRICT"
+            ["product_sku"], ["products.sku"], ondelete="RESTRICT"
         ),
         sa.ForeignKeyConstraint(
             ["reversal_of"], ["stock_movements.id"], ondelete="SET NULL"
@@ -82,7 +82,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("idx_sm_product", "stock_movements", ["product_id"])
+    op.create_index("idx_sm_product", "stock_movements", ["product_sku"])
     op.create_index("idx_sm_type", "stock_movements", ["movement_type_id"])
     op.create_index("idx_sm_posted_at", "stock_movements", ["posted_at"])
     op.create_index("idx_sm_reference", "stock_movements", ["reference_id", "reference_type"])

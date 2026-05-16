@@ -30,7 +30,7 @@ def upgrade() -> None:
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             pr_number TEXT NOT NULL UNIQUE,
             requester_id UUID NOT NULL REFERENCES auth.users(id),
-            product_id UUID REFERENCES products(id),
+            product_sku TEXT REFERENCES products(sku),
             qty NUMERIC(18,4) NOT NULL,
             uom TEXT NOT NULL DEFAULT 'UNIT',
             required_date DATE,
@@ -56,8 +56,8 @@ def upgrade() -> None:
             WHERE status NOT IN ('cancelled','converted_to_po');
     """)
     op.execute("""
-        CREATE INDEX idx_pr_product ON purchase_requisitions(product_id)
-            WHERE product_id IS NOT NULL;
+        CREATE INDEX idx_pr_product ON purchase_requisitions(product_sku)
+            WHERE product_sku IS NOT NULL;
     """)
 
     op.execute("""

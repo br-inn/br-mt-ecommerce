@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-13T00:00:00.000Z"  # ERP Best Practices S13+ agregado — 6 nuevas épicas, 35 stories, 280 SP total planificados
+last_updated: "2026-05-16T20:00:00.000Z"  # US-ERP-02-01/02 + US-ERP-03-01 + US-ERP-06-01/02 review
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -132,6 +132,54 @@ development_status:
   sprint-9-retrospective: done
   sprint-10-retrospective: done  # S10 — KG Foundation (34 SP) + Amazon SP API (8 SP) completados 2026-05-12
 
+# ─── EP-SCR — Scraper, Matching & Comparador de Precios (consolidado S7-S16) ────
+# Fuente: _bmad-output/planning-artifacts/epics-and-stories-ep-scr.md
+# Research: technical-price-intelligence-scraper-matching-best-practices-research-2026-05-16.md
+# ADRs resueltos: TimescaleDB, pg_notify CDC, cross-encoder ms-marco-MiniLM
+
+  # EP-SCR-01 — Pipeline SKU (DONE S7-S11)
+  epic-EP-SCR-01: done           # Pipeline scraping por SKU — 44 SP ✅ S7-S11
+
+  US-SCR-01-01: done            # CompetitorBrand model + mig 132 + schemas + repo — 5 SP ✅ S13 ad-hoc
+  US-SCR-01-02: done            # API CRUD (POST/GET/PATCH) + /run trigger — 5 SP ✅ S13 ad-hoc
+  US-SCR-01-03: done            # Frontend admin page (tabla + dialogs + hooks) — 8 SP ✅ S13 ad-hoc
+  US-SCR-01-04: done            # Celery scrape_brand_task + scrape_brands_batch_task — 5 SP ✅ S13 ad-hoc
+
+  epic-EP-SCR-01-retrospective: optional
+
+  # EP-SCR-02 — Revisión y Validación UI (PARCIAL)
+  epic-EP-SCR-02: in-progress    # UI Pool + Validación — FR-08/09 done, FR-15 pendiente
+
+  US-SCR-02-01: review          # Fix empty state /comparator/pool (skeleton infinito FR-15) — 3 SP — S13
+
+  epic-EP-SCR-02-retrospective: optional
+
+  # EP-SCR-03 — Gestión Marcas Competidoras con Scraping Resiliente (PARCIAL)
+  epic-EP-SCR-03: in-progress    # Marcas competidoras + resiliencia — FR-10/11/12/13 done, 10 FRs pendientes
+
+  US-SCR-03-01: review          # i18n ES/EN/AR + RBAC roles + nav lateral (FR-16/17/18) — 5 SP — S13
+  US-SCR-03-02: review          # Test suite ≥80% cobertura (FR-14) — 5 SP — S13
+  US-SCR-03-03: backlog         # Rate limiter Redis token bucket + fingerprint rotation (FR-31/30) — 5 SP — S14
+  US-SCR-03-04: backlog         # Circuit breaker dominio + proxy pool distribuido Redis (FR-28/36) — 8 SP — S14
+  US-SCR-03-05: backlog         # Dashboard salud canales + CRUD proxies UI sin redeploy (FR-33/38) — 8 SP — S14
+
+  epic-EP-SCR-03-retrospective: optional
+
+  # EP-SCR-04 — Monitoreo Autónomo + Price Intelligence (PENDIENTE S14-S16)
+  epic-EP-SCR-04: backlog        # Price intelligence completo — 21 FRs — S14-S16
+
+  US-SCR-04-01: backlog         # TimescaleDB hypertable + price_daily_stats continuous aggregate (FR-29/23) — 8 SP — S14
+  US-SCR-04-02: backlog         # price_monitor_task liviana + workers colas especializadas (FR-40/43/44/45) — 8 SP — S14
+  US-SCR-04-03: backlog         # Bootstrap coordinator + workers on-demand + UI diferenciación (FR-42/46/39/41) — 8 SP — S14
+  US-SCR-04-04: backlog         # Job definitions automáticos + Noon UAE en scrape_brand (FR-19/21) — 5 SP — S14
+  US-SCR-04-05: backlog         # Price alerts pg_notify + heartbeat 26h + email SendGrid (FR-24/34/37) — 8 SP — S15
+  US-SCR-04-06: backlog         # KPI dashboard Price Gap/Index/Position + listings por marca (FR-25/22/20) — 8 SP — S15
+  US-SCR-04-07: backlog         # Monitor calidad matching histograma confidence 7d (FR-35) — 3 SP — S15
+  US-SCR-04-08a: backlog        # Cross-encoder re-ranking + cache Redis + Anthropic prompt caching (FR-26) — 8 SP — S16
+  US-SCR-04-08b: backlog        # HITL queue scoring uncertainty×value + high-value threshold AED 1K (FR-27) — 5 SP — S16
+
+  epic-EP-SCR-04-retrospective: optional
+
 # ─── ERP Best Practices Series — S13+ (186 mejoras investigadas) ──────────────
 # Fuente: 8 archivos research en _bmad-output/planning-artifacts/research/
 # Epic file: epics-and-stories-ep-erp-best-practices.md
@@ -139,10 +187,10 @@ development_status:
 # ─── EP-ERP-01 — UX Producto: SAP Fiori / Akeneo patterns ────────────────────
   epic-EP-ERP-01: in-progress    # UX Producto — SAP Fiori/Akeneo — 34 SP total (S13-S14)
 
-  US-ERP-01-01: backlog          # LifecycleStatusBadge + Quick Facts header (UX-01+02) — 5 SP — S13
-  US-ERP-01-02: backlog          # Tab "Mercados" + product_releases + "Activar mercado" (UX-03+10) — 8 SP — S13
-  US-ERP-01-03: backlog          # Tab "Unidades" — base_uom + conversiones (UX-04) — 5 SP — S13
-  US-ERP-01-04: backlog          # GTIN en specs + lifecycle chip en listado (UX-05+07) — 3 SP — S13
+  US-ERP-01-01: review           # LifecycleStatusBadge + Quick Facts header (UX-01+02) — 5 SP — S13 ⬆ 2026-05-31
+  US-ERP-01-02: review           # Tab "Mercados" + product_releases + "Activar mercado" (UX-03+10) — 8 SP — S13 ⬆ 2026-05-31
+  US-ERP-01-03: review           # Tab "Unidades" — base_uom + conversiones (UX-04) — 5 SP — S13 ⬆ 2026-05-31
+  US-ERP-01-04: review           # GTIN en specs + lifecycle chip en listado (UX-05+07) — 3 SP — S13 ⬆ 2026-05-31
   US-ERP-01-05: backlog          # Completeness ring (Akeneo) + Breadcrumb navegable (UX-06+08) — 5 SP — S14
   US-ERP-01-06: backlog          # Inline edit mode — toggle View/Edit (UX-09) — 8 SP — S14
 
@@ -151,8 +199,8 @@ development_status:
 # ─── EP-ERP-02 — Inventario v2: Movement Types, Trazabilidad, Almacenes ───────
   epic-EP-ERP-02: in-progress    # Inventario v2 — 55 SP total (S13-S16)
 
-  US-ERP-02-01: backlog          # Movement Types catalog + stock_movements + accounting doc (INV-01+02+03) — 8 SP — S13
-  US-ERP-02-02: backlog          # Stock types diferenciados + inventory_positions 5D (INV-05+12) — 8 SP — S13
+  US-ERP-02-01: review           # Movement Types catalog + stock_movements + accounting doc (INV-01+02+03) — 8 SP — S13 ⬆ 2026-05-16
+  US-ERP-02-02: review           # Stock types diferenciados + inventory_positions 5D (INV-05+12) — 8 SP — S13 ⬆ 2026-05-16
   US-ERP-02-03: backlog          # Lot tracking: inventory_lots + trazabilidad UP/DOWN (INV-06+07) — 8 SP — S14
   US-ERP-02-04: backlog          # Jerarquía almacén: Warehouse → Zone → Location (INV-11+14) — 5 SP — S14
   US-ERP-02-05: backlog          # FEFO automático en picking + alertas expiración Celery (INV-08+09) — 5 SP — S15
@@ -165,7 +213,7 @@ development_status:
 # ─── EP-ERP-03 — Compras P2P: PR, Approval Matrix, PIR, 3-Way Match ──────────
   epic-EP-ERP-03: in-progress    # Compras P2P — 42 SP total (S13-S16)
 
-  US-ERP-03-01: backlog          # Purchase Requisition entity + lifecycle + log inmutable (PRC-01+02+07) — 8 SP — S13
+  US-ERP-03-01: review           # Purchase Requisition entity + lifecycle + log inmutable (PRC-01+02+07) — 8 SP — S13 ⬆ 2026-05-16
   US-ERP-03-02: backlog          # Approval matrix configurable + escalación automática (PRC-04+05+06) — 8 SP — S14
   US-ERP-03-03: backlog          # PO types + Purchasing Info Record (precio proveedor) (PRC-08+11) — 5 SP — S14
   US-ERP-03-04: backlog          # Three-way match + tolerance keys + payment block (PRC-17+18+20) — 8 SP — S15
@@ -201,8 +249,8 @@ development_status:
 # ─── EP-ERP-06 — Finanzas: Universal Journal, CoA, Profit Centers, Period Close
   epic-EP-ERP-06: in-progress    # Finanzas — 60 SP total (S13-S16)
 
-  US-ERP-06-01: backlog          # Chart of Accounts (200 cuentas) + Posting Periods control (FIN-02+03) — 5 SP — S13
-  US-ERP-06-02: backlog          # Cost Centers hierarchy + Profit Centers básicos (FIN-09+10) — 5 SP — S13
+  US-ERP-06-01: review           # Chart of Accounts (200 cuentas) + Posting Periods control (FIN-02+03) — 5 SP — S13 ⬆ 2026-05-16
+  US-ERP-06-02: review           # Cost Centers hierarchy + Profit Centers básicos (FIN-09+10) — 5 SP — S13 ⬆ 2026-05-16
   US-ERP-06-03: backlog          # Universal Journal — financial_entries table (FIN-01) — 8 SP — S14
   US-ERP-06-04: backlog          # AP Aging automático + Payment Run configurable (FIN-04+05+06) — 8 SP — S14
   US-ERP-06-05: backlog          # Standard Cost por SKU + varianza precio compra (FIN-11+12) — 8 SP — S15

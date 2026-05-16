@@ -94,7 +94,7 @@ from app.schemas.finance import (
 
 log = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/finance", tags=["finance"])
+router = APIRouter(prefix="/finance", tags=["finance"])
 
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]

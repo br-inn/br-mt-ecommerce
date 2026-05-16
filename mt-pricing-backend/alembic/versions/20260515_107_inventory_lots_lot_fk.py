@@ -27,7 +27,7 @@ def upgrade() -> None:
         "inventory_lots",
         sa.Column("id", sa.UUID(), server_default=sa.text("gen_random_uuid()"), nullable=False),
         sa.Column("lot_number", sa.Text(), nullable=False),
-        sa.Column("product_id", sa.UUID(), nullable=False),
+        sa.Column("product_sku", sa.Text(), nullable=False),
         sa.Column("manufacture_date", sa.Date(), nullable=True),
         sa.Column("expiry_date", sa.Date(), nullable=True),
         sa.Column("country_of_origin", sa.CHAR(2), nullable=True),
@@ -44,15 +44,15 @@ def upgrade() -> None:
             name="ck_lot_quality_status",
         ),
         sa.ForeignKeyConstraint(
-            ["product_id"], ["products.id"], ondelete="RESTRICT"
+            ["product_sku"], ["products.sku"], ondelete="RESTRICT"
         ),
         sa.ForeignKeyConstraint(
             ["po_line_id"], ["purchase_order_lines.id"], ondelete="SET NULL"
         ),
-        sa.UniqueConstraint("lot_number", "product_id", name="uq_lot_number_product"),
+        sa.UniqueConstraint("lot_number", "product_sku", name="uq_lot_number_product"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("idx_lots_product", "inventory_lots", ["product_id"])
+    op.create_index("idx_lots_product", "inventory_lots", ["product_sku"])
     op.create_index("idx_lots_quality_status", "inventory_lots", ["quality_status"])
 
     # FK lot_id real en stock_movements (columna nullable ya existe desde mig 105)
