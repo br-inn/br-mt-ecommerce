@@ -144,6 +144,9 @@ from app.db.models.hitl_queue import HitlQueue  # noqa: F401
 from app.db.models.taxonomy_profile import TaxonomyProfile  # noqa: F401
 from app.db.models.comparator_config import ComparatorConfig  # noqa: F401
 from app.db.models.unit_transform import UnitTransform  # noqa: F401
+from app.db.models.norm_equivalence import NormEquivalence  # noqa: F401
+from app.db.models.match_rule_stat import MatchRuleStat  # noqa: F401
+from app.db.models.rule_suggestion import RuleSuggestion  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -374,4 +377,8 @@ __all__ = [
     # Match Rule Engine — comparator config + unit transforms (migs. 20260517_138-139)
     "ComparatorConfig",
     "UnitTransform",
+    # Match Rule Engine — norm equivalences + rule stats + suggestions (migs. 20260517_140-142)
+    "NormEquivalence",
+    "MatchRuleStat",
+    "RuleSuggestion",
 ]
