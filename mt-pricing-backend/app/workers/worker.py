@@ -96,6 +96,8 @@ def make_celery() -> Celery:
             "app.workers.tasks.price_monitor",
             # Silver layer — re-matching periódico del candidate pool
             "app.workers.tasks.rematch_pool",
+            # Rule Engine — análisis periódico de performance + sugerencias IA
+            "app.workers.tasks.rule_engine_analyzer",
         ],
     )
 
