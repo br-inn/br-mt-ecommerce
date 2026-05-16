@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-16T23:59:00.000Z"  # S15+S16 ERP: EP-ERP-02(05-08) + EP-ERP-03(04-06) + EP-ERP-04(03-06) + EP-ERP-05(03-06) + EP-ERP-06(05-09) → review
+last_updated: "2026-05-16T23:59:00.000Z"  # S15+S16 SCR: EP-SCR-04(05,06,07,08a,08b) → review; ERP stories backlog → review
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -271,5 +271,14 @@ development_status:
   US-SCR-04-02: review         # price_monitor_task + cola scraper.price_monitor — 8 SP — S14 ⬆ 2026-05-16
   US-SCR-04-03: review         # Bootstrap coordinator + UI diferenciación monitoring — 8 SP — S14 ⬆ 2026-05-16
   US-SCR-04-04: review         # Job definitions automáticos al crear marca + Noon UAE verificado — 5 SP — S14 ⬆ 2026-05-16
+
+  # ─ S15 stories ─────────────────────────────────────────────────────────────
+  US-SCR-04-05: review         # Price alerts pg_notify + heartbeat 26h + email SendGrid — mig 135 + tasks existentes — 8 SP — S15 ⬆ 2026-05-16
+  US-SCR-04-06: review         # KPI dashboard Price Gap/Index/Position + listings por marca — backend + frontend + i18n — 8 SP — S15 ⬆ 2026-05-16
+  US-SCR-04-07: review         # Monitor calidad matching histograma confidence 7d — backend + frontend — 3 SP — S15 ⬆ 2026-05-16
+
+  # ─ S16 stories ─────────────────────────────────────────────────────────────
+  US-SCR-04-08a: review        # Cross-encoder ms-marco-MiniLM + cache Redis + Anthropic prompt caching — integrado en match_service — 8 SP — S16 ⬆ 2026-05-16
+  US-SCR-04-08b: review        # HITL queue uncertainty×value AED 1K — mig 136 + routes + auto-enqueue — 5 SP — S16 ⬆ 2026-05-16
 
   epic-EP-SCR-retrospective: optional
