@@ -29,6 +29,8 @@ class Query:
     source: str
     lang: str = "en"
     type: str = "spec"
+    dept: str = "industrial"
+    category_node: str | None = None
 
 
 @dataclass
