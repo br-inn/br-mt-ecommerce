@@ -14,7 +14,10 @@ from app.api.routes import (
     admin_scraper,
     billing,
     competitor_brands,
+    hitl_queue_price,
+    price_intelligence,
     ficha_enrich,
+    rule_engine,
     finance,
     sales,
     admin_erp_eventos,
@@ -209,3 +212,9 @@ router.include_router(unmatched_offers.router)
 router.include_router(competitor_brands.router)
 # EP-SCR-03/04 — Scraper health dashboard + CRUD proxies (US-SCR-03-05)
 router.include_router(admin_scraper.router)
+# EP-SCR-04 — Price Intelligence: dashboard KPIs + listings + quality (US-SCR-04-06/07)
+router.include_router(price_intelligence.router)
+# EP-SCR-04 — HITL Queue priorizada uncertainty×value (US-SCR-04-08b)
+router.include_router(hitl_queue_price.router)
+# Match Rule Engine — taxonomy profiles, unit transforms, norm equivalences, config, suggestions
+router.include_router(rule_engine.router)
