@@ -11,6 +11,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @dataclass(frozen=True)
@@ -139,3 +143,18 @@ def get_profile(family: str | None) -> TaxonomyProfile:
         if p:
             return p
     return TAXONOMY_PROFILES["_default"]
+
+
+async def get_profile_from_cache(family: str | None, session: "AsyncSession") -> TaxonomyProfile:
+    """Obtiene perfil desde cache DB. Fallback al dict hardcodeado si falla."""
+    from typing import TYPE_CHECKING  # noqa: PLC0415 — local to keep top-level clean
+    from app.services.matching.rule_engine_cache import get_rule_engine_cache  # noqa: PLC0415
+    cache = get_rule_engine_cache()
+    await cache.ensure_loaded(session)
+    cached = cache.get_profile(family or "_default")
+    if cached is None:
+        return get_profile(family)
+    return TaxonomyProfile(
+        hard_blockers=cached.hard_blockers,
+        weights={k: v for k, v in cached.weights.items()},
+    )

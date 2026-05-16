@@ -51,6 +51,15 @@ from app.services.matching.scoring import compute_scoring
 PEER_SCORE_THRESHOLD = 70
 DROP_SCORE_THRESHOLD = 40
 
+
+def _get_thresholds(cache=None) -> tuple[int, int]:
+    """Retorna (peer_threshold, drop_threshold) desde cache o fallback."""
+    if cache is not None:
+        peer = int(cache.get_config_value("peer_threshold", 70))
+        drop = int(cache.get_config_value("drop_threshold", 40))
+        return peer, drop
+    return 70, 40
+
 # PSI→PN conversion: Amazon UAE listings express pressure in PSI/WOG.
 _PSI_PER_BAR = 14.5038
 _PN_GRADES = [6, 10, 16, 25, 40, 63, 100, 160]
@@ -123,13 +132,15 @@ def _classify_candidate(
     score: int,
     scoring_notes: list[str],
     family: str | None = None,
+    peer_threshold: int = 70,
+    drop_threshold: int = 40,
 ) -> str:
     """Clasifica el candidato como peer / drop / unknown.
 
     Heurística Sprint 3:
-    - score ≥ 70 → ``peer`` (peer-group para G1).
-    - 40 ≤ score < 70 → ``drop`` (no es el mismo producto, pero compite).
-    - score < 40 o note bloqueante según taxonomía → ``unknown``.
+    - score ≥ peer_threshold → ``peer`` (peer-group para G1).
+    - drop_threshold ≤ score < peer_threshold → ``drop`` (no es el mismo producto, pero compite).
+    - score < drop_threshold o note bloqueante según taxonomía → ``unknown``.
 
     Los blockers dependen de la familia del SKU (p.ej. ball_valve bloquea
     dn_mismatch, mini_mismatch, thread_standard_mismatch; manómetros no
@@ -140,9 +151,9 @@ def _classify_candidate(
     profile = get_profile(family)
     if profile.hard_blockers.intersection(scoring_notes):
         return "unknown"
-    if score >= PEER_SCORE_THRESHOLD:
+    if score >= peer_threshold:
         return "peer"
-    if score >= DROP_SCORE_THRESHOLD:
+    if score >= drop_threshold:
         return "drop"
     return "unknown"
 
@@ -354,6 +365,10 @@ class MatchService:
     async def _score_and_upsert(
         self, sku_dict: dict[str, Any], raw: CandidateRaw
     ) -> MatchCandidate:
+        from app.services.matching.rule_engine_cache import get_rule_engine_cache  # noqa: PLC0415
+        _cache = get_rule_engine_cache()
+        peer_threshold, drop_threshold = _get_thresholds(_cache)
+
         raw_s = raw.specs or {}
         cand_dict: dict[str, Any] = {
             "title": raw.title,   # necesario para mini qualifier y product_type
@@ -441,7 +456,13 @@ class MatchService:
         if self._material_normalizer is None:
             self._material_normalizer = await MaterialNormalizer.from_db(self.session)
         breakdown = compute_scoring(sku_dict, cand_dict, material_normalizer=self._material_normalizer)
-        kind = _classify_candidate(breakdown.score, breakdown.notes, family=sku_dict.get("family"))
+        kind = _classify_candidate(
+            breakdown.score,
+            breakdown.notes,
+            family=sku_dict.get("family"),
+            peer_threshold=peer_threshold,
+            drop_threshold=drop_threshold,
+        )
 
         # Persistir el breakdown completo como parte del JSONB para auditoría.
         specs_to_persist = dict(raw_s)
@@ -500,6 +521,23 @@ class MatchService:
 
         # ── Auto-enqueue HITL: confidence < 0.6 AND price > 1000 AED ──────
         await self._maybe_enqueue_hitl(candidate, raw)
+
+        # ── Instrumentación match_rule_stats (best-effort) ────────────────
+        try:
+            from app.repositories.match_rule_stat import MatchRuleStatRepository  # noqa: PLC0415
+            from app.repositories.taxonomy_profile import TaxonomyProfileRepository  # noqa: PLC0415
+            stat_repo = MatchRuleStatRepository(self.session)
+            tp_repo = TaxonomyProfileRepository(self.session)
+            family = sku_dict.get("family") or "_default"
+            tp = await tp_repo.get_by_family(family)
+            await stat_repo.create(
+                match_candidate_id=candidate.id,
+                taxonomy_profile_id=tp.id if tp else None,
+                score_breakdown=breakdown.as_dict(),
+                dimensions_fired=breakdown.notes,
+            )
+        except Exception as _stat_exc:
+            logger.debug("match_rule_stat.insert_failed", extra={"error": str(_stat_exc)[:80]})
 
         return candidate
 
