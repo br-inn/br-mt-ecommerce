@@ -15,7 +15,7 @@ from app.db.models.attributes import (
 )
 from app.db.models.audit import AuditEvent
 from app.db.models.compatibility import ProductCompatibility
-from app.db.models.comparator import CompetitorListing, ManufacturerWhitelist, MatchDecision
+from app.db.models.comparator import CompetitorBrand, CompetitorListing, ManufacturerWhitelist, MatchDecision
 from app.db.models.dimensions import (
     ActuationCode,
     DimensionCell,
@@ -137,6 +137,7 @@ from app.db.models.product_models import (  # noqa: F401
     ProductModel,
 )
 from app.db.models.certificates import Certificate, CertificateScope  # noqa: F401
+from app.db.models.unmatched_offer import UnmatchedOffer  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -204,6 +205,7 @@ __all__ = [
     "PriceApprovalEvent",
     # matching pipeline (Sprint 3 — US-1A-09-01)
     "MatchCandidate",
+    "UnmatchedOffer",
     # channel mirror (Sprint 3 — US-1A-09-02)
     "ChannelListing",
     "ChannelSyncEvent",
@@ -272,6 +274,7 @@ __all__ = [
     "DimensionCell",
     "PressureTemperaturePoint",
     # Fase 1 hooks — comparator research workstream (mig. 069, ADR-012)
+    "CompetitorBrand",
     "CompetitorListing",
     "MatchDecision",
     # US-F15-02-03 — manufacturers whitelist para RIS boost (mig. 075)

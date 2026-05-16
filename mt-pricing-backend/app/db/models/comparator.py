@@ -65,6 +65,34 @@ else:  # pragma: no cover
 MATCH_DECISIONS: tuple[str, ...] = ("match", "no_match", "uncertain")
 
 
+class CompetitorBrand(UuidPkMixin, TimestampMixin, Base):
+    """Marca competidora registrada para scraping periódico en Amazon UAE."""
+
+    __tablename__ = "competitor_brands"
+
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    amazon_search_term: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    amazon_dept: Mapped[str] = mapped_column(
+        String(100), nullable=False, server_default=text("'industrial'")
+    )
+    amazon_category_node: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_scraped_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index("ux_competitor_brands_name", func.lower(name), unique=True),
+    )
+
+    @property
+    def effective_search_term(self) -> str:
+        return self.amazon_search_term or self.name
+
+
 class CompetitorListing(UuidPkMixin, TimestampMixin, Base):
     """Listing competidor normalizado — vacío Fase 1, poblado por research wave."""
 
@@ -126,6 +154,11 @@ class CompetitorListing(UuidPkMixin, TimestampMixin, Base):
     sanity_check_skipped: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    competitor_brand_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("competitor_brands.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     __table_args__ = (
         # Uniqueness por (source, source_id) — un listing no duplicado dentro
@@ -144,6 +177,7 @@ class CompetitorListing(UuidPkMixin, TimestampMixin, Base):
             "match_confidence IS NULL OR (match_confidence >= 0 AND match_confidence <= 1)",
             name="ck_competitor_listings_confidence_range",
         ),
+        Index("ix_competitor_listings_brand_id", "competitor_brand_id"),
     )
 
 
@@ -409,6 +443,7 @@ class ManufacturerWhitelist(Base):
 __all__ = [
     "MATCH_DECISIONS",
     "ComparatorModelRegistry",
+    "CompetitorBrand",
     "CompetitorFetchError",
     "CompetitorListing",
     "ManufacturerWhitelist",
