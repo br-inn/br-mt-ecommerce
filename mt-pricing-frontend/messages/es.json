@@ -1205,6 +1205,8 @@
     "competitorBrands": {
       "title": "Marcas competidoras",
       "description": "Gestiona las marcas de la competencia para el scraper de Amazon UAE",
+      "noPermission": "No tienes permiso para ver esta sección.",
+      "loading": "Cargando marcas...",
       "brandSingular": "marca",
       "brandPlural": "marcas",
       "addBrand": "Agregar marca",
@@ -1279,7 +1281,16 @@
     "research_message": "Esta función está en investigación. Disponible en Fase 1.5+.",
     "back_to_dashboard": "Volver al panel",
     "sidebar_label": "Comparador",
-    "sidebar_badge": "Investigación"
+    "sidebar_badge": "Investigación",
+    "pool": {
+      "emptyTitle": "No hay candidatos en el pool",
+      "emptyHint": "Lanza el scraping para comenzar a poblar el pool de candidatos.",
+      "emptyCta": "Lanzar scraping",
+      "filteredEmptyTitle": "No hay candidatos con estos filtros",
+      "filteredEmptyHint": "Ajusta o limpia los filtros activos.",
+      "filteredEmptyCta": "Limpiar filtros",
+      "loadError": "No se pudo cargar el pool de candidatos."
+    }
   },
   "fx_rates": {
     "title": "Tipos de Cambio",

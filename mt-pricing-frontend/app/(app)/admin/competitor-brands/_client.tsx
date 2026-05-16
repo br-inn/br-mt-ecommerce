@@ -336,7 +336,7 @@ export function CompetitorBrandsClient() {
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Cargando marcas...
+          {t("loading")}
         </div>
       ) : brands.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">

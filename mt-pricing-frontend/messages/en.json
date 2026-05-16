@@ -1205,6 +1205,8 @@
     "competitorBrands": {
       "title": "Competitor brands",
       "description": "Manage competitor brands for the Amazon UAE scraper",
+      "noPermission": "You do not have permission to view this section.",
+      "loading": "Loading brands...",
       "brandSingular": "brand",
       "brandPlural": "brands",
       "addBrand": "Add brand",
@@ -1279,7 +1281,16 @@
     "research_message": "This feature is in research. Available in Phase 1.5+.",
     "back_to_dashboard": "Back to dashboard",
     "sidebar_label": "Comparator",
-    "sidebar_badge": "Research"
+    "sidebar_badge": "Research",
+    "pool": {
+      "emptyTitle": "No candidates in the pool",
+      "emptyHint": "Launch scraping to start populating the candidate pool.",
+      "emptyCta": "Launch scraping",
+      "filteredEmptyTitle": "No candidates match these filters",
+      "filteredEmptyHint": "Try adjusting or clearing the active filters.",
+      "filteredEmptyCta": "Clear filters",
+      "loadError": "Could not load the candidate pool."
+    }
   },
   "fx_rates": {
     "title": "Exchange Rates",
