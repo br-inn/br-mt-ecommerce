@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TransformsTable } from "../_components/transforms-table"
+import { NormasTable } from "../_components/normas-table"
 import env from "@/lib/env"
 import { createClient } from "@/lib/supabase/server"
 
@@ -44,9 +45,7 @@ export default async function TransformsPage() {
         <TransformsTable initialData={transforms} />
       </TabsContent>
       <TabsContent value="norms" className="mt-4">
-        <p className="text-sm text-muted-foreground">
-          Equivalencias DIN ↔ ISO ↔ ASME. Tabla en construcción.
-        </p>
+        <NormasTable initialData={norms} />
       </TabsContent>
     </Tabs>
   )
