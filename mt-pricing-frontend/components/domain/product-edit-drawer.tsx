@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { productsApi } from "@/lib/api/endpoints/products";
 import { productKeys } from "@/lib/hooks/products/query-keys";
+import { useProduct } from "@/lib/hooks/products/use-product";
 import type {
   Product,
   ProductLifecycleStatus,
@@ -44,25 +45,31 @@ const QUALITY_OPTIONS: { value: DataQuality; label: string }[] = [
 
 interface Props {
   sku: string;
-  product: Product;
+  /** Pasar cuando el producto ya está en caché (p.ej. desde el header del detalle).
+   *  Si se omite, el drawer lo fetcha internamente por SKU. */
+  product?: Product;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ProductEditDrawer({ sku, product, open, onOpenChange }: Props) {
+export function ProductEditDrawer({ sku, product: productProp, open, onOpenChange }: Props) {
+  const { data: fetchedProduct, isLoading: isProductLoading } = useProduct(sku);
+  const product = productProp ?? fetchedProduct;
+
   const queryClient = useQueryClient();
 
   const [draft, setDraft] = React.useState({
-    name_es: (product.translations?.es?.name ?? "") as string,
-    name_ar: (product.translations?.ar?.name ?? "") as string,
-    brand: product.brand ?? "",
-    gtin: product.gtin ?? "",
-    lifecycle_status: (product.lifecycle_status ?? "active") as ProductLifecycleStatus,
-    data_quality: (product.data_quality ?? "partial") as DataQuality,
+    name_es: "" as string,
+    name_ar: "" as string,
+    brand: "",
+    gtin: "",
+    lifecycle_status: "active" as ProductLifecycleStatus,
+    data_quality: "partial" as DataQuality,
   });
 
   // Sync draft when product changes
   React.useEffect(() => {
+    if (!product) return;
     setDraft({
       name_es: (product.translations?.es?.name ?? "") as string,
       name_ar: (product.translations?.ar?.name ?? "") as string,
@@ -87,6 +94,7 @@ export function ProductEditDrawer({ sku, product, open, onOpenChange }: Props) {
   });
 
   const handleSave = () => {
+    if (!product) return;
     const original = product;
     const payload: Record<string, unknown> = {
       lifecycle_status: draft.lifecycle_status,
@@ -119,142 +127,150 @@ export function ProductEditDrawer({ sku, product, open, onOpenChange }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
-        <SheetHeader className="mb-6">
-          <SheetTitle className="font-mono text-sm text-muted-foreground">
-            Editar {sku}
-          </SheetTitle>
-        </SheetHeader>
-
-        <div className="space-y-5">
-          {/* Nombre ES */}
-          <div className="space-y-1.5">
-            <Label htmlFor="name_es">Nombre (ES)</Label>
-            <Input
-              id="name_es"
-              value={draft.name_es}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, name_es: e.target.value }))
-              }
-              placeholder="Nombre en español"
-            />
+        {!product && isProductLoading ? (
+          <div className="flex h-40 items-center justify-center">
+            <span className="text-sm text-muted-foreground">Cargando…</span>
           </div>
+        ) : product ? (
+          <>
+            <SheetHeader className="mb-6">
+              <SheetTitle className="font-mono text-sm text-muted-foreground">
+                Editar {sku}
+              </SheetTitle>
+            </SheetHeader>
 
-          {/* Nombre AR */}
-          <div className="space-y-1.5">
-            <Label htmlFor="name_ar">Nombre (AR)</Label>
-            <Input
-              id="name_ar"
-              value={draft.name_ar}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, name_ar: e.target.value }))
-              }
-              placeholder="Nombre en árabe"
-              dir="rtl"
-            />
-          </div>
+            <div className="space-y-5">
+              {/* Nombre ES */}
+              <div className="space-y-1.5">
+                <Label htmlFor="name_es">Nombre (ES)</Label>
+                <Input
+                  id="name_es"
+                  value={draft.name_es}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, name_es: e.target.value }))
+                  }
+                  placeholder="Nombre en español"
+                />
+              </div>
 
-          {/* Marca */}
-          <div className="space-y-1.5">
-            <Label htmlFor="brand">Marca</Label>
-            <Input
-              id="brand"
-              value={draft.brand}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, brand: e.target.value }))
-              }
-              placeholder="—"
-            />
-          </div>
+              {/* Nombre AR */}
+              <div className="space-y-1.5">
+                <Label htmlFor="name_ar">Nombre (AR)</Label>
+                <Input
+                  id="name_ar"
+                  value={draft.name_ar}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, name_ar: e.target.value }))
+                  }
+                  placeholder="Nombre en árabe"
+                  dir="rtl"
+                />
+              </div>
 
-          {/* GTIN */}
-          <div className="space-y-1.5">
-            <Label htmlFor="gtin">GTIN</Label>
-            <Input
-              id="gtin"
-              value={draft.gtin}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, gtin: e.target.value }))
-              }
-              placeholder="—"
-              maxLength={14}
-              className="font-mono"
-            />
-          </div>
+              {/* Marca */}
+              <div className="space-y-1.5">
+                <Label htmlFor="brand">Marca</Label>
+                <Input
+                  id="brand"
+                  value={draft.brand}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, brand: e.target.value }))
+                  }
+                  placeholder="—"
+                />
+              </div>
 
-          {/* Lifecycle Status */}
-          <div className="space-y-1.5">
-            <Label>Estado lifecycle</Label>
-            <Select
-              value={draft.lifecycle_status}
-              onValueChange={(v) =>
-                setDraft((d) => ({
-                  ...d,
-                  lifecycle_status: v as ProductLifecycleStatus,
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LIFECYCLE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              {/* GTIN */}
+              <div className="space-y-1.5">
+                <Label htmlFor="gtin">GTIN</Label>
+                <Input
+                  id="gtin"
+                  value={draft.gtin}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, gtin: e.target.value }))
+                  }
+                  placeholder="—"
+                  maxLength={14}
+                  className="font-mono"
+                />
+              </div>
 
-          {/* Data Quality */}
-          <div className="space-y-1.5">
-            <Label>Calidad de datos</Label>
-            <Select
-              value={draft.data_quality}
-              onValueChange={(v) =>
-                setDraft((d) => ({
-                  ...d,
-                  data_quality: v as DataQuality,
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {QUALITY_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              {/* Lifecycle Status */}
+              <div className="space-y-1.5">
+                <Label>Estado lifecycle</Label>
+                <Select
+                  value={draft.lifecycle_status}
+                  onValueChange={(v) =>
+                    setDraft((d) => ({
+                      ...d,
+                      lifecycle_status: v as ProductLifecycleStatus,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LIFECYCLE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* Acceso a formulario completo */}
-          <div className="border-t pt-4">
-            <a
-              href={`/catalogo/${sku}/edit`}
-              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Editar todos los campos técnicos →
-            </a>
-          </div>
-        </div>
+              {/* Data Quality */}
+              <div className="space-y-1.5">
+                <Label>Calidad de datos</Label>
+                <Select
+                  value={draft.data_quality}
+                  onValueChange={(v) =>
+                    setDraft((d) => ({
+                      ...d,
+                      data_quality: v as DataQuality,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {QUALITY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        {/* Footer */}
-        <div className="mt-8 flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={patchMutation.isPending}
-          >
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={patchMutation.isPending}>
-            {patchMutation.isPending ? "Guardando…" : "Guardar"}
-          </Button>
-        </div>
+              {/* Acceso a formulario completo */}
+              <div className="border-t pt-4">
+                <a
+                  href={`/catalogo/${sku}/edit`}
+                  className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  Editar todos los campos técnicos →
+                </a>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-8 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={patchMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={patchMutation.isPending}>
+                {patchMutation.isPending ? "Guardando…" : "Guardar"}
+              </Button>
+            </div>
+          </>
+        ) : null}
       </SheetContent>
     </Sheet>
   );
