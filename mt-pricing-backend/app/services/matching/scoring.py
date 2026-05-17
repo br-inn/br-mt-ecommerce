@@ -257,6 +257,7 @@ def _material_score(
         if sku_by_comp:
             total_w = Decimal("0")
             weighted = Decimal("0")
+            has_cand_components = bool(cand_components)
             for comp, w in _COMPONENT_WEIGHTS.items():
                 sku_mat = sku_by_comp.get(comp)
                 if sku_mat is None:
@@ -264,8 +265,15 @@ def _material_score(
                 total_w += w
                 cand_mat = (cand_components or {}).get(comp)
                 if cand_mat is None:
-                    # Candidato no especifica este componente — penalización leve.
-                    weighted += w * Decimal("0.4")
+                    if comp == "body" and cand_material and not has_cand_components:
+                        # El candidato indica material plano pero no por componente:
+                        # comparar el body del SKU contra el material plano del candidato.
+                        # Evita que materiales incompatibles (PVC, acero inox) reciban
+                        # score parcial 0.4 y esquiven material_mismatch.
+                        weighted += w * _material_score_pair(sku_mat, cand_material, n)
+                    else:
+                        # Candidato no especifica este componente — penalización leve.
+                        weighted += w * Decimal("0.4")
                 else:
                     weighted += w * _material_score_pair(sku_mat, cand_mat, n)
             if total_w > 0:
@@ -871,6 +879,18 @@ def compute_scoring(
     )
     if mat_score == Decimal("0.0") and (sku_material or cand_material):
         notes.append("material_mismatch")
+    elif sku_components and cand_material and not cand_components and material_normalizer:
+        # Cuando el SKU tiene componentes pero el candidato sólo tiene material plano,
+        # el score de componentes usa penalización leve (0.4) para partes desconocidas
+        # y mat_score nunca llega a 0.0. Detectamos incompatibilidad comparando
+        # el material del body del SKU contra el material plano del candidato.
+        _sku_body = next(
+            (r.get("material") for r in sku_components
+             if (r.get("component") or "").lower() == "body"),
+            sku_material,
+        )
+        if _sku_body and not material_normalizer.same_family(_sku_body, cand_material):
+            notes.append("material_mismatch")
 
     return ScoringBreakdown(
         score=score_int,
