@@ -117,6 +117,21 @@ async def create_unit_transform(
     return obj
 
 
+@router.put("/unit-transforms/{transform_id}", response_model=UnitTransformResponse)
+async def update_unit_transform(
+    transform_id: UUID,
+    body: UnitTransformCreate,
+    session: AsyncSession = Depends(get_db_session),
+):
+    repo = UnitTransformRepository(session)
+    obj = await repo.update(transform_id, **body.model_dump())
+    if not obj:
+        raise HTTPException(status_code=404, detail="Transformación no encontrada")
+    await session.commit()
+    await session.refresh(obj)
+    return obj
+
+
 @router.delete("/unit-transforms/{transform_id}", status_code=204)
 async def delete_unit_transform(
     transform_id: UUID,
@@ -148,6 +163,34 @@ async def create_norm_equivalence(
     await session.commit()
     await session.refresh(obj)
     return obj
+
+
+@router.put("/norm-equivalences/{norm_id}", response_model=NormEquivalenceResponse)
+async def update_norm_equivalence(
+    norm_id: UUID,
+    body: NormEquivalenceCreate,
+    session: AsyncSession = Depends(get_db_session),
+):
+    repo = NormEquivalenceRepository(session)
+    obj = await repo.update(norm_id, **body.model_dump())
+    if not obj:
+        raise HTTPException(status_code=404, detail="Equivalencia no encontrada")
+    await session.commit()
+    await session.refresh(obj)
+    return obj
+
+
+@router.delete("/norm-equivalences/{norm_id}", status_code=204)
+async def delete_norm_equivalence(
+    norm_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+):
+    repo = NormEquivalenceRepository(session)
+    obj = await repo.get(norm_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Equivalencia no encontrada")
+    await session.delete(obj)
+    await session.commit()
 
 
 # ── Comparator Config ────────────────────────────────────────────────────────
