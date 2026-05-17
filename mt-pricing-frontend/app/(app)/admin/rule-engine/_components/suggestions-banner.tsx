@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import env from "@/lib/env"
@@ -14,11 +15,10 @@ interface Suggestion {
 
 export function SuggestionsBanner({
   suggestions,
-  onAction,
 }: {
   suggestions: Suggestion[]
-  onAction: () => void
 }) {
+  const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
 
   if (suggestions.length === 0) return null
@@ -42,7 +42,7 @@ export function SuggestionsBanner({
           ? "Cambio aplicado — aplica a nuevos matches"
           : "Sugerencia descartada"
       )
-      onAction()
+      router.refresh()
     } finally {
       setLoading(null)
     }
