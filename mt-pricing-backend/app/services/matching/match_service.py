@@ -537,7 +537,7 @@ class MatchService:
                 dimensions_fired=breakdown.notes,
             )
         except Exception as _stat_exc:
-            logger.debug("match_rule_stat.insert_failed", extra={"error": str(_stat_exc)[:80]})
+            logger.warning("match_rule_stat.insert_failed", extra={"error": str(_stat_exc)[:80]})
 
         return candidate
 

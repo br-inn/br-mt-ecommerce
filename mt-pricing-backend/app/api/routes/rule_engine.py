@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session
+from app.api.deps import get_db_session, require_role
 from app.db.models.comparator_config import ComparatorConfig
 from app.db.models.rule_suggestion import RuleSuggestion
 from app.repositories.comparator_config import ComparatorConfigRepository
@@ -40,7 +40,11 @@ from app.schemas.rule_engine import (
 )
 from app.services.matching.rule_engine_cache import get_rule_engine_cache
 
-router = APIRouter(prefix="/rule-engine", tags=["rule-engine"])
+router = APIRouter(
+    prefix="/rule-engine",
+    tags=["rule-engine"],
+    dependencies=[Depends(require_role("admin"))],
+)
 
 
 # ── Taxonomy Profiles ────────────────────────────────────────────────────────
