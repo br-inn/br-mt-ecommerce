@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import env from "@/lib/env"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const DIMENSION_LABELS: Record<string, string> = {
   material: "Material",
@@ -16,6 +17,24 @@ const DIMENSION_LABELS: Record<string, string> = {
   brand_tier: "Tier de marca",
   delivery: "Entrega",
   data_completeness: "Completitud de datos",
+}
+
+async function getAuthHeader(): Promise<Record<string, string>> {
+  const supabase = createSupabaseBrowserClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return {}
+  return { Authorization: `Bearer ${session.access_token}` }
+}
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (!err || typeof err !== "object") return fallback
+  const detail = (err as Record<string, unknown>).detail
+  if (typeof detail === "string") return detail
+  if (detail && typeof detail === "object") {
+    const title = (detail as Record<string, unknown>).title
+    if (typeof title === "string") return title
+  }
+  return fallback
 }
 
 interface WeightsEditorProps {
@@ -35,18 +54,18 @@ export function WeightsEditor({ family, initialWeights, initialBlockers }: Weigh
   const handleSave = async () => {
     setSaving(true)
     try {
-      const apiBase = env.NEXT_PUBLIC_BACKEND_URL
+      const authHeader = await getAuthHeader()
       const res = await fetch(
-        `${apiBase}/api/v1/rule-engine/taxonomy-profiles/${encodeURIComponent(family)}`,
+        `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/taxonomy-profiles/${encodeURIComponent(family)}`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify({ weights, hard_blockers: Array.from(blockers) }),
         }
       )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        toast.error((err as { detail?: string }).detail ?? "Error al guardar")
+        toast.error(extractErrorMessage(err, "Error al guardar"))
         return
       }
       toast.success("Regla guardada — aplica a nuevos matches")
@@ -64,7 +83,6 @@ export function WeightsEditor({ family, initialWeights, initialBlockers }: Weigh
     })
   }
 
-  // Collect all known blockers (initial + currently selected)
   const allBlockers = Array.from(new Set([...initialBlockers, ...Array.from(blockers)]))
 
   return (

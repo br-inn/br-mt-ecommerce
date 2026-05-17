@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import env from "@/lib/env"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 interface Suggestion {
   id: string
@@ -11,6 +12,13 @@ interface Suggestion {
   analysis_summary: string | null
   proposed_change: Record<string, unknown>
   status: string
+}
+
+async function getAuthHeader(): Promise<Record<string, string>> {
+  const supabase = createSupabaseBrowserClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return {}
+  return { Authorization: `Bearer ${session.access_token}` }
 }
 
 export function SuggestionsBanner({
@@ -24,14 +32,14 @@ export function SuggestionsBanner({
   if (suggestions.length === 0) return null
 
   const s = suggestions[0]
-  const apiBase = env.NEXT_PUBLIC_BACKEND_URL
 
   const handleAction = async (action: "apply" | "dismiss") => {
     setLoading(action)
     try {
+      const authHeader = await getAuthHeader()
       const res = await fetch(
-        `${apiBase}/api/v1/rule-engine/rule-suggestions/${s.id}/${action}`,
-        { method: "POST" }
+        `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/rule-suggestions/${s.id}/${action}`,
+        { method: "POST", headers: authHeader }
       )
       if (!res.ok) {
         toast.error("Error al procesar sugerencia")
