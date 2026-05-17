@@ -2,23 +2,31 @@ import { notFound } from "next/navigation"
 import { WeightsEditor } from "../_components/weights-editor"
 import { SuggestionsBanner } from "../_components/suggestions-banner"
 import env from "@/lib/env"
+import { createClient } from "@/lib/supabase/server"
 
 const apiBase = process.env.BACKEND_URL ?? env.NEXT_PUBLIC_BACKEND_URL
 
-async function getProfile(family: string) {
+async function authHeaders(): Promise<HeadersInit> {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return {}
+  return { Authorization: `Bearer ${session.access_token}` }
+}
+
+async function getProfile(family: string, headers: HeadersInit) {
   const res = await fetch(
     `${apiBase}/api/v1/rule-engine/taxonomy-profiles/${encodeURIComponent(family)}`,
-    { cache: "no-store" }
+    { cache: "no-store", headers }
   )
   if (res.status === 404) return null
   if (!res.ok) throw new Error("Error cargando perfil")
   return res.json()
 }
 
-async function getPendingSuggestions(profileId: string) {
+async function getPendingSuggestions(profileId: string, headers: HeadersInit) {
   const res = await fetch(
     `${apiBase}/api/v1/rule-engine/rule-suggestions?status=pending`,
-    { cache: "no-store" }
+    { cache: "no-store", headers }
   )
   if (!res.ok) return []
   const all: Array<{
@@ -38,9 +46,10 @@ export default async function FamilyEditorPage({
   params: Promise<{ family: string }>
 }) {
   const { family } = await params
-  const profile = await getProfile(family)
+  const headers = await authHeaders()
+  const profile = await getProfile(family, headers)
   if (!profile) notFound()
-  const suggestions = await getPendingSuggestions(profile.id)
+  const suggestions = await getPendingSuggestions(profile.id, headers)
 
   return (
     <div className="space-y-6 max-w-2xl">

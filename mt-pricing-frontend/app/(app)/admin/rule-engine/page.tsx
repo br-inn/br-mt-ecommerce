@@ -2,22 +2,30 @@ import { ProfileCard } from "./_components/profile-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import env from "@/lib/env"
+import { createClient } from "@/lib/supabase/server"
 
 const apiBase = process.env.BACKEND_URL ?? env.NEXT_PUBLIC_BACKEND_URL
 
-async function getTaxonomyProfiles() {
+async function authHeaders(): Promise<HeadersInit> {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return {}
+  return { Authorization: `Bearer ${session.access_token}` }
+}
+
+async function getTaxonomyProfiles(headers: HeadersInit) {
   const res = await fetch(
     `${apiBase}/api/v1/rule-engine/taxonomy-profiles`,
-    { cache: "no-store" }
+    { cache: "no-store", headers }
   )
   if (!res.ok) return []
   return res.json()
 }
 
-async function getSuggestionCounts(): Promise<Record<string, number>> {
+async function getSuggestionCounts(headers: HeadersInit): Promise<Record<string, number>> {
   const res = await fetch(
     `${apiBase}/api/v1/rule-engine/rule-suggestions?status=pending`,
-    { cache: "no-store" }
+    { cache: "no-store", headers }
   )
   if (!res.ok) return {}
   const suggestions: Array<{ taxonomy_profile_id: string | null }> = await res.json()
@@ -30,9 +38,10 @@ async function getSuggestionCounts(): Promise<Record<string, number>> {
 }
 
 export default async function RuleEnginePage() {
+  const headers = await authHeaders()
   const [profiles, suggestionCounts] = await Promise.all([
-    getTaxonomyProfiles(),
-    getSuggestionCounts(),
+    getTaxonomyProfiles(headers),
+    getSuggestionCounts(headers),
   ])
 
   return (
