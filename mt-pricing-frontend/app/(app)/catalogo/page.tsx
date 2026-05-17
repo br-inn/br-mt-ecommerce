@@ -2,13 +2,18 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  Copy,
   Download,
   Image as ImageIcon,
   MoreHorizontal,
+  Pencil,
   Plus,
   Upload,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import {
   parseAsString,
@@ -16,10 +21,15 @@ import {
   parseAsBoolean,
   useQueryState,
 } from "nuqs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { materialsApi } from "@/lib/api/endpoints/materials";
 import { seriesApi } from "@/lib/api/endpoints/series";
-import { seriesTiersApi } from "@/lib/api/endpoints/series-tiers";
 import { LifecycleStatusBadge } from "@/components/ui/lifecycle-status-badge";
 
 import {
@@ -27,11 +37,8 @@ import {
   MtButton,
   MtTd,
   MtTh,
-  Pill,
   QualityBadge,
-  TStatusGlyphs,
   Thumb,
-  type TStatusVal,
 } from "@/components/mt/primitives";
 import { MtEmpty, MtError, MtSkeleton } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
@@ -49,6 +56,7 @@ import { ActiveFiltersBar } from "./_components/active-filters-bar";
 import { SavedViewsBar, SYSTEM_VIEWS } from "./_components/saved-views-bar";
 import { Paginator } from "./_components/paginator";
 import { TopFilterBar } from "./_components/top-filter-bar";
+import { useSavedViews } from "@/lib/hooks/use-saved-views";
 
 const QUALITY_VALUES = ["complete", "partial", "blocked"] as const;
 const TRANSLATION_VALUES = ["draft", "pending", "approved"] as const;
@@ -86,10 +94,31 @@ const MATERIAL_VALUES = [
   "copper",
 ] as const;
 
-function statusToVal(s: TranslationStatus | null): TStatusVal {
-  if (s === "approved") return "a";
-  if (s === "draft" || s === "pending") return "d";
-  return "n";
+// ---- B1: exportar CSV -------------------------------------------------------
+function exportToCsv(items: ProductListItem[], filename: string) {
+  const headers = [
+    "sku",
+    "family",
+    "subfamily",
+    "type",
+    "material",
+    "dn",
+    "pn",
+    "lifecycle_status",
+    "data_quality",
+    "updated_at",
+  ] as const;
+  const rows = items.map((r) =>
+    headers.map((h) => String((r as unknown as Record<string, unknown>)[h] ?? "")).join(","),
+  );
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function fmtUpdated(iso: string): string {
@@ -103,6 +132,26 @@ function fmtUpdated(iso: string): string {
 }
 
 export default function CatalogPage() {
+  const router = useRouter();
+
+  // B2 — selección múltiple
+  const [selectedSkus, setSelectedSkus] = React.useState<Set<string>>(new Set());
+
+  // B3 — fila activa para navegación con teclado
+  const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+
+  // A-4 — hover state para acciones contextuales por fila
+  const [hoveredSku, setHoveredSku] = React.useState<string | null>(null);
+
+  // B3 — modal de atajos de teclado
+  const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
+
+  // B4 — page size
+  const [pageLimit, setPageLimit] = React.useState(50);
+
+  // Saved views — persistidas en localStorage
+  const { views: savedUserViews, addView, removeView } = useSavedViews();
+
   const [searchInput, setSearchInput] = useQueryState("q", parseAsString.withDefault(""));
   const [family, setFamily] = useQueryState("family", parseAsString);
   const [subfamily, setSubfamily] = useQueryState("subfamily", parseAsString);
@@ -132,11 +181,6 @@ export default function CatalogPage() {
     queryFn: () => seriesApi.listPublic({}),
     staleTime: 5 * 60_000,
   });
-  const tiersListQ = useQuery({
-    queryKey: ["series-tiers", "public", "list-page"],
-    queryFn: () => seriesTiersApi.listPublic(),
-    staleTime: 5 * 60_000,
-  });
   const materialsListQ = useQuery({
     queryKey: ["materials", "public", "list-page"],
     queryFn: () => materialsApi.listPublic(),
@@ -144,19 +188,12 @@ export default function CatalogPage() {
   });
 
   const seriesById = React.useMemo(() => {
-    const map: Record<string, { name_en: string; tier_id: string | null }> = {};
+    const map: Record<string, { name_en: string }> = {};
     for (const s of seriesListQ.data ?? []) {
-      map[s.id] = { name_en: s.name_en, tier_id: s.tier_id };
+      map[s.id] = { name_en: s.name_en };
     }
     return map;
   }, [seriesListQ.data]);
-  const tierColorById = React.useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const t of tiersListQ.data ?? []) {
-      if (t.display_color) map[t.id] = t.display_color;
-    }
-    return map;
-  }, [tiersListQ.data]);
   const materialById = React.useMemo(() => {
     const map: Record<string, string> = {};
     for (const m of materialsListQ.data ?? []) map[m.id] = m.name;
@@ -182,6 +219,8 @@ export default function CatalogPage() {
       ...(seriesId ? { series_id: seriesId } : {}),
       ...(materialId ? { material_id: materialId } : {}),
       ...(tierCode ? { tier_code: tierCode } : {}),
+      // B4 — page size
+      limit: pageLimit,
     }),
     [
       debouncedSearch,
@@ -198,6 +237,7 @@ export default function CatalogPage() {
       seriesId,
       materialId,
       tierCode,
+      pageLimit,
     ],
   );
 
@@ -216,6 +256,73 @@ export default function CatalogPage() {
     [data],
   );
   const total = data?.pages[0]?.total ?? null;
+
+  // B3 — keyboard shortcuts
+  React.useEffect(() => {
+    function isInputFocused(): boolean {
+      const el = document.activeElement;
+      if (!el) return false;
+      const tag = el.tagName.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || (el as HTMLElement).isContentEditable;
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      // Ignore when modifier keys are held (except shift for ? which is implicit)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      // "/" — focus search input
+      if (e.key === "/" && !isInputFocused()) {
+        e.preventDefault();
+        const searchEl = document.querySelector<HTMLInputElement>('input[type="search"], input[placeholder*="buscar" i], input[placeholder*="search" i]');
+        if (searchEl) searchEl.focus();
+        return;
+      }
+
+      // "?" — toggle shortcuts modal
+      if (e.key === "?" && !isInputFocused()) {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      // Navigation: j/k (only when not in input)
+      if (e.key === "j" && !isInputFocused()) {
+        e.preventDefault();
+        setActiveIndex((prev) => {
+          if (items.length === 0) return null;
+          if (prev === null) return 0;
+          return Math.min(prev + 1, items.length - 1);
+        });
+        return;
+      }
+      if (e.key === "k" && !isInputFocused()) {
+        e.preventDefault();
+        setActiveIndex((prev) => {
+          if (items.length === 0) return null;
+          if (prev === null) return 0;
+          return Math.max(prev - 1, 0);
+        });
+        return;
+      }
+
+      // Enter — navigate to detail
+      if (e.key === "Enter" && !isInputFocused() && activeIndex !== null && items[activeIndex]) {
+        e.preventDefault();
+        router.push(`/catalogo/${items[activeIndex].sku}`);
+        return;
+      }
+
+      // "e" — navigate to edit
+      if (e.key === "e" && !isInputFocused() && activeIndex !== null && items[activeIndex]) {
+        e.preventDefault();
+        router.push(`/catalogo/${items[activeIndex].sku}/edit`);
+        return;
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [items, activeIndex, router]);
   const activeFiltersCount =
     [
       family,
@@ -395,6 +502,59 @@ export default function CatalogPage() {
     return "";
   }, [active, family, material, dn, pn, quality, translationStatus]);
 
+  // Callback para guardar la vista actual con el nombre indicado.
+  const handleSaveCurrentView = React.useCallback(
+    (name: string) => {
+      addView(name, {
+        family: family ?? null,
+        material: material ?? null,
+        dn: dn ?? null,
+        pn: pn ?? null,
+        data_quality: quality ?? null,
+        translation_status: translationStatus ?? null,
+        active: active ?? null,
+        division: division ?? null,
+        series_id: seriesId ?? null,
+        material_id: materialId ?? null,
+        tier_code: tierCode ?? null,
+      });
+    },
+    [addView, family, material, dn, pn, quality, translationStatus, active, division, seriesId, materialId, tierCode],
+  );
+
+  // Callback para aplicar los filtros de una vista (system o user).
+  const handleSelectView = React.useCallback(
+    (view: { filters: Partial<import("@/lib/api/endpoints/facets").FacetsFilters> }) => {
+      clearAllFilters();
+      const f = view.filters;
+      if (f.family !== undefined) void setFamily(f.family ?? null);
+      if (f.material !== undefined) void setMaterial(f.material ?? null);
+      if (f.dn !== undefined) void setDn(f.dn ?? null);
+      if (f.pn !== undefined) void setPn(f.pn ?? null);
+      if (f.translation_status !== undefined) void setTranslationStatus(f.translation_status ?? null);
+      if (f.data_quality !== undefined) void setQuality((f.data_quality as import("@/lib/api/endpoints/products").DataQuality | undefined) ?? null);
+      if (f.active !== undefined) void setActive(f.active ?? null);
+      if (f.division !== undefined) void setDivision(f.division ?? null);
+      if (f.series_id !== undefined) void setSeriesId(f.series_id ?? null);
+      if (f.material_id !== undefined) void setMaterialId(f.material_id ?? null);
+      if (f.tier_code !== undefined) void setTierCode(f.tier_code ?? null);
+    },
+    [
+      clearAllFilters,
+      setFamily,
+      setMaterial,
+      setDn,
+      setPn,
+      setTranslationStatus,
+      setQuality,
+      setActive,
+      setDivision,
+      setSeriesId,
+      setMaterialId,
+      setTierCode,
+    ],
+  );
+
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Page header */}
@@ -420,7 +580,12 @@ export default function CatalogPage() {
               Importer
             </Link>
           </MtButton>
-          <MtButton icon={<Download className="size-3.5" />}>Exportar</MtButton>
+          <MtButton
+            icon={<Download className="size-3.5" />}
+            onClick={() => exportToCsv(items, `productos-${Date.now()}.csv`)}
+          >
+            Exportar
+          </MtButton>
           <MtButton tone="primary" asChild>
             <Link href="/catalogo/nuevo">
               <Plus className="size-3.5" />
@@ -475,27 +640,10 @@ export default function CatalogPage() {
                     : null,
         }))}
         activeId={activeViewId}
-        onSelect={(view) => {
-          // Apply view filters and clear non-view filters.
-          clearAllFilters();
-          if (view.filters.family !== undefined) void setFamily(view.filters.family ?? null);
-          if (view.filters.material !== undefined) void setMaterial(view.filters.material ?? null);
-          if (view.filters.dn !== undefined) void setDn(view.filters.dn ?? null);
-          if (view.filters.pn !== undefined) void setPn(view.filters.pn ?? null);
-          if (view.filters.translation_status !== undefined)
-            void setTranslationStatus(view.filters.translation_status ?? null);
-          if (view.filters.data_quality !== undefined)
-            void setQuality((view.filters.data_quality as DataQuality | undefined) ?? null);
-          if (view.filters.active !== undefined) void setActive(view.filters.active ?? null);
-          // Stage 3 — taxonomy
-          if (view.filters.division !== undefined) void setDivision(view.filters.division ?? null);
-          if (view.filters.series_id !== undefined)
-            void setSeriesId(view.filters.series_id ?? null);
-          if (view.filters.material_id !== undefined)
-            void setMaterialId(view.filters.material_id ?? null);
-          if (view.filters.tier_code !== undefined)
-            void setTierCode(view.filters.tier_code ?? null);
-        }}
+        onSelect={handleSelectView}
+        userViews={savedUserViews}
+        onSaveCurrentView={handleSaveCurrentView}
+        onDeleteView={removeView}
       />
       <ActiveFiltersBar
         chips={activeChips}
@@ -526,39 +674,107 @@ export default function CatalogPage() {
         </div>
       ) : null}
 
+      {/* B2 — Bulk actions toolbar */}
+      {selectedSkus.size > 0 ? (
+        <div
+          className="flex items-center gap-3 border-b px-6 py-2 text-[12.5px]"
+          style={{ borderColor: MT.border, background: MT.surface2 }}
+        >
+          <span style={{ color: MT.ink }}>
+            <strong>{selectedSkus.size}</strong> seleccionado{selectedSkus.size !== 1 ? "s" : ""}
+          </span>
+          {/* Exportar selección */}
+          <button
+            type="button"
+            className="flex items-center gap-1 rounded px-2 py-1 hover:bg-mt-surface"
+            style={{ color: MT.brand }}
+            onClick={() => {
+              const selected = items.filter((r) => selectedSkus.has(r.sku));
+              exportToCsv(selected, `seleccion-${Date.now()}.csv`);
+            }}
+          >
+            <Download className="size-3" />
+            Exportar CSV
+          </button>
+          {/* Activar selección */}
+          <button
+            type="button"
+            className="flex items-center gap-1 rounded px-2 py-1 hover:bg-mt-surface"
+            style={{ color: MT.ink2 }}
+            onClick={() => {
+              toast.info(`Activar ${selectedSkus.size} SKUs — próximamente`);
+            }}
+          >
+            Activar
+          </button>
+          {/* Archivar selección */}
+          <button
+            type="button"
+            className="flex items-center gap-1 rounded px-2 py-1 hover:bg-mt-surface"
+            style={{ color: MT.ink2 }}
+            onClick={() => {
+              toast.info(`Archivar ${selectedSkus.size} SKUs — próximamente`);
+            }}
+          >
+            Archivar
+          </button>
+          {/* Asignar familia */}
+          <button
+            type="button"
+            className="flex items-center gap-1 rounded px-2 py-1 hover:bg-mt-surface"
+            style={{ color: MT.ink2 }}
+            onClick={() => {
+              toast.info(`Asignar familia a ${selectedSkus.size} SKUs — próximamente`);
+            }}
+          >
+            Asignar familia
+          </button>
+          {/* Limpiar selección */}
+          <button
+            type="button"
+            className="ml-auto flex items-center gap-1 rounded px-2 py-1 hover:bg-mt-surface"
+            style={{ color: MT.ink3 }}
+            onClick={() => setSelectedSkus(new Set())}
+          >
+            <X className="size-3" />
+            Limpiar
+          </button>
+        </div>
+      ) : null}
+
       {/* Table */}
       <div className="mt-thin-scroll flex-1 overflow-auto bg-mt-surface">
         <table className="mt-data-table w-full border-collapse text-[12.5px]">
           <thead className="sticky top-0 z-10">
             <tr>
               <MtTh style={{ width: 32 }}>
-                <input type="checkbox" style={{ accentColor: MT.brand }} />
+                {/* B2 — select all checkbox */}
+                <SelectAllCheckbox
+                  items={items}
+                  selectedSkus={selectedSkus}
+                  setSelectedSkus={setSelectedSkus}
+                />
               </MtTh>
-              <MtTh style={{ width: 110 }}>SKU</MtTh>
-              <MtTh style={{ width: 40 }}>img</MtTh>
+              <MtTh style={{ width: 48 }}>img</MtTh>
+              <MtTh style={{ width: 120 }}>SKU</MtTh>
               <MtTh>Nombre</MtTh>
-              <MtTh style={{ width: 110 }}>División</MtTh>
-              <MtTh>Familia</MtTh>
-              <MtTh>Serie</MtTh>
-              <MtTh>Material</MtTh>
               <MtTh className="text-right" style={{ width: 60 }}>
                 DN
               </MtTh>
               <MtTh className="text-right" style={{ width: 60 }}>
                 PN
               </MtTh>
-              <MtTh style={{ width: 100 }}>Estado</MtTh>
-              <MtTh style={{ width: 70 }}>Calidad</MtTh>
-              <MtTh style={{ width: 70 }}>Trad</MtTh>
-              <MtTh style={{ width: 90 }}>Actualizado</MtTh>
-              <MtTh style={{ width: 28 }}>{""}</MtTh>
+              <MtTh style={{ width: 110 }}>Estado</MtTh>
+              <MtTh style={{ width: 80 }}>Calidad</MtTh>
+              <MtTh style={{ width: 95 }}>Actualizado</MtTh>
+              <MtTh style={{ width: 32 }}>{""}</MtTh>
             </tr>
           </thead>
           <tbody>
             {isLoading
               ? Array.from({ length: 12 }).map((_, i) => (
                   <tr key={`sk-${i}`}>
-                    {Array.from({ length: 15 }).map((__, j) => (
+                    {Array.from({ length: 10 }).map((__, j) => (
                       <MtTd key={j}>
                         <MtSkeleton width={j === 3 ? 180 : 60} />
                       </MtTd>
@@ -568,128 +784,142 @@ export default function CatalogPage() {
               : null}
             {!isLoading
               ? items.map((r, i) => {
-                  const tEn: TStatusVal = "a"; // master EN considered approved baseline
-                  const tEs = statusToVal(r.translation_status_es);
-                  const tAr = statusToVal(r.translation_status_ar);
+                  const isActive = activeIndex === i;
+                  const isChecked = selectedSkus.has(r.sku);
                   return (
                     <tr
                       key={r.sku}
+                      onClick={() => setActiveIndex(i)}
+                      onMouseEnter={() => setHoveredSku(r.sku)}
+                      onMouseLeave={() => setHoveredSku(null)}
                       style={{
                         background: i % 2 ? MT.surface : MT.surface2,
+                        // B3 — highlight active row with brand left border
+                        boxShadow: isActive ? `inset 3px 0 0 ${MT.brand}` : undefined,
+                        cursor: "default",
                       }}
                     >
+                      {/* checkbox */}
                       <MtTd>
-                        <input type="checkbox" style={{ accentColor: MT.brand }} />
+                        {/* B2 — row checkbox */}
+                        <input
+                          type="checkbox"
+                          style={{ accentColor: MT.brand }}
+                          checked={isChecked}
+                          onChange={() => {
+                            setSelectedSkus((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(r.sku)) {
+                                next.delete(r.sku);
+                              } else {
+                                next.add(r.sku);
+                              }
+                              return next;
+                            });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </MtTd>
+                      {/* img (48px) */}
+                      <MtTd>
+                        {r.primary_image_url ? (
+                          <img
+                            src={r.primary_image_url}
+                            alt=""
+                            className="h-10 w-10 rounded-md object-cover"
+                            style={{ border: `1px solid ${MT.border}` }}
+                          />
+                        ) : (
+                          <Thumb />
+                        )}
+                      </MtTd>
+                      {/* SKU */}
                       <MtTd mono className="font-medium" style={{ color: MT.brand }}>
                         <Link href={`/catalogo/${r.sku}`}>{r.sku}</Link>
                       </MtTd>
-                      <MtTd>
-                        <Thumb />
-                      </MtTd>
-                      <MtTd className="font-medium" style={{ color: MT.ink }}>
-                        <Link href={`/catalogo/${r.sku}`} className="line-clamp-2">
+                      {/* Nombre compuesto — A-1 */}
+                      <MtTd className="font-medium" style={{ color: MT.ink, minWidth: 280, maxWidth: 420 }}>
+                        <Link href={`/catalogo/${r.sku}`} className="line-clamp-1 hover:underline">
                           {getProductName(r)}
                         </Link>
-                        {r.subfamily ? (
-                          <span
-                            className="mt-mono mt-0.5 block text-[10.5px]"
-                            style={{ color: MT.ink4 }}
-                          >
-                            {r.subfamily}
-                            {r.type ? ` · ${r.type}` : ""}
-                          </span>
-                        ) : null}
-                      </MtTd>
-                      <MtTd>
-                        {r.division_codes && r.division_codes.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {r.division_codes.map((d) => (
-                              <span
-                                key={d}
-                                className="rounded px-1.5 py-0.5 text-[10px] uppercase tracking-[0.4px]"
-                                style={{
-                                  background:
-                                    d === "industrial"
-                                      ? "rgba(229, 0, 76, 0.10)"
-                                      : "rgba(10, 77, 140, 0.10)",
-                                  color: d === "industrial" ? "#9c0033" : "#0a4d8c",
-                                }}
-                                title={`División: ${d}`}
-                              >
-                                {d === "industrial" ? "Indus." : "Hidro."}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span style={{ color: MT.ink4 }}>—</span>
-                        )}
-                      </MtTd>
-                      <MtTd>
-                        {r.family ? (
-                          <Pill tone="ghost">{r.family}</Pill>
-                        ) : (
-                          <span style={{ color: MT.ink4 }}>—</span>
-                        )}
-                      </MtTd>
-                      <MtTd>
+                        {/* Sub-línea: clasificación taxonómica */}
                         {(() => {
-                          const ser = r.series_id ? seriesById[r.series_id] : undefined;
-                          if (!ser) {
-                            return <span style={{ color: MT.ink4 }}>—</span>;
-                          }
-                          const tierColor = ser.tier_id
-                            ? tierColorById[ser.tier_id]
-                            : undefined;
-                          return (
-                            <span className="inline-flex items-center gap-1.5">
-                              {tierColor ? (
-                                <span
-                                  className="size-2 rounded-full"
-                                  style={{
-                                    background: tierColor,
-                                    boxShadow: `0 0 0 1px ${MT.border}`,
-                                  }}
-                                  aria-hidden
-                                />
-                              ) : null}
-                              <span className="truncate" style={{ color: MT.ink2 }}>
-                                {ser.name_en}
-                              </span>
+                          const parts: string[] = [];
+                          if (r.family) parts.push(r.family);
+                          const serName = r.series_id ? seriesById[r.series_id]?.name_en : undefined;
+                          if (serName) parts.push(serName);
+                          const matName = r.material_id ? materialById[r.material_id] : r.material ?? undefined;
+                          if (matName) parts.push(matName);
+                          if (r.subfamily) parts.push(r.subfamily);
+                          return parts.length > 0 ? (
+                            <span
+                              className="mt-mono mt-0.5 block truncate text-[10.5px]"
+                              style={{ color: MT.ink4 }}
+                              title={parts.join(' · ')}
+                            >
+                              {parts.join(' · ')}
                             </span>
-                          );
+                          ) : null;
                         })()}
                       </MtTd>
-                      <MtTd className="text-[11.5px]" style={{ color: MT.ink3 }}>
-                        {r.material_id && materialById[r.material_id]
-                          ? materialById[r.material_id]
-                          : r.material ?? "—"}
-                      </MtTd>
+                      {/* DN */}
                       <MtTd mono className="text-right">
                         {r.dn ?? "—"}
                       </MtTd>
+                      {/* PN */}
                       <MtTd mono className="text-right" style={{ color: MT.ink3 }}>
                         {r.pn ?? "—"}
                       </MtTd>
+                      {/* Estado */}
                       <MtTd>
                         <LifecycleStatusBadge status={r.lifecycle_status} />
                       </MtTd>
+                      {/* Calidad */}
                       <MtTd>
                         <QualityBadge v={r.data_quality} />
                       </MtTd>
-                      <MtTd>
-                        <TStatusGlyphs t={{ en: tEn, es: tEs, ar: tAr }} />
-                      </MtTd>
+                      {/* Actualizado */}
                       <MtTd mono className="text-[11px]" style={{ color: MT.ink3 }}>
                         {fmtUpdated(r.updated_at)}
                       </MtTd>
+                      {/* Acciones — A-4 */}
                       <MtTd>
-                        <Link href={`/catalogo/${r.sku}`} aria-label={`Acciones ${r.sku}`}>
-                          <MoreHorizontal
-                            className="size-3.5 cursor-pointer"
-                            style={{ color: MT.ink4 }}
-                          />
-                        </Link>
+                        <div className="flex items-center justify-end gap-1">
+                          {hoveredSku === r.sku ? (
+                            <>
+                              <Link
+                                href={`/catalogo/${r.sku}/edit`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-medium transition-colors hover:bg-mt-surface-2"
+                                style={{ color: MT.brand }}
+                                title="Editar"
+                              >
+                                <Pencil className="size-3" />
+                                Editar
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toast.info(`Duplicar ${r.sku} — próximamente`);
+                                }}
+                                className="inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-medium transition-colors hover:bg-mt-surface-2"
+                                style={{ color: MT.ink3 }}
+                                title="Duplicar"
+                              >
+                                <Copy className="size-3" />
+                                Duplicar
+                              </button>
+                            </>
+                          ) : (
+                            <Link href={`/catalogo/${r.sku}`} aria-label={`Ver ${r.sku}`}>
+                              <MoreHorizontal
+                                className="size-3.5 cursor-pointer"
+                                style={{ color: MT.ink4 }}
+                              />
+                            </Link>
+                          )}
+                        </div>
                       </MtTd>
                     </tr>
                   );
@@ -710,11 +940,8 @@ export default function CatalogPage() {
       <Paginator
         loaded={items.length}
         total={totalFiltered}
-        pageSize={50}
-        onPageSize={(_size) => {
-          // Page size changes require refetch with new limit; useProducts
-          // hook only takes filters today, so this is a no-op for now.
-        }}
+        pageSize={pageLimit}
+        onPageSize={setPageLimit}
         hasNext={Boolean(hasNextPage)}
         onNext={() => void fetchNextPage()}
         isFetching={isFetchingNextPage}
@@ -726,8 +953,81 @@ export default function CatalogPage() {
       >
         <Kbd>/</Kbd> buscar · <Kbd>j</Kbd>
         <Kbd>k</Kbd> nav · <Kbd>e</Kbd> editar · <Kbd>↵</Kbd> detalle ·{" "}
-        <Kbd>?</Kbd> atajos
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 hover:underline"
+          onClick={() => setShortcutsOpen(true)}
+        >
+          <Kbd>?</Kbd> atajos
+        </button>
       </div>
+
+      {/* B3 — Modal de atajos de teclado */}
+      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Atajos de teclado</DialogTitle>
+          </DialogHeader>
+          <table className="w-full text-[12.5px]">
+            <tbody>
+              {[
+                { key: "/", desc: "Enfocar buscador" },
+                { key: "j", desc: "Fila siguiente" },
+                { key: "k", desc: "Fila anterior" },
+                { key: "↵", desc: "Ver detalle del producto activo" },
+                { key: "e", desc: "Editar producto activo" },
+                { key: "?", desc: "Mostrar / ocultar este panel" },
+              ].map(({ key, desc }) => (
+                <tr key={key} className="border-b last:border-b-0" style={{ borderColor: MT.border }}>
+                  <td className="py-2 pr-4">
+                    <Kbd>{key}</Kbd>
+                  </td>
+                  <td className="py-2" style={{ color: MT.ink2 }}>
+                    {desc}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// ---- B2 — Select All Checkbox (indeterminate support) ----------------------
+function SelectAllCheckbox({
+  items,
+  selectedSkus,
+  setSelectedSkus,
+}: {
+  items: ProductListItem[];
+  selectedSkus: Set<string>;
+  setSelectedSkus: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
+  const ref = React.useRef<HTMLInputElement>(null);
+  const allSelected = items.length > 0 && items.every((r) => selectedSkus.has(r.sku));
+  const someSelected = !allSelected && items.some((r) => selectedSkus.has(r.sku));
+
+  React.useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = someSelected;
+    }
+  }, [someSelected]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      style={{ accentColor: MT.brand }}
+      checked={allSelected}
+      onChange={() => {
+        if (allSelected) {
+          setSelectedSkus(new Set());
+        } else {
+          setSelectedSkus(new Set(items.map((r) => r.sku)));
+        }
+      }}
+    />
   );
 }
