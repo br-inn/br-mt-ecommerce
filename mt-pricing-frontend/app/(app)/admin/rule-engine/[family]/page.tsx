@@ -59,7 +59,7 @@ export default async function FamilyEditorPage({
           <p className="text-muted-foreground text-sm">{profile.description}</p>
         )}
       </div>
-      <SuggestionsBanner suggestions={suggestions} onAction={() => {}} />
+      <SuggestionsBanner suggestions={suggestions} />
       <WeightsEditor
         family={profile.family}
         initialWeights={profile.weights}
