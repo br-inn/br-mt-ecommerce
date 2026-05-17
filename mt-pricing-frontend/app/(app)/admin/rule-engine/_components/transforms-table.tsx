@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import env from "@/lib/env"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 interface Transform {
   id: string
@@ -14,13 +15,21 @@ interface Transform {
   description: string | null
 }
 
+async function getAuthHeader(): Promise<Record<string, string>> {
+  const supabase = createSupabaseBrowserClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return {}
+  return { Authorization: `Bearer ${session.access_token}` }
+}
+
 export function TransformsTable({ initialData }: { initialData: Transform[] }) {
   const [transforms, setTransforms] = useState(initialData)
-  const apiBase = env.NEXT_PUBLIC_BACKEND_URL
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`${apiBase}/api/v1/rule-engine/unit-transforms/${id}`, {
+    const authHeader = await getAuthHeader()
+    const res = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/unit-transforms/${id}`, {
       method: "DELETE",
+      headers: authHeader,
     })
     if (!res.ok) {
       toast.error("Error al eliminar")
