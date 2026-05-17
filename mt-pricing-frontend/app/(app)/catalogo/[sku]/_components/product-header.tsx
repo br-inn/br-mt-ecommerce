@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Barcode, ImageIcon, Layers, GitBranch, Pencil, Ruler } from "lucide-react";
+import { Barcode, ChevronLeft, ChevronRight, ImageIcon, Layers, GitBranch, Pencil, Ruler } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,6 +48,22 @@ export function ProductHeader({ sku }: Props) {
   const { data: product, isLoading, isError } = useProduct(sku);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // B2 — prev/next nav desde el catálogo
+  const [navSkus, setNavSkus] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("mt-catalog-nav");
+      if (raw) setNavSkus(JSON.parse(raw) as string[]);
+    } catch {
+      // ignore — sessionStorage unavailable o contenido inválido
+    }
+  }, []);
+
+  const navIdx = navSkus.indexOf(sku);
+  const prevSku = navIdx > 0 ? navSkus[navIdx - 1] : null;
+  const nextSku = navIdx >= 0 && navIdx < navSkus.length - 1 ? navSkus[navIdx + 1] : null;
+  const showNav = navSkus.length > 0 && navIdx >= 0;
+
   if (isLoading) {
     return (
       <div className="flex gap-4">
@@ -83,6 +99,45 @@ export function ProductHeader({ sku }: Props) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
       />
+
+      {/* B2 — Prev/Next navigation bar */}
+      {showNav ? (
+        <div className="mb-2 flex items-center gap-3 text-[11.5px] text-muted-foreground">
+          <Link href="/catalogo" className="transition-colors hover:text-foreground">
+            ← Catálogo
+          </Link>
+          <span className="opacity-20">|</span>
+          {prevSku ? (
+            <Link
+              href={`/catalogo/${prevSku}`}
+              className="flex items-center gap-0.5 font-mono transition-colors hover:text-foreground"
+            >
+              <ChevronLeft className="size-3.5" />
+              {prevSku}
+            </Link>
+          ) : (
+            <span className="flex items-center gap-0.5 opacity-30">
+              <ChevronLeft className="size-3.5" />—
+            </span>
+          )}
+          <span className="tabular-nums">
+            {navIdx + 1} / {navSkus.length}
+          </span>
+          {nextSku ? (
+            <Link
+              href={`/catalogo/${nextSku}`}
+              className="flex items-center gap-0.5 font-mono transition-colors hover:text-foreground"
+            >
+              {nextSku}
+              <ChevronRight className="size-3.5" />
+            </Link>
+          ) : (
+            <span className="flex items-center gap-0.5 opacity-30">
+              —<ChevronRight className="size-3.5" />
+            </span>
+          )}
+        </div>
+      ) : null}
 
       {/* Layout principal: imagen izquierda + datos derecha */}
       <div className="flex gap-5">
