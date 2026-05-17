@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import env from "@/lib/env"
 
 interface Transform {
   id: string
@@ -15,7 +16,7 @@ interface Transform {
 
 export function TransformsTable({ initialData }: { initialData: Transform[] }) {
   const [transforms, setTransforms] = useState(initialData)
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? ""
+  const apiBase = env.NEXT_PUBLIC_BACKEND_URL
 
   const handleDelete = async (id: string) => {
     const res = await fetch(`${apiBase}/api/v1/rule-engine/unit-transforms/${id}`, {

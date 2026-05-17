@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import env from "@/lib/env"
 
 interface Suggestion {
   id: string
@@ -23,7 +24,7 @@ export function SuggestionsBanner({
   if (suggestions.length === 0) return null
 
   const s = suggestions[0]
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? ""
+  const apiBase = env.NEXT_PUBLIC_BACKEND_URL
 
   const handleAction = async (action: "apply" | "dismiss") => {
     setLoading(action)

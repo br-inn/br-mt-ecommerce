@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import env from "@/lib/env"
 
 const DIMENSION_LABELS: Record<string, string> = {
   material: "Material",
@@ -34,7 +35,7 @@ export function WeightsEditor({ family, initialWeights, initialBlockers }: Weigh
   const handleSave = async () => {
     setSaving(true)
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? ""
+      const apiBase = env.NEXT_PUBLIC_BACKEND_URL
       const res = await fetch(
         `${apiBase}/api/v1/rule-engine/taxonomy-profiles/${encodeURIComponent(family)}`,
         {

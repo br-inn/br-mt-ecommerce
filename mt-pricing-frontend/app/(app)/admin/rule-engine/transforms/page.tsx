@@ -1,9 +1,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TransformsTable } from "../_components/transforms-table"
+import env from "@/lib/env"
 
 async function getTransforms() {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/rule-engine/unit-transforms`,
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/unit-transforms`,
     { cache: "no-store" }
   )
   if (!res.ok) return []
@@ -12,7 +13,7 @@ async function getTransforms() {
 
 async function getNormEquivalences() {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/rule-engine/norm-equivalences`,
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/norm-equivalences`,
     { cache: "no-store" }
   )
   if (!res.ok) return []
