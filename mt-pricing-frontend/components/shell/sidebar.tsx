@@ -34,6 +34,7 @@ import {
   Settings,
   Shield,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Sprout,
   Tags,
@@ -42,6 +43,7 @@ import {
   TrendingUp,
   Users,
   Warehouse,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -136,6 +138,13 @@ const COMPARATOR_POOL_NAV_ITEM: NavItem = {
   permissions: ["matches:read"],
 };
 
+const COMPARATOR_INTELLIGENCE_NAV_ITEM: NavItem = {
+  href: "/comparator/intelligence",
+  label: "Price Intelligence",
+  icon: Zap,
+  permissions: ["products:read"],
+};
+
 // SISTEMA — tres sub-secciones
 // 1. Importaciones: herramientas de carga de datos
 const SECTION_SYS_IMPORTACIONES: readonly NavItem[] = [
@@ -152,6 +161,7 @@ const SECTION_SYS_CONFIG: readonly NavItem[] = [
   { href: "/admin/almacenes", label: "Almacenes", icon: Warehouse, permissions: ["purchases:write"] },
   { href: "/admin/approval-rules", label: "Reglas aprobación", icon: ShieldCheck, permissions: ["purchases:write"] },
   { href: "/admin/condiciones-proveedor", label: "PIR / Condiciones", icon: ClipboardList, permissions: ["purchases:write"] },
+  { href: "/admin/rule-engine", label: "Motor de reglas", icon: SlidersHorizontal, permissions: ["admin:read"] },
   { href: "/admin/flags", label: "Feature flags", icon: Flag, permissions: ["admin:read"] },
   { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
   { href: "/ajustes", label: "Ajustes generales", icon: Settings },
@@ -419,6 +429,11 @@ export function Sidebar() {
         <NavLink
           key={COMPARATOR_POOL_NAV_ITEM.href}
           item={COMPARATOR_POOL_NAV_ITEM}
+          collapsed={collapsed}
+        />
+        <NavLink
+          key={COMPARATOR_INTELLIGENCE_NAV_ITEM.href}
+          item={COMPARATOR_INTELLIGENCE_NAV_ITEM}
           collapsed={collapsed}
         />
 
