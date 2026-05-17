@@ -1,10 +1,11 @@
 import { ProfileCard } from "./_components/profile-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import env from "@/lib/env"
 
 async function getTaxonomyProfiles() {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/rule-engine/taxonomy-profiles`,
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/taxonomy-profiles`,
     { cache: "no-store" }
   )
   if (!res.ok) return []
@@ -13,7 +14,7 @@ async function getTaxonomyProfiles() {
 
 async function getSuggestionCounts(): Promise<Record<string, number>> {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/rule-engine/rule-suggestions?status=pending`,
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/rule-suggestions?status=pending`,
     { cache: "no-store" }
   )
   if (!res.ok) return {}

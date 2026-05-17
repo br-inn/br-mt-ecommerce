@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation"
 import { WeightsEditor } from "../_components/weights-editor"
 import { SuggestionsBanner } from "../_components/suggestions-banner"
+import env from "@/lib/env"
 
 async function getProfile(family: string) {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/rule-engine/taxonomy-profiles/${encodeURIComponent(family)}`,
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/taxonomy-profiles/${encodeURIComponent(family)}`,
     { cache: "no-store" }
   )
   if (res.status === 404) return null
@@ -14,7 +15,7 @@ async function getProfile(family: string) {
 
 async function getPendingSuggestions(profileId: string) {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/rule-engine/rule-suggestions?status=pending`,
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/rule-suggestions?status=pending`,
     { cache: "no-store" }
   )
   if (!res.ok) return []
