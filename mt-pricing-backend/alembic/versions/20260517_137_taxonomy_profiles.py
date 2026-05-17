@@ -76,16 +76,20 @@ _DEFAULT_W = {
 # ---------------------------------------------------------------------------
 _FULL_VALVE_B = [
     "dn_mismatch",
+    "material_mismatch",
     "mini_mismatch",
-    "thread_standard_mismatch",
     "pn_below_sku_requirement",
+    "pn_too_far_above",
     "product_type_mismatch",
+    "ways_mismatch",
 ]
 _BASE_VALVE_B = [
     "dn_mismatch",
-    "thread_standard_mismatch",
+    "material_mismatch",
     "pn_below_sku_requirement",
+    "pn_too_far_above",
     "product_type_mismatch",
+    "ways_mismatch",
 ]
 _GAUGE_B = [
     "product_type_mismatch",
