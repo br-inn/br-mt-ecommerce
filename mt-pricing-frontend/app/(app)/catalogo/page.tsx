@@ -7,6 +7,8 @@ import {
   Copy,
   Download,
   Image as ImageIcon,
+  LayoutGrid,
+  List,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -40,7 +42,7 @@ import {
   QualityBadge,
   Thumb,
 } from "@/components/mt/primitives";
-import { MtEmpty, MtError, MtSkeleton } from "@/components/mt/states";
+import { MtError, MtSkeleton } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import { useProducts } from "@/lib/hooks/products/use-products";
 import { useFacets, type FacetsFilters } from "@/lib/hooks/products/use-facets";
@@ -56,7 +58,9 @@ import { ActiveFiltersBar } from "./_components/active-filters-bar";
 import { SavedViewsBar, SYSTEM_VIEWS } from "./_components/saved-views-bar";
 import { Paginator } from "./_components/paginator";
 import { TopFilterBar } from "./_components/top-filter-bar";
-import { useSavedViews } from "@/lib/hooks/use-saved-views";
+import { useSavedViews, getShareUrl } from "@/lib/hooks/use-saved-views";
+import { ProductEditDrawer } from "@/components/domain/product-edit-drawer";
+import { ProductGridCard } from "./_components/product-grid-card";
 
 const QUALITY_VALUES = ["complete", "partial", "blocked"] as const;
 const TRANSLATION_VALUES = ["draft", "pending", "approved"] as const;
@@ -131,6 +135,14 @@ function fmtUpdated(iso: string): string {
   return `hace ${months} mes${months > 1 ? "es" : ""}`;
 }
 
+function storeNavContext(skus: string[]): void {
+  try {
+    sessionStorage.setItem("mt-catalog-nav", JSON.stringify(skus));
+  } catch {
+    // ignore — sessionStorage unavailable (SSR, private mode)
+  }
+}
+
 export default function CatalogPage() {
   const router = useRouter();
 
@@ -148,6 +160,11 @@ export default function CatalogPage() {
 
   // B4 — page size
   const [pageLimit, setPageLimit] = React.useState(50);
+
+  // A2 — modo de visualización
+  const [viewMode, setViewMode] = React.useState<"table" | "grid">("table");
+  // A2 — quick edit desde tabla/galería
+  const [quickEditSku, setQuickEditSku] = React.useState<string | null>(null);
 
   // Saved views — persistidas en localStorage
   const { views: savedUserViews, addView, removeView } = useSavedViews();
@@ -498,6 +515,7 @@ export default function CatalogPage() {
     if (otherFilters === 0 && active === true) return "active-only";
     if (family === "unclassified" && otherFilters === 1 && active === null) return "unclassified";
     if (translationStatus === "pending" && otherFilters === 1 && active === null) return "pending-es";
+    if (quality === "partial" && otherFilters === 1 && active === null) return "quality-review";
     if (otherFilters === 0 && (active === null || active === undefined)) return "all";
     return "";
   }, [active, family, material, dn, pn, quality, translationStatus]);
@@ -555,6 +573,19 @@ export default function CatalogPage() {
     ],
   );
 
+  const handleShareView = React.useCallback(
+    (id: string) => {
+      const view = savedUserViews.find((v) => v.id === id);
+      if (!view) return;
+      const url = `${window.location.origin}${getShareUrl(view.filters)}`;
+      void navigator.clipboard
+        .writeText(url)
+        .then(() => toast.success("URL copiada al portapapeles"))
+        .catch(() => toast.error("No se pudo copiar la URL"));
+    },
+    [savedUserViews],
+  );
+
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Page header */}
@@ -573,7 +604,37 @@ export default function CatalogPage() {
             {total !== null ? `${total} SKUs` : `${items.length} cargados`}
           </span>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-1.5">
+          {/* A2 — vista toggle */}
+          <div
+            className="flex items-center gap-0.5 rounded-md border p-0.5"
+            style={{ borderColor: MT.border }}
+          >
+            <button
+              type="button"
+              title="Vista tabla"
+              onClick={() => setViewMode("table")}
+              className="rounded p-1 transition-colors"
+              style={{
+                background: viewMode === "table" ? MT.brand : "transparent",
+                color: viewMode === "table" ? "white" : MT.ink3,
+              }}
+            >
+              <List className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              title="Vista galería"
+              onClick={() => setViewMode("grid")}
+              className="rounded p-1 transition-colors"
+              style={{
+                background: viewMode === "grid" ? MT.brand : "transparent",
+                color: viewMode === "grid" ? "white" : MT.ink3,
+              }}
+            >
+              <LayoutGrid className="size-3.5" />
+            </button>
+          </div>
           <MtButton asChild>
             <Link href="/imports">
               <Upload className="size-3.5" />
@@ -644,6 +705,7 @@ export default function CatalogPage() {
         userViews={savedUserViews}
         onSaveCurrentView={handleSaveCurrentView}
         onDeleteView={removeView}
+        onShareView={handleShareView}
       />
       <ActiveFiltersBar
         chips={activeChips}
@@ -742,7 +804,55 @@ export default function CatalogPage() {
         </div>
       ) : null}
 
+      {/* A2 — Vista Galería */}
+      {viewMode === "grid" ? (
+        <div
+          className="mt-thin-scroll grid flex-1 grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 overflow-auto p-4"
+          style={{ background: MT.surface }}
+        >
+          {isLoading
+            ? Array.from({ length: 12 }).map((_, idx) => (
+                <div
+                  key={`sk-${idx}`}
+                  className="h-[220px] animate-pulse rounded-lg"
+                  style={{ background: MT.surface2, border: `1px solid ${MT.border}` }}
+                />
+              ))
+            : null}
+          {!isLoading
+            ? items.map((r) => (
+                <ProductGridCard
+                  key={r.sku}
+                  item={r}
+                  onQuickEdit={(sku) => setQuickEditSku(sku)}
+                  onNavClick={() => storeNavContext(items.map((i) => i.sku))}
+                />
+              ))
+            : null}
+          {!isLoading && items.length === 0 && !isError ? (
+            <div
+              className="col-span-full flex flex-col items-center gap-3 py-12"
+              style={{ color: MT.ink3 }}
+            >
+              <ImageIcon className="size-8 opacity-20" strokeWidth={1.2} />
+              <p className="text-[13px]">Sin resultados</p>
+              {activeChips.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="text-[11.5px] font-medium"
+                  style={{ color: MT.brand }}
+                >
+                  Limpiar filtros
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Table */}
+      {viewMode === "table" ? (
       <div className="mt-thin-scroll flex-1 overflow-auto bg-mt-surface">
         <table className="mt-data-table w-full border-collapse text-[12.5px]">
           <thead className="sticky top-0 z-10">
@@ -835,11 +945,17 @@ export default function CatalogPage() {
                       </MtTd>
                       {/* SKU */}
                       <MtTd mono className="font-medium" style={{ color: MT.brand }}>
-                        <Link href={`/catalogo/${r.sku}`}>{r.sku}</Link>
+                        <Link href={`/catalogo/${r.sku}`} onClick={() => storeNavContext(items.map((i) => i.sku))}>
+                          {r.sku}
+                        </Link>
                       </MtTd>
                       {/* Nombre compuesto — A-1 */}
                       <MtTd className="font-medium" style={{ color: MT.ink, minWidth: 280, maxWidth: 420 }}>
-                        <Link href={`/catalogo/${r.sku}`} className="line-clamp-1 hover:underline">
+                        <Link
+                          href={`/catalogo/${r.sku}`}
+                          className="line-clamp-1 hover:underline"
+                          onClick={() => storeNavContext(items.map((i) => i.sku))}
+                        >
                           {getProductName(r)}
                         </Link>
                         {/* Sub-línea: clasificación taxonómica */}
@@ -887,16 +1003,19 @@ export default function CatalogPage() {
                         <div className="flex items-center justify-end gap-1">
                           {hoveredSku === r.sku ? (
                             <>
-                              <Link
-                                href={`/catalogo/${r.sku}/edit`}
-                                onClick={(e) => e.stopPropagation()}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setQuickEditSku(r.sku);
+                                }}
                                 className="inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-medium transition-colors hover:bg-mt-surface-2"
                                 style={{ color: MT.brand }}
-                                title="Editar"
+                                title="Editar rápido"
                               >
                                 <Pencil className="size-3" />
                                 Editar
-                              </Link>
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -912,7 +1031,11 @@ export default function CatalogPage() {
                               </button>
                             </>
                           ) : (
-                            <Link href={`/catalogo/${r.sku}`} aria-label={`Ver ${r.sku}`}>
+                            <Link
+                              href={`/catalogo/${r.sku}`}
+                              aria-label={`Ver ${r.sku}`}
+                              onClick={() => storeNavContext(items.map((i) => i.sku))}
+                            >
                               <MoreHorizontal
                                 className="size-3.5 cursor-pointer"
                                 style={{ color: MT.ink4 }}
@@ -928,13 +1051,63 @@ export default function CatalogPage() {
           </tbody>
         </table>
         {!isLoading && items.length === 0 && !isError ? (
-          <MtEmpty
-            title="Sin resultados"
-            hint="Ajusta los filtros o limpia la búsqueda."
-            icon={<ImageIcon className="size-6" strokeWidth={1.4} />}
-          />
+          <div className="flex flex-col items-center gap-4 px-6 py-16">
+            <ImageIcon
+              className="size-9 opacity-20"
+              style={{ color: MT.ink3 }}
+              strokeWidth={1.2}
+            />
+            <div className="text-center">
+              <p className="text-[13px] font-medium" style={{ color: MT.ink }}>
+                Sin resultados
+              </p>
+              <p className="mt-0.5 text-[12px]" style={{ color: MT.ink3 }}>
+                No hay productos con los filtros actuales.
+              </p>
+            </div>
+            {activeChips.length > 0 ? (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-[11px]" style={{ color: MT.ink4 }}>
+                  Prueba quitando algún filtro:
+                </p>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {activeChips.map((chip) => (
+                    <button
+                      key={chip.key}
+                      type="button"
+                      onClick={() => removeChip(chip.key)}
+                      className="rounded-full border px-2.5 py-0.5 text-[11px] transition-colors hover:border-current"
+                      style={{ borderColor: MT.border, color: MT.ink3 }}
+                    >
+                      Quitar «{chip.label}» ×
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="mt-1 text-[11px] font-medium underline-offset-2 hover:underline"
+                  style={{ color: MT.brand }}
+                >
+                  Limpiar todos los filtros
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
+      ) : null}
+
+      {/* A2 — Quick Edit Drawer desde tabla/galería */}
+      {quickEditSku !== null ? (
+        <ProductEditDrawer
+          sku={quickEditSku}
+          open={true}
+          onOpenChange={(o) => {
+            if (!o) setQuickEditSku(null);
+          }}
+        />
+      ) : null}
 
       {/* Paginator (Wave 10) replaces the legacy "cargar más" footer */}
       <Paginator
