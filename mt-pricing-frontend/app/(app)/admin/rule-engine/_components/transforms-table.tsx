@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,9 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react"
 import env from "@/lib/env"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -39,7 +39,6 @@ type FormState = {
   from_unit: string
   to_unit: string
   formula: string
-  lookup_table: string
   description: string
 }
 
@@ -48,9 +47,10 @@ const EMPTY_FORM: FormState = {
   from_unit: "",
   to_unit: "",
   formula: "",
-  lookup_table: "{}",
   description: "",
 }
+
+const isLookupType = (t: string) => t === "lookup" || t === "nominal"
 
 async function getAuthHeader(): Promise<Record<string, string>> {
   const supabase = createSupabaseBrowserClient()
@@ -67,28 +67,7 @@ function transformToForm(t: Transform): FormState {
     from_unit: t.from_unit,
     to_unit: t.to_unit,
     formula: t.formula ?? "",
-    lookup_table: t.lookup_table ? JSON.stringify(t.lookup_table, null, 2) : "{}",
     description: t.description ?? "",
-  }
-}
-
-function formToPayload(f: FormState) {
-  const needsLookup = f.transform_type === "lookup" || f.transform_type === "nominal"
-  let lookup_table: Record<string, unknown> | null = null
-  if (needsLookup) {
-    try {
-      lookup_table = JSON.parse(f.lookup_table)
-    } catch {
-      throw new Error("La tabla de conversión no es JSON válido")
-    }
-  }
-  return {
-    transform_type: f.transform_type,
-    from_unit: f.from_unit.trim(),
-    to_unit: f.to_unit.trim(),
-    formula: f.transform_type === "numeric" ? f.formula.trim() || null : null,
-    lookup_table,
-    description: f.description.trim() || null,
   }
 }
 
@@ -98,6 +77,7 @@ type DialogState =
   | { mode: "edit"; item: Transform }
 
 export function TransformsTable({ initialData }: { initialData: Transform[] }) {
+  const router = useRouter()
   const [transforms, setTransforms] = useState(initialData)
   const [dialog, setDialog] = useState<DialogState>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -109,9 +89,13 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
     setDialog({ mode: "create" })
   }
 
-  const openEdit = (item: Transform) => {
-    setForm(transformToForm(item))
-    setDialog({ mode: "edit", item })
+  const handleEdit = (item: Transform) => {
+    if (isLookupType(item.transform_type)) {
+      router.push(`/admin/rule-engine/transforms/${item.id}`)
+    } else {
+      setForm(transformToForm(item))
+      setDialog({ mode: "edit", item })
+    }
   }
 
   const closeDialog = () => {
@@ -124,18 +108,20 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
   const handleSave = async () => {
     setSaving(true)
     try {
-      let payload: ReturnType<typeof formToPayload>
-      try {
-        payload = formToPayload(form)
-      } catch (e) {
-        toast.error((e as Error).message)
-        return
+      const payload = {
+        transform_type: form.transform_type,
+        from_unit: form.from_unit.trim(),
+        to_unit: form.to_unit.trim(),
+        formula: form.transform_type === "numeric" ? form.formula.trim() || null : null,
+        lookup_table: isLookupType(form.transform_type) ? {} : null,
+        description: form.description.trim() || null,
       }
       if (!payload.from_unit || !payload.to_unit) {
         toast.error("Los campos «De» y «A» son obligatorios")
         return
       }
       const authHeader = await getAuthHeader()
+
       if (dialog?.mode === "create") {
         const res = await fetch(
           `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/unit-transforms`,
@@ -152,7 +138,14 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
         }
         const created: Transform = await res.json()
         setTransforms((prev) => [...prev, created])
-        toast.success("Transformación creada")
+        setDialog(null)
+
+        if (isLookupType(created.transform_type)) {
+          toast.success("Transformación creada — ahora agrega las entradas de la tabla")
+          router.push(`/admin/rule-engine/transforms/${created.id}`)
+        } else {
+          toast.success("Transformación creada")
+        }
       } else if (dialog?.mode === "edit") {
         const res = await fetch(
           `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/unit-transforms/${dialog.item.id}`,
@@ -170,8 +163,8 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
         const updated: Transform = await res.json()
         setTransforms((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
         toast.success("Transformación actualizada")
+        setDialog(null)
       }
-      setDialog(null)
     } finally {
       setSaving(false)
     }
@@ -196,9 +189,6 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
     }
   }
 
-  const needsLookupTable =
-    form.transform_type === "lookup" || form.transform_type === "nominal"
-
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -215,7 +205,7 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
               <th className="px-4 py-3 text-left font-medium">Tipo</th>
               <th className="px-4 py-3 text-left font-medium">De</th>
               <th className="px-4 py-3 text-left font-medium">A</th>
-              <th className="px-4 py-3 text-left font-medium">Fórmula / Lookup</th>
+              <th className="px-4 py-3 text-left font-medium">Fórmula / Entradas</th>
               <th className="px-4 py-3 text-left font-medium">Descripción</th>
               <th className="px-4 py-3" />
             </tr>
@@ -231,53 +221,70 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
                 </td>
               </tr>
             )}
-            {transforms.map((t) => (
-              <tr key={t.id} className="border-b last:border-0">
-                <td className="px-4 py-3">
-                  <Badge variant="outline">{t.transform_type}</Badge>
-                </td>
-                <td className="px-4 py-3 font-mono">{t.from_unit}</td>
-                <td className="px-4 py-3 font-mono">{t.to_unit}</td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {t.formula ?? "(lookup table)"}
-                </td>
-                <td className="px-4 py-3">{t.description}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-end">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-8"
-                      title="Editar"
-                      onClick={() => openEdit(t)}
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-8 text-destructive hover:text-destructive"
-                      title="Eliminar"
-                      onClick={() => handleDelete(t.id)}
-                      disabled={deletingId === t.id}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {transforms.map((t) => {
+              const isLookup = isLookupType(t.transform_type)
+              const entryCount = t.lookup_table
+                ? Object.keys(t.lookup_table).length
+                : 0
+              return (
+                <tr key={t.id} className="border-b last:border-0">
+                  <td className="px-4 py-3">
+                    <Badge variant="outline">{t.transform_type}</Badge>
+                  </td>
+                  <td className="px-4 py-3 font-mono">{t.from_unit}</td>
+                  <td className="px-4 py-3 font-mono">{t.to_unit}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {isLookup ? (
+                      <button
+                        className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                        onClick={() => router.push(`/admin/rule-engine/transforms/${t.id}`)}
+                      >
+                        <ExternalLink className="size-3.5 shrink-0" />
+                        {entryCount} {entryCount === 1 ? "entrada" : "entradas"}
+                      </button>
+                    ) : (
+                      t.formula
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{t.description}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 justify-end">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-8"
+                        title={isLookup ? "Editar tabla" : "Editar"}
+                        onClick={() => handleEdit(t)}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-destructive hover:text-destructive"
+                        title="Eliminar"
+                        onClick={() => handleDelete(t.id)}
+                        disabled={deletingId === t.id}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
 
+      {/* Modal — solo para numeric (create + edit) y create de lookup/nominal */}
       <Dialog
         open={dialog !== null}
         onOpenChange={(open) => {
           if (!open) closeDialog()
         }}
       >
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>
               {dialog?.mode === "create"
@@ -287,28 +294,31 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Tipo</Label>
-              <Select
-                value={form.transform_type}
-                onValueChange={(v) => setField("transform_type", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="numeric">
-                    numeric — fórmula matemática
-                  </SelectItem>
-                  <SelectItem value="lookup">
-                    lookup — tabla de conversión
-                  </SelectItem>
-                  <SelectItem value="nominal">
-                    nominal — equivalencias nominales
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Tipo — solo editable en create */}
+            {dialog?.mode === "create" && (
+              <div className="space-y-1.5">
+                <Label>Tipo</Label>
+                <Select
+                  value={form.transform_type}
+                  onValueChange={(v) => setField("transform_type", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="numeric">
+                      numeric — fórmula matemática
+                    </SelectItem>
+                    <SelectItem value="lookup">
+                      lookup — tabla de conversión
+                    </SelectItem>
+                    <SelectItem value="nominal">
+                      nominal — equivalencias nominales
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -329,6 +339,7 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
               </div>
             </div>
 
+            {/* Fórmula: solo para numeric */}
             {form.transform_type === "numeric" && (
               <div className="space-y-1.5">
                 <Label>Fórmula</Label>
@@ -348,16 +359,12 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
               </div>
             )}
 
-            {needsLookupTable && (
-              <div className="space-y-1.5">
-                <Label>Tabla de conversión (JSON)</Label>
-                <Textarea
-                  placeholder={'{\n  "DN15": "NPS_0.5in",\n  "DN20": "NPS_0.75in"\n}'}
-                  value={form.lookup_table}
-                  onChange={(e) => setField("lookup_table", e.target.value)}
-                  className="font-mono text-xs min-h-[120px]"
-                />
-              </div>
+            {/* Aviso para lookup/nominal */}
+            {isLookupType(form.transform_type) && dialog?.mode === "create" && (
+              <p className="text-xs text-muted-foreground rounded-md bg-muted px-3 py-2">
+                Tras crear, se abrirá el editor de tabla para agregar las
+                entradas de conversión.
+              </p>
             )}
 
             <div className="space-y-1.5">
@@ -381,7 +388,9 @@ export function TransformsTable({ initialData }: { initialData: Transform[] }) {
               {saving
                 ? "Guardando..."
                 : dialog?.mode === "create"
-                  ? "Crear"
+                  ? isLookupType(form.transform_type)
+                    ? "Crear y editar tabla →"
+                    : "Crear"
                   : "Guardar cambios"}
             </Button>
           </DialogFooter>

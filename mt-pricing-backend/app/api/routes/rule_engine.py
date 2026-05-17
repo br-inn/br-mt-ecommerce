@@ -117,6 +117,18 @@ async def create_unit_transform(
     return obj
 
 
+@router.get("/unit-transforms/{transform_id}", response_model=UnitTransformResponse)
+async def get_unit_transform(
+    transform_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+):
+    repo = UnitTransformRepository(session)
+    obj = await repo.get(transform_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Transformación no encontrada")
+    return obj
+
+
 @router.put("/unit-transforms/{transform_id}", response_model=UnitTransformResponse)
 async def update_unit_transform(
     transform_id: UUID,
