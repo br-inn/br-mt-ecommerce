@@ -135,7 +135,7 @@ services:
         "app.workers.worker",
         "worker",
         "-Q",
-        "imports,pricing,images,comparator,notifications,audit,default",
+        "imports,pricing,images,comparator,notifications,audit,default,scraper",
         "-l",
         "info",
       ]
@@ -203,6 +203,43 @@ services:
       - mt-internal
 
   # ---------------------------------------------------------------------------
+  # Scraper Worker (Tier 2 — patchright Chromium anti-detect)
+  # Requiere shm_size: 2gb para evitar crashes de Chrome.
+  # Arranca deshabilitado por defecto — solo cuando el flag
+  # patchright_scraper_amazon_uae está activo.
+  #
+  # Activar:
+  #   docker compose --profile scraper -f docker-compose.dev.yml up scraper-worker
+  # ---------------------------------------------------------------------------
+  scraper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.scraper-worker
+    container_name: mt-scraper-worker
+    restart: unless-stopped
+    shm_size: 2gb
+    cap_add:
+      - SYS_ADMIN
+    mem_limit: 3g
+    env_file:
+      - ./mt-pricing-backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENV: development
+      SCRAPER_HEADLESS: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./mt-pricing-backend/app:/app/app
+    profiles:
+      - scraper
+    networks:
+      - mt-internal
+
+  # ---------------------------------------------------------------------------
   # Frontend (Next.js) — dev server con HMR — NO expuesto al host
   # ---------------------------------------------------------------------------
   frontend:
@@ -218,6 +255,7 @@ services:
       - ./mt-pricing-frontend/.env.local
     environment:
       NEXT_PUBLIC_BACKEND_URL: http://localhost:${CADDY_HTTP_PORT:-8080}
+      BACKEND_URL: http://backend:8000
       NODE_ENV: development
     depends_on:
       backend:

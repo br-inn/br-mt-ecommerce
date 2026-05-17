@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import env from "@/lib/env"
 
+const apiBase = process.env.BACKEND_URL ?? env.NEXT_PUBLIC_BACKEND_URL
+
 async function getTaxonomyProfiles() {
   const res = await fetch(
-    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/taxonomy-profiles`,
+    `${apiBase}/api/v1/rule-engine/taxonomy-profiles`,
     { cache: "no-store" }
   )
   if (!res.ok) return []
@@ -14,7 +16,7 @@ async function getTaxonomyProfiles() {
 
 async function getSuggestionCounts(): Promise<Record<string, number>> {
   const res = await fetch(
-    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rule-engine/rule-suggestions?status=pending`,
+    `${apiBase}/api/v1/rule-engine/rule-suggestions?status=pending`,
     { cache: "no-store" }
   )
   if (!res.ok) return {}
