@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { ProductHeader } from "./_components/product-header";
-import { ProductTabs } from "./_components/product-tabs";
+import { ProductTabsConnected } from "./_components/product-tabs-connected";
 import { ProductBreadcrumb } from "./_components/product-breadcrumb";
 
 interface LayoutProps {
@@ -32,7 +32,7 @@ export default async function ProductDetailLayout({ children, params }: LayoutPr
       </nav>
 
       <ProductHeader sku={sku} />
-      <ProductTabs sku={sku} />
+      <ProductTabsConnected sku={sku} />
       <div>{children}</div>
     </div>
   );
