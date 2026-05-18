@@ -83,6 +83,38 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         return response
 
 
+_NO_CACHE_PATHS = ("/health/", "/metrics")
+_CACHE_CONTROL_DEFAULT = "private, max-age=60, stale-while-revalidate=30"
+
+
+class CacheControlMiddleware(BaseHTTPMiddleware):
+    """Añade Cache-Control a todas las respuestas GET 200 de la API.
+
+    Reglas:
+    - Solo GET + 200: los demás métodos/status no se cachean.
+    - `private`: el browser puede cachear pero los proxies no (seguro con JWT).
+    - `max-age=60`: datos frescos 1 min — cubre refrescos de página frecuentes.
+    - `stale-while-revalidate=30`: sirve caché stale mientras revalida en BG.
+    - No sobreescribe si el endpoint ya fijó su propio Cache-Control.
+    - Excluye /health/* y /metrics (no aportan, pueden generar ruido).
+    """
+
+    async def dispatch(  # type: ignore[override]
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        if (
+            request.method == "GET"
+            and response.status_code == 200
+            and not any(request.url.path.startswith(p) for p in _NO_CACHE_PATHS)
+            and "Cache-Control" not in response.headers
+        ):
+            response.headers["Cache-Control"] = _CACHE_CONTROL_DEFAULT
+        return response
+
+
 def install_request_context(app: ASGIApp) -> None:
     """Helper para instalar el middleware desde `main.py`."""
     # `add_middleware` espera una clase/factory, lo gestionamos en main.py.

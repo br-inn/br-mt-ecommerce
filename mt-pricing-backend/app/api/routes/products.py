@@ -737,16 +737,11 @@ async def get_product_certificates(
     from app.db.models.certificates import Certificate
     from app.db.models.product import Product as _Prod
 
-    result = await session.execute(
-        _select(_Prod.model_id).where(_Prod.sku == sku)
-    )
-    model_id = result.scalar_one_or_none()
-    if not model_id:
-        return []
+    model_id_subq = _select(_Prod.model_id).where(_Prod.sku == sku).scalar_subquery()
     certs = (
         await session.execute(
             _select(Certificate)
-            .where(Certificate.model_id == model_id)
+            .where(Certificate.model_id == model_id_subq)
             .order_by(Certificate.expires_at.nulls_last(), Certificate.cert_number)
         )
     ).scalars().all()
@@ -767,16 +762,11 @@ async def get_product_flow_data(
     from app.db.models.product_models import ModelFlowData
     from app.db.models.product import Product as _Prod
 
-    result = await session.execute(
-        _select(_Prod.model_id).where(_Prod.sku == sku)
-    )
-    model_id = result.scalar_one_or_none()
-    if not model_id:
-        return []
+    model_id_subq = _select(_Prod.model_id).where(_Prod.sku == sku).scalar_subquery()
     rows = (
         await session.execute(
             _select(ModelFlowData)
-            .where(ModelFlowData.model_id == model_id)
+            .where(ModelFlowData.model_id == model_id_subq)
             .order_by(ModelFlowData.dn_mm)
         )
     ).scalars().all()
