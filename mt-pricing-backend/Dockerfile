@@ -31,8 +31,10 @@ RUN uv pip install --system --no-cache . \
         "torch>=2.1" "torchvision>=0.16" \
         --index-url https://download.pytorch.org/whl/cpu \
     && pip list --format=freeze 2>/dev/null \
-        | grep -i "^nvidia-" | cut -d= -f1 \
-        | xargs -r pip uninstall -y
+        | grep -i "^nvidia" | cut -d= -f1 \
+        | xargs -r pip uninstall -y \
+    && find /usr/local/lib/python3.11/site-packages \
+        -maxdepth 2 -name "nvidia*" -exec rm -rf {} + 2>/dev/null || true
 
 COPY app ./app
 COPY alembic.ini ./alembic.ini
