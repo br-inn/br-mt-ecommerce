@@ -1,7 +1,6 @@
 "use client";
 
-import env from "@/lib/env";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/client";
 
 export type MatchChannel = "amazon_uae" | "noon_uae";
 export type MatchKind = "peer" | "drop" | "unknown";
@@ -20,6 +19,11 @@ export interface MatchCandidate {
   kind: MatchKind;
   score: number;
   status: MatchStatus;
+  image_url: string | null;
+  source_url: string | null;
+  delivery_category: "local_stock" | "regional" | "import" | "unknown" | null;
+  price_confidence_score: number | null;
+  pack_units: number | null;
   validated_by: string | null;
   validated_at: string | null;
   discarded_reason: string | null;
@@ -44,6 +48,25 @@ export interface MatchRefreshResponse {
   candidates: MatchCandidate[];
 }
 
+export type RefreshTaskStatus = "queued" | "running" | "done" | "failed";
+
+export interface MatchRefreshJobResponse {
+  sku: string;
+  task_id: string;
+  task_status: RefreshTaskStatus;
+  refreshed_count: number;
+  candidates: MatchCandidate[];
+}
+
+export interface MatchRefreshStatusResponse {
+  sku: string;
+  task_id: string;
+  task_status: RefreshTaskStatus;
+  refreshed_count: number;
+  candidates: MatchCandidate[];
+  error?: string | null;
+}
+
 export interface MatchFilters {
   sku?: string;
   status?: MatchStatus;
@@ -51,40 +74,6 @@ export interface MatchFilters {
   cursor?: string | null;
   limit?: number;
   include_total?: boolean;
-}
-
-async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const supabase = createSupabaseBrowserClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.body) {
-    headers.set("Content-Type", "application/json");
-  }
-  if (session?.access_token) {
-    headers.set("Authorization", `Bearer ${session.access_token}`);
-  }
-  const res = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}${path}`, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    let detail: unknown;
-    try {
-      detail = await res.json();
-    } catch {
-      /* noop */
-    }
-    const msg =
-      typeof detail === "object" && detail && "detail" in detail
-        ? JSON.stringify((detail as { detail: unknown }).detail)
-        : res.statusText;
-    throw new Error(msg);
-  }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
@@ -111,8 +100,10 @@ export const matchesApi = {
     ),
   get: (id: string): Promise<MatchCandidateDetail> =>
     authedFetch<MatchCandidateDetail>(`/api/v1/matches/${id}`),
-  refresh: (sku: string): Promise<MatchRefreshResponse> =>
-    authedFetch<MatchRefreshResponse>(`/api/v1/matches/${sku}/refresh`, { method: "POST" }),
+  refresh: (sku: string): Promise<MatchRefreshJobResponse> =>
+    authedFetch<MatchRefreshJobResponse>(`/api/v1/matches/${sku}/refresh`, { method: "POST" }),
+  refreshStatus: (sku: string, taskId: string): Promise<MatchRefreshStatusResponse> =>
+    authedFetch<MatchRefreshStatusResponse>(`/api/v1/matches/${sku}/refresh/status/${taskId}`),
   validate: (id: string): Promise<MatchCandidate> =>
     authedFetch<MatchCandidate>(`/api/v1/matches/${id}/validate`, { method: "POST" }),
   discard: (id: string, reason?: string): Promise<MatchCandidate> =>
@@ -120,4 +111,6 @@ export const matchesApi = {
       method: "POST",
       body: JSON.stringify({ reason: reason ?? null }),
     }),
+  clearAll: (): Promise<{ deleted: number }> =>
+    authedFetch<{ deleted: number }>("/api/v1/matches", { method: "DELETE" }),
 };
