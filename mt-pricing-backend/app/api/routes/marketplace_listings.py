@@ -103,6 +103,62 @@ async def _load_channel_listings(
     return {r.product_sku: r for r in result.scalars().all()}
 
 
+def _build_product_context(product: Product) -> dict:
+    """Build the product context dict for the AI listing generator.
+
+    All data comes from the already-loaded product ORM object and its
+    eagerly loaded relationships (materials, connections, tech_tables,
+    translations, product_certifications).
+    """
+    body_material = next(
+        (
+            m for m in (product.materials or [])
+            if getattr(m, "component", None) == "body" and getattr(m, "position", 0) == 0
+        ),
+        None,
+    )
+    first_conn = next(
+        iter(sorted(product.connections or [], key=lambda c: getattr(c, "position", 99))),
+        None,
+    )
+    pt = next(
+        (t for t in (product.tech_tables or []) if getattr(t, "kind", "") == "pressure_temperature"),
+        None,
+    )
+    description_en: str = ""
+    for t in (product.translations or []):
+        if getattr(t, "lang", None) == "en":
+            description_en = getattr(t, "description", "") or ""
+            break
+
+    # Gather certifications from product_certifications M:N relationship
+    certs = getattr(product, "product_certifications", None) or []
+    cert_codes = [
+        getattr(c, "certification_code", None) or getattr(c, "code", None)
+        for c in certs
+        if getattr(c, "certification_code", None) or getattr(c, "code", None)
+    ]
+
+    return {
+        "sku": product.sku,
+        "family": product.family,
+        "dn": product.dn or "",
+        "material": getattr(body_material, "material", None) or product.material or "",
+        "connection_type": getattr(first_conn, "connection_type", None) or product.connection or "",
+        "pressure_rating": (
+            float(pt.data.get("pn")) if pt and isinstance(pt.data, dict) and pt.data.get("pn") is not None else ""
+        ),
+        "temp_min": (
+            float(pt.data.get("temp_min_c")) if pt and isinstance(pt.data, dict) and pt.data.get("temp_min_c") is not None else ""
+        ),
+        "temp_max": (
+            float(pt.data.get("temp_max_c")) if pt and isinstance(pt.data, dict) and pt.data.get("temp_max_c") is not None else ""
+        ),
+        "certifications": cert_codes,
+        "description_en": description_en,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 1. GET /{marketplace}/validate
 # ---------------------------------------------------------------------------
@@ -300,7 +356,7 @@ async def upsert_marketplace_listing(
         listing.extra = body.extra
         listing.updated_at = now
 
-    await session.commit()
+    await session.flush()
     await session.refresh(listing)
     return MarketplaceListingRead.model_validate(listing)
 
@@ -355,6 +411,7 @@ async def generate_marketplace_listing(
             selectinload(Product.materials),
             selectinload(Product.connections),
             selectinload(Product.tech_tables),
+            selectinload(Product.assets),
             selectinload(Product.translations),
         )
     )
@@ -366,53 +423,7 @@ async def generate_marketplace_listing(
         )
 
     # Build product context for the generator
-    body_material = next(
-        (
-            m for m in (product.materials or [])
-            if getattr(m, "component", None) == "body" and getattr(m, "position", 1) == 0
-        ),
-        None,
-    )
-    first_conn = next(
-        iter(sorted(product.connections or [], key=lambda c: getattr(c, "position", 99))),
-        None,
-    )
-    pt = next(
-        (t for t in (product.tech_tables or []) if getattr(t, "kind", "") == "pressure_temperature"),
-        None,
-    )
-    description_en: str = ""
-    for t in (product.translations or []):
-        if getattr(t, "lang", None) == "en":
-            description_en = getattr(t, "description", "") or ""
-            break
-
-    # Gather certifications from product_certifications M:N relationship
-    certs = getattr(product, "product_certifications", None) or []
-    cert_codes = [
-        getattr(c, "certification_code", None) or getattr(c, "code", None)
-        for c in certs
-        if getattr(c, "certification_code", None) or getattr(c, "code", None)
-    ]
-
-    product_context = {
-        "sku": product.sku,
-        "family": product.family,
-        "dn": product.dn or "",
-        "material": getattr(body_material, "material", None) or product.material or "",
-        "connection_type": getattr(first_conn, "connection_type", None) or product.connection or "",
-        "pressure_rating": (
-            float(pt.data.get("pn")) if pt and isinstance(pt.data, dict) and pt.data.get("pn") is not None else ""
-        ),
-        "temp_min": (
-            float(pt.data.get("temp_min_c")) if pt and isinstance(pt.data, dict) and pt.data.get("temp_min_c") is not None else ""
-        ),
-        "temp_max": (
-            float(pt.data.get("temp_max_c")) if pt and isinstance(pt.data, dict) and pt.data.get("temp_max_c") is not None else ""
-        ),
-        "certifications": cert_codes,
-        "description_en": description_en,
-    }
+    product_context = _build_product_context(product)
 
     # Call AI generator
     try:
@@ -453,6 +464,6 @@ async def generate_marketplace_listing(
         listing.ai_model = generated.ai_model
         listing.updated_at = now
 
-    await session.commit()
+    await session.flush()
     await session.refresh(listing)
     return MarketplaceListingRead.model_validate(listing)
