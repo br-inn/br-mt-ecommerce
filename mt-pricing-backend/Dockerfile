@@ -113,7 +113,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
     CMD curl -fsS http://localhost:8000/health/live || exit 1
 
-ENTRYPOINT ["python", "-m", "gunicorn", "app.main:app", \
+# CMD (no ENTRYPOINT) para que docker-compose command: lo reemplace limpio
+CMD ["python", "-m", "gunicorn", "app.main:app", \
     "--bind", "0.0.0.0:8000", \
     "--worker-class", "uvicorn.workers.UvicornWorker", \
     "--workers", "2", \
