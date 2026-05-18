@@ -1,9 +1,8 @@
 # =============================================================================
-# Release Docker images — backend + frontend (US-1A-CICD-01)
+# Release Docker images + deploy staging (US-1A-CICD-01)
 # =============================================================================
-# Trigger: push de tag `v*` (e.g. v0.5.0). Build multi-stage + push a GHCR.
-# Frontend: Next.js se compila en el runner (pnpm nativo), Docker solo empaqueta
-# el standalone output. Evita todos los problemas de pnpm workspace dentro de Docker.
+# Trigger: push de tag `v*`.
+# Jobs: build-backend → build-frontend → deploy (en paralelo los builds, deploy al final)
 # =============================================================================
 ---
 name: release-images
@@ -27,8 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
-      digest: ${{ steps.build.outputs.digest }}
-      image: ${{ env.IMAGE }}
+      image_tag: ${{ steps.tag.outputs.tag }}
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/mt-pricing-backend
     steps:
@@ -36,9 +34,12 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           docker image prune -af || true
-          df -h
 
       - uses: actions/checkout@v4
+
+      - name: Extract tag
+        id: tag
+        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -61,7 +62,6 @@ jobs:
             type=raw,value=latest
 
       - name: Build & push
-        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./mt-pricing-backend
@@ -75,9 +75,6 @@ jobs:
     name: Build & push frontend
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
-      image: ${{ env.IMAGE }}
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/mt-pricing-frontend
     steps:
@@ -85,13 +82,9 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           docker image prune -af || true
-          df -h
 
       - uses: actions/checkout@v4
 
-      # -----------------------------------------------------------------------
-      # Compilar Next.js en el runner (nativo) — evita problemas pnpm en Docker
-      # -----------------------------------------------------------------------
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -115,9 +108,6 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-      # -----------------------------------------------------------------------
-      # Empaquetar el output ya compilado en imagen Docker mínima
-      # -----------------------------------------------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -139,7 +129,6 @@ jobs:
             type=raw,value=latest
 
       - name: Build & push
-        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./mt-pricing-frontend
@@ -149,3 +138,62 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to staging
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Create deploy directory
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "mkdir -p ~/mt-deploy"
+
+      - name: Copy compose + Caddyfile
+        run: |
+          scp docker-compose.staging.yml Caddyfile.staging \
+            "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:~/mt-deploy/"
+
+      - name: Write .env.staging
+        env:
+          ENV_STAGING: ${{ secrets.ENV_STAGING }}
+        run: |
+          printf '%s' "$ENV_STAGING" | \
+            ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+              "cat > ~/mt-deploy/.env.staging"
+
+      - name: Login to GHCR + pull + up
+        run: |
+          IMAGE_TAG="${GITHUB_REF_NAME}"
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin \
+             && cd ~/mt-deploy \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN='${{ secrets.STAGING_DOMAIN }}' \
+                docker compose -f docker-compose.staging.yml pull \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN='${{ secrets.STAGING_DOMAIN }}' \
+                docker compose -f docker-compose.staging.yml up -d --remove-orphans"
+
+      - name: Healthcheck
+        run: |
+          HOST="${{ secrets.STAGING_DOMAIN }}"
+          echo "Waiting for https://$HOST/health/live ..."
+          for i in $(seq 1 18); do
+            if curl -sfk "https://$HOST/health/live" >/dev/null 2>&1; then
+              echo "OK after $((i*5))s"; exit 0
+            fi
+            echo "  attempt $i/18..."; sleep 5
+          done
+          echo "FAILED after 90s"; exit 1
