@@ -1,0 +1,102 @@
+# =============================================================================
+# Debug frontend build — lanzar manualmente para diagnosticar fallos
+# =============================================================================
+---
+name: debug-frontend-build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    name: Diagnose frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Entorno
+      # -----------------------------------------------------------------------
+      - name: "[1] Mostrar entorno"
+        run: |
+          echo "=== Node ==="
+          node --version || echo "node not found"
+          echo "=== npm ==="
+          npm --version || echo "npm not found"
+          echo "=== OS ==="
+          uname -a
+          echo "=== Disco ==="
+          df -h
+
+      - uses: actions/checkout@v4
+
+      - name: "[2] Verificar archivos clave del repo"
+        run: |
+          echo "=== Raíz del repo ==="
+          ls -la
+          echo ""
+          echo "=== pnpm-lock.yaml (primeras 10 líneas) ==="
+          head -10 pnpm-lock.yaml || echo "NO EXISTE pnpm-lock.yaml"
+          echo ""
+          echo "=== package.json raíz ==="
+          cat package.json
+          echo ""
+          echo "=== mt-pricing-frontend/package.json (primeras 20 líneas) ==="
+          head -20 mt-pricing-frontend/package.json
+          echo ""
+          echo "=== pnpm-workspace.yaml ==="
+          cat pnpm-workspace.yaml || echo "NO EXISTE"
+
+      # -----------------------------------------------------------------------
+      # 2. Instalar pnpm
+      # -----------------------------------------------------------------------
+      - name: "[3] Setup pnpm"
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: "[4] Verificar pnpm"
+        run: |
+          pnpm --version
+          which pnpm
+
+      - name: "[5] Setup Node.js 20"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      # -----------------------------------------------------------------------
+      # 3. Instalar dependencias
+      # -----------------------------------------------------------------------
+      - name: "[6] pnpm install (sin frozen-lockfile)"
+        run: pnpm install --no-frozen-lockfile --filter mt-pricing-frontend...
+
+      - name: "[7] Verificar que next está instalado"
+        run: |
+          echo "=== next version ==="
+          ./mt-pricing-frontend/node_modules/.bin/next --version || \
+          ./node_modules/.bin/next --version || \
+          echo "next no encontrado en node_modules"
+          echo ""
+          echo "=== mt-pricing-frontend/node_modules/.bin ==="
+          ls mt-pricing-frontend/node_modules/.bin/ | grep next || echo "sin binarios de next"
+
+      # -----------------------------------------------------------------------
+      # 4. Build
+      # -----------------------------------------------------------------------
+      - name: "[8] next build"
+        run: pnpm --filter mt-pricing-frontend build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NODE_OPTIONS: "--max-old-space-size=4096"
+
+      - name: "[9] Verificar output standalone"
+        run: |
+          echo "=== .next/standalone ==="
+          ls mt-pricing-frontend/.next/standalone/ || echo "NO existe standalone"
+          echo ""
+          echo "=== .next/static ==="
+          ls mt-pricing-frontend/.next/static/ || echo "NO existe static"
+          echo ""
+          echo "=== server.js ==="
+          ls -lh mt-pricing-frontend/.next/standalone/server.js || echo "NO existe server.js"
