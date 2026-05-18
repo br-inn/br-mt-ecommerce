@@ -3,14 +3,8 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-COPY package.json pnpm-lock.yaml* ./
-# Dev: --no-frozen-lockfile permite generar el lockfile en primer build.
-# CI/prod: el job ci-frontend.yml valida que el lockfile esté commitead con --frozen-lockfile.
-RUN if [ -s pnpm-lock.yaml ]; then \
-      pnpm install --frozen-lockfile; \
-    else \
-      pnpm install --no-frozen-lockfile; \
-    fi
+COPY package.json ./
+RUN pnpm install --no-frozen-lockfile
 
 FROM node:20-alpine AS builder
 WORKDIR /app
