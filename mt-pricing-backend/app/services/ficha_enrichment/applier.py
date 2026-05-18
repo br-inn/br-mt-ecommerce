@@ -5,7 +5,7 @@ import hashlib
 import logging
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete as _sa_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.ficha_enrich import FichaEnrichApplyRequest, SkuApplyResult
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 _PATCHABLE_SCALAR_FIELDS = {
     "family", "subfamily", "type", "material", "dn", "pn", "connection", "brand",
-    "weight", "weight_unit", "temp_min_c", "temp_max_c", "pressure_max_bar", "size",
+    "weight", "weight_unit", "temp_min_c", "temp_max_c", "pressure_max_bar",
 }
 
 
@@ -68,6 +68,27 @@ class FichaEnrichmentApplier:
                     applied.append(field)
                 except Exception as exc:
                     warnings.append(f"{field}: {exc}")
+
+        # Derive size from dn — always single canonical value per SKU.
+        # If dn was not set by scalar extraction, fall back to the last 3 digits
+        # of the SKU (SKU format: SSSS + DN zero-padded to 3 digits, e.g. 4097015 → DN15).
+        if request.apply_scalars:
+            from app.services.ficha_enrichment.series_resolver import dn_to_size
+            effective_dn = product.dn
+            if not effective_dn:
+                try:
+                    effective_dn = int(sku[-3:]) or None
+                    if effective_dn:
+                        product.dn = str(effective_dn)  # DB column is VARCHAR
+                        applied.append("dn")
+                except (ValueError, IndexError):
+                    pass
+            if effective_dn:
+                derived = dn_to_size(effective_dn)
+                if derived:
+                    product.size = derived
+                    if "size" not in applied:
+                        applied.append("size")
 
         # --- specs JSONB merge ---
         if request.apply_specs:
@@ -140,23 +161,24 @@ class FichaEnrichmentApplier:
         result = await self._session.execute(select(Product).where(Product.sku == sku))
         return result.scalar_one_or_none()
 
+    _VALID_COMPONENT_KINDS = frozenset({
+        "body", "closure", "seat", "gasket", "screen",
+        "actuator_housing", "stem", "handle", "other",
+    })
+
     async def _replace_materials(self, sku: str, materials: list[Any]) -> None:
         # ProductMaterial in components.py — PK: (product_sku, component, position)
         # Columns: product_sku, component, position, material, observations
         from app.db.models.components import ProductMaterial
 
-        existing = (
-            await self._session.execute(
-                select(ProductMaterial).where(ProductMaterial.product_sku == sku)
-            )
-        ).scalars().all()
-        for row in existing:
-            await self._session.delete(row)
-        await self._session.flush()
+        await self._session.execute(
+            _sa_delete(ProductMaterial).where(ProductMaterial.product_sku == sku)
+        )
         for m in materials:
+            component = m.component if m.component in self._VALID_COMPONENT_KINDS else "other"
             row = ProductMaterial(
                 product_sku=sku,
-                component=m.component,
+                component=component,
                 position=m.position,
                 material=m.material,
                 observations=m.observations,
@@ -183,13 +205,13 @@ class FichaEnrichmentApplier:
         ).scalar_one_or_none()
         if existing:
             existing.data = data_payload
-            existing.source = "ficha_enrich"
+            existing.source = "imported_pdf"
         else:
             self._session.add(
                 ProductTechTable(
                     product_sku=sku,
                     kind="dimensions_by_dn",
-                    source="ficha_enrich",
+                    source="imported_pdf",
                     data=data_payload,
                 )
             )
@@ -202,17 +224,18 @@ class FichaEnrichmentApplier:
         # status, translated_by (UUID FK to users.id), translated_at, etc.
         from app.db.models.product import ProductTranslation
 
+        existing_map = {
+            row.lang: row
+            for row in (
+                await self._session.execute(
+                    select(ProductTranslation).where(ProductTranslation.sku == sku)
+                )
+            ).scalars().all()
+        }
         for t in translations:
             if not t.name and not t.description:
                 continue
-            existing = (
-                await self._session.execute(
-                    select(ProductTranslation).where(
-                        ProductTranslation.sku == sku,
-                        ProductTranslation.lang == t.lang,
-                    )
-                )
-            ).scalar_one_or_none()
+            existing = existing_map.get(t.lang)
             if existing:
                 if t.name:
                     existing.name = t.name

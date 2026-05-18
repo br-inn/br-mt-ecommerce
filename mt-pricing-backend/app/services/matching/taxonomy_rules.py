@@ -54,6 +54,7 @@ _VALVE_WEIGHTS: dict[str, Decimal] = {
     "brand_tier":        Decimal("0.07"),
     "delivery":          Decimal("0.06"),
     "data_completeness": Decimal("0.08"),
+    "actuator":          Decimal("0.00"),
 }
 
 _STRAINER_WEIGHTS: dict[str, Decimal] = {
@@ -67,6 +68,7 @@ _STRAINER_WEIGHTS: dict[str, Decimal] = {
     "brand_tier":        Decimal("0.07"),
     "delivery":          Decimal("0.05"),
     "data_completeness": Decimal("0.08"),
+    "actuator":          Decimal("0.00"),
 }
 
 _GAUGE_WEIGHTS: dict[str, Decimal] = {
@@ -80,6 +82,7 @@ _GAUGE_WEIGHTS: dict[str, Decimal] = {
     "brand_tier":        Decimal("0.07"),
     "delivery":          Decimal("0.07"),
     "data_completeness": Decimal("0.08"),
+    "actuator":          Decimal("0.00"),
 }
 
 _DEFAULT_WEIGHTS: dict[str, Decimal] = {
@@ -93,6 +96,7 @@ _DEFAULT_WEIGHTS: dict[str, Decimal] = {
     "brand_tier":        Decimal("0.18"),
     "delivery":          Decimal("0.14"),
     "data_completeness": Decimal("0.08"),
+    "actuator":          Decimal("0.00"),
 }
 
 # ---------------------------------------------------------------------------

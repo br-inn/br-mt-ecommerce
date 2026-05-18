@@ -89,6 +89,7 @@ from app.services.products.parent_resolver import ParentResolver, ParentResolver
 from app.services.products.product_service import ProductDomainError
 from app.services.specs.specs_registry import SpecsRegistry
 from app.services.specs.specs_validator import SpecsValidationError, SpecsValidator
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -2254,3 +2255,106 @@ async def list_bore_dimensions(
         raise HTTPException(status_code=404, detail={"code": "product_not_found", "title": f"SKU {sku!r} no encontrado"})
     rows = await repo.list_for_sku(sku)
     return [BoreDimensionRead.model_validate(r) for r in rows]
+
+
+# ==========================================================================
+# Datasheets — fichas técnicas y documentos asociados a un SKU
+# ==========================================================================
+class _DatasheetSummary(BaseModel):
+    id: str
+    kind: str
+    storage_path: str
+    signed_url: str
+    signed_url_expires_at: str
+    original_filename: str
+    file_size_bytes: int | None = None
+    page_count: int | None = None
+    uploaded_at: str
+    uploaded_by: str | None = None
+
+
+@router.get(
+    "/{sku}/datasheets",
+    response_model=list[_DatasheetSummary],
+    summary="Listar datasheets asociados a un SKU via asset_links (role=ficha_pdf)",
+    responses={404: {"model": ProblemDetails}},
+)
+async def list_datasheets(
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
+    _user: Annotated[User, Depends(require_permissions("products:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[_DatasheetSummary]:
+    from datetime import datetime, timedelta, timezone  # noqa: PLC0415
+    from posixpath import basename  # noqa: PLC0415
+
+    from sqlalchemy import select  # noqa: PLC0415
+
+    from app.db.models.asset_links import AssetLink  # noqa: PLC0415
+    from app.db.models.documents import Document  # noqa: PLC0415
+    from app.db.models.product import ProductAsset  # noqa: PLC0415
+    from app.services.storage import create_signed_url  # noqa: PLC0415
+
+    links_result = await session.execute(
+        select(AssetLink).where(
+            AssetLink.owner_type == "product",
+            AssetLink.owner_id == sku,
+            AssetLink.role == "ficha_pdf",
+        )
+    )
+    links = links_result.scalars().all()
+    if not links:
+        return []
+
+    asset_ids = [lnk.asset_id for lnk in links]
+
+    assets_result = await session.execute(
+        select(ProductAsset).where(ProductAsset.id.in_(asset_ids))
+    )
+    assets_by_id = {a.id: a for a in assets_result.scalars().all()}
+
+    docs_result = await session.execute(
+        select(Document).where(Document.asset_id.in_(asset_ids))
+    )
+    docs_by_asset_id = {d.asset_id: d for d in docs_result.scalars().all()}
+
+    _TTL = 3600
+    now = datetime.now(timezone.utc)
+    expires_at = (now + timedelta(seconds=_TTL)).isoformat()
+
+    summaries: list[_DatasheetSummary] = []
+    for asset_id in asset_ids:
+        asset = assets_by_id.get(asset_id)
+        if asset is None:
+            continue
+        doc = docs_by_asset_id.get(asset_id)
+
+        raw_type = doc.type if doc else "ficha_tecnica"
+        if raw_type == "manual":
+            kind = "manual"
+        elif raw_type == "ficha_tecnica":
+            kind = "ficha_tecnica"
+        else:
+            kind = "compliance"
+
+        try:
+            signed = create_signed_url(asset.storage_path, ttl_seconds=_TTL, bucket=asset.bucket)
+            signed_url = signed["signed_url"]
+        except Exception:
+            signed_url = ""
+
+        summaries.append(
+            _DatasheetSummary(
+                id=str(doc.id) if doc else str(asset.id),
+                kind=kind,
+                storage_path=asset.storage_path,
+                signed_url=signed_url,
+                signed_url_expires_at=expires_at,
+                original_filename=basename(asset.storage_path),
+                file_size_bytes=asset.bytes_size,
+                page_count=(asset.asset_meta or {}).get("page_count"),
+                uploaded_at=asset.created_at.isoformat(),
+                uploaded_by=None,
+            )
+        )
+
+    return summaries

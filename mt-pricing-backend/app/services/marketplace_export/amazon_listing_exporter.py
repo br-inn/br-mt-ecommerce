@@ -137,7 +137,8 @@ class AmazonListingExporter:
         bullets = list(getattr(listing, "bullet_points", None) or []) if listing else []
         extra = dict(getattr(listing, "extra", None) or {}) if listing else {}
 
-        price = float(getattr(channel_listing, "standard_price", 0) or 0) if channel_listing else ""
+        raw_price = extra.get("standard_price", "") if listing else ""
+        price = float(raw_price) if raw_price not in ("", None) else ""
         stock = getattr(channel_listing, "stock_qty", "") if channel_listing else ""
 
         return {

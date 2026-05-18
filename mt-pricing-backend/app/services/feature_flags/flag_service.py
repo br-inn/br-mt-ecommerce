@@ -53,6 +53,12 @@ FLAG_CHANNEL_RECOMMENDATION = "channel_recommendation"
 FLAG_SHADOW_PUBLISH_AMAZON = "shadow_publish_amazon"
 # Reverse image search via CLIP (US-RND-01-09) — R&D only; OFF por defecto.
 FLAG_REVERSE_IMAGE_SEARCH = "reverse_image_search"
+# Scraper Amazon UAE live (EP-SCR-01) — OFF por defecto hasta activación explícita.
+FLAG_LIVE_SCRAPER_AMAZON_UAE = "live_scraper_amazon_uae"
+# Scraper Amazon UAE Tier 2 — patchright/Chromium (EP-SCR-02).
+# Activa PatchrightAmazonUaeFetcher como fallback de curl_cffi o como primario.
+# OFF por defecto; requiere el servicio mt-scraper-worker corriendo.
+FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE = "patchright_scraper_amazon_uae"
 
 KNOWN_FLAGS: tuple[str, ...] = (
     FLAG_LIVE_NETWORK_AMAZON_UAE,
@@ -65,6 +71,8 @@ KNOWN_FLAGS: tuple[str, ...] = (
     FLAG_CHANNEL_RECOMMENDATION,
     FLAG_SHADOW_PUBLISH_AMAZON,
     FLAG_REVERSE_IMAGE_SEARCH,
+    FLAG_LIVE_SCRAPER_AMAZON_UAE,
+    FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE,
 )
 
 
@@ -353,6 +361,8 @@ __all__ = [
     "FLAG_LIVE_NETWORK_NOON_API",
     "FLAG_LIVE_NETWORK_NOON_UAE",
     "FLAG_LIVE_NETWORK_SP_API",
+    "FLAG_LIVE_SCRAPER_AMAZON_UAE",
+    "FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE",
     "FLAG_REVERSE_IMAGE_SEARCH",
     "FLAG_SHADOW_PUBLISH_AMAZON",
     "FLAG_VLM_JUDGE",

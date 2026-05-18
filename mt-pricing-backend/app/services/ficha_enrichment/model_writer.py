@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 from typing import Any
 
 from sqlalchemy import select, update
@@ -172,10 +173,20 @@ async def write_certificates(
         )
         if existing.scalar_one_or_none() is not None:
             continue
+        def _parse_date(s: str | None) -> date | None:
+            if not s:
+                return None
+            try:
+                return date.fromisoformat(s[:10])
+            except ValueError:
+                return None
+
         cert = Certificate(
             model_id=model.id,
             cert_number=cert_data.cert_number,
             issuer=cert_data.issuer,
+            issued_at=_parse_date(cert_data.issued_at),
+            expires_at=_parse_date(cert_data.expires_at),
             signatory_name=cert_data.signatory_name,
             signatory_role=cert_data.signatory_role,
             status="valid",

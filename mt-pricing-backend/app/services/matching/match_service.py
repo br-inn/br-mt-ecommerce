@@ -277,7 +277,8 @@ class MatchService:
         # Aplica ms-marco-MiniLM-L-6-v2 si está disponible. Degradación
         # graceful: si sentence-transformers no está instalado o Redis no
         # disponible, se mantiene el orden por score determinista.
-        if persisted and sku_dict.get("name"):
+        _rerank_query = sku_dict.get("name_en") or sku_dict.get("name") or ""
+        if persisted and _rerank_query:
             try:
                 from app.services.matching.cross_encoder_reranker import rerank_candidates  # noqa: PLC0415
 
@@ -290,15 +291,26 @@ class MatchService:
                     }
                     for i, c in enumerate(persisted)
                 ]
+                from app.core.redis import get_redis  # noqa: PLC0415
                 reranked_dicts = await rerank_candidates(
-                    query=str(sku_dict.get("name", "")),
+                    query=_rerank_query,
                     candidates=cand_dicts,
                     text_field="title",
-                    redis_client=None,  # Redis opt-in: pasar redis_client cuando esté wired
+                    redis_client=get_redis(),
                 )
                 # Reordenar persisted según nuevo ranking del cross-encoder
                 idx_order = [d["_idx"] for d in reranked_dicts]
                 persisted = [persisted[i] for i in idx_order]
+
+                # Escribir calibrated_confidence = sigmoid(rerank_score) → [0, 1]
+                import math as _math  # noqa: PLC0415
+                for _rd, _row in zip(reranked_dicts, persisted, strict=False):
+                    _rs = _rd.get("rerank_score")
+                    if _rs is not None:
+                        _row.calibrated_confidence = Decimal(
+                            str(round(1.0 / (1.0 + _math.exp(-_rs)), 4))
+                        )
+
                 logger.debug(
                     "cross_encoder.reranked",
                     extra={"sku": sku, "n": len(persisted)},
@@ -339,6 +351,107 @@ class MatchService:
                     row.price_confidence_score = max(
                         0, (row.price_confidence_score or 0) - 15
                     )
+                await self.session.flush()
+
+        # Helper reutilizable para lógica pool-relativa por nota de mismatch.
+        async def _apply_pool_relative_note(note: str) -> None:
+            mismatch: list[MatchCandidate] = []
+            ok = 0
+            for row in persisted:
+                _ns = (row.specs_jsonb or {}).get("_scoring", {}).get("notes", [])
+                if note in _ns:
+                    mismatch.append(row)
+                else:
+                    ok += 1
+            if ok > 0 and mismatch:
+                for row in mismatch:
+                    persisted.remove(row)
+                    await self.session.delete(row)
+                await self.session.flush()
+            elif mismatch and ok == 0:
+                for row in mismatch:
+                    row.price_confidence_score = max(0, (row.price_confidence_score or 0) - 15)
+                await self.session.flush()
+
+        # Helper para comparación directa de specs_jsonb (sin depender de _scoring.notes).
+        async def _apply_pool_relative_spec(
+            sku_value: str | None,
+            spec_key: str,
+            normalize_fn: Any,
+        ) -> None:
+            if not sku_value:
+                return
+            sku_norm = normalize_fn(sku_value)
+            if not sku_norm:
+                return
+            mismatch: list[MatchCandidate] = []
+            ok = 0
+            for row in persisted:
+                cand_val = (row.specs_jsonb or {}).get(spec_key)
+                cand_norm = normalize_fn(cand_val)
+                if cand_norm and cand_norm != sku_norm:
+                    mismatch.append(row)
+                else:
+                    ok += 1
+            if ok > 0 and mismatch:
+                for row in mismatch:
+                    persisted.remove(row)
+                    await self.session.delete(row)
+                await self.session.flush()
+            elif mismatch and ok == 0:
+                for row in mismatch:
+                    row.price_confidence_score = max(0, (row.price_confidence_score or 0) - 15)
+                await self.session.flush()
+
+        # ── Pool-relativa: género de conexión ──────────────────────────────────
+        from app.services.matching.scoring import (  # noqa: PLC0415
+            _normalize_gender, _normalize_bore, _normalize_seat_mat,
+        )
+        _sku_specs = sku_dict.get("specs") or {}
+
+        await _apply_pool_relative_spec(
+            _sku_specs.get("end_connection_gender"), "connection_gender", _normalize_gender
+        )
+
+        # ── Pool-relativa: bore type (full bore / reduced bore) ────────────────
+        await _apply_pool_relative_spec(
+            _sku_specs.get("bore_type"), "bore_type", _normalize_bore
+        )
+
+        # ── Pool-relativa: material asiento (seat_material) ────────────────────
+        await _apply_pool_relative_spec(
+            _sku_specs.get("seat_material"), "seat_material", _normalize_seat_mat
+        )
+
+        # ── Pool-relativa: material sello (seal_material) ──────────────────────
+        await _apply_pool_relative_spec(
+            _sku_specs.get("seal_material"), "seal_material", _normalize_seat_mat
+        )
+
+        # ── Pool-relativa: inlet/outlet asimétrico ─────────────────────────────
+        # Solo aplica si el SKU tiene conexiones distintas en inlet y outlet
+        # (producto asimétrico, p.ej. reductor, válvula de ángulo).
+        _sku_inlet = _sku_specs.get("inlet_connection")
+        _sku_outlet = _sku_specs.get("outlet_connection")
+        if persisted and _sku_inlet and _sku_outlet and _sku_inlet != _sku_outlet:
+            _io_mismatch: list[MatchCandidate] = []
+            _io_ok = 0
+            for row in persisted:
+                _rs = row.specs_jsonb or {}
+                _c_inlet = _rs.get("inlet_connection")
+                _c_outlet = _rs.get("outlet_connection")
+                if (_c_inlet and _c_inlet != _sku_inlet) or (_c_outlet and _c_outlet != _sku_outlet):
+                    _io_mismatch.append(row)
+                else:
+                    _io_ok += 1
+            if _io_ok > 0 and _io_mismatch:
+                for row in _io_mismatch:
+                    persisted.remove(row)
+                    await self.session.delete(row)
+                await self.session.flush()
+            elif _io_mismatch and _io_ok == 0:
+                for row in _io_mismatch:
+                    row.price_confidence_score = max(0, (row.price_confidence_score or 0) - 15)
                 await self.session.flush()
 
         return persisted
@@ -871,6 +984,14 @@ class MatchService:
                     current_specs["pn"] = llm["pressure_pn"]
                 if llm.get("end_connection"):
                     current_specs["thread"] = llm["end_connection"]
+                if llm.get("end_connection_gender"):
+                    current_specs["connection_gender"] = llm["end_connection_gender"]
+                if llm.get("bore_type"):
+                    current_specs["bore_type"] = llm["bore_type"]
+                if llm.get("seat_material"):
+                    current_specs["seat_material"] = llm["seat_material"]
+                if llm.get("seal_material"):
+                    current_specs["seal_material"] = llm["seal_material"]
                 if llm.get("alloy_code"):
                     current_specs["alloy"] = llm["alloy_code"]
 

@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Enum,
     ForeignKey,
     Index,
     SmallInteger,
@@ -37,7 +38,12 @@ class ProductMaterial(Base):
         primary_key=True,
     )
     component: Mapped[str] = mapped_column(
-        String(32),
+        Enum(
+            "body", "closure", "seat", "gasket", "screen",
+            "actuator_housing", "stem", "handle", "other",
+            name="component_kind",
+            create_type=False,
+        ),
         primary_key=True,
     )
     position: Mapped[int] = mapped_column(

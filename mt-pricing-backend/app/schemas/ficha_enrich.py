@@ -72,6 +72,9 @@ class ExtractedSpecs(BaseModel):
     no_frost: bool | None = None
     actuation_type: str | None = None
     bore_type: str | None = None
+    end_connection_gender: str | None = None
+    inlet_connection: str | None = None
+    outlet_connection: str | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -223,6 +226,10 @@ class FichaSeriesApplyRequest(BaseModel):
     variant_links: dict[str, str] = Field(
         default_factory=dict,
         description="Mapa variant_sku→base_sku para vincular variantes de color al crear.",
+    )
+    variant_series: str | None = Field(
+        default=None,
+        description="Prefijo de la serie variante (color pair). Si se provee, se crea su ProductModel.",
     )
 
 
