@@ -17,6 +17,7 @@ from app.api.routes import (
     hitl_queue_price,
     price_intelligence,
     ficha_enrich,
+    marketplace_listings,
     rule_engine,
     finance,
     sales,
@@ -218,3 +219,5 @@ router.include_router(price_intelligence.router)
 router.include_router(hitl_queue_price.router)
 # Match Rule Engine — taxonomy profiles, unit transforms, norm equivalences, config, suggestions
 router.include_router(rule_engine.router)
+# Amazon Marketplace Export — validate, export CSV, CRUD listing, AI generate
+router.include_router(marketplace_listings.router)
