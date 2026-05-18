@@ -24,7 +24,10 @@ RUN apt-get update \
     && pip install --no-cache-dir uv
 
 COPY pyproject.toml uv.lock* README.md ./
-RUN uv pip install --system --no-cache .
+RUN uv pip install --system --no-cache . \
+    && pip install --no-cache-dir --force-reinstall \
+        "torch>=2.1" "torchvision>=0.16" \
+        --index-url https://download.pytorch.org/whl/cpu
 
 COPY app ./app
 COPY alembic.ini ./alembic.ini
