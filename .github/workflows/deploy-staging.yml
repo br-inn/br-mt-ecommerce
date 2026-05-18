@@ -75,6 +75,13 @@ jobs:
           scp docker-compose.staging.yml Caddyfile.staging \
             "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:/home/${{ secrets.STAGING_SSH_USER }}/mt-deploy/"
 
+      - name: Write .env.staging to server
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "cat > /home/${{ secrets.STAGING_SSH_USER }}/mt-deploy/.env.staging << 'ENVEOF'
+${{ secrets.ENV_STAGING }}
+ENVEOF"
+
       # -----------------------------------------------------------------------
       # Login a GHCR en el servidor + pull + up
       # -----------------------------------------------------------------------
