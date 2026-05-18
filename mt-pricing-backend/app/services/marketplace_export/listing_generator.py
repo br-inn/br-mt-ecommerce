@@ -3,15 +3,12 @@
 Generates listing_title, listing_description, bullet_points[], search_keywords
 for Amazon UAE PlumbingFixture category from product technical data.
 """
-from __future__ import annotations
-
-import logging
 from dataclasses import dataclass
 from typing import Any
 
 import anthropic
 
-logger = logging.getLogger(__name__)
+_DEFAULT_MODEL = "claude-sonnet-4-6"
 
 _GENERATE_TOOL = {
     "name": "save_amazon_listing",
@@ -71,21 +68,21 @@ class GeneratedListingContent:
     listing_description: str
     bullet_points: list[str]
     search_keywords: str
-    ai_model: str = "claude-sonnet-4-6"
+    ai_model: str = _DEFAULT_MODEL
 
 
 class AmazonListingGenerator:
     """Generates Amazon listing content using Claude tool_use for structured output."""
 
-    def __init__(self, model: str = "claude-sonnet-4-6") -> None:
+    def __init__(self, model: str = _DEFAULT_MODEL) -> None:
         self._model = model
+        self._client = anthropic.AsyncAnthropic()
 
     async def generate(self, product_context: dict[str, Any]) -> GeneratedListingContent:
         """Call Claude and return structured listing content."""
         user_prompt = _build_user_prompt(product_context)
 
-        client = anthropic.AsyncAnthropic()
-        response = await client.messages.create(
+        response = await self._client.messages.create(
             model=self._model,
             max_tokens=1024,
             system=_SYSTEM_PROMPT,
@@ -100,7 +97,11 @@ class AmazonListingGenerator:
                 "Check API key and model availability."
             )
 
-        tool_block = next(b for b in response.content if b.type == "tool_use")
+        tool_block = next((b for b in response.content if b.type == "tool_use"), None)
+        if tool_block is None:
+            raise ValueError(
+                "Claude did not return tool_use — no tool_use block in response content."
+            )
         data = tool_block.input
 
         return GeneratedListingContent(

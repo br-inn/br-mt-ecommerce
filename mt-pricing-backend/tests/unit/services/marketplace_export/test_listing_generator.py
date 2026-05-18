@@ -1,11 +1,10 @@
 """Unit tests for AmazonListingGenerator — Anthropic SDK mocked."""
-from __future__ import annotations
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.services.marketplace_export.listing_generator import (
+    _DEFAULT_MODEL,
     AmazonListingGenerator,
     GeneratedListingContent,
 )
@@ -40,7 +39,6 @@ def _make_product_context() -> dict:
 
 @pytest.mark.asyncio
 async def test_generate_returns_structured_content():
-    generator = AmazonListingGenerator()
     mock_response = _mock_claude_response({
         "listing_title": "MT Valves PN30 Ball Valve 1/2 Brass",
         "listing_description": "Long neck ball valve threaded BSP.",
@@ -61,17 +59,18 @@ async def test_generate_returns_structured_content():
         client_instance.messages.create = AsyncMock(return_value=mock_response)
         MockClient.return_value = client_instance
 
+        generator = AmazonListingGenerator()
         result = await generator.generate(_make_product_context())
 
     assert isinstance(result, GeneratedListingContent)
     assert result.listing_title == "MT Valves PN30 Ball Valve 1/2 Brass"
     assert len(result.bullet_points) == 5
     assert result.search_keywords == "ball valve brass PN30 BSP 1/2"
+    assert result.ai_model == _DEFAULT_MODEL
 
 
 @pytest.mark.asyncio
 async def test_generate_raises_on_non_tool_use_response():
-    generator = AmazonListingGenerator()
     bad_response = MagicMock()
     bad_response.stop_reason = "end_turn"
     bad_response.content = []
@@ -83,5 +82,6 @@ async def test_generate_raises_on_non_tool_use_response():
         client_instance.messages.create = AsyncMock(return_value=bad_response)
         MockClient.return_value = client_instance
 
+        generator = AmazonListingGenerator()
         with pytest.raises(ValueError, match="did not return tool_use"):
             await generator.generate(_make_product_context())
