@@ -74,6 +74,18 @@ dev = [
     "respx>=0.20",
 ]
 
+# PyTorch CPU-only index — evita que uv descargue los paquetes nvidia-* CUDA
+# (nvidia-cublas-cu13, nvidia-cudnn-cu12, etc. suman ~3GB que no se usan sin GPU)
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
