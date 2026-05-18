@@ -2,18 +2,16 @@
 
 FROM node:20-slim AS deps
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 COPY package.json ./
-RUN pnpm install --no-frozen-lockfile
+RUN npm install --legacy-peer-deps
 
 FROM node:20-slim AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
+RUN npm run build
 
 FROM node:20-slim AS runtime
 WORKDIR /app
