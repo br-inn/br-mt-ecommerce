@@ -70,21 +70,7 @@ export function ProductBoreDimensions({ sku }: { sku: string }) {
     );
   }
 
-  if (!data || data.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Dimensiones por Norma</CardTitle>
-          <CardDescription>EN 558, ASME B16.10, AWWA C504 y otras normas aplicables.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Sin datos de dimensiones por norma registrados para este producto.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  if (!data || data.length === 0) return null;
 
   return (
     <Card>

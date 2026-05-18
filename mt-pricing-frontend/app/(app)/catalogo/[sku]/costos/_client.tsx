@@ -12,9 +12,8 @@
  * - Maneja warnings del backend (campos no declarados → toast info).
  * - Maneja errores 422 (missing required field, fx_rate_not_found_at_effective_at).
  *
- * Nota: placeholders de scheme template — en S3 no consumimos el endpoint de
- * schemes con `cost_components_template` (defer a S4). Hardcodeamos el
- * mapping inicial de los 5 esquemas para el editor; el backend valida.
+ * S4: templates de scheme se leen dinámicamente desde GET /api/v1/schemes
+ * via `useSchemeTemplate`. Fallback hardcodeado en use-schemes.ts mientras carga.
  */
 
 import * as React from "react";
@@ -40,39 +39,18 @@ import {
   useCreateCost,
   useUpdateCost,
 } from "@/lib/hooks/costs/use-cost-mutations";
+import { useSchemeTemplate } from "@/lib/hooks/costs/use-schemes";
 
 interface Props {
   sku: string;
 }
 
 // ---------------------------------------------------------------------------
-// Hardcoded scheme component templates — en S4 leeremos /api/v1/schemes.
+// Los templates de componentes de coste se leen dinámicamente desde
+// GET /api/v1/schemes via `useSchemeTemplate` (US-1A-04-S4).
+// El fallback hardcodeado vive en lib/hooks/costs/use-schemes.ts
+// y se usa automáticamente mientras carga o ante error de red.
 // ---------------------------------------------------------------------------
-const SCHEME_TEMPLATES: Record<
-  (typeof COST_SCHEMES)[number],
-  { required: string[]; optional: string[] }
-> = {
-  FBA: {
-    required: ["fob_eur", "freight_eur", "customs_aed", "fba_fees_aed"],
-    optional: ["payment_fees_pct", "marketing_aed", "storage_aed"],
-  },
-  FBM: {
-    required: ["fob_eur", "freight_eur", "customs_aed", "fbm_fees_aed"],
-    optional: ["payment_fees_pct", "marketing_aed"],
-  },
-  DIRECT_B2C: {
-    required: ["fob_eur", "freight_eur", "customs_aed"],
-    optional: ["payment_fees_pct", "marketing_aed", "shipping_aed"],
-  },
-  DIRECT_B2B: {
-    required: ["fob_eur", "freight_eur", "customs_aed"],
-    optional: ["payment_fees_pct"],
-  },
-  MARKETPLACE: {
-    required: ["fob_eur", "freight_eur", "customs_aed", "marketplace_fees_pct"],
-    optional: ["payment_fees_pct", "marketing_aed"],
-  },
-};
 
 export function CostsTabClient({ sku }: Props) {
   const { data: costs, isLoading, isError, refetch } = useCostsForSku(
@@ -178,7 +156,7 @@ function CostFormSheet({
   const createMut = useCreateCost();
   const updateMut = useUpdateCost(initial?.id ?? "");
 
-  const template = SCHEME_TEMPLATES[schemeCode];
+  const template = useSchemeTemplate(schemeCode);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

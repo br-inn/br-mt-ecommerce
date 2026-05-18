@@ -30,10 +30,12 @@ export function MtEmpty({
   title,
   hint,
   icon = <Inbox className="size-6" strokeWidth={1.4} />,
+  cta,
 }: {
   title: string;
   hint?: string;
   icon?: React.ReactNode;
+  cta?: React.ReactNode;
 }) {
   return (
     <div
@@ -50,6 +52,7 @@ export function MtEmpty({
         {title}
       </div>
       {hint ? <div className="text-xs">{hint}</div> : null}
+      {cta ? <div className="mt-2">{cta}</div> : null}
     </div>
   );
 }

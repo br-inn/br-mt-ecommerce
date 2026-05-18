@@ -195,6 +195,7 @@ export interface FichaSeriesApplyRequest {
   selected_scalar_fields?: string[];
   save_document?: boolean;
   variant_links?: Record<string, string>; // variant_sku → base_sku
+  variant_series?: string | null;          // prefijo de la serie variante (par de color)
 }
 
 export interface FichaSeriesApplyResponse {

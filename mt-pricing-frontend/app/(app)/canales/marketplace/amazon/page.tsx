@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { RefreshCw, Download, Sparkles } from "lucide-react";
+import { RefreshCw, Download, Sparkles, X } from "lucide-react";
 
 import { MtButton, MtTh, MtTd, Pill } from "@/components/mt/primitives";
 import { MT } from "@/components/mt/tokens";
@@ -12,16 +13,17 @@ import {
   type AmazonListingValidation,
   type AmazonValidationReport,
 } from "@/lib/api/endpoints/marketplace-listings";
-import { ListingDrawer } from "./_components/listing-drawer";
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function AmazonUaePage() {
+  const router = useRouter();
   const [report, setReport] = React.useState<AmazonValidationReport | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
 
   // Filter
   const [skuFilter, setSkuFilter] = React.useState("");
@@ -30,10 +32,8 @@ export default function AmazonUaePage() {
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(50);
 
-  // Drawer
-  const [drawerSku, setDrawerSku] = React.useState<string | null>(null);
-  const [drawerValidation, setDrawerValidation] =
-    React.useState<AmazonListingValidation | null>(null);
+  // Selection
+  const [selectedSkus, setSelectedSkus] = React.useState<Set<string>>(new Set());
 
   // -------------------------------------------------------------------------
   // Load data
@@ -87,13 +87,75 @@ export default function AmazonUaePage() {
   }, []);
 
   // -------------------------------------------------------------------------
-  // Row actions
+  // Selection helpers
   // -------------------------------------------------------------------------
-  const openDrawer = React.useCallback((item: AmazonListingValidation) => {
-    setDrawerSku(item.sku);
-    setDrawerValidation(item);
+  const isAllFilteredSelected =
+    filtered.length > 0 && filtered.every((l) => selectedSkus.has(l.sku));
+  const isIndeterminate =
+    filtered.some((l) => selectedSkus.has(l.sku)) && !isAllFilteredSelected;
+
+  const toggleAll = React.useCallback(() => {
+    setSelectedSkus((prev) => {
+      const next = new Set(prev);
+      if (isAllFilteredSelected) {
+        filtered.forEach((l) => next.delete(l.sku));
+      } else {
+        filtered.forEach((l) => next.add(l.sku));
+      }
+      return next;
+    });
+  }, [filtered, isAllFilteredSelected]);
+
+  const toggleRow = React.useCallback((sku: string) => {
+    setSelectedSkus((prev) => {
+      const next = new Set(prev);
+      if (next.has(sku)) next.delete(sku);
+      else next.add(sku);
+      return next;
+    });
   }, []);
 
+  const selectReady = React.useCallback(() => {
+    setSelectedSkus(new Set(filtered.filter((l) => l.is_ready).map((l) => l.sku)));
+  }, [filtered]);
+
+  const selectErrors = React.useCallback(() => {
+    setSelectedSkus(new Set(filtered.filter((l) => l.errors.length > 0).map((l) => l.sku)));
+  }, [filtered]);
+
+  const selectAll = React.useCallback(() => {
+    setSelectedSkus(new Set(filtered.map((l) => l.sku)));
+  }, [filtered]);
+
+  const clearSelection = React.useCallback(() => setSelectedSkus(new Set()), []);
+
+  const readyCount = React.useMemo(
+    () => filtered.filter((l) => l.is_ready).length,
+    [filtered],
+  );
+  const errorCount = React.useMemo(
+    () => filtered.filter((l) => l.errors.length > 0).length,
+    [filtered],
+  );
+
+  // -------------------------------------------------------------------------
+  // Row navigation
+  // -------------------------------------------------------------------------
+  const openDetail = React.useCallback(
+    (item: AmazonListingValidation) => {
+      try {
+        sessionStorage.setItem("mt-amazon-nav", JSON.stringify(filtered.map((l) => l.sku)));
+      } catch {
+        // ignore
+      }
+      void router.push(`/canales/marketplace/amazon/${encodeURIComponent(item.sku)}`);
+    },
+    [router, filtered],
+  );
+
+  // -------------------------------------------------------------------------
+  // Row actions
+  // -------------------------------------------------------------------------
   const handleGenerate = React.useCallback(
     async (sku: string, e: React.MouseEvent) => {
       e.stopPropagation();
@@ -113,9 +175,19 @@ export default function AmazonUaePage() {
   // -------------------------------------------------------------------------
   // Export
   // -------------------------------------------------------------------------
-  const handleExport = React.useCallback(() => {
-    window.open(marketplaceListingsApi.getExportUrl(), "_blank");
-  }, []);
+  const handleExport = React.useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const skus = selectedSkus.size > 0 ? [...selectedSkus] : undefined;
+      await marketplaceListingsApi.downloadExport(skus);
+    } catch (err) {
+      toast.error("No se pudo exportar", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [selectedSkus]);
 
   // -------------------------------------------------------------------------
   // Render
@@ -128,10 +200,7 @@ export default function AmazonUaePage() {
         style={{ borderColor: MT.border, background: MT.surface }}
       >
         <div className="flex flex-col gap-0.5">
-          <h1
-            className="text-[15px] font-semibold tracking-tight"
-            style={{ color: MT.ink }}
-          >
+          <h1 className="text-[15px] font-semibold tracking-tight" style={{ color: MT.ink }}>
             Amazon UAE — Listings
           </h1>
           {report ? (
@@ -147,7 +216,6 @@ export default function AmazonUaePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* SKU filter */}
           <input
             type="search"
             placeholder="Filtrar por SKU…"
@@ -173,14 +241,76 @@ export default function AmazonUaePage() {
           </MtButton>
 
           <MtButton
-            tone="neutral"
+            tone={selectedSkus.size > 0 ? "primary" : "neutral"}
             size="sm"
-            icon={<Download className="size-3.5" />}
-            onClick={handleExport}
+            icon={<Download className={`size-3.5 ${isExporting ? "animate-pulse" : ""}`} />}
+            onClick={() => void handleExport()}
+            disabled={isExporting}
           >
-            Exportar CSV
+            {isExporting
+              ? "Exportando…"
+              : selectedSkus.size > 0
+                ? `Exportar selección (${selectedSkus.size})`
+                : "Exportar CSV"}
           </MtButton>
         </div>
+      </div>
+
+      {/* ── Selection toolbar ── */}
+      <div
+        className="flex flex-wrap items-center gap-2 border-b px-6 py-2"
+        style={{ borderColor: MT.border, background: MT.surface2 }}
+      >
+        <span className="text-[11.5px] font-medium" style={{ color: MT.ink3 }}>
+          Selección rápida:
+        </span>
+
+        <button
+          type="button"
+          onClick={selectAll}
+          className="rounded border px-2.5 py-0.5 text-[11.5px] transition-colors hover:bg-muted"
+          style={{ borderColor: MT.border, color: MT.ink2 }}
+        >
+          Todos ({filtered.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={selectReady}
+          disabled={readyCount === 0}
+          className="rounded border px-2.5 py-0.5 text-[11.5px] transition-colors hover:bg-muted disabled:opacity-40"
+          style={{ borderColor: MT.successBorder, color: MT.success, background: MT.successSoft }}
+        >
+          Listos ({readyCount})
+        </button>
+
+        <button
+          type="button"
+          onClick={selectErrors}
+          disabled={errorCount === 0}
+          className="rounded border px-2.5 py-0.5 text-[11.5px] transition-colors hover:bg-muted disabled:opacity-40"
+          style={{ borderColor: MT.dangerBorder, color: MT.danger, background: MT.dangerSoft }}
+        >
+          Con errores ({errorCount})
+        </button>
+
+        {selectedSkus.size > 0 ? (
+          <>
+            <span className="mx-1 opacity-20">|</span>
+            <span className="text-[11.5px] font-semibold" style={{ color: MT.brand }}>
+              {selectedSkus.size} seleccionados
+            </span>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11.5px] transition-colors hover:opacity-70"
+              style={{ color: MT.ink3 }}
+            >
+              <X className="size-3" />
+              Limpiar
+            </button>
+          </>
+        ) : null}
       </div>
 
       {/* ── Table ── */}
@@ -192,6 +322,20 @@ export default function AmazonUaePage() {
           <table className="mt-data-table w-full border-separate border-spacing-0">
             <thead className="sticky top-0 z-10">
               <tr>
+                {/* Checkbox select-all */}
+                <MtTh style={{ width: 40, textAlign: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllFilteredSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isIndeterminate;
+                    }}
+                    onChange={toggleAll}
+                    aria-label="Seleccionar todos"
+                    className="cursor-pointer accent-[var(--color-brand,#2563eb)]"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </MtTh>
                 <MtTh style={{ width: 140 }}>SKU</MtTh>
                 <MtTh>Título</MtTh>
                 <MtTh style={{ width: 140 }}>Estado</MtTh>
@@ -204,13 +348,13 @@ export default function AmazonUaePage() {
               {isLoading
                 ? Array.from({ length: 6 }).map((_, i) => (
                     <tr key={`sk-${i}`}>
-                      {Array.from({ length: 5 }).map((__, j) => (
+                      {Array.from({ length: 6 }).map((__, j) => (
                         <MtTd key={j}>
                           <div
                             className="animate-pulse rounded"
                             style={{
                               height: 14,
-                              width: j === 1 ? 220 : j === 0 ? 100 : 60,
+                              width: j === 0 ? 16 : j === 2 ? 220 : j === 1 ? 100 : 60,
                               background: MT.surface3,
                             }}
                           />
@@ -224,7 +368,7 @@ export default function AmazonUaePage() {
               {!isLoading && pageItems.length === 0 ? (
                 <tr>
                   <MtTd
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center"
                     style={{ color: MT.ink3, paddingTop: 32, paddingBottom: 32 }}
                   >
@@ -237,25 +381,39 @@ export default function AmazonUaePage() {
               {!isLoading
                 ? pageItems.map((item, i) => {
                     const isEven = i % 2 === 0;
-                    const isSelected = drawerSku === item.sku;
+                    const isChecked = selectedSkus.has(item.sku);
                     return (
                       <tr
                         key={item.sku}
-                        onClick={() => openDrawer(item)}
+                        onClick={() => openDetail(item)}
                         style={{
-                          background: isEven ? MT.surface : MT.surface2,
-                          boxShadow: isSelected
-                            ? `inset 3px 0 0 ${MT.brand}`
-                            : undefined,
+                          background: isChecked
+                            ? MT.brandSoft
+                            : isEven
+                              ? MT.surface
+                              : MT.surface2,
+                          boxShadow: isChecked ? `inset 3px 0 0 ${MT.brand}` : undefined,
                           cursor: "pointer",
                         }}
                       >
-                        {/* SKU — monospace, brand color, clickable */}
+                        {/* Checkbox */}
+                        <MtTd style={{ textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleRow(item.sku)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Seleccionar ${item.sku}`}
+                            className="cursor-pointer accent-[var(--color-brand,#2563eb)]"
+                          />
+                        </MtTd>
+
+                        {/* SKU */}
                         <MtTd mono style={{ color: MT.brandDeep, fontWeight: 500 }}>
                           {item.sku}
                         </MtTd>
 
-                        {/* Título — not in validation payload; placeholder until drawer loads listing */}
+                        {/* Título — not in validation payload; see detail page */}
                         <MtTd style={{ color: MT.ink4 }}>
                           <span>—</span>
                         </MtTd>
@@ -320,14 +478,6 @@ export default function AmazonUaePage() {
         hasNext={hasNext}
         onNext={() => setPage((p) => p + 1)}
         {...(hasPrev ? { onPrev: () => setPage((p) => p - 1) } : {})}
-      />
-
-      {/* ── Listing Drawer ── */}
-      <ListingDrawer
-        sku={drawerSku}
-        validation={drawerValidation}
-        onClose={() => setDrawerSku(null)}
-        onGenerated={() => void load(true)}
       />
     </div>
   );

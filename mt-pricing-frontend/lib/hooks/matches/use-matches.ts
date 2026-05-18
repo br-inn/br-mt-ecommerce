@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   useMutation,
   useQuery,
@@ -14,7 +15,7 @@ import {
   type MatchCandidateDetail,
   type MatchFilters,
   type MatchListResponse,
-  type MatchRefreshResponse,
+  type MatchRefreshJobResponse,
 } from "@/lib/api/endpoints/matches";
 
 const DEFAULT_LIMIT = 25;
@@ -57,14 +58,46 @@ export function useMatchDetail(id: string | undefined) {
 
 export function useRefreshMatches() {
   const qc = useQueryClient();
-  return useMutation<MatchRefreshResponse, Error, string>({
+  const [pollingTask, setPollingTask] = React.useState<{ sku: string; taskId: string } | null>(null);
+
+  // Polling — activo solo cuando hay una task en vuelo.
+  const { data: pollData } = useQuery({
+    queryKey: ["matches", "refresh-status", pollingTask?.taskId],
+    queryFn: () => matchesApi.refreshStatus(pollingTask!.sku, pollingTask!.taskId),
+    enabled: !!pollingTask,
+    refetchInterval: (query) => {
+      const s = query.state.data?.task_status;
+      return s === "done" || s === "failed" ? false : 3000;
+    },
+  });
+
+  React.useEffect(() => {
+    if (!pollData) return;
+    if (pollData.task_status === "done") {
+      setPollingTask(null);
+      void qc.invalidateQueries({ queryKey: matchKeys.all });
+      toast.success(`Scraper encontró ${pollData.refreshed_count} candidatos para ${pollData.sku}`);
+    } else if (pollData.task_status === "failed") {
+      setPollingTask(null);
+      toast.error(`El scraper falló: ${pollData.error ?? "error desconocido"}`);
+    }
+  }, [pollData?.task_status, pollData?.sku, pollData?.refreshed_count, pollData?.error, qc]);
+
+  const mutation = useMutation<MatchRefreshJobResponse, Error, string>({
     mutationFn: (sku) => matchesApi.refresh(sku),
     onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: matchKeys.all });
-      toast.success(`Scraper devolvió ${data.refreshed_count} candidatos para ${data.sku}`);
+      if (data.task_status === "done") {
+        void qc.invalidateQueries({ queryKey: matchKeys.all });
+        toast.success(`Scraper encontró ${data.refreshed_count} candidatos para ${data.sku}`);
+      } else {
+        setPollingTask({ sku: data.sku, taskId: data.task_id });
+        toast.info("Scraping en curso — se actualizará automáticamente al terminar.");
+      }
     },
     onError: (e) => toast.error(`Refresh falló: ${e.message}`),
   });
+
+  return { ...mutation, isPolling: !!pollingTask };
 }
 
 export function useValidateMatch() {

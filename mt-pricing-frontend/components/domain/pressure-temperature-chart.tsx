@@ -141,6 +141,10 @@ export function PressureTemperatureChart({
     return innerH - ((p - ranges.minP) / (ranges.maxP - ranges.minP)) * innerH;
   };
 
+  if (ptQuery.isError || (!ptQuery.isLoading && (points.length === 0 || !ranges))) {
+    return null;
+  }
+
   return (
     <Card>
       <CardHeader>

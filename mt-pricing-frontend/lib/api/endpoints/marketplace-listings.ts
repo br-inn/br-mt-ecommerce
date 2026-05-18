@@ -1,7 +1,6 @@
 "use client";
 
-import env from "@/lib/env";
-import { authedFetch } from "@/lib/api/client";
+import { authedFetch, authedDownload } from "@/lib/api/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +43,15 @@ export interface MarketplaceListingRead {
   updated_at: string;
 }
 
+export interface MarketplaceListingUpsert {
+  status?: "draft" | "ready" | "published" | "paused";
+  listing_title?: string | null;
+  listing_description?: string | null;
+  bullet_points?: string[];
+  search_keywords?: string | null;
+  extra?: Record<string, unknown>;
+}
+
 // ---------------------------------------------------------------------------
 // API surface
 // ---------------------------------------------------------------------------
@@ -79,9 +87,41 @@ export const marketplaceListingsApi = {
     ),
 
   /**
-   * Returns the URL for the CSV export endpoint.
-   * Open with window.open() to trigger a browser download.
+   * PUT /api/v1/marketplace-listings/{sku}/amazon_uae
+   * Creates or updates a listing (manual edits, not AI).
    */
-  getExportUrl: (): string =>
-    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/marketplace-listings/amazon_uae/export`,
+  upsertListing: (sku: string, body: MarketplaceListingUpsert): Promise<MarketplaceListingRead> =>
+    authedFetch<MarketplaceListingRead>(
+      `/api/v1/marketplace-listings/${encodeURIComponent(sku)}/amazon_uae`,
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      },
+    ),
+
+  /**
+   * Returns validation for a specific SKU by fetching the full report and filtering.
+   */
+  validateSku: (sku: string): Promise<AmazonListingValidation> =>
+    authedFetch<AmazonValidationReport>(`/api/v1/marketplace-listings/amazon_uae/validate`).then(
+      (report) => {
+        const found = report.listings.find((l) => l.sku === sku);
+        if (!found) throw new Error(`SKU ${sku} not found in validation report`);
+        return found;
+      },
+    ),
+
+  /**
+   * Descarga el CSV de Amazon UAE con autenticación Bearer.
+   * Pasa `skus` para restringir la exportación a un subconjunto.
+   */
+  downloadExport: (skus?: string[]): Promise<void> => {
+    const params = new URLSearchParams();
+    if (skus && skus.length > 0) params.set("skus", skus.join(","));
+    const qs = params.toString();
+    const path = `/api/v1/marketplace-listings/amazon_uae/export${qs ? `?${qs}` : ""}`;
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const filename = skus?.length ? `AMAZON_UAE_SELECCION_${date}.csv` : `AMAZON_UAE_${date}.csv`;
+    return authedDownload(path, filename);
+  },
 };

@@ -19,7 +19,15 @@ import type {
 export interface AuditQueryFilters {
   /** CSV: `products,costs,prices` etc. */
   entity_types?: string[] | undefined;
+  /** Exact entity_id match (uno o varios IDs separados por coma). */
   entity_id?: string | undefined;
+  /**
+   * Shortcut fan-out: recupera todos los eventos del SKU y sus entidades
+   * relacionadas (costs, prices, product_translations). El backend expande
+   * a `entity_type IN (...) AND entity_id = sku`. Úsese en lugar de
+   * `entity_id` cuando se quiere el timeline completo de un producto.
+   */
+  related_sku?: string | undefined;
   actor_id?: string | undefined;
   actor_email?: string | undefined;
   action?: string | undefined;
@@ -96,6 +104,7 @@ export const auditQueryApi = {
       `/api/v1/audit-events${buildQuery({
         entity_type: entityTypes,
         entity_id: filters.entity_id,
+        related_sku: filters.related_sku,
         actor_id: filters.actor_id,
         actor_email: filters.actor_email,
         action: filters.action,

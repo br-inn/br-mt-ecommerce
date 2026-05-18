@@ -1356,6 +1356,34 @@
       "filteredEmptyHint": "Try adjusting or clearing the active filters.",
       "filteredEmptyCta": "Clear filters",
       "loadError": "Could not load the candidate pool."
+    },
+    "intelligence": {
+      "title": "Price Intelligence",
+      "subtitle": "Real-time pricing KPIs, competitive position and matching quality.",
+      "period": "Period",
+      "marketplace": "Marketplace",
+      "allMarketplaces": "All",
+      "kpis": {
+        "marketAvg": "Market avg price",
+        "marketAvgSubtitle": "Average competitor price over the period",
+        "marketMin": "Min price",
+        "marketMinSubtitle": "Lowest competitor price detected",
+        "pricePosition": "Price Position Index",
+        "pricePositionSubtitle": "MT price relative position vs market"
+      },
+      "quality": {
+        "title": "Matching quality — last 7 days",
+        "subtitle": "Confidence score distribution across processed candidates.",
+        "pctAbove80": "% > 0.8",
+        "median": "Median",
+        "totalMatches": "{total} candidates processed",
+        "noData": "No quality data available."
+      },
+      "summary": "{records} records between {dateFrom} and {dateTo}",
+      "errors": {
+        "dashboardFailed": "Could not load the price intelligence dashboard.",
+        "qualityFailed": "Could not load the quality histogram."
+      }
     }
   },
   "fx_rates": {

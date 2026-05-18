@@ -26,6 +26,11 @@ interface TranslationArrayItem extends TranslationRecord {
 
 interface MaybeTranslated {
   translations?: unknown;
+  // ProductResponse (listado) aún expone name_en como compat layer mientras
+  // ProductDetail no ha migrado del todo el campo translations al listing endpoint.
+  name_en?: string | null;
+  description_en?: string | null;
+  marketing_copy_en?: string | null;
 }
 
 function pickTranslation(
@@ -49,19 +54,19 @@ const FALLBACK_NAME = "(sin nombre)";
 
 export function getProductName(p: MaybeTranslated): string {
   const tr = pickTranslation(p, "en");
-  return tr?.name ?? FALLBACK_NAME;
+  return tr?.name ?? p.name_en ?? FALLBACK_NAME;
 }
 
 export function getProductDescription(
   p: MaybeTranslated,
 ): string | null {
   const tr = pickTranslation(p, "en");
-  return tr?.description ?? null;
+  return tr?.description ?? p.description_en ?? null;
 }
 
 export function getProductMarketingCopy(
   p: MaybeTranslated,
 ): string | null {
   const tr = pickTranslation(p, "en");
-  return tr?.marketing_copy ?? null;
+  return tr?.marketing_copy ?? p.marketing_copy_en ?? null;
 }

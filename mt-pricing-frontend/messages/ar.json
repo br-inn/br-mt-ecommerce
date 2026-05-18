@@ -1356,6 +1356,34 @@
       "filteredEmptyHint": "حاول تعديل الفلاتر النشطة أو مسحها.",
       "filteredEmptyCta": "مسح الفلاتر",
       "loadError": "تعذّر تحميل مجمع المرشحات."
+    },
+    "intelligence": {
+      "title": "ذكاء الأسعار",
+      "subtitle": "مؤشرات الأسعار الرئيسية والموقع التنافسي وجودة المطابقة في الوقت الفعلي.",
+      "period": "الفترة",
+      "marketplace": "السوق",
+      "allMarketplaces": "الكل",
+      "kpis": {
+        "marketAvg": "متوسط سعر السوق",
+        "marketAvgSubtitle": "متوسط أسعار المنافسين خلال الفترة",
+        "marketMin": "أدنى سعر",
+        "marketMinSubtitle": "أدنى سعر للمنافس تم رصده",
+        "pricePosition": "مؤشر موقع السعر",
+        "pricePositionSubtitle": "الموقع النسبي لسعر MT مقارنة بالسوق"
+      },
+      "quality": {
+        "title": "جودة المطابقة — آخر 7 أيام",
+        "subtitle": "توزيع نتائج الثقة عبر المرشحين المعالجين.",
+        "pctAbove80": "% > 0.8",
+        "median": "الوسيط",
+        "totalMatches": "{total} مرشح تم معالجته",
+        "noData": "لا توجد بيانات جودة متاحة."
+      },
+      "summary": "{records} سجل بين {dateFrom} و {dateTo}",
+      "errors": {
+        "dashboardFailed": "تعذّر تحميل لوحة معلومات ذكاء الأسعار.",
+        "qualityFailed": "تعذّر تحميل مخطط الجودة."
+      }
     }
   },
   "fx_rates": {

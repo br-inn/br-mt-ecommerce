@@ -17,7 +17,26 @@ const DIMENSION_LABELS: Record<string, string> = {
   brand_tier: "Tier de marca",
   delivery: "Entrega",
   data_completeness: "Completitud de datos",
+  actuator: "Tipo de actuador",
 }
+
+// Catálogo de blockers conocidos — aparecen siempre como opciones aunque no estén en el perfil
+const KNOWN_BLOCKERS: string[] = [
+  "dn_mismatch",
+  "material_mismatch",
+  "product_type_mismatch",
+  "ways_mismatch",
+  "pn_below_sku_requirement",
+  "pn_too_far_above",
+  "mini_mismatch",
+  "thread_mismatch",
+  "handle_mismatch",
+  "actuator_mismatch",
+  "connection_gender_mismatch",
+  "bore_type_mismatch",
+  "seat_material_mismatch",
+  "seal_material_mismatch",
+]
 
 async function getAuthHeader(): Promise<Record<string, string>> {
   const supabase = createSupabaseBrowserClient()
@@ -83,7 +102,7 @@ export function WeightsEditor({ family, initialWeights, initialBlockers }: Weigh
     })
   }
 
-  const allBlockers = Array.from(new Set([...initialBlockers, ...Array.from(blockers)]))
+  const allBlockers = Array.from(new Set([...KNOWN_BLOCKERS, ...initialBlockers, ...Array.from(blockers)]))
 
   return (
     <div className="space-y-6">

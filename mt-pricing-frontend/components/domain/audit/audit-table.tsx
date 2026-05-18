@@ -64,18 +64,22 @@ export function AuditTable({
   const [to, setTo] = React.useState("");
 
   const filters = React.useMemo<AuditQueryFilters>(() => {
+    // Solo enviar entity_types cuando el usuario ha acotado la selección.
+    // Si todos los chips están activos (selección completa) no se filtra por
+    // tipo para que el fan-out del backend devuelva todas las entidades.
+    const isSubset =
+      selectedEntities.length > 0 &&
+      selectedEntities.length < entityTypes.length;
     const f: AuditQueryFilters = {
       ...baseFilters,
-      ...(selectedEntities.length > 0
-        ? { entity_types: selectedEntities }
-        : {}),
+      ...(isSubset ? { entity_types: selectedEntities } : {}),
       ...(actorEmail ? { actor_email: actorEmail } : {}),
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
       limit: pageSize,
     };
     return f;
-  }, [baseFilters, selectedEntities, actorEmail, from, to, pageSize]);
+  }, [baseFilters, selectedEntities, entityTypes.length, actorEmail, from, to, pageSize]);
 
   const query = useAuditEventsQuery(filters);
 
