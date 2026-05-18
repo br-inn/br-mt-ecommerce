@@ -147,6 +147,7 @@ from app.db.models.unit_transform import UnitTransform  # noqa: F401
 from app.db.models.norm_equivalence import NormEquivalence  # noqa: F401
 from app.db.models.match_rule_stat import MatchRuleStat  # noqa: F401
 from app.db.models.rule_suggestion import RuleSuggestion  # noqa: F401
+from app.db.models.marketplace_listing import MarketplaceListing  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -381,4 +382,6 @@ __all__ = [
     "NormEquivalence",
     "MatchRuleStat",
     "RuleSuggestion",
+    # Marketplace export listings (Task 1 migration)
+    "MarketplaceListing",
 ]
