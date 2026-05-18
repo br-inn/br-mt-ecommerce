@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   Download,
   RefreshCcw,
+  Trash2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -26,6 +27,7 @@ import {
   useValidateMatch,
 } from "@/lib/hooks/matches/use-matches";
 import { matchesApi } from "@/lib/api/endpoints/matches";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   MatchCandidate,
   MatchStatus,
@@ -124,10 +126,27 @@ export default function ValidacionMatchesPage() {
   );
   const total = data?.pages[0]?.total ?? null;
 
+  const queryClient = useQueryClient();
   const refresh = useRefreshMatches();
   const validate = useValidateMatch();
   const discard = useDiscardMatch();
   const mutating = validate.isPending || discard.isPending;
+  const scraping = refresh.isPending || refresh.isPolling;
+
+  const [clearing, setClearing] = React.useState(false);
+  async function handleClearAll() {
+    if (!window.confirm("¿Borrar TODOS los candidatos de prueba? Esta acción no se puede deshacer.")) return;
+    setClearing(true);
+    try {
+      const { deleted } = await matchesApi.clearAll();
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      window.alert(`${deleted} candidatos eliminados.`);
+    } catch (err) {
+      window.alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setClearing(false);
+    }
+  }
 
   // SKU queue stats — candidate count + best score per SKU
   const { data: queueStats } = useQuery<{ sku: string; count: number; best: number }[]>({
@@ -213,14 +232,24 @@ export default function ValidacionMatchesPage() {
             </span>
           )}
         </div>
-        <MtButton
-          size="sm"
-          icon={<RefreshCcw className="size-3" />}
-          onClick={() => queue.length > 0 && refresh.mutate(sku)}
-          disabled={refresh.isPending || queue.length === 0}
-        >
-          {refresh.isPending ? "Re-scraping…" : "Re-scrape"}
-        </MtButton>
+        <div className="flex items-center gap-2">
+          <MtButton
+            size="sm"
+            icon={<Trash2 className="size-3" />}
+            onClick={() => void handleClearAll()}
+            disabled={clearing}
+          >
+            {clearing ? "Limpiando…" : "Limpiar pruebas"}
+          </MtButton>
+          <MtButton
+            size="sm"
+            icon={<RefreshCcw className={`size-3 ${scraping ? "animate-spin" : ""}`} />}
+            onClick={() => queue.length > 0 && !scraping && refresh.mutate(sku)}
+            disabled={scraping || queue.length === 0}
+          >
+            {refresh.isPending ? "Encolando…" : refresh.isPolling ? "Scrapendo…" : "Re-scrape"}
+          </MtButton>
+        </div>
       </div>
 
       {/* Toolbar */}

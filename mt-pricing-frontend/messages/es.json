@@ -1241,8 +1241,12 @@
         "categoryNode": "Nodo categoría",
         "lastScraped": "Último scraping",
         "active": "Activa",
+        "monitoring": "Monitoreo",
         "actions": "Acciones"
       },
+      "toggleMonitoring": "Alternar monitoreo",
+      "monitoringEnabled": "Activo",
+      "monitoringDisabled": "Inactivo",
       "actions": {
         "edit": "Editar",
         "activate": "Activar",
@@ -1307,6 +1311,34 @@
       "filteredEmptyHint": "Ajusta o limpia los filtros activos.",
       "filteredEmptyCta": "Limpiar filtros",
       "loadError": "No se pudo cargar el pool de candidatos."
+    },
+    "intelligence": {
+      "title": "Price Intelligence",
+      "subtitle": "KPIs de precio, posición competitiva y calidad del matching en tiempo real.",
+      "period": "Período",
+      "marketplace": "Marketplace",
+      "allMarketplaces": "Todos",
+      "kpis": {
+        "marketAvg": "Precio medio mercado",
+        "marketAvgSubtitle": "Promedio de precios competidores en el período",
+        "marketMin": "Precio mínimo",
+        "marketMinSubtitle": "Precio competidor más bajo detectado",
+        "pricePosition": "Price Position Index",
+        "pricePositionSubtitle": "Posición relativa del precio MT vs mercado"
+      },
+      "quality": {
+        "title": "Calidad del matching — últimos 7 días",
+        "subtitle": "Distribución de confidence scores en los candidatos procesados.",
+        "pctAbove80": "% > 0.8",
+        "median": "Mediana",
+        "totalMatches": "{total} candidatos procesados",
+        "noData": "Sin datos de calidad disponibles."
+      },
+      "summary": "{records} registros entre {dateFrom} y {dateTo}",
+      "errors": {
+        "dashboardFailed": "No se pudo cargar el dashboard de inteligencia de precios.",
+        "qualityFailed": "No se pudo cargar el histograma de calidad."
+      }
     }
   },
   "fx_rates": {

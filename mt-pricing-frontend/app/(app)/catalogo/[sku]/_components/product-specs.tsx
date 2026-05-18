@@ -86,7 +86,7 @@ export function ProductSpecs({ sku }: { sku: string }) {
 
             <SectionDivider label={t("product.specs.sectionConstruction")} />
 
-            <Row label={tFields("material")} value={data.material} />
+            <Row label={tFields("material")} value={data.material_detail?.name ?? data.material} />
             <Row label={tFields("type")} value={data.type} />
             <Row label={tFields("connection")} value={data.connection} />
             <Row label={tFields("size")} value={data.size} />

@@ -36,8 +36,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useApiClient } from "@/hooks/use-api-client";
-import { usePermissions } from "@/hooks/use-permissions";
+import { useApiClient } from "@/lib/hooks/use-api-client";
+import { usePermissions } from "@/lib/hooks/use-permissions";
 
 // ---------------------------------------------------------------------------
 // Types

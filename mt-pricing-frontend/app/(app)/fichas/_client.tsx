@@ -259,6 +259,11 @@ function SerieStep({ preview, onReset, onApplySuccess }: {
     return links;
   }, [preview.series_groups]);
 
+  // First variant_series found across all groups (for model-level linking)
+  const variantSeries = React.useMemo(() => {
+    return preview.series_groups?.find(g => g.variant_series)?.variant_series ?? null;
+  }, [preview.series_groups]);
+
   const existingCount = preview.series_skus.filter(s => s.status === "existing").length;
   const newCount = preview.series_skus.filter(s => s.status === "new").length;
   const hasMultiSeries = (preview.series_groups?.length ?? 0) > 1;
@@ -280,6 +285,7 @@ function SerieStep({ preview, onReset, onApplySuccess }: {
       selected_scalar_fields: scalarFields,
       save_document: true,
       variant_links: variantLinks,
+      variant_series: variantSeries,
     }, {
       onSuccess: (result) => {
         toast.success(

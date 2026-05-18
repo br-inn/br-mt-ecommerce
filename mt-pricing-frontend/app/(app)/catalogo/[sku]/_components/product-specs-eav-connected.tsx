@@ -11,5 +11,6 @@ import { ProductSpecsCardEAV } from "./product-specs-eav";
 export function ProductSpecsCardEAVConnected({ sku }: { sku: string }) {
   const { data: product } = useProduct(sku);
   const familyId = product?.family_id ?? null;
+  if (!familyId) return null;
   return <ProductSpecsCardEAV sku={sku} familyId={familyId} />;
 }

@@ -50,12 +50,21 @@ export function ProductHeader({ sku }: Props) {
 
   // B2 — prev/next nav desde el catálogo
   const [navSkus, setNavSkus] = useState<string[]>([]);
+  // Return-to URL set by other modules (e.g. Amazon listing detail)
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
+
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("mt-catalog-nav");
       if (raw) setNavSkus(JSON.parse(raw) as string[]);
     } catch {
       // ignore — sessionStorage unavailable o contenido inválido
+    }
+    try {
+      const ret = sessionStorage.getItem("mt-catalog-return");
+      if (ret) setReturnUrl(ret);
+    } catch {
+      // ignore
     }
   }, []);
 
@@ -99,6 +108,22 @@ export function ProductHeader({ sku }: Props) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
       />
+
+      {/* Return-to banner — shown when arriving from another module (e.g. Amazon listing) */}
+      {returnUrl ? (
+        <div className="mb-2 flex items-center gap-2 text-[11.5px] text-muted-foreground">
+          <Link
+            href={returnUrl}
+            onClick={() => {
+              try { sessionStorage.removeItem("mt-catalog-return"); } catch { /* ignore */ }
+            }}
+            className="flex items-center gap-1 rounded-md border px-2.5 py-1 transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="size-3.5" />
+            Volver al listing Amazon
+          </Link>
+        </div>
+      ) : null}
 
       {/* B2 — Prev/Next navigation bar */}
       {showNav ? (

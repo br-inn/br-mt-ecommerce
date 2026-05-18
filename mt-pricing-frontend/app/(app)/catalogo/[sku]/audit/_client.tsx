@@ -34,8 +34,10 @@ const ENTITY_CHIPS = [
 export function AuditTabClient({ sku }: Props) {
   const [view, setView] = React.useState<"table" | "timeline">("table");
 
+  // Usa related_sku para activar el fan-out del backend: devuelve eventos de
+  // products, costs, prices y product_translations enlazados al SKU.
   const baseFilters = React.useMemo(
-    () => ({ entity_id: sku }),
+    () => ({ related_sku: sku }),
     [sku],
   );
 

@@ -1,4 +1,4 @@
-import { ProfileCard } from "./_components/profile-card"
+import { ProfilesTable } from "./_components/profiles-table"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import env from "@/lib/env"
@@ -54,15 +54,7 @@ export default async function RuleEnginePage() {
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {profiles.map((p: { id: string; family: string }) => (
-          <ProfileCard
-            key={p.id}
-            family={p.family}
-            pendingSuggestions={suggestionCounts[p.id] ?? 0}
-          />
-        ))}
-      </div>
+      <ProfilesTable profiles={profiles} suggestionCounts={suggestionCounts} />
     </div>
   )
 }

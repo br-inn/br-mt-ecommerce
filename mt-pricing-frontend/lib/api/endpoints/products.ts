@@ -248,6 +248,19 @@ export interface ModelFlowDataItem {
   mesh_mm: number | null;
 }
 
+export interface ProductComponentMaterial {
+  product_sku: string;
+  component: string;
+  position: number;
+  material: string;
+  observations: string | null;
+  material_grade: string | null;
+  material_standard: string | null;
+  surface_treatment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Product extends ProductListItem {
   /**
    * Backend devuelve también `id` (UUID, == `internal_id`) en el detalle.
@@ -879,6 +892,10 @@ export const productsApi = {
 
   getFlowData: (sku: string): Promise<ModelFlowDataItem[]> =>
     authedFetch<ModelFlowDataItem[]>(`/api/v1/products/${sku}/flow-data`),
+
+  // Wave 3 — Component materials
+  getMaterials: (sku: string): Promise<ProductComponentMaterial[]> =>
+    authedFetch<ProductComponentMaterial[]>(`/api/v1/products/${sku}/materials`),
 };
 
 export const PRODUCT_FAMILIES = [
