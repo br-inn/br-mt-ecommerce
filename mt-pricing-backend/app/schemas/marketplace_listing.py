@@ -32,7 +32,7 @@ class MarketplaceListingUpsert(BaseModel):
     status: ListingStatus = "draft"
     listing_title: str | None = Field(None, max_length=200)
     listing_description: str | None = Field(None, max_length=2000)
-    bullet_points: list[str] = Field(default_factory=list)
+    bullet_points: list[str] = Field(default_factory=list, max_length=5)
     search_keywords: str | None = Field(None, max_length=500)
     extra: dict[str, Any] = Field(default_factory=dict)
 
