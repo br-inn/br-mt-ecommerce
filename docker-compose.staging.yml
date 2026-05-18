@@ -42,7 +42,7 @@ services:
   # Backend (FastAPI) — imagen pre-built, sin bind mounts
   # ---------------------------------------------------------------------------
   backend:
-    image: ghcr.io/br-mt/mt-pricing-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/br-inn/mt-pricing-backend:${IMAGE_TAG:-latest}
     container_name: mt-backend-staging
     restart: unless-stopped
     expose:
@@ -87,7 +87,7 @@ services:
   # Celery Worker — imagen pre-built
   # ---------------------------------------------------------------------------
   worker:
-    image: ghcr.io/br-mt/mt-pricing-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/br-inn/mt-pricing-backend:${IMAGE_TAG:-latest}
     container_name: mt-worker-staging
     restart: unless-stopped
     env_file:
@@ -132,7 +132,7 @@ services:
   # Celery Beat — DatabaseScheduler en Supabase Postgres
   # ---------------------------------------------------------------------------
   beat:
-    image: ghcr.io/br-mt/mt-pricing-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/br-inn/mt-pricing-backend:${IMAGE_TAG:-latest}
     container_name: mt-beat-staging
     restart: unless-stopped
     env_file:
@@ -174,7 +174,7 @@ services:
   # Frontend (Next.js) — imagen pre-built, standalone output
   # ---------------------------------------------------------------------------
   frontend:
-    image: ghcr.io/br-mt/mt-pricing-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/br-inn/mt-pricing-frontend:${IMAGE_TAG:-latest}
     container_name: mt-frontend-staging
     restart: unless-stopped
     expose:
