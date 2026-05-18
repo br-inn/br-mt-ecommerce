@@ -1,9 +1,9 @@
 # =============================================================================
 # Release Docker images — backend + frontend (US-1A-CICD-01)
 # =============================================================================
-# Trigger: push de tag `v*` (e.g. v0.5.0). Build multi-stage + Trivy + cosign
-# keyless + push a GHCR. `deploy-staging.yml` se dispara cuando este workflow
-# completa con éxito (workflow_run trigger).
+# Trigger: push de tag `v*` (e.g. v0.5.0). Build multi-stage + push a GHCR.
+# Frontend: Next.js se compila en el runner (pnpm nativo), Docker solo empaqueta
+# el standalone output. Evita todos los problemas de pnpm workspace dentro de Docker.
 # =============================================================================
 ---
 name: release-images
@@ -71,8 +71,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Trivy + cosign deshabilitados en UAT — re-habilitar antes de producción
-
   build-frontend:
     name: Build & push frontend
     runs-on: ubuntu-latest
@@ -91,6 +89,32 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # -----------------------------------------------------------------------
+      # Compilar Next.js en el runner (nativo) — evita problemas pnpm en Docker
+      # -----------------------------------------------------------------------
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.1.0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter mt-pricing-frontend...
+
+      - name: Build Next.js app
+        run: pnpm --filter mt-pricing-frontend build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NODE_OPTIONS: "--max-old-space-size=4096"
+
+      # -----------------------------------------------------------------------
+      # Empaquetar el output ya compilado en imagen Docker mínima
+      # -----------------------------------------------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -115,12 +139,10 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./mt-pricing-frontend
           file: ./mt-pricing-frontend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # Trivy + cosign deshabilitados en UAT — re-habilitar antes de producción
