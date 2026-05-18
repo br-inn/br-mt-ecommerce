@@ -93,6 +93,11 @@ class Product(Base):
 
     # M1-08 — GS1 global trade item number (EAN-8 / EAN-13 / GTIN-14)
     gtin: Mapped[str | None] = mapped_column(String(14), nullable=True)
+    # Marketplace export fields (Task 1 migration)
+    hs_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    country_of_origin: Mapped[str | None] = mapped_column(
+        Text, nullable=True, server_default=text("'ES'")
+    )
     # M1-04 — unidad de medida base del producto (SAP MM base UoM)
     base_uom: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=text("'UNIT'")
@@ -419,6 +424,14 @@ class Product(Base):
         back_populates="product",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+
+    # Marketplace export listings (Task 1 migration — product_marketplace_listings)
+    marketplace_listings: Mapped[list["MarketplaceListing"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "MarketplaceListing",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="select",
     )
 
     __table_args__ = (
