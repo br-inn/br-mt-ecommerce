@@ -34,6 +34,7 @@ import {
   Settings,
   Shield,
   ShieldCheck,
+  ShoppingBag,
   SlidersHorizontal,
   Sparkles,
   Sprout,
@@ -83,9 +84,13 @@ const SECTION_COMPRAS: readonly NavItem[] = [
 
 const SECTION_PRECIOS: readonly NavItem[] = [
   { href: "/precios", label: "Precios", icon: Tags },
-  { href: "/canales", label: "Canales", icon: Network },
   { href: "/costos", label: "Cobertura costes", icon: Receipt, permissions: ["costs:read"] },
   { href: "/precios/aprobaciones", label: "Aprobaciones", icon: ShieldCheck },
+] as const;
+
+const SECTION_CANALES: readonly NavItem[] = [
+  { href: "/canales", label: "Canales", icon: Network },
+  { href: "/canales/marketplace/amazon", label: "Amazon UAE", icon: ShoppingBag },
 ] as const;
 
 const SECTION_VENTAS: readonly NavItem[] = [
@@ -398,6 +403,11 @@ export function Sidebar() {
 
         <SectionLabel collapsed={collapsed}>Precios</SectionLabel>
         {SECTION_PRECIOS.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={collapsed} />
+        ))}
+
+        <SectionLabel collapsed={collapsed}>Canales</SectionLabel>
+        {SECTION_CANALES.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
 
