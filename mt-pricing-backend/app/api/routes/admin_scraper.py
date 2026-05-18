@@ -154,6 +154,7 @@ async def get_scraper_health(
 @router.post(
     "/scraper-health/circuit/{domain}/reset",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     operation_id="resetCircuitBreaker",
 )
 async def reset_circuit_breaker(
@@ -219,6 +220,7 @@ async def add_proxy(
 @router.delete(
     "/proxies/{proxy_b64}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     operation_id="removeProxy",
 )
 async def remove_proxy(
