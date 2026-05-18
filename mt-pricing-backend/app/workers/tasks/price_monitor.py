@@ -1,12 +1,15 @@
-"""Celery tasks para monitoreo continuo de precios (US-SCR-04-02/03).
+"""Celery tasks para monitoreo continuo de precios (US-SCR-04-02/03/05).
 
 Cola dedicada: ``scraper.price_monitor`` (separada de ``scraper.brand``).
 Tasks:
 - ``price_monitor_task``: scrape precio de un SKU en un marketplace, guarda en
   ``price_history_raw``, y detecta variación > 5% vs último precio.
+  Si alerta: INSERT en ``price_alerts`` (trigger DB emite pg_notify).
 - ``bootstrap_price_monitoring``: itera marcas con ``monitoring_active=True`` y
   lanza ``price_monitor_task`` por marca × marketplace.
 - ``refresh_price_daily_stats``: REFRESH MATERIALIZED VIEW CONCURRENTLY price_daily_stats.
+- ``send_price_alert_emails``: envía emails via SendGrid para alertas sin notificar.
+- ``scraper_heartbeat``: heartbeat cada 26h — actualiza last_run_at en job_definitions.
 """
 
 from __future__ import annotations
@@ -212,6 +215,27 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
                             },
                         )
 
+                        # ── INSERT price_alert (trigger emite pg_notify) ───
+                        from app.db.models.price_alerts import PriceAlert
+
+                        alert_obj = PriceAlert(
+                            match_id=match_id,
+                            sku=sku,
+                            marketplace=marketplace,
+                            alert_type="price_variation",
+                            threshold_pct=PRICE_VARIATION_THRESHOLD,
+                            prev_price_aed=prev_price,
+                            current_price_aed=current_price,
+                            variation_pct=variation_pct,
+                            channel="email",
+                        )
+                        session.add(alert_obj)
+                        await session.commit()
+                        logger.info(
+                            "price_monitor.alert_inserted",
+                            extra={"sku": sku, "marketplace": marketplace},
+                        )
+
                 return {
                     "sku": sku,
                     "marketplace": marketplace,
@@ -367,3 +391,188 @@ def refresh_price_daily_stats_task() -> dict:
     except Exception as exc:
         logger.exception("price_monitor.stats_refresh_failed", extra={"error": str(exc)})
         raise
+
+
+# ---------------------------------------------------------------------------
+# send_price_alert_emails — US-SCR-04-05
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    name="mt.scraper.send_price_alert_emails",
+    acks_late=True,
+    queue=PRICE_MONITOR_QUEUE,
+)
+def send_price_alert_emails_task() -> dict:
+    """Envía emails via SendGrid para price_alerts con notified_at IS NULL.
+
+    Si SENDGRID_API_KEY no está configurado: log structured warning, no crash.
+    Dispara cada 5 min via job_definitions (código: send_price_alert_emails).
+    """
+    import os
+
+    async def _send() -> dict:
+        from datetime import timezone
+
+        from sqlalchemy import select, update
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.pool import NullPool
+
+        from app.core.config import settings
+        from app.db.models.price_alerts import PriceAlert
+
+        sendgrid_key = os.environ.get("SENDGRID_API_KEY") or getattr(settings, "SENDGRID_API_KEY", None)
+        if not sendgrid_key:
+            logger.warning(
+                "send_price_alert_emails.no_sendgrid_key",
+                extra={"action": "skip_send", "reason": "SENDGRID_API_KEY not configured"},
+            )
+            return {"status": "skipped", "reason": "no_sendgrid_key"}
+
+        engine = create_async_engine(
+            str(settings.DATABASE_URL),
+            poolclass=NullPool,
+            connect_args={"statement_cache_size": 0},
+        )
+        session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+        try:
+            async with session_factory() as session:
+                # Cargar alertas pendientes de notificación
+                stmt = (
+                    select(PriceAlert)
+                    .where(PriceAlert.notified_at.is_(None))
+                    .order_by(PriceAlert.triggered_at.asc())
+                    .limit(50)
+                )
+                result = await session.execute(stmt)
+                pending = list(result.scalars().all())
+
+                if not pending:
+                    return {"status": "ok", "sent": 0}
+
+                sent = 0
+                failed_ids = []
+
+                try:
+                    import sendgrid  # type: ignore[import-untyped]
+                    from sendgrid.helpers.mail import Mail  # type: ignore[import-untyped]
+
+                    sg = sendgrid.SendGridAPIClient(api_key=sendgrid_key)
+                    from_email = getattr(settings, "SENDGRID_FROM_EMAIL", "noreply@mt-ecommerce.ae")
+                    to_email = getattr(settings, "PRICE_ALERT_EMAIL", "pricing@mt-ecommerce.ae")
+
+                    for alert in pending:
+                        subject = (
+                            f"[MT Price Alert] {alert.sku or 'Unknown'} "
+                            f"on {alert.marketplace} — "
+                            f"{float(alert.variation_pct or 0):.1%} variation"
+                        )
+                        body = (
+                            f"Price alert triggered:\n\n"
+                            f"  SKU:        {alert.sku}\n"
+                            f"  Marketplace: {alert.marketplace}\n"
+                            f"  Previous:   AED {alert.prev_price_aed}\n"
+                            f"  Current:    AED {alert.current_price_aed}\n"
+                            f"  Variation:  {float(alert.variation_pct or 0):.2%}\n"
+                            f"  Triggered:  {alert.triggered_at.isoformat()}\n"
+                        )
+                        message = Mail(
+                            from_email=from_email,
+                            to_emails=to_email,
+                            subject=subject,
+                            plain_text_content=body,
+                        )
+                        response = sg.send(message)
+                        if response.status_code in (200, 202):
+                            alert.notified_at = __import__("datetime").datetime.now(tz=timezone.utc)
+                            sent += 1
+                        else:
+                            failed_ids.append(str(alert.id))
+                            logger.warning(
+                                "send_price_alert_emails.sendgrid_error",
+                                extra={"alert_id": str(alert.id), "status_code": response.status_code},
+                            )
+
+                except ImportError:
+                    logger.warning(
+                        "send_price_alert_emails.sendgrid_not_installed",
+                        extra={"action": "skip_send", "reason": "sendgrid package not available"},
+                    )
+                    return {"status": "skipped", "reason": "sendgrid_not_installed"}
+
+                await session.commit()
+                logger.info(
+                    "send_price_alert_emails.done",
+                    extra={"sent": sent, "failed": len(failed_ids)},
+                )
+                return {"status": "ok", "sent": sent, "failed": len(failed_ids)}
+        finally:
+            await engine.dispose()
+
+    try:
+        return asyncio.run(_send())
+    except Exception as exc:
+        logger.exception("send_price_alert_emails.failed", extra={"error": str(exc)})
+        raise
+
+
+# ---------------------------------------------------------------------------
+# scraper_heartbeat — US-SCR-04-05
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    name="mt.scraper.scraper_heartbeat",
+    acks_late=True,
+    queue=PRICE_MONITOR_QUEUE,
+)
+def scraper_heartbeat_task() -> dict:
+    """Heartbeat del scraper — actualiza last_run_at en job_definitions.
+
+    Corre cada 26h. Si falla → log CRITICAL (no propagar excepción para evitar
+    retry loops que consuman workers).
+    """
+    async def _heartbeat() -> dict:
+        from datetime import datetime, timezone
+
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.pool import NullPool
+
+        from app.core.config import settings
+
+        now_utc = datetime.now(tz=timezone.utc)
+        engine = create_async_engine(
+            str(settings.DATABASE_URL),
+            poolclass=NullPool,
+            connect_args={"statement_cache_size": 0},
+        )
+        async with engine.connect() as conn:
+            await conn.execute(
+                text("""
+                    UPDATE job_definitions
+                       SET last_run_at = :now
+                     WHERE code IN (
+                         'scraper_heartbeat',
+                         'bootstrap_price_monitoring',
+                         'refresh_price_daily_stats',
+                         'send_price_alert_emails'
+                     )
+                """),
+                {"now": now_utc},
+            )
+            await conn.commit()
+        await engine.dispose()
+        logger.info("scraper_heartbeat.ok", extra={"ts": now_utc.isoformat()})
+        return {"status": "ok", "ts": now_utc.isoformat()}
+
+    try:
+        return asyncio.run(_heartbeat())
+    except Exception as exc:
+        logger.critical(
+            "scraper_heartbeat.failed",
+            extra={"error": str(exc)},
+            exc_info=True,
+        )
+        # No re-raise — heartbeat failure no debe derribar el worker
+        return {"status": "error", "error": str(exc)}

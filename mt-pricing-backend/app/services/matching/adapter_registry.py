@@ -1,26 +1,9 @@
-"""Registry/factory para los fetchers de matching (Sprint 4 → Sprint 5).
+"""Registry/factory para los fetchers de matching.
 
-Decide entre el stub Sprint 3 (canned, sin red) y el adapter real S4
-(httpx + retry + circuit breaker). En Sprint 5 (US-1A-09-08) la fuente de
-verdad pasa de la env var ``MT_LIVE_NETWORK`` a flags por canal en la tabla
-``feature_flags``, leídos vía :mod:`app.services.feature_flags.flag_service`.
+Selecciona el adapter real según feature flags. Si ningún flag está activo
+o el scraper es bloqueado, devuelve lista vacía (sin stubs ni datos falsos).
 
-Defaults a ``False`` — modo seguro por defecto (sin servicio bootstrappeado).
-El kill-switch global (:func:`is_kill_switch_engaged`) overridea todos los
-flags de canal: si está engaged, el factory devuelve siempre stubs.
-
-Backwards-compat: si no hay :class:`FlagService` bootstrappeado (e.g. tests
-del registry, dev sin DB), seguimos respetando ``MT_LIVE_NETWORK`` env var
-como atajo (degraded mode).
-
-Uso::
-
-    from app.services.matching.adapter_registry import get_fetcher
-
-    fetcher = get_fetcher("amazon_uae")
-    candidates = await fetcher.fetch(query, sku=sku)
-
-Ports: :class:`app.services.matching.ports.FetcherPort`.
+Kill-switch global → siempre vacío.
 """
 
 from __future__ import annotations
@@ -29,18 +12,26 @@ import os
 from typing import TYPE_CHECKING
 
 from app.services.feature_flags.flag_service import (
-    FLAG_LIVE_NETWORK_AMAZON_UAE,
     FLAG_LIVE_NETWORK_NOON_UAE,
+    FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE as _FLAG_PATCHRIGHT,
     get_default_service,
     is_enabled,
 )
 from app.services.feature_flags.kill_switch import is_kill_switch_engaged
 
 if TYPE_CHECKING:
-    from app.services.matching.ports import FetcherPort
+    from app.services.matching.ports import CandidateRaw, FetcherPort, Query
 
 
 _LIVE_ENV = "MT_LIVE_NETWORK"
+
+# Tier 1 scraper flag — activates CurlCffiAmazonUaeFetcher.
+# Set to True in feature_flags table (or via warmup_local_cache in tests) to enable.
+FLAG_LIVE_SCRAPER_AMAZON_UAE = "live_scraper_amazon_uae"
+
+# Tier 2 scraper flag — activates PatchrightAmazonUaeFetcher.
+# Requires the mt-scraper-worker container to be running (see Dockerfile.scraper-worker).
+FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE = _FLAG_PATCHRIGHT
 
 
 def _env_fallback_enabled() -> bool:
@@ -58,7 +49,81 @@ def _live_for(flag_key: str) -> bool:
     return _env_fallback_enabled()
 
 
-def get_fetcher(channel: str) -> FetcherPort:
+class _EmptyFetcher:
+    """Fetcher nulo — devuelve lista vacía sin tocar la red ni generar datos falsos."""
+
+    def __init__(self, channel: str) -> None:
+        self.channel = channel
+
+    async def fetch(self, query: "Query", *, sku: str | None = None) -> "list[CandidateRaw]":
+        return []
+
+
+class _BlockFallbackWrapper:
+    """Envuelve un fetcher real; devuelve el fallback si es bloqueado."""
+
+    def __init__(self, primary: "FetcherPort", fallback: "FetcherPort") -> None:
+        self._primary = primary
+        self._fallback = fallback
+
+    @property
+    def channel(self) -> str:
+        return self._primary.channel  # type: ignore[attr-defined]
+
+    async def fetch(self, query: "Query", *, sku: str | None = None) -> "list[CandidateRaw]":
+        from app.services.matching.scraper_errors import ScraperBlockedError
+        import logging
+
+        try:
+            return await self._primary.fetch(query, sku=sku)
+        except ScraperBlockedError as exc:
+            logging.getLogger(__name__).warning(
+                "scraper.blocked",
+                extra={"channel": self.channel, "error": str(exc)[:120]},
+            )
+            return await self._fallback.fetch(query, sku=sku)
+
+
+def _get_amazon_uae_fetcher() -> "FetcherPort":
+    """Prioridad: curl_cffi → patchright → vacío (nunca stubs)."""
+    import logging
+    log = logging.getLogger(__name__)
+    empty = _EmptyFetcher("amazon_uae")
+
+    curl_active = _live_for(FLAG_LIVE_SCRAPER_AMAZON_UAE)
+    patchright_active = _live_for(FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE)
+
+    if curl_active:
+        try:
+            from app.services.matching.adapters.curl_cffi_amazon_uae import CurlCffiAmazonUaeFetcher
+        except ImportError:
+            log.warning("curl_cffi no disponible en este contenedor — amazon_uae desactivado")
+            return empty
+
+        fallback: "FetcherPort"
+        if patchright_active:
+            try:
+                from app.services.matching.adapters.patchright_amazon_uae import PatchrightAmazonUaeFetcher
+                fallback = _BlockFallbackWrapper(PatchrightAmazonUaeFetcher(), empty)
+            except ImportError:
+                fallback = empty
+        else:
+            fallback = empty
+
+        return _BlockFallbackWrapper(CurlCffiAmazonUaeFetcher(), fallback)
+
+    if patchright_active:
+        try:
+            from app.services.matching.adapters.patchright_amazon_uae import PatchrightAmazonUaeFetcher
+        except ImportError:
+            log.warning("patchright no disponible en este contenedor — amazon_uae desactivado")
+            return empty
+        return _BlockFallbackWrapper(PatchrightAmazonUaeFetcher(), empty)
+
+    return empty
+
+
+def get_fetcher(channel: str) -> "FetcherPort":
     """Devuelve el fetcher adecuado para un canal.
 
     Args:
@@ -68,15 +133,7 @@ def get_fetcher(channel: str) -> FetcherPort:
         ValueError: canal desconocido.
     """
     if channel == "amazon_uae":
-        if _live_for(FLAG_LIVE_NETWORK_AMAZON_UAE):
-            from app.services.matching.adapters.bright_data_amazon_uae import (
-                BrightDataAmazonUaeFetcher,
-            )
-
-            return BrightDataAmazonUaeFetcher()
-        from app.services.matching.adapters.amazon_uae_stub import AmazonUaeStubFetcher
-
-        return AmazonUaeStubFetcher()
+        return _get_amazon_uae_fetcher()
 
     if channel == "noon_uae":
         if _live_for(FLAG_LIVE_NETWORK_NOON_UAE):
@@ -85,11 +142,13 @@ def get_fetcher(channel: str) -> FetcherPort:
             )
 
             return PlaywrightNoonUaeFetcher()
-        from app.services.matching.adapters.noon_uae_stub import NoonUaeStubFetcher
-
-        return NoonUaeStubFetcher()
+        return _EmptyFetcher("noon_uae")
 
     raise ValueError(f"Unknown matching channel: {channel!r}")
 
 
-__all__ = ["get_fetcher"]
+__all__ = [
+    "FLAG_LIVE_SCRAPER_AMAZON_UAE",
+    "FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE",
+    "get_fetcher",
+]

@@ -154,6 +154,12 @@ def _specs_to_dict(extraction: FichaExtractionResult) -> dict[str, Any]:
         out["actuation_type"] = s.actuation_type
     if s.bore_type:
         out["bore_type"] = s.bore_type
+    if s.end_connection_gender:
+        out["end_connection_gender"] = s.end_connection_gender
+    if s.inlet_connection:
+        out["inlet_connection"] = s.inlet_connection
+    if s.outlet_connection:
+        out["outlet_connection"] = s.outlet_connection
     if s.extra:
         out.update(s.extra)
     return out

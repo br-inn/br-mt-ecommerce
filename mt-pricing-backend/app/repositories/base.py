@@ -81,6 +81,7 @@ class BaseRepository(Generic[ModelT]):
         obj = self.model(**kwargs)
         self.session.add(obj)
         await self.session.flush()  # asigna PK server-side
+        await self.session.refresh(obj)  # carga columnas server-generated (timestamps, etc.)
         return obj
 
     async def update(self, pk: UUID | str, **kwargs: Any) -> ModelT | None:

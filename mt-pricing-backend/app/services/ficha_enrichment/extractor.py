@@ -30,42 +30,55 @@ logger = logging.getLogger(__name__)
 _TOOL_SCHEMA: dict[str, Any] = {
     "name": "extract_product_fields",
     "description": (
-        "Extrae todos los campos del modelo de producto de una ficha técnica PVF "
-        "(válvulas, tuberías, accesorios). Omite los campos que no aparecen en el PDF."
+        "Extract all product model fields from a PVF datasheet "
+        "(valves, pipes, fittings). Omit fields not found in the PDF. "
+        "ALL text output MUST be in English."
     ),
     "input_schema": {
         "type": "object",
         "properties": {
-            "family": {"type": "string", "description": "Familia del producto (ej. 'válvulas de esfera')"},
-            "subfamily": {"type": "string"},
-            "type": {"type": "string", "description": "Tipo específico (ej. 'esfera roscada PN30')"},
-            "material": {"type": "string", "description": "Material cuerpo canónico (ej. 'brass_cw617n', 'ss316')"},
-            "dn": {"type": "string", "description": "Solo número sin prefijo DN (ej. '50')"},
-            "pn": {"type": "string", "description": "Solo número sin prefijo PN (ej. '30')"},
-            "connection": {"type": "string", "description": "Tipo de conexión (ej. 'bsp', 'npt', 'flanged')"},
-            "brand": {"type": "string"},
-            "temp_min_c": {"type": "integer", "description": "Temperatura mínima de trabajo en °C"},
-            "temp_max_c": {"type": "integer", "description": "Temperatura máxima de trabajo en °C"},
-            "pressure_max_bar": {"type": "number", "description": "Presión máxima en bar"},
+            "family": {"type": "string", "description": "Product family in English matching the catalog (e.g. 'Ball Valve', 'Butterfly Valve', 'Gate Valve', 'Check Valve', 'Angle Valve'). English only."},
+            "subfamily": {"type": "string", "description": "Product subfamily in English (e.g. 'Threaded ball valve with ergonomic handle', 'Full bore butterfly valve')."},
+            "type": {"type": "string", "description": "Specific product type in English (e.g. 'Threaded ball valve PN30', 'Wafer butterfly valve PN16')."},
+            "material": {"type": "string", "description": "Canonical body material code in lowercase English (e.g. 'brass_cw617n', 'ss316', 'cast_iron')."},
+            "dn": {"type": "string", "description": "Nominal diameter number only, no DN prefix (e.g. '50')."},
+            "pn": {"type": "string", "description": "Nominal pressure number only, no PN prefix (e.g. '30')."},
+            "connection": {"type": "string", "description": "Connection standard code only (e.g. 'bsp', 'npt', 'flanged', 'wafer'). Do NOT include gender here."},
+            "brand": {"type": "string", "description": "Brand using canonical catalog name: 'MT' or 'MT Middle East'. If PDF shows 'MT Business Key', 'MT BK', 'MTBK' or similar → use 'MT'."},
+            "temp_min_c": {"type": "integer", "description": "Minimum working temperature in °C."},
+            "temp_max_c": {"type": "integer", "description": "Maximum working temperature in °C."},
+            "pressure_max_bar": {"type": "number", "description": "Maximum working pressure in bar."},
             "weight": {"type": "number"},
             "weight_unit": {"type": "string", "enum": ["kg", "g", "lb"]},
-            "size": {"type": "string", "description": "Rango de tamaños (ej. '1/4\" a 2\"')"},
             "specs": {
                 "type": "object",
                 "properties": {
-                    "seat_material": {"type": "string"},
-                    "seal_material": {"type": "string"},
-                    "stem_material": {"type": "string"},
-                    "standards": {"type": "array", "items": {"type": "string"}},
-                    "certifications": {"type": "array", "items": {"type": "string"}},
+                    "seat_material": {"type": "string", "description": "Seat material in English (e.g. 'PTFE', 'EPDM')."},
+                    "seal_material": {"type": "string", "description": "Seal material in English (e.g. 'NBR', 'PTFE')."},
+                    "stem_material": {"type": "string", "description": "Stem material in English (e.g. 'Stainless steel', 'Brass CW617N')."},
+                    "standards": {"type": "array", "items": {"type": "string"}, "description": "Applicable standards (e.g. 'EN-ISO-228', 'EN-19')."},
+                    "certifications": {"type": "array", "items": {"type": "string"}, "description": "Certification codes (e.g. 'WRAS', 'ACS', 'PZH')."},
                     "no_frost": {"type": "boolean"},
-                    "actuation_type": {"type": "string"},
-                    "bore_type": {"type": "string"},
+                    "actuation_type": {"type": "string", "description": "Actuation type in English (e.g. 'manual lever', 'pneumatic', 'electric')."},
+                    "bore_type": {"type": "string", "description": "Bore type in English (e.g. 'full bore', 'reduced bore')."},
+                    "end_connection_gender": {
+                        "type": "string",
+                        "enum": ["male-female", "female-female", "male-male"],
+                        "description": "Gender configuration of threaded connections. 'male-female' = external thread on both ends (most common for inline valves). 'female-female' = internal thread on both ends. 'male-male' = both ends external. Only for threaded connections (bsp, npt, metric). Omit for flanged/wafer.",
+                    },
+                    "inlet_connection": {
+                        "type": "string",
+                        "description": "Inlet (entry) connection standard if different from outlet (e.g. 'bsp', 'flanged'). Omit if inlet equals outlet — use the top-level 'connection' field instead. Use only for asymmetric products (reducers, Y-strainers with blowdown, angle valves).",
+                    },
+                    "outlet_connection": {
+                        "type": "string",
+                        "description": "Outlet (exit) connection standard if different from inlet (e.g. 'bsp', 'flanged'). Omit if outlet equals inlet.",
+                    },
                     "extra": {
                         "type": "object",
                         "description": (
-                            "Campos adicionales sin campo propio. "
-                            "Usar 'product_line' para líneas de producto (ej. 'Gold Series')."
+                            "Additional fields without a dedicated slot. All values in English. "
+                            "Use 'product_line' for product line names (e.g. 'Gold Series')."
                         ),
                     },
                 },
@@ -76,21 +89,21 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "type": "object",
                     "required": ["component", "material"],
                     "properties": {
-                        "component": {"type": "string", "enum": ["body", "seat", "stem", "seal", "disc", "nut", "handle"]},
+                        "component": {"type": "string", "enum": ["body", "closure", "seat", "gasket", "screen", "actuator_housing", "stem", "handle", "other"]},
                         "position": {"type": "integer", "default": 0},
-                        "material": {"type": "string"},
-                        "observations": {"type": "string"},
+                        "material": {"type": "string", "description": "Material name in English."},
+                        "observations": {"type": "string", "description": "Additional observations in English."},
                         "material_grade": {
                             "type": "string",
-                            "description": "Grado material según norma (ej. EN-GJL-250, CW617N, AISI 304)"
+                            "description": "Material grade per standard (e.g. EN-GJL-250, CW617N, AISI 304)."
                         },
                         "material_standard": {
                             "type": "string",
-                            "description": "Norma del material (ej. UNE-EN-12165, ASTM A307)"
+                            "description": "Material standard (e.g. UNE-EN-12165, ASTM A307)."
                         },
                         "surface_treatment": {
                             "type": "string",
-                            "description": "Tratamiento superficial (ej. Nickel, Epoxy, Zinc, None)"
+                            "description": "Surface treatment in English (e.g. Nickel, Epoxy, Zinc, None)."
                         },
                     },
                 },
@@ -101,11 +114,11 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "type": "object",
                     "required": ["dn_label", "values"],
                     "properties": {
-                        "dn_label": {"type": "string"},
+                        "dn_label": {"type": "string", "description": "DN label as it appears in the table (e.g. '1/2\"', 'DN15')."},
                         "values": {"type": "object"},
                         "dn_secondary_label": {
                             "type": "string",
-                            "description": "DN salida para reductores (ej. '3/8\"' en una reducción 1/2 x 3/8)"
+                            "description": "Outlet DN for reducers (e.g. '3/8\"' in a 1/2 x 3/8 reduction)."
                         },
                     },
                 },
@@ -113,40 +126,41 @@ _TOOL_SCHEMA: dict[str, Any] = {
             "translations": {
                 "type": "array",
                 "description": (
-                    "Nombre y descripción del producto por idioma. "
-                    "Extrae SIEMPRE si el PDF tiene texto bilingüe. "
-                    "Incluye lang='es' para español y lang='en' para inglés."
+                    "Product name and description per language. "
+                    "Extract ALWAYS if the PDF has bilingual text. "
+                    "Include lang='es' for Spanish and lang='en' for English. "
+                    "Each translation entry text must be in the language specified by lang."
                 ),
                 "items": {
                     "type": "object",
                     "required": ["lang"],
                     "properties": {
                         "lang": {"type": "string", "enum": ["es", "ar", "en"]},
-                        "name": {"type": "string", "description": "Nombre comercial del producto en este idioma"},
-                        "description": {"type": "string", "description": "Descripción técnica en este idioma"},
+                        "name": {"type": "string", "description": "Commercial product name in this language."},
+                        "description": {"type": "string", "description": "Technical description in this language."},
                     },
                 },
             },
             "model_gaps": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Información en PDF sin campo en el modelo (validación del modelo).",
+                "description": "Information found in the PDF with no corresponding model field (model validation). Write in English.",
             },
             "certificates": {
                 "type": "array",
-                "description": "Certificados emitidos detectados en el PDF (ACS, WRAS, PZH, CE/PED, etc.)",
+                "description": "Certifications detected in the PDF (ACS, WRAS, PZH, CE/PED, etc.).",
                 "items": {
                     "type": "object",
                     "required": ["certification_code"],
                     "properties": {
                         "certification_code": {
                             "type": "string",
-                            "description": "Código: ACS | WRAS | PZH | CE | FM | ISO9001 | WRAS"
+                            "description": "Code: ACS | WRAS | PZH | CE | FM | ISO9001."
                         },
                         "cert_number": {"type": "string"},
-                        "issuer": {"type": "string", "description": "Organismo emisor (ej. Carso, BSI, TÜV)"},
-                        "issued_at": {"type": "string", "description": "Fecha emisión ISO (YYYY-MM-DD)"},
-                        "expires_at": {"type": "string", "description": "Fecha caducidad ISO (YYYY-MM-DD)"},
+                        "issuer": {"type": "string", "description": "Issuing body (e.g. Carso, BSI, TÜV)."},
+                        "issued_at": {"type": "string", "description": "Issue date ISO format (YYYY-MM-DD)."},
+                        "expires_at": {"type": "string", "description": "Expiry date ISO format (YYYY-MM-DD)."},
                         "signatory_name": {"type": "string"},
                         "signatory_role": {"type": "string"},
                     },
@@ -154,15 +168,15 @@ _TOOL_SCHEMA: dict[str, Any] = {
             },
             "flow_data": {
                 "type": "array",
-                "description": "Coeficientes Kv/Cv y malla de filtración por DN (coladores/filtros)",
+                "description": "Kv/Cv flow coefficients and filter mesh size per DN (strainers/filters).",
                 "items": {
                     "type": "object",
                     "required": ["dn_label"],
                     "properties": {
-                        "dn_label": {"type": "string", "description": "Etiqueta DN como aparece en la tabla"},
-                        "kv": {"type": "number", "description": "Coeficiente de flujo Kv (m³/h)"},
-                        "cv": {"type": "number", "description": "Coeficiente de flujo Cv (US gpm)"},
-                        "mesh_mm": {"type": "number", "description": "Tamaño malla en mm (ej. 1.8, 1.0)"},
+                        "dn_label": {"type": "string", "description": "DN label as it appears in the table."},
+                        "kv": {"type": "number", "description": "Flow coefficient Kv (m³/h)."},
+                        "cv": {"type": "number", "description": "Flow coefficient Cv (US gpm)."},
+                        "mesh_mm": {"type": "number", "description": "Mesh size in mm (e.g. 1.8, 1.0)."},
                     },
                 },
             },
@@ -217,20 +231,24 @@ _PT_CURVE_TOOL: dict[str, Any] = {
 }
 
 _SYSTEM_PROMPT = (
-    "Eres un especialista en datos de productos PVF (válvulas, tuberías, accesorios industriales). "
-    "Tu tarea es extraer TODOS los campos del modelo de producto de una ficha técnica. "
-    "Sé preciso: si no ves el dato claramente, no lo incluyas. "
-    "Para materiales, usa nombres canónicos en inglés lowercase (brass_cw617n, ss316, ptfe, nbr, epdm). "
-    "Para dn/pn, usa solo el número sin prefijo (ej. '30' no 'PN30'). "
-    "\n\nTRADUCCIONES: Si el PDF tiene texto bilingüe (ej. español e inglés en columnas o secciones paralelas), "
-    "extrae el nombre comercial y descripción del producto en ambos idiomas. Usa lang='es' y lang='en'. "
-    "Ejemplo: un PDF con 'Válvula de esfera / Ball valve' → extrae ambas traducciones. "
-    "\n\nLÍNEA DE PRODUCTO: Si encuentras un nombre de línea o gama (ej. 'GOLD SERIES', 'Línea Premium', "
-    "'Serie ORO'), guárdalo en specs.extra.product_line. "
-    "\n\nTAMAÑOS: El campo 'size' debe ser el rango completo (ej. '3/8\" a 2\"'). "
-    "El campo 'dn' debe ser el tamaño nominal principal en mm (ej. '15' para DN15). "
-    "\n\nEl campo model_gaps es IMPORTANTE: lista todo lo que encuentres en el PDF que no tenga campo "
-    "correspondiente en el modelo (ej. 'tabla de par de apriete', 'curva Kv', 'certificado CE número X')."
+    "You are a PVF product data specialist (valves, pipes, industrial fittings). "
+    "Your task is to extract ALL product model fields from a technical datasheet. "
+    "Be precise: if a value is not clearly visible in the PDF, do not include it. "
+    "\n\nLANGUAGE RULE — CRITICAL: ALL output fields must be in English, "
+    "regardless of the language of the PDF. This includes family, subfamily, type, "
+    "material descriptions, observations, model_gaps, and any free-text fields. "
+    "The ONLY exception is the 'translations' array, where each entry must be "
+    "written in the language specified by its 'lang' field. "
+    "\n\nMATERIALS: Use canonical lowercase English codes (brass_cw617n, ss316, ptfe, nbr, epdm). "
+    "DN/PN: use the number only, no prefix (e.g. '30' not 'PN30'). "
+    "\n\nTRANSLATIONS: If the PDF contains bilingual text (e.g. Spanish and English in parallel columns), "
+    "extract the commercial name and description in both languages using lang='es' and lang='en'. "
+    "Example: a PDF with 'Válvula de esfera / Ball valve' → extract both translations. "
+    "\n\nPRODUCT LINE: If you find a product line or range name (e.g. 'GOLD SERIES', 'Premium Line'), "
+    "store it in specs.extra.product_line. "
+    "\n\nDN: The 'dn' field must be the main nominal size in mm (e.g. '15' for DN15). "
+    "\n\nmodel_gaps is IMPORTANT: list in English everything found in the PDF that has no "
+    "corresponding model field (e.g. 'torque table', 'Kv curve', 'CE certificate number X')."
 )
 
 _PAGE_CLASSIFICATION_PROMPT = (

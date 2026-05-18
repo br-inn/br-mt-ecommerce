@@ -11,7 +11,7 @@ Diagnostica gaps de calidad en el catálogo PIM:
 No requiere migración — usa modelos existentes (Product, ProductTranslation,
 ProductAsset).
 
-RBAC: ``pim:read`` (TI Integración + admin). Si no existe el permiso en el
+RBAC: ``admin:read`` (admin). Si no existe el permiso en el
 token se devuelve 403 via require_permissions.
 """
 
@@ -249,7 +249,7 @@ async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
 )
 async def get_pim_data_quality(
     session: Annotated[AsyncSession, Depends(get_db_session)],
-    _user: Annotated[User, Depends(require_permissions("pim:read"))],
+    _user: Annotated[User, Depends(require_permissions("admin:read"))],
 ) -> dict[str, Any]:
     """Analiza el catálogo y devuelve conteos + porcentajes de gaps PIM.
 

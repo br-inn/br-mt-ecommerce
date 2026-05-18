@@ -20,6 +20,13 @@ from app.core.middleware import RequestContextMiddleware
 from app.core.redis import close_redis
 from app.core.sentry import configure_sentry
 from app.db import dispose_engine
+from app.db.session import get_sessionmaker
+from app.repositories.feature_flags import FeatureFlagRepository
+from app.services.feature_flags.flag_service import (
+    FlagService,
+    set_default_service,
+    warmup_local_cache,
+)
 from app.services.graphrag.adapters import shutdown as graphrag_shutdown
 
 
@@ -28,6 +35,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Inicializa observabilidad al arrancar; cierra pools al apagar."""
     configure_logging()
     configure_sentry()
+
+    # Bootstrap feature flags — rellena _local_cache desde DB para que
+    # adapter_registry pueda leer flags síncronamente sin tocar Redis/DB.
+    try:
+        from app.core.redis import get_redis
+        redis_client = get_redis()
+        async_session = get_sessionmaker()
+        async with async_session() as session:
+            flag_repo = FeatureFlagRepository(session)
+            flag_svc = FlagService(flag_repo=flag_repo, redis=redis_client)
+            set_default_service(flag_svc)
+            snapshot = await flag_svc.get_all()
+            warmup_local_cache(snapshot)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "feature_flags.bootstrap_failed — usando defaults (todo False)"
+        )
+
     yield
     await dispose_engine()
     await close_redis()
@@ -53,7 +79,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-RateLimit-Remaining"],
+    expose_headers=["X-Request-ID", "X-RateLimit-Remaining", "Content-Disposition", "X-Rows-Exported", "X-Rows-Skipped"],
 )
 app.add_middleware(RequestContextMiddleware)
 

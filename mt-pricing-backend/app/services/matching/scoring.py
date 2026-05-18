@@ -646,7 +646,12 @@ def _handle_score(
         return []  # SKU sin datos de maneta — no comparar
 
     if not cand_color and not cand_type:
-        return []  # Candidato sin datos — no se puede determinar mismatch
+        # Cuando el SKU tiene color explícito de maneta (característica diferenciadora
+        # que afecta el segmento de precio), un candidato sin ningún dato de maneta
+        # probablemente es una válvula plain sin maneta decorativa → mismatch.
+        if sku_color:
+            return ["handle_mismatch"]
+        return []  # SKU solo tiene tipo, candidato sin datos → no determinar
 
     # Cuando ambos lados tienen COLOR: el color es suficiente para evaluar.
     # - Mismos colores → PASS (mismo segmento de precio, independiente del tipo)
@@ -660,6 +665,58 @@ def _handle_score(
         return ["handle_mismatch"]
 
     return []
+
+
+# ── Actuador ──────────────────────────────────────────────────────────────────
+
+_MANUAL_ACTUATORS: frozenset[str] = frozenset({
+    "manual", "lever", "handle", "free shaft", "handwheel", "manual lever",
+})
+_ELECTRIC_ACTUATORS: frozenset[str] = frozenset({
+    "electric", "motorized", "motor", "electrical", "electro",
+})
+_FLUID_ACTUATORS: frozenset[str] = frozenset({
+    "pneumatic", "hydraulic",
+})
+_GEAR_ACTUATORS: frozenset[str] = frozenset({
+    "gearbox", "gear", "worm gear", "worm",
+})
+
+
+def _actuator_category(text: str | None) -> str | None:
+    if not text:
+        return None
+    t = text.lower().strip()
+    if any(k in t for k in _ELECTRIC_ACTUATORS):
+        return "electric"
+    if any(k in t for k in _FLUID_ACTUATORS):
+        return "fluid"
+    if any(k in t for k in _GEAR_ACTUATORS):
+        return "gear"
+    if any(k in t for k in _MANUAL_ACTUATORS):
+        return "manual"
+    return t
+
+
+def _actuator_score(
+    sku_actuation: str | None,
+    cand_actuation: str | None,
+) -> tuple[Decimal, list[str]]:
+    """Compara tipo de actuador. Emite actuator_mismatch si categorías incompatibles."""
+    sku_cat = _actuator_category(sku_actuation)
+    cand_cat = _actuator_category(cand_actuation)
+
+    if sku_cat is None or cand_cat is None:
+        return Decimal("0.5"), []  # sin datos suficientes
+
+    if sku_cat == cand_cat:
+        return Decimal("1.0"), []
+
+    # Manual y gear son ambos manuales en sentido amplio — penalización leve
+    if {sku_cat, cand_cat} <= {"manual", "gear"}:
+        return Decimal("0.5"), []
+
+    return Decimal("0.0"), ["actuator_mismatch"]
 
 
 def _norma_score(sku_norma: str | None, cand_norma: str | None) -> Decimal:
@@ -717,6 +774,99 @@ def _delivery_score(delivery_text: str | None) -> Decimal:
                 return Decimal("0.5")
             return Decimal("0.3")
     return Decimal("0.5")
+
+
+# ── Bore type (full bore / reduced bore) ─────────────────────────────────────
+
+_BORE_ALIASES: dict[str, str] = {
+    "full bore": "full_bore", "full_bore": "full_bore",
+    "full port": "full_bore", "full flow": "full_bore", "fb": "full_bore",
+    "reduced bore": "reduced_bore", "reduced_bore": "reduced_bore",
+    "standard bore": "reduced_bore", "rb": "reduced_bore", "sb": "reduced_bore",
+}
+
+
+def _normalize_bore(text: str | None) -> str | None:
+    if not text:
+        return None
+    return _BORE_ALIASES.get(text.lower().strip())
+
+
+def _bore_type_score(sku_bore: str | None, cand_bore: str | None) -> list[str]:
+    """Emite bore_type_mismatch cuando ambos tienen dato y difieren."""
+    sku_b = _normalize_bore(sku_bore)
+    cand_b = _normalize_bore(cand_bore)
+    if sku_b and cand_b and sku_b != cand_b:
+        return ["bore_type_mismatch"]
+    return []
+
+
+# ── Seat / seal material ──────────────────────────────────────────────────────
+
+_SEAT_MAT_FAMILY: dict[str, str] = {
+    "ptfe": "ptfe", "rptfe": "ptfe", "teflon": "ptfe", "polytetrafluoroethylene": "ptfe",
+    "epdm": "epdm",
+    "nbr": "nbr", "buna": "nbr", "buna-n": "nbr", "buna n": "nbr",
+    "fkm": "fkm", "fpm": "fkm", "viton": "fkm",
+    "metal": "metal", "stainless": "metal", "ss316": "metal", "brass": "metal",
+    "carbon steel": "metal",
+    "silicone": "silicone", "vmq": "silicone",
+}
+
+
+def _normalize_seat_mat(text: str | None) -> str | None:
+    if not text:
+        return None
+    return _SEAT_MAT_FAMILY.get(text.lower().strip())
+
+
+def _seat_material_score(sku_seat: str | None, cand_seat: str | None) -> list[str]:
+    """Emite seat_material_mismatch cuando las familias de asiento difieren."""
+    sku_f = _normalize_seat_mat(sku_seat)
+    cand_f = _normalize_seat_mat(cand_seat)
+    if sku_f and cand_f and sku_f != cand_f:
+        return ["seat_material_mismatch"]
+    return []
+
+
+def _seal_material_score(sku_seal: str | None, cand_seal: str | None) -> list[str]:
+    """Emite seal_material_mismatch cuando familias de sello difieren."""
+    sku_f = _normalize_seat_mat(sku_seal)  # misma tabla de familias
+    cand_f = _normalize_seat_mat(cand_seal)
+    if sku_f and cand_f and sku_f != cand_f:
+        return ["seal_material_mismatch"]
+    return []
+
+
+_GENDER_ALIASES: dict[str, str] = {
+    "male-female": "male-female",
+    "m-f": "male-female",
+    "male/female": "male-female",
+    "m/f": "male-female",
+    "female-male": "male-female",
+    "f-m": "male-female",
+    "female-female": "female-female",
+    "f-f": "female-female",
+    "female to female": "female-female",
+    "male-male": "male-male",
+    "m-m": "male-male",
+    "male to male": "male-male",
+}
+
+
+def _normalize_gender(text: str | None) -> str | None:
+    if not text:
+        return None
+    return _GENDER_ALIASES.get(text.lower().strip())
+
+
+def _connection_gender_score(sku_gender: str | None, cand_gender: str | None) -> list[str]:
+    """Emite connection_gender_mismatch cuando ambos tienen género y difieren."""
+    sku_g = _normalize_gender(sku_gender)
+    cand_g = _normalize_gender(cand_gender)
+    if sku_g and cand_g and sku_g != cand_g:
+        return ["connection_gender_mismatch"]
+    return []
 
 
 # Campos clave cuya presencia mide qué tan bien se puede puntuar un candidato.
@@ -835,6 +985,31 @@ def compute_scoring(
         cand_text=_cand_handle_text,
     )
 
+    # ── Actuador ──────────────────────────────────────────────────────────────
+    sku_actuation = (sku.get("specs") or {}).get("actuation_type")
+    cand_actuation = cand_specs.get("actuation_type")
+    actuator_score, actuator_notes = _actuator_score(sku_actuation, cand_actuation)
+
+    # ── Género de conexión — nota pool-relativa, sin peso propio ──────────────
+    sku_conn_gender = (sku.get("specs") or {}).get("end_connection_gender")
+    cand_conn_gender = cand_specs.get("connection_gender") or cand_specs.get("end_connection_gender")
+    gender_notes = _connection_gender_score(sku_conn_gender, cand_conn_gender)
+
+    # ── Bore type (full bore / reduced bore) — nota pool-relativa ────────────
+    sku_bore = (sku.get("specs") or {}).get("bore_type")
+    cand_bore = cand_specs.get("bore_type")
+    bore_notes = _bore_type_score(sku_bore, cand_bore)
+
+    # ── Asiento (seat material) — nota pool-relativa ───────────────────────────
+    sku_seat = (sku.get("specs") or {}).get("seat_material")
+    cand_seat = cand_specs.get("seat_material")
+    seat_notes = _seat_material_score(sku_seat, cand_seat)
+
+    # ── Sello (seal material) — nota pool-relativa ────────────────────────────
+    sku_seal = (sku.get("specs") or {}).get("seal_material")
+    cand_seal = cand_specs.get("seal_material")
+    seal_notes = _seal_material_score(sku_seal, cand_seal)
+
     # ── Norma / estándar ──────────────────────────────────────────────────────
     sku_norma = sku.get("norma") or (sku.get("specs") or {}).get("norma")
     cand_norma = candidate.get("norma") or cand_specs.get("norma")
@@ -860,6 +1035,7 @@ def compute_scoring(
         "brand_tier":        brand_s,
         "delivery":          delivery_s,
         "data_completeness": completeness_s,
+        "actuator":          actuator_score,
     }
 
     weighted = Decimal("0")
@@ -875,7 +1051,9 @@ def compute_scoring(
 
     # Acumular todas las notas de los sub-scorers
     notes: list[str] = list(
-        pn_notes + dn_notes + thread_notes + pt_notes + ways_notes + handle_notes
+        pn_notes + dn_notes + thread_notes + pt_notes + ways_notes
+        + handle_notes + actuator_notes + gender_notes
+        + bore_notes + seat_notes + seal_notes
     )
     if mat_score == Decimal("0.0") and (sku_material or cand_material):
         notes.append("material_mismatch")

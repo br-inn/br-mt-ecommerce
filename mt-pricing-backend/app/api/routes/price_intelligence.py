@@ -90,8 +90,13 @@ async def get_price_intelligence_dashboard(
           {brand_clause}
     """)
 
-    result = await session.execute(sql, params)
-    row = result.mappings().first()
+    try:
+        result = await session.execute(sql, params)
+        row = result.mappings().first()
+    except Exception as exc:
+        # Matview no populada aún (ObjectNotInPrerequisiteStateError) u otro error DB
+        logger.warning("price_intelligence.dashboard.query_failed", extra={"error": str(exc)[:200]})
+        row = None
 
     mkt_avg = float(row["mkt_avg_price"]) if row and row["mkt_avg_price"] else None
     mkt_min = float(row["mkt_min_price"]) if row and row["mkt_min_price"] else None

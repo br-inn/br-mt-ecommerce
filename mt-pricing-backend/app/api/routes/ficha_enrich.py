@@ -295,6 +295,7 @@ async def apply_ficha_series(
                 body.extraction,
                 is_variant=variant_of is not None,
                 display_pair_sku=variant_of,
+                actor=user,
             )
             results.append(result)
             if not result.warnings:
@@ -302,7 +303,7 @@ async def apply_ficha_series(
 
     # Write model-level data (dimensions, P/T curves, certificates, flow data)
     from app.services.ficha_enrichment.model_writer import write_model_data
-    await write_model_data(session, body.series, body.extraction)
+    await write_model_data(session, body.series, body.extraction, variant_series=body.variant_series)
 
     document_id: str | None = None
     if body.save_document and body.pdf_filename:

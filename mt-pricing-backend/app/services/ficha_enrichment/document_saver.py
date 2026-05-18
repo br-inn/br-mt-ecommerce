@@ -26,11 +26,14 @@ async def save_ficha_document(
     series: str,
     skus: list[str],
 ) -> str | None:
+    """Crea Document (type=ficha_tecnica) y asset_links para cada SKU de la serie.
+
+    Si `pdf_bytes` no está vacío, sube el binario a Supabase Storage antes de
+    crear los registros. Si está vacío (e.g. re-apply sin re-envío del PDF),
+    los registros de metadatos se crean igualmente apuntando al storage_path
+    esperado — el binario puede subirse manualmente después.
     """
-    Sube el PDF a Supabase Storage, crea Document (type=ficha_tecnica) y
-    asset_links para cada SKU de la serie. Devuelve el document_id (UUID str) o None.
-    """
-    if not skus or not pdf_bytes:
+    if not skus:
         return None
 
     # Verificar qué SKUs existen (ProductAsset.sku es FK NOT NULL)
@@ -43,61 +46,90 @@ async def save_ficha_document(
         return None
 
     anchor_sku = existing_skus[0]
+    storage_path = f"{_PDF_PATH_PREFIX}/{filename}"
+
+    # Subir binario solo si se proporcionaron bytes
+    if pdf_bytes:
+        try:
+            supabase_url = os.environ.get("SUPABASE_URL", "")
+            supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+            if supabase_url and supabase_key:
+                from supabase import create_client  # noqa: PLC0415
+                client = create_client(supabase_url, supabase_key)
+                client.storage.from_(_PDF_BUCKET).upload(
+                    path=storage_path,
+                    file=pdf_bytes,
+                    file_options={"content-type": "application/pdf", "upsert": "true"},
+                )
+        except Exception as exc:
+            logger.warning("document_saver: upload a Supabase Storage falló: %s", exc)
 
     try:
-        supabase_url = os.environ.get("SUPABASE_URL", "")
-        supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-        if not supabase_url or not supabase_key:
-            logger.warning("document_saver: Supabase credentials no configuradas, omitiendo")
-            return None
-
-        from supabase import create_client  # noqa: PLC0415
-        client = create_client(supabase_url, supabase_key)
-        storage_path = f"{_PDF_PATH_PREFIX}/{filename}"
-
-        client.storage.from_(_PDF_BUCKET).upload(
-            path=storage_path,
-            file=pdf_bytes,
-            file_options={"content-type": "application/pdf", "upsert": "true"},
+        # Evitar duplicados: si ya existe un asset con este storage_path, reusar
+        from sqlalchemy import select as _sel  # noqa: PLC0415
+        existing_asset_r = await session.execute(
+            _sel(ProductAsset).where(
+                ProductAsset.bucket == _PDF_BUCKET,
+                ProductAsset.storage_path == storage_path,
+            )
         )
+        existing_asset = existing_asset_r.scalar_one_or_none()
 
-    except Exception as exc:
-        logger.warning("document_saver: upload a Supabase Storage falló: %s", exc)
-        return None
-
-    try:
-        storage_path = f"{_PDF_PATH_PREFIX}/{filename}"
-
-        asset = ProductAsset(
-            sku=anchor_sku,
-            kind="datasheet_pdf",
-            bucket=_PDF_BUCKET,
-            storage_path=storage_path,
-            mime_type="application/pdf",
-        )
-        session.add(asset)
-        await session.flush()
+        if existing_asset is None:
+            asset = ProductAsset(
+                sku=anchor_sku,
+                kind="datasheet_pdf",
+                bucket=_PDF_BUCKET,
+                storage_path=storage_path,
+                mime_type="application/pdf",
+            )
+            session.add(asset)
+            await session.flush()
+        else:
+            asset = existing_asset
 
         code = f"MTFT_{series}"
-        doc = Document(
-            type="ficha_tecnica",
-            code=code,
-            version="1",
-            language="es",
-            asset_id=asset.id,
-            issued_at=date.today(),
-        )
-        session.add(doc)
-        await session.flush()
-
-        for sku in existing_skus:
-            link = AssetLink(
-                asset_id=asset.id,
-                owner_type="product",
-                owner_id=sku,
-                role="ficha_pdf",
+        existing_doc_r = await session.execute(
+            _sel(Document).where(
+                Document.code == code,
+                Document.version == "1",
+                Document.language == "es",
             )
-            session.add(link)
+        )
+        existing_doc = existing_doc_r.scalar_one_or_none()
+
+        if existing_doc is None:
+            doc = Document(
+                type="ficha_tecnica",
+                code=code,
+                version="1",
+                language="es",
+                asset_id=asset.id,
+                issued_at=date.today(),
+            )
+            session.add(doc)
+            await session.flush()
+        else:
+            doc = existing_doc
+
+        # Crear asset_links solo para SKUs que no los tengan ya
+        for sku in existing_skus:
+            existing_link_r = await session.execute(
+                _sel(AssetLink).where(
+                    AssetLink.asset_id == asset.id,
+                    AssetLink.owner_type == "product",
+                    AssetLink.owner_id == sku,
+                    AssetLink.role == "ficha_pdf",
+                )
+            )
+            if existing_link_r.scalar_one_or_none() is None:
+                link = AssetLink(
+                    asset_id=asset.id,
+                    owner_type="product",
+                    owner_id=sku,
+                    role="ficha_pdf",
+                )
+                session.add(link)
 
         await session.flush()
         return str(doc.id)

@@ -62,6 +62,20 @@ class MatchCandidate(UuidPkMixin, TimestampMixin, Base):
     price_aed: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     delivery_text: Mapped[str | None] = mapped_column(Text)
 
+    image_url: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(Text)
+
+    # Confiabilidad del precio según plazo de entrega vs stock UAE de MT.
+    # delivery_category: "local_stock" | "regional" | "import" | "unknown"
+    # price_confidence_score: 0-100 (independiente del match score)
+    delivery_category: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    price_confidence_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Pack size — Amazon/Noon a veces lista packs de N unidades.
+    # price_aed es el precio del pack; el precio comparable = price_aed / pack_units.
+    # NULL o 1 significa precio individual.
+    pack_units: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     specs_jsonb: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )

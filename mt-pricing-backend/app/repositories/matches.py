@@ -54,6 +54,11 @@ class MatchCandidateRepository(BaseRepository[MatchCandidate]):
         specs_jsonb: dict[str, Any],
         kind: str,
         score: int,
+        image_url: str | None = None,
+        source_url: str | None = None,
+        delivery_category: str | None = None,
+        price_confidence_score: int | None = None,
+        pack_units: int | None = None,
     ) -> MatchCandidate:
         existing = await self.find_by_external(product_sku, channel, external_id)
         if existing is not None:
@@ -65,7 +70,13 @@ class MatchCandidateRepository(BaseRepository[MatchCandidate]):
             existing.specs_jsonb = specs_jsonb
             existing.kind = kind
             existing.score = score
+            existing.image_url = image_url
+            existing.source_url = source_url
+            existing.delivery_category = delivery_category
+            existing.price_confidence_score = price_confidence_score
+            existing.pack_units = pack_units
             await self.session.flush()
+            await self.session.refresh(existing)
             return existing
         return await self.create(
             product_sku=product_sku,
@@ -79,6 +90,11 @@ class MatchCandidateRepository(BaseRepository[MatchCandidate]):
             kind=kind,
             score=score,
             status="pending",
+            image_url=image_url,
+            source_url=source_url,
+            delivery_category=delivery_category,
+            price_confidence_score=price_confidence_score,
+            pack_units=pack_units,
         )
 
     # ----------------------------------------------------------------------
@@ -102,7 +118,7 @@ class MatchCandidateRepository(BaseRepository[MatchCandidate]):
             stmt = stmt.where(MatchCandidate.channel == channel)
         if cursor is not None:
             stmt = stmt.where(MatchCandidate.id > cursor)
-        stmt = stmt.order_by(MatchCandidate.id.asc()).limit(limit + 1)
+        stmt = stmt.order_by(MatchCandidate.score.desc(), MatchCandidate.id.asc()).limit(limit + 1)
         result = await self.session.execute(stmt)
         rows = list(result.scalars().all())
         if len(rows) > limit:

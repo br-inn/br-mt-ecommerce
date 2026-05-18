@@ -8,12 +8,14 @@ endpoint legacy `app/api/routes/audit.py`:
   'product_translations']) — el endpoint legacy sólo aceptaba uno.
 - ``entity_ids``: lista de ids — útil cuando un SKU tiene cost_id, price_id
   diferentes pero queremos el timeline unificado.
-- ``related_sku``: shortcut que infla la query a `(entity='products' AND
-  entity_id=sku) OR (entity IN ('costs','prices','product_translations') AND
-  payload contiene sku)`. Implementación pragmática: por ahora joinea solo
-  por entity_id directo, asumiendo que `costs`/`prices` registran el SKU
-  como `entity_id`. Si el modelo cambia → simple ajuste en este servicio sin
-  romper el contrato API.
+- ``related_sku``: fan-out real por SKU. Genera un OR de cláusulas:
+    - products:             entity_type='product'             AND entity_id = sku
+    - costs:                entity_type='cost'                AND entity_id IN (SELECT id::text FROM costs WHERE sku = :sku)
+    - prices:               entity_type='price'               AND entity_id IN (SELECT id::text FROM prices WHERE product_sku = :sku)
+    - product_translations: entity_type='product_translation' AND entity_id LIKE '{sku}:%'
+  El cast id::text es necesario porque audit_events.entity_id es TEXT y las
+  PKs son UUID. fx_rates no tiene FK a SKU (son tasas globales) y se excluye
+  del fan-out automático (puede añadirse vía entity_types si se desea).
 - ``actions``: lista de acciones (e.g. ['price.proposed','price.approved']).
 - ``actor_email``: search by partial email.
 
@@ -31,10 +33,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, cast, or_, select, Text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit import AuditEvent
+from app.db.models.cost import Cost
+from app.db.models.pricing import Price
+from app.db.models.product import ProductTranslation
 from app.db.models.user import User
 
 __all__ = [
@@ -86,16 +91,12 @@ class AuditQueryResult:
     next_cursor: tuple[datetime, int] | None = None
 
 
-_RELATED_ENTITY_TYPES_FOR_SKU: tuple[str, ...] = (
-    "products",
-    "product",  # algunos servicios registran singular
-    "product_translations",
-    "translation",
-    "costs",
-    "cost",
-    "prices",
-    "price",
-)
+# Tipos de entidad que participan en el fan-out por SKU.
+# Cada uno requiere lógica diferente según cómo almacena el entity_id.
+_PRODUCT_ENTITY_TYPES: tuple[str, ...] = ("products", "product")
+_COST_ENTITY_TYPES: tuple[str, ...] = ("costs", "cost")
+_PRICE_ENTITY_TYPES: tuple[str, ...] = ("prices", "price")
+_TRANSLATION_ENTITY_TYPES: tuple[str, ...] = ("product_translations", "product_translation")
 
 
 class AuditQueryService:
@@ -180,41 +181,66 @@ class AuditQueryService:
         return AuditQueryResult(items=items, next_cursor=next_cursor)
 
     # ---------------------------------------------------------------- helpers
+    def _build_related_sku_clause(self, sku: str) -> Any:
+        """Genera la cláusula OR de fan-out para todos los eventos de un SKU.
+
+        Mapping real de entity_id por entidad:
+        - product:              entity_id = sku (TEXT directo)
+        - cost:                 entity_id = str(cost.id) → subquery costs WHERE sku = :sku
+        - price:                entity_id = str(price.id) → subquery prices WHERE product_sku = :sku
+        - product_translation:  entity_id = f"{sku}:{lang}" → LIKE '{sku}:%'
+        """
+        # Products: entity_id IS el SKU directamente
+        product_clause = and_(
+            AuditEvent.entity_type.in_(_PRODUCT_ENTITY_TYPES),
+            AuditEvent.entity_id == sku,
+        )
+
+        # Costs: entity_id es UUID del cost → buscar costos del SKU
+        cost_ids_subq = select(cast(Cost.id, Text)).where(Cost.sku == sku).scalar_subquery()
+        cost_clause = and_(
+            AuditEvent.entity_type.in_(_COST_ENTITY_TYPES),
+            AuditEvent.entity_id.in_(cost_ids_subq),
+        )
+
+        # Prices: entity_id es UUID del price → buscar precios del SKU
+        price_ids_subq = select(cast(Price.id, Text)).where(Price.product_sku == sku).scalar_subquery()
+        price_clause = and_(
+            AuditEvent.entity_type.in_(_PRICE_ENTITY_TYPES),
+            AuditEvent.entity_id.in_(price_ids_subq),
+        )
+
+        # Product translations: entity_id = "{sku}:{lang}" → LIKE match
+        translation_clause = and_(
+            AuditEvent.entity_type.in_(_TRANSLATION_ENTITY_TYPES),
+            AuditEvent.entity_id.like(f"{sku}:%"),
+        )
+
+        return or_(product_clause, cost_clause, price_clause, translation_clause)
+
     def _build_conditions(self, filters: AuditQueryFilters) -> list[Any]:
         conditions: list[Any] = []
 
-        # entity_types e ids — combinan con AND si ambos presentes.
-        if filters.entity_types:
-            conditions.append(AuditEvent.entity_type.in_(filters.entity_types))
-        if filters.entity_ids:
-            conditions.append(AuditEvent.entity_id.in_(filters.entity_ids))
-
         if filters.related_sku:
-            sku = filters.related_sku
-            related_clause = and_(
-                AuditEvent.entity_type.in_(_RELATED_ENTITY_TYPES_FOR_SKU),
-                AuditEvent.entity_id == sku,
-            )
-            # Si el caller pasó entity_types/ids además de related_sku, expandimos
-            # con OR; la idea es "muestra este SKU + sus dominios relacionados".
-            if filters.entity_types or filters.entity_ids:
-                # Aux: dejamos el ya-añadido AND como una rama, y or-encadenamos.
-                # Removemos los anteriores y reemplazamos por el OR consolidado.
-                prev_entity = []
-                if filters.entity_types:
-                    prev_entity.append(AuditEvent.entity_type.in_(filters.entity_types))
-                if filters.entity_ids:
-                    prev_entity.append(AuditEvent.entity_id.in_(filters.entity_ids))
-                # Dropear los appends anteriores (evita doble filtro)
-                conditions = [
-                    c
-                    for c in conditions
-                    if c is not (prev_entity[0] if prev_entity else None)
-                ]
-                conditions = []  # rebuild clean
-                conditions.append(or_(and_(*prev_entity), related_clause))
-            else:
-                conditions.append(related_clause)
+            # Fan-out real: OR de todas las entidades enlazadas al SKU.
+            # El fan-out resuelve correctamente qué entity_id corresponde a cada
+            # tipo de entidad (UUID para costs/prices, SKU para products,
+            # SKU:lang para translations). Los entity_types/entity_ids opcionales
+            # se añaden como filtros adicionales AND para acotar el resultado:
+            # e.g. related_sku=MT-V-038 AND entity_type IN ('costs','prices').
+            sku_clause = self._build_related_sku_clause(filters.related_sku)
+            conditions.append(sku_clause)
+            # Narrowing adicional: si se pasan entity_types, acotar dentro del fan-out.
+            if filters.entity_types:
+                conditions.append(AuditEvent.entity_type.in_(filters.entity_types))
+            if filters.entity_ids:
+                conditions.append(AuditEvent.entity_id.in_(filters.entity_ids))
+        else:
+            # Filtros directos sin fan-out (entity_types e ids AND entre sí).
+            if filters.entity_types:
+                conditions.append(AuditEvent.entity_type.in_(filters.entity_types))
+            if filters.entity_ids:
+                conditions.append(AuditEvent.entity_id.in_(filters.entity_ids))
 
         if filters.actor_id is not None:
             conditions.append(AuditEvent.actor_id == filters.actor_id)

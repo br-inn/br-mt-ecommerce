@@ -235,11 +235,27 @@ async def export_marketplace_listings(
     _user: Annotated[User, Depends(require_permissions("products:read"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
     only_ready: bool = Query(True, description="Skip SKUs that have validation errors."),
+    skus: str | None = Query(None, description="Comma-separated list of SKUs to export. If omitted, all active products are exported."),
 ) -> StreamingResponse:
-    """Export all active products to an Amazon flat-file CSV feed."""
+    """Export active products to an Amazon flat-file CSV feed.
+
+    Pass `skus` to restrict the export to a specific subset (comma-separated).
+    When `skus` is provided `only_ready` defaults to False since the caller made
+    an explicit selection.
+    """
     _require_amazon_uae(marketplace)
 
+    sku_filter: set[str] | None = None
+    if skus:
+        sku_filter = {s.strip() for s in skus.split(",") if s.strip()}
+        # Explicit selection — honour only_ready as passed, but caller typically sends false
+    if sku_filter is not None and only_ready:
+        only_ready = False  # respect explicit selection over the default
+
     products = await _load_active_products(session)
+    if sku_filter is not None:
+        products = [p for p in products if p.sku in sku_filter]
+
     mp_listings = await _load_mp_listings(session, marketplace)
     channel_listings = await _load_channel_listings(session, marketplace)
 
