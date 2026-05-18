@@ -176,16 +176,19 @@ jobs:
               "cat > ~/mt-deploy/.env.staging"
 
       - name: Login to GHCR + pull + up
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+          IMAGE_TAG: ${{ github.ref_name }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
         run: |
-          IMAGE_TAG="${GITHUB_REF_NAME}"
-          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" "
-            echo '${{ secrets.STAGING_GHCR_TOKEN }}' | docker login ghcr.io -u '${{ secrets.STAGING_GHCR_USER }}' --password-stdin \
-            && cd ~/mt-deploy \
-            && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN='${{ secrets.STAGING_DOMAIN }}' \
-               docker compose -f docker-compose.staging.yml pull \
-            && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN='${{ secrets.STAGING_DOMAIN }}' \
-               docker compose -f docker-compose.staging.yml up -d --remove-orphans
-          "
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "echo '${GHCR_TOKEN}' | docker login ghcr.io -u '${GHCR_ACTOR}' --password-stdin \
+             && cd ~/mt-deploy \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml pull \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml up -d --remove-orphans"
 
       - name: Healthcheck
         run: |
