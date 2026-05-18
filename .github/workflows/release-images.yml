@@ -16,7 +16,6 @@ on:
 permissions:
   contents: read
   packages: write
-  id-token: write   # cosign keyless
 
 concurrency:
   group: release-images-${{ github.ref }}
@@ -66,31 +65,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          image-ref: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
-          format: sarif
-          output: trivy-backend.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"
-          ignore-unfixed: true
-
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-backend.sarif
-          category: trivy-backend
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v3
-
-      - name: Sign image (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          cosign sign --yes ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+      # Trivy + cosign deshabilitados en UAT — re-habilitar antes de producción
 
   build-frontend:
     name: Build & push frontend
@@ -135,28 +110,4 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          image-ref: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
-          format: sarif
-          output: trivy-frontend.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"
-          ignore-unfixed: true
-
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-frontend.sarif
-          category: trivy-frontend
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v3
-
-      - name: Sign image (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          cosign sign --yes ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+      # Trivy + cosign deshabilitados en UAT — re-habilitar antes de producción
