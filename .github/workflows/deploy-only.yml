@@ -1,0 +1,76 @@
+---
+name: deploy-only
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag ya publicado en GHCR (e.g. v0.4.0-uat)"
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Create deploy directory
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" "mkdir -p ~/mt-deploy"
+
+      - name: Copy compose + Caddyfile
+        run: |
+          scp docker-compose.staging.yml Caddyfile.staging \
+            "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:~/mt-deploy/"
+
+      - name: Write .env.staging
+        env:
+          ENV_STAGING: ${{ secrets.ENV_STAGING }}
+        run: |
+          printf '%s' "$ENV_STAGING" | \
+            ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+              "cat > ~/mt-deploy/.env.staging"
+
+      - name: Login GHCR + pull + up
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+          IMAGE_TAG: ${{ github.event.inputs.tag }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "echo '${GHCR_TOKEN}' | docker login ghcr.io -u '${GHCR_ACTOR}' --password-stdin \
+             && cd ~/mt-deploy \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml pull \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml up -d --remove-orphans"
+
+      - name: Healthcheck
+        run: |
+          HOST="${{ secrets.STAGING_DOMAIN }}"
+          for i in $(seq 1 18); do
+            if curl -sfk "https://$HOST/health/live" >/dev/null 2>&1; then
+              echo "OK after $((i*5))s"; exit 0
+            fi
+            echo "  attempt $i/18..."; sleep 5
+          done
+          echo "FAILED after 90s"; exit 1
