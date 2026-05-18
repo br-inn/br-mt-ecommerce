@@ -7,6 +7,7 @@ import {
   getFilteredRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { FilterFn } from "@tanstack/react-table";
 import { Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,6 +31,13 @@ import {
 } from "@/lib/api/endpoints/marketplace-listings";
 
 import { buildColumns } from "./columns";
+
+// ---------------------------------------------------------------------------
+// Module-scope filter function (stable reference — no re-creation on renders)
+// ---------------------------------------------------------------------------
+
+const skuFilterFn: FilterFn<AmazonListingValidation> = (row, _colId, value: string) =>
+  row.original.sku.toLowerCase().includes(value.toLowerCase());
 
 // ---------------------------------------------------------------------------
 // Page component
@@ -104,17 +112,16 @@ export default function AmazonListingsPage() {
       globalFilter: skuFilter,
     },
     onGlobalFilterChange: setSkuFilter,
-    globalFilterFn: (row, _columnId, filterValue: string) =>
-      row.original.sku.toLowerCase().includes((filterValue as string).toLowerCase()),
+    globalFilterFn: skuFilterFn,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
 
   // ---- Export ----
 
-  const handleExport = () => {
+  const handleExport = React.useCallback(() => {
     window.open(marketplaceListingsApi.getExportUrl(), "_blank");
-  };
+  }, []);
 
   // ---- Render ----
 
