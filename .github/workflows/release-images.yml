@@ -104,7 +104,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter mt-pricing-frontend...
+        run: pnpm install --no-frozen-lockfile --filter mt-pricing-frontend...
 
       - name: Build Next.js app
         run: pnpm --filter mt-pricing-frontend build
