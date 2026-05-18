@@ -1,0 +1,18 @@
+# Excluir backend del contexto de build del frontend
+mt-pricing-backend/
+infra/
+.github/
+.claude/
+.git/
+
+# Node modules (se instalan en el build)
+node_modules/
+mt-pricing-frontend/node_modules/
+mt-pricing-frontend/.next/
+mt-pricing-frontend/playwright-report/
+
+# Secretos y archivos locales
+**/.env
+**/.env.local
+**/.env.staging
+**/server_aws/
