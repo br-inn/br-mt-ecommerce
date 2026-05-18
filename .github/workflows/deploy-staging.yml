@@ -1,9 +1,5 @@
 # =============================================================================
-# Deploy staging — SSH a Hetzner + docker compose pull/up (US-1A-CICD-01)
-# =============================================================================
-# Trigger: workflow_run completed success de `release-images.yml`.
-# También se puede disparar manualmente via workflow_dispatch con `tag` input
-# para rollback rápido a un release anterior.
+# Deploy staging — SSH a EC2 + docker compose pull/up (US-1A-CICD-01)
 # =============================================================================
 ---
 name: deploy-staging
@@ -15,12 +11,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag a deployar (e.g. v0.5.0). Default: latest del último release."
+        description: "Tag a deployar (e.g. v0.3.4-uat). Default: latest"
         required: false
         default: "latest"
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: deploy-staging
@@ -34,22 +31,24 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment:
-      name: staging
-      url: https://${{ secrets.STAGING_PUBLIC_URL }}
     steps:
       - uses: actions/checkout@v4
 
+      # -----------------------------------------------------------------------
+      # Resolver tag a deployar
+      # -----------------------------------------------------------------------
       - name: Resolve tag
         id: tag
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "TAG=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
-            # workflow_run trigger — usar latest (aliased en release-images)
             echo "TAG=latest" >> "$GITHUB_OUTPUT"
           fi
 
+      # -----------------------------------------------------------------------
+      # SSH
+      # -----------------------------------------------------------------------
       - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -60,62 +59,54 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Snapshot current tag (rollback safety)
+      # -----------------------------------------------------------------------
+      # Preparar directorio en el servidor
+      # -----------------------------------------------------------------------
+      - name: Create deploy directory on server
         run: |
           ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "cd /home/mt-deploy/mt-deploy && \
-             cp state.json state.previous.json 2>/dev/null || true"
+            "mkdir -p /home/${{ secrets.STAGING_SSH_USER }}/mt-deploy"
 
-      - name: Pull + redeploy
+      # -----------------------------------------------------------------------
+      # Copiar archivos de configuración al servidor
+      # -----------------------------------------------------------------------
+      - name: Copy compose + Caddyfile to server
+        run: |
+          scp docker-compose.staging.yml Caddyfile.staging \
+            "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:/home/${{ secrets.STAGING_SSH_USER }}/mt-deploy/"
+
+      # -----------------------------------------------------------------------
+      # Login a GHCR en el servidor + pull + up
+      # -----------------------------------------------------------------------
+      - name: Pull images + deploy
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_TAG: ${{ steps.tag.outputs.TAG }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
         run: |
           ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "cd /home/mt-deploy/mt-deploy && \
-             export IMAGE_TAG=${{ steps.tag.outputs.TAG }} && \
-             docker compose pull && \
-             docker compose up -d --remove-orphans"
+            "echo '${{ secrets.GITHUB_TOKEN }}' | \
+               docker login ghcr.io --username '${{ github.actor }}' --password-stdin && \
+             cd /home/${{ secrets.STAGING_SSH_USER }}/mt-deploy && \
+             export IMAGE_TAG='${{ steps.tag.outputs.TAG }}' && \
+             export STAGING_DOMAIN='${{ secrets.STAGING_DOMAIN }}' && \
+             docker compose -f docker-compose.staging.yml pull && \
+             docker compose -f docker-compose.staging.yml up -d --remove-orphans"
 
+      # -----------------------------------------------------------------------
+      # Healthcheck (90s timeout)
+      # -----------------------------------------------------------------------
       - name: Healthcheck
-        id: healthcheck
         run: |
-          set -e
-          HOST="${{ secrets.STAGING_PUBLIC_URL }}"
+          HOST="${{ secrets.STAGING_DOMAIN }}"
+          echo "Waiting for https://$HOST/health/live ..."
           for i in $(seq 1 18); do
-            if curl -sfk "https://$HOST/health/ready" >/dev/null; then
-              echo "Healthcheck OK after $((i*5))s"
+            if curl -sfk "https://$HOST/health/live" >/dev/null 2>&1; then
+              echo "OK after $((i*5))s"
               exit 0
             fi
+            echo "  attempt $i/18..."
             sleep 5
           done
-          echo "Healthcheck FAILED after 90s — triggering rollback"
+          echo "FAILED after 90s"
           exit 1
-
-      - name: Rollback on failure
-        if: failure() && steps.healthcheck.outcome == 'failure'
-        run: |
-          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "cd /home/mt-deploy/mt-deploy && \
-             PREV=\$(jq -r '.current_tag // \"latest\"' state.previous.json 2>/dev/null) && \
-             echo Rolling back to: \$PREV && \
-             IMAGE_TAG=\$PREV docker compose up -d"
-
-      - name: Persist current tag
-        if: success()
-        run: |
-          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "cd /home/mt-deploy/mt-deploy && \
-             jq -n --arg tag '${{ steps.tag.outputs.TAG }}' --arg ts '$(date -u +%FT%TZ)' \
-                '{current_tag: \$tag, deployed_at: \$ts, previous_tag: (input.current_tag // \"latest\")}' \
-                < state.json > state.new.json && mv state.new.json state.json || \
-             jq -n --arg tag '${{ steps.tag.outputs.TAG }}' --arg ts '$(date -u +%FT%TZ)' \
-                '{current_tag: \$tag, deployed_at: \$ts}' > state.json"
-
-      - name: Slack notify
-        if: always() && env.SLACK_WEBHOOK_URL != ''
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          STATUS: ${{ job.status }}
-          TAG: ${{ steps.tag.outputs.TAG }}
-        run: |
-          curl -X POST -H 'Content-Type: application/json' \
-            --data "{\"text\":\"deploy-staging finished: status=$STATUS tag=$TAG\"}" \
-            "$SLACK_WEBHOOK_URL"
