@@ -19,8 +19,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag }}
 
       - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.9.0
