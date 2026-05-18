@@ -35,8 +35,10 @@ Verificar: `curl http://localhost:${CADDY_HTTP_PORT:-8081}/health/live`
 
 ## Performance — Directriz de Arquitectura
 
-El usuario accede desde UAE al servidor en Hetzner EU (~150ms RTT). Cada round-trip
-cuenta. Estas reglas son **obligatorias** en todo código nuevo o modificado.
+El servidor está en UAE (misma región que los usuarios, ~10-20ms RTT). Con latencia
+baja, el cuello de botella es el **número de round-trips al DB** y el **volumen de
+trabajo por request**, no la red. Estas reglas son **obligatorias** en todo código
+nuevo o modificado.
 
 ### Backend
 
