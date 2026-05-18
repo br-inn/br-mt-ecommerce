@@ -1,7 +1,10 @@
-node_modules
-.next
-.git
-.gitignore
+# Solo se necesita .next/standalone, .next/static y public/
+# .next/cache es pesado e innecesario en el contexto Docker.
+node_modules/
+.next/cache/
+tests/
+scripts/
+*.md
 README.md
 Dockerfile
 .dockerignore
@@ -13,8 +16,8 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
-playwright-report
-test-results
-coverage
-.vscode
-.idea
+playwright-report/
+test-results/
+coverage/
+.vscode/
+.idea/
