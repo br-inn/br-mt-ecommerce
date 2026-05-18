@@ -16,7 +16,7 @@ from app.api.routes import router as api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.metrics import setup_metrics
-from app.core.middleware import RequestContextMiddleware
+from app.core.middleware import CacheControlMiddleware, RequestContextMiddleware
 from app.core.redis import close_redis
 from app.core.sentry import configure_sentry
 from app.db import dispose_engine
@@ -82,6 +82,7 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "X-RateLimit-Remaining", "Content-Disposition", "X-Rows-Exported", "X-Rows-Skipped"],
 )
 app.add_middleware(RequestContextMiddleware)
+app.add_middleware(CacheControlMiddleware)
 
 # --- Métricas Prometheus ----------------------------------------------------
 # Se monta tras la app — instrumentator se engancha al middleware stack y expone
