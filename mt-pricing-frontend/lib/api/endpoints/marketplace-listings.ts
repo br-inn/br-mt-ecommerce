@@ -70,6 +70,15 @@ export const marketplaceListingsApi = {
     ),
 
   /**
+   * GET /api/v1/marketplace-listings/{sku}/amazon_uae
+   * Returns the full listing content for a single SKU.
+   */
+  getListing: (sku: string): Promise<MarketplaceListingRead> =>
+    authedFetch<MarketplaceListingRead>(
+      `/api/v1/marketplace-listings/${encodeURIComponent(sku)}/amazon_uae`,
+    ),
+
+  /**
    * Returns the URL for the CSV export endpoint.
    * Open with window.open() to trigger a browser download.
    */
