@@ -159,7 +159,7 @@ export default function CatalogPage() {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
 
   // B4 — page size
-  const [pageLimit, setPageLimit] = React.useState(50);
+  const [pageLimit, setPageLimit] = React.useState(25);
 
   // A2 — modo de visualización
   const [viewMode, setViewMode] = React.useState<"table" | "grid">("table");
@@ -936,6 +936,8 @@ export default function CatalogPage() {
                           <img
                             src={r.primary_image_url}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className="h-10 w-10 rounded-md object-cover"
                             style={{ border: `1px solid ${MT.border}` }}
                           />
