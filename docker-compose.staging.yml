@@ -205,6 +205,23 @@ services:
       - mt-staging
 
   # ---------------------------------------------------------------------------
+  # Dozzle — visor web de logs de Docker (accesible en /logs via Caddy)
+  # ---------------------------------------------------------------------------
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: mt-dozzle-staging
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DOZZLE_BASE: /logs
+      DOZZLE_NO_ANALYTICS: "true"
+    expose:
+      - "8080"
+    networks:
+      - mt-staging
+
+  # ---------------------------------------------------------------------------
   # Caddy 2 — ÚNICO entry point HTTPS. Auto-TLS via Let's Encrypt.
   # ---------------------------------------------------------------------------
   caddy:
