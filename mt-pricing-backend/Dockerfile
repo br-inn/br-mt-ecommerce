@@ -24,7 +24,15 @@ RUN apt-get update \
     && pip install --no-cache-dir uv
 
 COPY pyproject.toml uv.lock* README.md ./
-RUN uv pip install --system --no-cache .
+# uv pip install ignora [tool.uv.sources], así que torch resuelve desde PyPI (CUDA).
+# El force-reinstall + uninstall en el mismo RUN elimina los paquetes nvidia-* del layer.
+RUN uv pip install --system --no-cache . \
+    && pip install --no-cache-dir --force-reinstall \
+        "torch>=2.1" "torchvision>=0.16" \
+        --index-url https://download.pytorch.org/whl/cpu \
+    && pip list --format=freeze 2>/dev/null \
+        | grep -i "^nvidia-" | cut -d= -f1 \
+        | xargs -r pip uninstall -y
 
 COPY app ./app
 COPY alembic.ini ./alembic.ini
