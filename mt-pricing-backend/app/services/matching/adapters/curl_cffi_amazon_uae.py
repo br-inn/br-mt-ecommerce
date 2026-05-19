@@ -89,7 +89,7 @@ class CurlCffiAmazonUaeFetcher:
             self._impersonate_pool: list[str] = [s.strip() for s in _pool_str.split(",") if s.strip()]
         else:
             _single = os.environ.get("SCRAPER_IMPERSONATE", "")
-            self._impersonate_pool = [_single] if _single else ["chrome120", "chrome124", "chrome126"]
+            self._impersonate_pool = [_single] if _single else ["chrome120", "chrome124", "chrome131"]
         self._timeout: int = int(os.environ.get("SCRAPER_TIMEOUT", _DEFAULT_TIMEOUT))
         self._proxy: str | None = os.environ.get("SCRAPER_PROXY_URL") or None
         self._brand_id: UUID | None = brand_id
