@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -119,3 +120,98 @@ def detect_header_row(
             break
 
     return header_idx, headers, samples
+
+
+_LLM_MODEL = "claude-sonnet-4-6"
+
+_AVAILABLE_FIELDS_DOC = """
+Scalar fields (products table):
+  sku (required), family, erp_name, intrastat_code, hs_code, connection,
+  brand, weight, bore_mm, pressure_max_bar, temp_min_c, temp_max_c,
+  series, material, dn, pn, size, revision
+
+JSONB sub-fields (dot notation):
+  dimensions.high_mm, dimensions.wide_mm, dimensions.deep_mm
+  packaging.qty_per_box, packaging.box_high_mm, packaging.box_wide_mm,
+  packaging.box_deep_mm, packaging.moq_inner_box, packaging.x_pallet
+  specs.<any_key>   ← use for EANs, names, flags, percentages, etc.
+
+Special:
+  _skip   ← ignore this column
+
+Available transforms:
+  text        plain text / string
+  int         integer number
+  decimal     decimal / float
+  cm_to_mm    multiply × 10 (centimeters → millimeters)
+  ean         EAN barcode (digits only, valid lengths 8/12/13/14)
+  bool_check  truthy check: "✓", "yes", "1", "true" → true; else false
+  percent     numeric percentage stored as integer 0–100
+"""
+
+
+def suggest_mapping(
+    headers: list[str],
+    sample_rows: list[list[Any]],
+) -> list[ColumnMappingItem]:
+    """Llama a Claude para proponer el mapeo de columnas Excel → campos product.
+
+    Devuelve lista vacía si el LLM falla o devuelve JSON inválido (tolerante).
+    """
+    import anthropic
+
+    samples_text = "\n".join(
+        f"  Row {i + 1}: " + ", ".join(
+            f"{h}={repr(row[j]) if j < len(row) else None}"
+            for j, h in enumerate(headers[:10])  # primeras 10 cols para no saturar
+        )
+        for i, row in enumerate(sample_rows[:3])
+    )
+
+    prompt = (
+        f"You are a product data mapping assistant for an industrial PVF "
+        f"(pipes, valves, fittings) manufacturer PIM system.\n\n"
+        f"Given these Excel column headers and sample data, propose the best "
+        f"mapping from each Excel column to a product database field.\n\n"
+        f"{_AVAILABLE_FIELDS_DOC}\n\n"
+        f"Excel headers: {headers}\n\n"
+        f"Sample data (first 3 rows):\n{samples_text}\n\n"
+        f"Return a JSON array — no markdown, no explanation, just JSON. "
+        f"Each element:\n"
+        f'  {{"excel_col": "<exact header>", "target_field": "<field>", '
+        f'"transform": "<transform>", "confidence": 0.0-1.0, '
+        f'"notes": "<1-sentence Spanish explanation>"}}\n\n'
+        f"Include ALL {len(headers)} columns, even those mapped to _skip."
+    )
+
+    try:
+        client = anthropic.Anthropic()
+        message = client.messages.create(
+            model=_LLM_MODEL,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = message.content[0].text.strip()
+        # Strip markdown code fences (e.g. ```json ... ```)
+        text = re.sub(r"^```[^\n]*\n?", "", text, flags=re.MULTILINE).strip()
+        data = json.loads(text)
+        if not isinstance(data, list):
+            logger.warning(
+                "suggest_mapping: LLM returned %s instead of a JSON array — returning empty mapping",
+                type(data).__name__,
+            )
+            return []
+        return [
+            ColumnMappingItem(
+                excel_col=item["excel_col"],
+                target_field=item.get("target_field", "_skip"),
+                transform=item.get("transform", "text"),
+                confidence=float(item.get("confidence", 0.5)),
+                notes=item.get("notes", ""),
+            )
+            for item in data
+            if isinstance(item, dict) and "excel_col" in item
+        ]
+    except Exception:  # noqa: BLE001
+        logger.exception("suggest_mapping LLM call failed — returning empty mapping")
+        return []
