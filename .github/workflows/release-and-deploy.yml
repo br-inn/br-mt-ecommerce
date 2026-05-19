@@ -95,7 +95,7 @@ jobs:
       - name: Extract metadata
         id: meta
         if: steps.check.outputs.exists == 'false'
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
@@ -191,7 +191,7 @@ jobs:
       - name: Extract metadata
         id: meta
         if: steps.check.outputs.exists == 'false'
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
