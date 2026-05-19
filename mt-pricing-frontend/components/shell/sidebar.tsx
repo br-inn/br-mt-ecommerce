@@ -96,7 +96,7 @@ const SECTION_CANALES: readonly NavItem[] = [
 const SECTION_VENTAS: readonly NavItem[] = [
   { href: "/ventas/dashboard", label: "Dashboard O2C", icon: TrendingUp, permissions: ["sales:read"] },
   { href: "/ventas/pedidos", label: "Pedidos de venta", icon: ScrollText, permissions: ["sales:read"] },
-  { href: "/billing/facturas", label: "Facturas", icon: FileText, permissions: ["sales:read"] },
+  { href: "/compras/facturas", label: "Facturas", icon: FileText, permissions: ["sales:read"] },
   { href: "/billing/dashboard", label: "Dashboard Facturación", icon: CreditCard, permissions: ["sales:read"] },
 ] as const;
 
