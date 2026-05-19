@@ -434,12 +434,17 @@ class AuthService:
         admin = get_supabase_admin()
         redirect_url = f"{settings.APP_URL}/auth/invite"
         try:
-            admin.auth.admin.invite_user_by_email(
-                user.email,
+            # invite_user_by_email raises "already registered" for pending users;
+            # generate_link with type="invite" works for both new and pending users.
+            admin.auth.admin.generate_link(
                 {
-                    "data": {"full_name": user.full_name, "locale": user.locale},
-                    "redirect_to": redirect_url,
-                },
+                    "type": "invite",
+                    "email": user.email,
+                    "options": {
+                        "data": {"full_name": user.full_name, "locale": user.locale},
+                        "redirect_to": redirect_url,
+                    },
+                }
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("resend invite failed for %s", user.email)
