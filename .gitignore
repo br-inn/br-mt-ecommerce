@@ -210,3 +210,39 @@ mt_logo.png
 # AWS / Infraestructura local (claves y env vars — nunca versionar)
 # -----------------------------------------------------------------------------
 server_aws/
+
+# -----------------------------------------------------------------------------
+# Dev / debug artifacts (session screenshots, temp scripts, local notes)
+# -----------------------------------------------------------------------------
+# Screenshots capturadas durante debugging (raíz y scripts/)
+*.png
+scripts/screenshots/
+
+# Notas / canvas ad-hoc de sesión
+Untitled.md
+Untitled.canvas
+2026-05-16.md
+nul
+
+# Scripts de debugging one-off en raíz
+_check_assets.py
+_fix_assets.py
+_fix_storage_path.py
+_list_bucket.py
+_upload_asset.py
+_scoring
+
+# PDF de referencia de cliente
+mt-pricing-backend/MTFT_4097.pdf
+
+# -----------------------------------------------------------------------------
+# Herramientas locales auto-generadas (no source)
+# -----------------------------------------------------------------------------
+# CodeGraph index (regenerado con `codegraph init -i`)
+.codegraph/
+
+# Playwright MCP browser state (338 archivos de sesión)
+.playwright-mcp/
+
+# Cursor IDE local state
+.cursor/
