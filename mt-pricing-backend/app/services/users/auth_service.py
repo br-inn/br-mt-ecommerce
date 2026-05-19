@@ -328,7 +328,7 @@ class AuthService:
             )
 
         admin = get_supabase_admin()
-        redirect_url = f"{settings.APP_URL}/auth/callback"
+        redirect_url = f"{settings.APP_URL}/auth/invite"
         try:
             invite = admin.auth.admin.invite_user_by_email(
                 email,
@@ -407,6 +407,58 @@ class AuthService:
         loaded = await self.user_repo.get_with_role(user.id)
         assert loaded is not None  # noqa: S101
         return loaded
+
+    # ---------- Resend invite ----------
+    async def resend_invite(self, *, user_id: UUID, invited_by: UUID) -> None:
+        """Reenvía el email de invitación a un usuario que no ha aceptado aún."""
+        user = await self.user_repo.get_with_role(user_id)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "type": "https://mtme.ae/errors/user-not-found",
+                    "title": "User not found",
+                    "status": 404,
+                },
+            )
+        if user.last_login_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "type": "https://mtme.ae/errors/invite-already-accepted",
+                    "title": "Invitation already accepted — user has already signed in",
+                    "status": 409,
+                },
+            )
+
+        admin = get_supabase_admin()
+        redirect_url = f"{settings.APP_URL}/auth/invite"
+        try:
+            admin.auth.admin.invite_user_by_email(
+                user.email,
+                {
+                    "data": {"full_name": user.full_name, "locale": user.locale},
+                    "redirect_to": redirect_url,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("resend invite failed for %s", user.email)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "type": "https://mtme.ae/errors/supabase-error",
+                    "title": "Supabase resend invite failed",
+                    "status": 502,
+                    "detail": str(exc),
+                },
+            ) from exc
+
+        await self._record_audit(
+            actor_id=invited_by,
+            entity_id=str(user.id),
+            action="user.resend_invite",
+            after={"email": user.email},
+        )
 
     # ---------- Internals ----------
     def _sign_out_supabase(self, user_id: UUID) -> None:

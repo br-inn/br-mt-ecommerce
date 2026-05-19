@@ -186,6 +186,23 @@ async def revoke_role(
 
 
 @router.post(
+    "/{user_id}/resend-invite",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    dependencies=[Depends(require_permissions("users:invite"))],
+    summary="Resend invitation email (only for users who have not yet signed in)",
+)
+async def resend_invite(
+    user_id: UUID,
+    actor: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    service = AuthService(session)
+    await service.resend_invite(user_id=user_id, invited_by=actor.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
     "/{user_id}/force-logout",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,

@@ -301,6 +301,8 @@ def require_permissions(*required: str) -> Callable[..., Any]:
     async def _check(
         user: Annotated[User, Depends(get_current_user)],
     ) -> User:
+        if user.role and user.role.code == "admin":
+            return user
         user_perms = _user_permission_codes(user)
         missing = required_set - user_perms
         if missing:
