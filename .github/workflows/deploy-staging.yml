@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag a deployar (e.g. v0.3.4-uat). Default: latest"
+        description: "Tag a deployar (e.g. v0.5.9-uat). Default: latest"
         required: false
         default: "latest"
 
@@ -37,7 +37,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -67,27 +67,29 @@ jobs:
           ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
 
       # -----------------------------------------------------------------------
-      # Preparar directorio en el servidor
-      # -----------------------------------------------------------------------
-      - name: Create deploy directory on server
-        run: |
-          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "mkdir -p /home/${{ secrets.STAGING_SSH_USER }}/mt-deploy"
-
-      # -----------------------------------------------------------------------
       # Copiar archivos de configuración al servidor
       # -----------------------------------------------------------------------
       - name: Copy compose + Caddyfile to server
         run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" "mkdir -p ~/mt-deploy"
           scp docker-compose.staging.yml Caddyfile.staging \
-            "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:/home/${{ secrets.STAGING_SSH_USER }}/mt-deploy/"
+            "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:~/mt-deploy/"
 
       - name: Write .env.staging to server
+        env:
+          ENV_STAGING: ${{ secrets.ENV_STAGING }}
+        run: |
+          printf '%s' "$ENV_STAGING" | \
+            ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+              "cat > ~/mt-deploy/.env.staging"
+
+      # -----------------------------------------------------------------------
+      # Limpiar imágenes viejas ANTES del pull para evitar disco lleno
+      # -----------------------------------------------------------------------
+      - name: Prune old images before pull
         run: |
           ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "cat > /home/${{ secrets.STAGING_SSH_USER }}/mt-deploy/.env.staging << 'ENVEOF'
-${{ secrets.ENV_STAGING }}
-ENVEOF"
+            "docker image prune -af"
 
       # -----------------------------------------------------------------------
       # Login a GHCR en el servidor + pull + up
@@ -95,33 +97,32 @@ ENVEOF"
       - name: Pull images + deploy
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
           IMAGE_TAG: ${{ steps.tag.outputs.TAG }}
           STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
         run: |
           ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "echo '${{ secrets.GITHUB_TOKEN }}' | \
-               docker login ghcr.io --username '${{ github.actor }}' --password-stdin && \
-             cd /home/${{ secrets.STAGING_SSH_USER }}/mt-deploy && \
-             export IMAGE_TAG='${{ steps.tag.outputs.TAG }}' && \
-             export STAGING_DOMAIN='${{ secrets.STAGING_DOMAIN }}' && \
-             docker rm -f mt-dozzle-staging mt-caddy-staging 2>/dev/null || true && \
-             docker compose -f docker-compose.staging.yml pull && \
-             docker compose -f docker-compose.staging.yml up -d --remove-orphans"
+            "echo '${GHCR_TOKEN}' | docker login ghcr.io -u '${GHCR_ACTOR}' --password-stdin \
+             && cd ~/mt-deploy \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml pull \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml up -d --remove-orphans"
 
       # -----------------------------------------------------------------------
-      # Healthcheck (90s timeout)
+      # Healthcheck — espera hasta 120s a que Caddy responda con HTTPS
       # -----------------------------------------------------------------------
       - name: Healthcheck
         run: |
           HOST="${{ secrets.STAGING_DOMAIN }}"
           echo "Waiting for https://$HOST/health/live ..."
-          for i in $(seq 1 18); do
+          for i in $(seq 1 24); do
             if curl -sfk "https://$HOST/health/live" >/dev/null 2>&1; then
               echo "OK after $((i*5))s"
               exit 0
             fi
-            echo "  attempt $i/18..."
+            echo "  attempt $i/24..."
             sleep 5
           done
-          echo "FAILED after 90s"
+          echo "FAILED after 120s"
           exit 1
