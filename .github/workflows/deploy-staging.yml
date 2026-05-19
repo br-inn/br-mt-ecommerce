@@ -104,6 +104,7 @@ ENVEOF"
              cd /home/${{ secrets.STAGING_SSH_USER }}/mt-deploy && \
              export IMAGE_TAG='${{ steps.tag.outputs.TAG }}' && \
              export STAGING_DOMAIN='${{ secrets.STAGING_DOMAIN }}' && \
+             docker rm -f mt-dozzle-staging mt-caddy-staging 2>/dev/null || true && \
              docker compose -f docker-compose.staging.yml pull && \
              docker compose -f docker-compose.staging.yml up -d --remove-orphans"
 
