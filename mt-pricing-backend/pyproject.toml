@@ -35,7 +35,7 @@ dependencies = [
     "tenacity>=8.2",
     "prometheus-client>=0.20",
     "prometheus-fastapi-instrumentator>=7.0",
-    "Pillow>=10.2,<11",
+    "Pillow>=10.2,<13",
     # Sprint 4 — datasheets PDF importer (US-1A-06-04)
     "pdfplumber>=0.11",
     "pypdf>=4.0",
