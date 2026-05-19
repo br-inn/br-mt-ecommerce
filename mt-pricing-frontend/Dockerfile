@@ -2,7 +2,7 @@
 # Build context: ./mt-pricing-frontend (Next.js compilado previamente en CI runner)
 # Docker solo empaqueta el standalone output — no hay build aquí.
 
-FROM node:20-slim AS runtime
+FROM node:26-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
