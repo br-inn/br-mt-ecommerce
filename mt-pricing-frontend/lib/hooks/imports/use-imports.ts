@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   NON_TERMINAL_STATUSES,
   importsApi,
+  type AnalyzeImportResponse,
+  type ColumnMappingItem,
   type ImportPreview,
   type ImportReport,
   type ImportRun,
@@ -19,8 +21,15 @@ export const importKeys = {
 
 /** Mutación: subir XLSX → preview. */
 export function useUploadImport() {
-  return useMutation<ImportPreview, Error, { file: File }>({
-    mutationFn: ({ file }) => importsApi.preview(file, "pim"),
+  return useMutation<ImportPreview, Error, { file: File; mapping?: ColumnMappingItem[] }>({
+    mutationFn: ({ file, mapping }) => importsApi.preview(file, "pim", mapping),
+  });
+}
+
+/** Mutación: analizar xlsx — detecta estructura + propone mapeo via LLM. */
+export function useAnalyzeImport() {
+  return useMutation<AnalyzeImportResponse, Error, { file: File }>({
+    mutationFn: ({ file }) => importsApi.analyze(file),
   });
 }
 

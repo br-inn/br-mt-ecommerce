@@ -87,6 +87,25 @@ export interface ImportReport {
   rows: ImportRow[];
 }
 
+// ---- Analyze / mapping types -----------------------------------------------
+
+export interface ColumnMappingItem {
+  excel_col: string;
+  target_field: string;
+  transform: string;
+  confidence: number;
+  notes?: string;
+}
+
+export interface AnalyzeImportResponse {
+  filename: string;
+  detected_header_row: number;
+  headers: string[];
+  /** Hasta 5 filas de datos de muestra (valores como string|null). */
+  sample_rows: (string | null)[][];
+  proposed_mapping: ColumnMappingItem[];
+}
+
 // ---- Internals ------------------------------------------------------------
 
 export class ImportsApiError extends Error {
@@ -138,11 +157,25 @@ async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
 // ---- API ------------------------------------------------------------------
 
 export const importsApi = {
+  /** Detecta estructura del xlsx y propone mapeo de columnas via LLM. */
+  analyze: (file: File): Promise<AnalyzeImportResponse> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return authedFetch<AnalyzeImportResponse>(`/api/v1/imports/analyze`, {
+      method: "POST",
+      body: fd,
+    });
+  },
   /** Sube xlsx en modo preview. Devuelve `run_id` y status inicial. */
-  preview: (file: File, type: "pim" = "pim"): Promise<ImportPreview> => {
+  preview: (
+    file: File,
+    type: "pim" = "pim",
+    mapping?: ColumnMappingItem[],
+  ): Promise<ImportPreview> => {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("type", type);
+    if (mapping) fd.append("mapping_json", JSON.stringify(mapping));
     return authedFetch<ImportPreview>(`/api/v1/imports/preview`, {
       method: "POST",
       body: fd,
