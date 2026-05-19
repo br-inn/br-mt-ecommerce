@@ -334,3 +334,98 @@ def map_row(
             errors.append("name_en no derivable (erp_name vacío y no provisto).")
 
     return payload, errors
+
+
+# ---------------------------------------------------------------------------
+# Nuevos casters para mapeo flexible
+# ---------------------------------------------------------------------------
+def _cast_bool_check(v: Any) -> bool:
+    """'✓', 'yes', '1', 'true' → True. Todo lo demás → False."""
+    if v is None or v == "":
+        return False
+    s = str(v).strip().lower()
+    return s in ("✓", "yes", "si", "sí", "1", "true", "x")
+
+
+def _cast_percent(v: Any) -> int | None:
+    """Porcentaje numérico → int 0-100."""
+    if v is None or v == "":
+        return None
+    try:
+        n = int(float(str(v).strip()))
+    except (ValueError, TypeError):
+        raise ImportCastError(f"Valor no convertible a porcentaje: {v!r}")
+    if not (0 <= n <= 100):
+        raise ImportCastError(f"Porcentaje fuera de rango [0,100]: {v!r}")
+    return n
+
+
+# Registrar los nuevos casters.
+CASTERS["bool_check"] = _cast_bool_check
+CASTERS["percent"] = _cast_percent
+
+
+def map_row_with_mapping(
+    excel_row: tuple[Any, ...] | list[Any],
+    headers: list[str],
+    mapping: "list[Any]",  # list[ColumnMappingItem] — import lazy para evitar ciclos
+) -> tuple[dict[str, Any], list[str]]:
+    """Mapea una fila usando un mapping flexible (lista de ColumnMappingItem).
+
+    target_field conventions:
+    - ``sku``, ``family``, ``weight``, etc. → campo escalar directo en products.
+    - ``dimensions.high_mm``, ``packaging.qty_per_box``, ``specs.ean_box`` →
+      clave dentro del bucket JSONB correspondiente.
+    - ``_skip`` → ignorar columna.
+
+    Returns: (payload_dict, errors_list).
+    """
+    col_index: dict[str, int] = {h: i for i, h in enumerate(headers)}
+    payload: dict[str, Any] = dict(ROW_DEFAULTS)
+    errors: list[str] = []
+    jsonb_buckets: dict[str, dict[str, Any]] = {
+        "dimensions": {},
+        "packaging": {},
+        "specs": {},
+    }
+
+    for item in mapping:
+        if item.target_field == "_skip":
+            continue
+
+        idx = col_index.get(item.excel_col)
+        if idx is None or idx >= len(excel_row):
+            continue
+
+        raw = excel_row[idx]
+        caster = CASTERS.get(item.transform, _cast_text)
+        try:
+            casted = caster(raw)
+        except ImportCastError as exc:
+            errors.append(f"col {item.excel_col!r}: {exc}")
+            continue
+
+        if casted is None:
+            continue
+
+        field = item.target_field
+
+        if "." in field:
+            prefix, key = field.split(".", 1)
+            if prefix in jsonb_buckets:
+                stored: Any = str(casted) if isinstance(casted, Decimal) else casted
+                jsonb_buckets[prefix][key] = stored
+        else:
+            payload[field] = casted
+
+    for k, v in jsonb_buckets.items():
+        if v:
+            payload[k] = v
+
+    return payload, errors
+
+
+__all__ = [
+    "ColumnSpec", "ImportCastError", "EXCEL_COL_TO_FIELD", "EXPECTED_HEADERS",
+    "ROW_DEFAULTS", "CASTERS", "map_row", "map_row_with_mapping",
+]
