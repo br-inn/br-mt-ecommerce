@@ -131,3 +131,9 @@ export function useForceLogout(id: string) {
     mutationFn: ({ reason }) => usersAdminApi.forceLogout(id, reason),
   });
 }
+
+export function useResendInvite(id: string) {
+  return useMutation<void, Error, void>({
+    mutationFn: () => usersAdminApi.resendInvite(id),
+  });
+}

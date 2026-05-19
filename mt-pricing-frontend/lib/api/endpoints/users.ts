@@ -114,6 +114,8 @@ export const usersApi = {
       `/api/v1/users/${id}/roles${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`,
       { method: "DELETE" },
     ),
+  resendInvite: (id: string) =>
+    authedFetch<void>(`/api/v1/users/${id}/resend-invite`, { method: "POST" }),
   forceLogout: (id: string, reason?: string) =>
     authedFetch<void>(
       `/api/v1/users/${id}/force-logout${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`,

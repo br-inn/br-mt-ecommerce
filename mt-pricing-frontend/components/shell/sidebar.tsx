@@ -169,7 +169,6 @@ const SECTION_SYS_CONFIG: readonly NavItem[] = [
   { href: "/admin/rule-engine", label: "Motor de reglas", icon: SlidersHorizontal, permissions: ["admin:read"] },
   { href: "/admin/flags", label: "Feature flags", icon: Flag, permissions: ["admin:read"] },
   { href: "/admin/calibrator", label: "Calibrator", icon: Sparkles, permissions: ["admin:read"] },
-  { href: "/ajustes", label: "Ajustes generales", icon: Settings },
 ] as const;
 
 // 3. Administración: usuarios y procesos técnicos

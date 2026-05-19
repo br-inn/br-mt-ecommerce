@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { LogOut, X } from "lucide-react";
+import { LogOut, Mail, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import { AuditTimeline } from "@/components/domain/audit-timeline";
 import {
   useAssignRole,
   useForceLogout,
+  useResendInvite,
   useRevokeRole,
   useRolePermissions,
   useRolesCatalog,
@@ -50,6 +51,7 @@ export function UserDetailClient({ userId }: Props) {
   const assignRole = useAssignRole(userId);
   const revokeRole = useRevokeRole(userId);
   const forceLogout = useForceLogout(userId);
+  const resendInvite = useResendInvite(userId);
 
   const { data: rolePerms } = useRolePermissions(user?.role?.id);
 
@@ -246,6 +248,26 @@ export function UserDetailClient({ userId }: Props) {
           <CardTitle>{tDetail("dangerTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
+          {!user.last_login_at && (
+            <RbacGuard permissions={["users:invite"]}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resendInvite.isPending}
+                onClick={async () => {
+                  try {
+                    await resendInvite.mutateAsync();
+                    toast.success(tDetail("resendInviteOk"));
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : tDetail("resendInviteFailed"));
+                  }
+                }}
+              >
+                <Mail className="h-4 w-4" />
+                {resendInvite.isPending ? tCommon("loading") : tDetail("resendInvite")}
+              </Button>
+            </RbacGuard>
+          )}
           <RbacGuard permissions={["users:force_logout"]}>
             <Button
               type="button"

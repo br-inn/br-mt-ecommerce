@@ -1,15 +1,45 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledMcpjsonServers": [
+    "playwright"
+  ],
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hook_env_protect.py\"",
+            "shell": "bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/scripts/hook_ruff_format.py\" 2>/dev/null || true",
+            "shell": "bash",
+            "timeout": 15,
+            "statusMessage": "Running ruff format…"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
+            "command": "set -e; cd \"${CLAUDE_PROJECT_DIR:-.}\" || exit 0; LOG=\"$HOME/.claude/mt-deploy.log\"; mkdir -p \"$(dirname \"$LOG\")\"; { date '+%Y-%m-%d %H:%M:%S'; echo '--- Stop hook fired ---'; } >> \"$LOG\"; if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then echo '[mt-deploy] docker not running — skip' >> \"$LOG\"; exit 0; fi; changed=$(git status --porcelain 2>/dev/null); if [ -z \"$changed\" ]; then echo '[mt-deploy] no pending changes' >> \"$LOG\"; exit 0; fi; fe=0; be=0; echo \"$changed\" | grep -qE 'mt-pricing-frontend/' && fe=1; echo \"$changed\" | grep -qE 'mt-pricing-backend/app/' && be=1; if [ $fe -eq 1 ]; then echo '[mt-deploy] restarting mt-frontend' >> \"$LOG\"; (nohup docker restart mt-frontend >> \"$LOG\" 2>&1 &) ; fi; if [ $be -eq 1 ]; then echo '[mt-deploy] restarting mt-backend mt-worker mt-beat' >> \"$LOG\"; (nohup docker restart mt-backend mt-worker mt-beat >> \"$LOG\" 2>&1 &) ; fi; if [ $fe -eq 0 ] && [ $be -eq 0 ]; then echo '[mt-deploy] only docs / non-app changes — skip' >> \"$LOG\"; fi; exit 0",
             "shell": "bash",
             "timeout": 30,
-            "statusMessage": "Redeploying local Docker containers…",
-            "command": "set -e; cd \"${CLAUDE_PROJECT_DIR:-.}\" || exit 0; LOG=\"$HOME/.claude/mt-deploy.log\"; mkdir -p \"$(dirname \"$LOG\")\"; { date '+%Y-%m-%d %H:%M:%S'; echo '--- Stop hook fired ---'; } >> \"$LOG\"; if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then echo '[mt-deploy] docker not running — skip' >> \"$LOG\"; exit 0; fi; changed=$(git status --porcelain 2>/dev/null); if [ -z \"$changed\" ]; then echo '[mt-deploy] no pending changes' >> \"$LOG\"; exit 0; fi; fe=0; be=0; echo \"$changed\" | grep -qE 'mt-pricing-frontend/' && fe=1; echo \"$changed\" | grep -qE 'mt-pricing-backend/app/' && be=1; if [ $fe -eq 1 ]; then echo '[mt-deploy] restarting mt-frontend' >> \"$LOG\"; (nohup docker restart mt-frontend >> \"$LOG\" 2>&1 &) ; fi; if [ $be -eq 1 ]; then echo '[mt-deploy] restarting mt-backend mt-worker mt-beat' >> \"$LOG\"; (nohup docker restart mt-backend mt-worker mt-beat >> \"$LOG\" 2>&1 &) ; fi; if [ $fe -eq 0 ] && [ $be -eq 0 ]; then echo '[mt-deploy] only docs / non-app changes — skip' >> \"$LOG\"; fi; exit 0"
+            "statusMessage": "Redeploying local Docker containers…"
           }
         ]
       }
@@ -18,5 +48,20 @@
   "statusLine": {
     "type": "command",
     "command": "python .claude/scripts/context-monitor.py"
+  },
+  "enabledPlugins": {
+    "codex@openai-codex": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "context-mode@context-mode": true
+  },
+  "autoMode": {
+    "environment": [
+      "Organization: BR Innovation. Primary use: e-commerce platform development (MT Middle East program — PIM, pricing, inventory, B2C/marketplaces)",
+      "Source control: github.com/BR-Github and all repos under it",
+      "Infrastructure: Hetzner (staging and production), Docker Compose + Caddy reverse proxy; no AWS, GCP, or Vercel",
+      "Key services: Supabase (Auth + Storage, bucket product-images), Redis, Celery workers and Beat scheduler",
+      "Local dev endpoints: localhost:3000 (Next.js frontend), localhost:8000 (FastAPI backend), localhost:54321 (Supabase local)",
+      "Stack: Next.js 16 + React 19 + TypeScript strict, FastAPI + Python 3.11, SQLAlchemy 2.0 async + Alembic, Tailwind v4 + Shadcn/ui new-york"
+    ]
   }
 }

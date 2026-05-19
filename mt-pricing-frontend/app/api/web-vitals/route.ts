@@ -2,7 +2,6 @@
 // TODO Sprint 2: reenvío a Better Stack Logs / Sentry measurements.
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 interface WebVitalMetric {

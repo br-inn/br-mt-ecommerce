@@ -7,6 +7,7 @@ export type Permission = string;
 
 export interface UsePermissionsResult {
   permissions: Permission[];
+  isAdmin: boolean;
   /** Backwards compat — equivalente a `hasPermission`. */
   can: (permission: Permission) => boolean;
   hasPermission: (permission: Permission) => boolean;
@@ -15,17 +16,19 @@ export interface UsePermissionsResult {
 }
 
 export function usePermissions(): UsePermissionsResult {
-  const { permissions } = useAuth();
+  const { permissions, user } = useAuth();
+  const isAdmin = user?.role?.code === "admin";
   const set = useMemo(() => new Set(permissions), [permissions]);
 
   return useMemo(
     () => ({
       permissions,
-      can: (p) => set.has(p),
-      hasPermission: (p) => set.has(p),
-      hasPermissions: (required) => required.every((p) => set.has(p)),
-      hasAnyPermission: (required) => required.some((p) => set.has(p)),
+      isAdmin,
+      can: (p) => isAdmin || set.has(p),
+      hasPermission: (p) => isAdmin || set.has(p),
+      hasPermissions: (required) => isAdmin || required.every((p) => set.has(p)),
+      hasAnyPermission: (required) => isAdmin || required.some((p) => set.has(p)),
     }),
-    [permissions, set],
+    [permissions, set, isAdmin],
   );
 }
