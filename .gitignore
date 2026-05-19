@@ -191,3 +191,22 @@ mt_logo.png
 
 # TypeScript incremental build artifact (auto-regenerated)
 *.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# Obsidian (vault en raíz del monorepo)
+# -----------------------------------------------------------------------------
+# Ignorar estado de sesión (específico por máquina)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+# Ignorar binarios de plugins (se instalan via UI; config se versiona)
+.obsidian/plugins/*/main.js
+.obsidian/plugins/*/styles.css
+.obsidian/plugins/*/manifest.json
+# Sí se versionan: app.json, core-plugins.json, community-plugins.json,
+# plugins/*/data.json (settings de cada plugin)
+
+# -----------------------------------------------------------------------------
+# AWS / Infraestructura local (claves y env vars — nunca versionar)
+# -----------------------------------------------------------------------------
+server_aws/

@@ -64,7 +64,6 @@ locals {
     "BETTER_STACK_LOGS_TOKEN",
     "BETTER_STACK_LOGS_HOST",
     # Adapters red real (US-1A-09-08)
-    "BRIGHT_DATA_API_KEY",
     "GEMINI_API_KEY",
     "OPENAI_API_KEY",
     "SP_API_REFRESH_TOKEN",
