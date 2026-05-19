@@ -9,7 +9,7 @@
 # =============================================================================
 
 # --- Stage 1: builder --------------------------------------------------------
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -58,7 +58,7 @@ RUN uv pip install --system --no-cache \
 
 # --- Stage 2: dev (slim Python, hot-reload friendly) -------------------------
 # Para docker-compose.dev.yml. Mantiene shell + tools + libpython compartido.
-FROM python:3.11-slim AS dev
+FROM python:3.14-slim AS dev
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -87,7 +87,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # --- Stage 3: runtime (python:3.11-slim, non-root) — staging/prod ------------
-FROM python:3.11-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
