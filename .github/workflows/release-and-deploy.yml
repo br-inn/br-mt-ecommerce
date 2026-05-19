@@ -1,0 +1,291 @@
+# =============================================================================
+# Release + Deploy — build images en CI, deploy SSH a AWS EC2
+# =============================================================================
+# Trigger:
+#   - push de tag v* → build ambas imágenes + deploy con tag "latest"
+#   - workflow_dispatch con tag específico → si la imagen ya existe, salta
+#     el build y despliega ese tag (útil para rollback)
+#
+# Jobs:
+#   build-backend  ┐ paralelo
+#   build-frontend ┘
+#       ↓ needs: ambos
+#   deploy          → SSH → prune → pull → compose up → healthcheck
+#
+# Secrets requeridos (GitHub → Settings → Secrets):
+#   STAGING_SSH_KEY      — clave privada Ed25519 del key pair EC2
+#   STAGING_SSH_HOST     — IP pública del servidor EC2
+#   STAGING_SSH_USER     — usuario EC2 (ubuntu)
+#   STAGING_DOMAIN       — dominio sslip.io para healthcheck
+#   ENV_STAGING          — contenido completo del .env.staging
+#   NEXT_PUBLIC_SUPABASE_URL      — para compilar el frontend
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY — para compilar el frontend
+# =============================================================================
+---
+name: release-and-deploy
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag ya en GHCR (e.g. v0.5.9-uat). Para rollback."
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: release-and-deploy
+  cancel-in-progress: false
+
+# ---------------------------------------------------------------------------
+# Job 1a — Backend
+# ---------------------------------------------------------------------------
+jobs:
+  build-backend:
+    name: Build & push backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/mt-pricing-backend
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker image prune -af || true
+
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if image already exists
+        id: check
+        run: |
+          if docker manifest inspect $IMAGE:${{ steps.tag.outputs.tag }} >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "✓ $IMAGE:${{ steps.tag.outputs.tag }} ya existe en GHCR — build saltado"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=sha,format=long
+            type=raw,value=latest
+
+      - name: Build & push
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mt-pricing-backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Job 1b — Frontend (paralelo con backend)
+  # ---------------------------------------------------------------------------
+  build-frontend:
+    name: Build & push frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/mt-pricing-frontend
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker image prune -af || true
+
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if image already exists
+        id: check
+        run: |
+          if docker manifest inspect $IMAGE:${{ steps.tag.outputs.tag }} >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "✓ $IMAGE:${{ steps.tag.outputs.tag }} ya existe en GHCR — build saltado"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup pnpm
+        if: steps.check.outputs.exists == 'false'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js 20
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        if: steps.check.outputs.exists == 'false'
+        run: pnpm install --no-frozen-lockfile --filter mt-pricing-frontend...
+
+      - name: Build Next.js app
+        if: steps.check.outputs.exists == 'false'
+        run: pnpm --filter mt-pricing-frontend build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NODE_OPTIONS: "--max-old-space-size=4096"
+          NEXT_PUBLIC_BACKEND_URL: https://100-53-214-97.sslip.io
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=sha,format=long
+            type=raw,value=latest
+
+      - name: Build & push
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mt-pricing-frontend
+          file: ./mt-pricing-frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Job 2 — Deploy (corre SOLO si ambos builds pasan)
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: SSH deploy + healthcheck
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve deploy tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "TAG=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "TAG=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy compose + Caddyfile to server
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" "mkdir -p ~/mt-deploy"
+          scp docker-compose.staging.yml Caddyfile.staging \
+            "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:~/mt-deploy/"
+
+      - name: Write .env.staging to server
+        env:
+          ENV_STAGING: ${{ secrets.ENV_STAGING }}
+        run: |
+          printf '%s' "$ENV_STAGING" | \
+            ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+              "cat > ~/mt-deploy/.env.staging"
+
+      - name: Prune old images before pull
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "docker image prune -af"
+
+      - name: Pull images + deploy
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+          IMAGE_TAG: ${{ steps.tag.outputs.TAG }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
+        run: |
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "echo '${GHCR_TOKEN}' | docker login ghcr.io -u '${GHCR_ACTOR}' --password-stdin \
+             && cd ~/mt-deploy \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml pull \
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
+                docker compose -f docker-compose.staging.yml up -d --remove-orphans"
+
+      - name: Healthcheck
+        run: |
+          HOST="${{ secrets.STAGING_DOMAIN }}"
+          echo "Waiting for https://$HOST/health/live ..."
+          for i in $(seq 1 24); do
+            if curl -sfk "https://$HOST/health/live" >/dev/null 2>&1; then
+              echo "✓ OK after $((i*5))s"
+              exit 0
+            fi
+            echo "  attempt $i/24..."
+            sleep 5
+          done
+          echo "✗ FAILED after 120s"
+          exit 1
