@@ -110,9 +110,6 @@ dashboards:
     name: "MT Pricing — LLM cost tracker"
     refresh_seconds: 60
     panels:
-      - title: "Cost Bright Data today (USD)"
-        type: counter
-        query: 'event:"cost.bright_data" environment:"production" | sum(cost_usd) over today'
       - title: "Cost Gemini today (USD)"
         type: counter
         query: 'event:"cost.gemini" environment:"production" | sum(cost_usd) over today'
@@ -157,9 +154,3 @@ alerts:
     targets:
       slack: "#mt-alerts"
 
-  - slug: cost-ceiling-bright-data
-    severity: SEV1
-    query: 'event:"cost.bright_data" environment:"production" | sum(cost_usd) over month > 150'
-    targets:
-      slack: "#mt-alerts"
-      pagerduty: mt-pricing-primary

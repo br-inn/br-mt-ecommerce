@@ -8,7 +8,7 @@ Uso::
     # Todos los marketplaces, 500 SKUs, stubs:
     python scripts/poc/run_poc.py --use-stubs --n-skus 500 --marketplace all
 
-    # Sólo Amazon, real (requiere BRIGHT_DATA_TOKEN):
+    # Sólo Amazon, real (requiere scraper live activo):
     python scripts/poc/run_poc.py --marketplace amazon --n-skus 100
 
     # Generar reporte G4 al final:
@@ -72,10 +72,10 @@ def _build_fetchers(marketplace: str, *, use_stubs: bool) -> list[FetcherPort]:
             fetchers.append(AmazonUaeStubFetcher())
         else:
             try:
-                from app.services.matching.adapters.bright_data_amazon_uae import (
-                    BrightDataAmazonUaeFetcher,
+                from app.services.matching.adapters.curl_cffi_amazon_uae import (
+                    CurlCffiAmazonUaeFetcher,
                 )
-                fetchers.append(BrightDataAmazonUaeFetcher())
+                fetchers.append(CurlCffiAmazonUaeFetcher())
             except Exception as exc:
                 logger.warning("Real Amazon fetcher unavailable (%s) — falling back to stub", exc)
                 from app.services.matching.adapters.amazon_uae_stub import (

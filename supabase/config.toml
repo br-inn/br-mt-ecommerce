@@ -6,6 +6,17 @@
 # que los cambios se publiquen como eventos y puedan ser recibidos por el
 # webhook CDC (POST /api/v1/internal/cdc/product).
 
+# --- Auth email templates (aplica en local dev via `npx supabase start`) -----
+# Para el proyecto Cloud (vayatmweveoaskyejzba) aplicar el template manualmente
+# en: Supabase Dashboard > Auth > Email Templates > Invite user
+# El archivo HTML está en ./supabase/templates/invite.html
+
+[auth.email.template.invite]
+subject = "Has sido invitado a MT Middle East"
+content_path = "./supabase/templates/invite.html"
+
+# -----------------------------------------------------------------------------
+
 [realtime]
 enabled = true
 
