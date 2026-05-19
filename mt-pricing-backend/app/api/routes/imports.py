@@ -29,6 +29,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     Path,
     Query,
@@ -45,6 +46,8 @@ from app.db.models.import_run import ImportRun
 from app.db.models.user import User
 from app.schemas.common import ProblemDetails
 from app.schemas.importer import (
+    AnalyzeImportResponse,
+    ColumnMappingItemSchema,
     ImportApplyRequest,
     ImportPreviewResponse,
     ImportRunStatusResponse,
@@ -88,6 +91,67 @@ def _state_to_summary_response(state: Any) -> ImportRunSummary:
 
 
 @router.post(
+    "/analyze",
+    response_model=AnalyzeImportResponse,
+    summary="Detectar estructura del xlsx y proponer mapeo via LLM",
+    responses={
+        413: {"model": ProblemDetails, "description": "Archivo demasiado grande"},
+        422: {"model": ProblemDetails, "description": "No se pudo detectar cabecera"},
+    },
+)
+async def analyze_import(
+    file: Annotated[UploadFile, File(description="xlsx PIM (≤ 50 MB)")],
+    _user: Annotated[User, Depends(require_permissions("imports:write"))],
+) -> AnalyzeImportResponse:
+    """Detecta la fila de cabecera real del xlsx y propone el mapeo de columnas
+    via Claude. El frontend usa esta respuesta para mostrar el paso 'Mapeo'.
+    """
+    if file.filename is None:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "import_missing_filename", "title": "filename requerido"},
+        )
+    file_bytes = await file.read()
+    if len(file_bytes) > 50 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail={"code": "import_file_too_large", "title": "Archivo excede 50 MB"},
+        )
+
+    from app.services.importer.mapping_detector import detect_header_row, suggest_mapping
+
+    try:
+        header_idx, headers, samples = detect_header_row(file_bytes)
+        proposed = suggest_mapping(headers, samples)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "import_header_detection_failed", "title": str(exc)},
+        ) from exc
+    sample_rows_safe = [
+        [str(v) if v is not None else None for v in row]
+        for row in samples
+    ]
+
+    return AnalyzeImportResponse(
+        filename=file.filename,
+        detected_header_row=header_idx,
+        headers=headers,
+        sample_rows=sample_rows_safe,
+        proposed_mapping=[
+            ColumnMappingItemSchema(
+                excel_col=m.excel_col,
+                target_field=m.target_field,
+                transform=m.transform,
+                confidence=m.confidence,
+                notes=m.notes,
+            )
+            for m in proposed
+        ],
+    )
+
+
+@router.post(
     "/preview",
     response_model=ImportPreviewResponse,
     summary="Subir xlsx PIM, parsear y devolver diff (preview)",
@@ -101,6 +165,7 @@ async def preview_import(
     user: Annotated[User, Depends(require_permissions("imports:write"))],
     service: Annotated[ImporterService, Depends(get_importer_service)],
     type_: Annotated[str, Query(alias="type", pattern=r"^(pim)$")] = "pim",
+    mapping_json: Annotated[str | None, Form()] = None,
 ) -> ImportPreviewResponse:
     """Acepta un xlsx, lo parsea, computa el diff vs DB y devuelve summary +
     samples agrupados por bucket (create/update/no_change/skip_locked/error).
@@ -111,12 +176,50 @@ async def preview_import(
             detail={"code": "import_missing_filename", "title": "filename requerido"},
         )
     file_bytes = await file.read()
+
+    # Parsear mapping confirmado (si viene del paso de mapeo LLM).
+    custom_mapping = None
+    if mapping_json:
+        import json as _json
+        from app.services.importer.mapping_detector import ColumnMappingItem as _CMI
+        try:
+            raw_mapping = _json.loads(mapping_json)
+            if not isinstance(raw_mapping, list):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "import_invalid_mapping", "title": "mapping_json debe ser un array"},
+                )
+            custom_mapping = [
+                _CMI(
+                    excel_col=m["excel_col"],
+                    target_field=m["target_field"],
+                    transform=m.get("transform", "text"),
+                    confidence=float(m.get("confidence", 1.0)),
+                    notes=m.get("notes", ""),
+                )
+                for m in raw_mapping
+                if isinstance(m, dict) and "excel_col" in m and "target_field" in m
+            ]
+            if not custom_mapping:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "import_invalid_mapping", "title": "mapping_json no contiene items válidos"},
+                )
+        except HTTPException:
+            raise
+        except Exception:  # noqa: BLE001
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "import_invalid_mapping", "title": "mapping_json inválido"},
+            )
+
     try:
         state = await service.preview(
             file_bytes=file_bytes,
             filename=file.filename,
             actor=user,
             type_=type_,
+            custom_mapping=custom_mapping,
         )
     except ImporterDomainError as e:
         _raise_domain(e)

@@ -163,6 +163,7 @@ class ImporterService:
         filename: str,
         actor: User,
         type_: str = "pim",
+        custom_mapping: "list[Any] | None" = None,
     ) -> ImportRunState:
         """Sube + parsea + diffea. Devuelve un run en estado ``preview_ready``."""
         if len(file_bytes) > MAX_FILE_SIZE_BYTES:
@@ -171,7 +172,17 @@ class ImporterService:
         # Parse en streaming desde un BytesIO.
         bio: BinaryIO = io.BytesIO(file_bytes)
         try:
-            parse_result = parse_xlsx_stream(bio)
+            if custom_mapping is not None:
+                from app.services.importer.mapping_detector import detect_header_row
+                header_idx, _headers, _samples = detect_header_row(file_bytes)
+                bio.seek(0)
+                parse_result = parse_xlsx_stream(
+                    bio,
+                    header_row_index=header_idx,
+                    custom_mapping=custom_mapping,
+                )
+            else:
+                parse_result = parse_xlsx_stream(bio)
         except Exception as exc:  # noqa: BLE001
             raise ImporterDomainError(
                 code="import_parse_failed",
