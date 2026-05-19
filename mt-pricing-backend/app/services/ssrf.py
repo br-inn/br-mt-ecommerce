@@ -42,8 +42,8 @@ logger = logging.getLogger(__name__)
 # Constants — denylist canónica + content-type allowlist
 # =============================================================================
 
-# Default denylist — se complementa con `settings.SSRF_EXTRA_BLOCKED_CIDRS`
-# (TODO TI MT: rangos privados Hetzner vSwitch si son distintos a 10.0.0.0/8).
+# Default denylist — se complementa con `settings.SSRF_EXTRA_BLOCKED_CIDRS`.
+# Servidor en AWS EC2: el IMDS endpoint 169.254.169.254 ya está bloqueado por el rango 169.254.0.0/16.
 _DEFAULT_BLOCKED_CIDRS_V4: Final[tuple[str, ...]] = (
     "0.0.0.0/8",          # current network (RFC 1700)
     "10.0.0.0/8",         # RFC 1918 private

@@ -1,7 +1,13 @@
 # =============================================================================
-# Terraform root module — MT Pricing Staging (Hetzner Cloud)
+# [DEPRECADO] Terraform root module — MT Pricing Staging (Hetzner Cloud)
 # =============================================================================
-# Pre-requisites:
+# NOTA: El servidor de staging migró a AWS EC2. Este módulo Terraform con
+# el provider hetznercloud/hcloud ya NO se aplica al entorno activo.
+# Se conserva como referencia histórica de la configuración original.
+# El servidor activo está en AWS EC2 (IP: 100.53.214.97).
+# Deploy real: .github/workflows/release-images.yml + deploy-staging.yml
+# =============================================================================
+# Pre-requisites (histórico):
 #   export HCLOUD_TOKEN=<your-hetzner-api-token>
 #   export AWS_ACCESS_KEY_ID=<backblaze-keyID>
 #   export AWS_SECRET_ACCESS_KEY=<backblaze-applicationKey>
