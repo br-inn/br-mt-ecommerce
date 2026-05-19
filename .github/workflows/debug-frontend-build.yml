@@ -27,7 +27,7 @@ jobs:
           echo "=== Disco ==="
           df -h
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: "[2] Verificar archivos clave del repo"
         run: |
