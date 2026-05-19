@@ -1,0 +1,5 @@
+{
+  "path": "docs/chat-docs",
+  "description": "Documentos ad-hoc generados durante sesiones de chat — análisis, propuestas, reportes de estado.",
+  "naming_convention": "YYYY-MM-DD-<slug-corto>.md"
+}

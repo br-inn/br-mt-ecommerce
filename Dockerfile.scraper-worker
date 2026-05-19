@@ -1,0 +1,76 @@
+# =============================================================================
+# Scraper Worker — Tier 2 browser-based fetcher (patchright/Chromium)
+# =============================================================================
+# Needs shared memory > 64 MB (Docker default) to avoid Chrome crashes.
+# In production/staging: run with --shm-size=2g (or shm_size in compose).
+#
+# Uses Python 3.11 (required by StrEnum) + patchright (installs its own
+# patched Chromium, so we don't need the MS Playwright base image).
+#
+# Build:
+#   docker build -f Dockerfile.scraper-worker -t mt-scraper-worker .
+#
+# Run (standalone):
+#   docker run --rm --shm-size=2g --cap-add=SYS_ADMIN mt-scraper-worker
+# =============================================================================
+
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# System deps required by chrome-headless-shell (patchright/Chromium).
+# Includes full X11 stack needed at runtime even in headless mode.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget ca-certificates \
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+    libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
+    libgbm1 libasound2 libxshmfence1 \
+    libx11-6 libxext6 libxfixes3 libxi6 libxrender1 libxss1 libxtst6 \
+    libxcb1 libxau6 libxdmcp6 libxcursor1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Install backend core deps + scraper-specific deps
+# ---------------------------------------------------------------------------
+RUN pip install --no-cache-dir \
+    "fastapi>=0.110" "pydantic>=2.6" "pydantic-settings>=2.2" \
+    "sqlalchemy[asyncio]>=2.0.27" "asyncpg>=0.29" \
+    "celery[redis]>=5.3" "redis>=5.0" \
+    "httpx>=0.27" "structlog>=24" "loguru>=0.7" \
+    "python-jose[cryptography]>=3.3" "python-multipart>=0.0.9" \
+    "tenacity>=8.2" "PyYAML>=6" "croniter>=2.0" \
+    "anthropic>=0.30" "aiolimiter>=1.1" \
+    "selectolax>=0.3.17" \
+    "curl_cffi>=0.7.0" \
+    "supabase>=2.4" "sentry-sdk[celery]>=1.40" \
+    "pgvector>=0.3"
+
+# Patchright installs its own patched Chromium binary.
+# PLAYWRIGHT_BROWSERS_PATH points to a shared location so it works for
+# both root (build) and the non-root scraper user (runtime).
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+RUN pip install --no-cache-dir "patchright>=0.4.0" && \
+    patchright install chromium && \
+    chmod -R 755 /opt/playwright-browsers
+
+# ---------------------------------------------------------------------------
+# Copy application code
+# ---------------------------------------------------------------------------
+COPY mt-pricing-backend/app ./app
+
+# ---------------------------------------------------------------------------
+# Non-root user for security (uid 1001 avoids collision with common system users)
+# ---------------------------------------------------------------------------
+RUN useradd -m -u 1001 scraper && chown -R scraper:scraper /app
+USER scraper
+
+# ---------------------------------------------------------------------------
+# Default command — Celery worker consuming the scraper queue exclusively.
+# Concurrency 2: each worker opens at most 2 Chromium pages concurrently.
+# scraper queue: mt.scraper.* tasks routed here by worker.py task_routes.
+# ---------------------------------------------------------------------------
+CMD ["celery", "-A", "app.workers.worker", "worker", \
+     "-Q", "scraper", \
+     "-c", "2", \
+     "-l", "info", \
+     "--pool=prefork"]
