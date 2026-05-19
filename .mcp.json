@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "codegraph": {
+      "command": "codegraph",
+      "args": ["serve", "--mcp"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp", "--browser", "chromium"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "supabase": {
+      "transport": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=vayatmweveoaskyejzba"
+    }
+  }
+}
