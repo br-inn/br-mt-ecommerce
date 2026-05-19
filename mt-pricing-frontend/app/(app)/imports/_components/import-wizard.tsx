@@ -10,33 +10,43 @@ import { cn } from "@/lib/utils/cn";
 import {
   useApplyImport,
   useImportStatus,
+  useUploadImport,
 } from "@/lib/hooks/imports/use-imports";
-import type { ImportPreview } from "@/lib/api/endpoints/imports";
+import type {
+  AnalyzeImportResponse,
+  ColumnMappingItem,
+  ImportPreview,
+} from "@/lib/api/endpoints/imports";
 import { divisionsApi, type Division } from "@/lib/api/endpoints/divisions";
 import { UploadStep } from "./upload-step";
+import { MappingStep } from "./mapping-step";
 import { PreviewDiff } from "./preview-diff";
 import { ApplyProgress } from "./apply-progress";
 import { ImportReportPanel } from "./import-report";
 
-type Step = 0 | 1 | 2 | 3;
+type Step = 0 | 1 | 2 | 3 | 4;
 
 /**
- * Wizard 4 pasos del importer PIM (US-1A-06-01 frontend half).
- * State machine: upload → preview → applying → report.
+ * Wizard 5 pasos del importer PIM (US-1A-06-01 frontend half).
+ * State machine: upload → mapping → preview → confirm → applying/report.
  * Polling 2s sobre `/imports/{id}/status` mientras `applying`.
  */
 export function ImportWizard() {
   const t = useTranslations("imports.wizard");
   const tCommon = useTranslations("common");
   const [step, setStep] = React.useState<Step>(0);
+  const [analysis, setAnalysis] = React.useState<AnalyzeImportResponse | null>(null);
+  const [file, setFile] = React.useState<File | null>(null);
+  const [confirmedMapping, setConfirmedMapping] = React.useState<ColumnMappingItem[] | null>(null);
   const [preview, setPreview] = React.useState<ImportPreview | null>(null);
   const [applyTriggered, setApplyTriggered] = React.useState(false);
   // Stage 3 (Wave 11) — override de divisiones a asignar por SKU del run.
   const [divisionCodes, setDivisionCodes] = React.useState<string[]>([]);
 
+  const uploadPreview = useUploadImport();
   const apply = useApplyImport();
-  // Polling sólo cuando el step es "applying" (3) y tenemos run_id.
-  const status = useImportStatus(preview?.id, step === 3 && !!preview);
+  // Polling sólo cuando el step es "applying" (4) y tenemos run_id.
+  const status = useImportStatus(preview?.id, step === 4 && !!preview);
 
   // Cuando llega status terminal completed/failed, ya no avanzamos step
   // pero render cambia (ImportReport) basado en status.data.
@@ -46,13 +56,29 @@ export function ImportWizard() {
       status.data?.status === "failed" ||
       status.data?.status === "cancelled"
     ) {
-      // estamos ya en step 3, sólo render del report
+      // estamos ya en step 4, sólo render del report
     }
   }, [status.data?.status]);
 
-  const handleUploaded = (p: ImportPreview) => {
-    setPreview(p);
+  const handleAnalyzed = (a: AnalyzeImportResponse, f: File) => {
+    setAnalysis(a);
+    setFile(f);
     setStep(1);
+  };
+
+  const handleMappingConfirmed = async (mapping: ColumnMappingItem[]) => {
+    if (!file) {
+      toast.error(tCommon("error"));
+      return;
+    }
+    setConfirmedMapping(mapping);
+    try {
+      const p = await uploadPreview.mutateAsync({ file, mapping });
+      setPreview(p);
+      setStep(2);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : tCommon("error"));
+    }
   };
 
   const handleConfirm = async () => {
@@ -63,19 +89,22 @@ export function ImportWizard() {
         division_codes: divisionCodes.length > 0 ? divisionCodes : null,
       });
       setApplyTriggered(true);
-      setStep(3);
+      setStep(4);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : tCommon("error"));
     }
   };
 
   const handleReset = () => {
+    setAnalysis(null);
+    setFile(null);
+    setConfirmedMapping(null);
     setPreview(null);
     setApplyTriggered(false);
     setStep(0);
   };
 
-  const stepTitles = [t("step1"), t("step2"), t("step3"), t("step4")];
+  const stepTitles = [t("step1"), t("stepMapping"), t("step2"), t("step3"), t("step4")];
   const isTerminal =
     status.data?.status === "completed" ||
     status.data?.status === "failed" ||
@@ -85,29 +114,38 @@ export function ImportWizard() {
     <div className="space-y-6" data-testid="import-wizard">
       <Stepper currentStep={step} stepTitles={stepTitles} />
 
-      {step === 0 ? <UploadStep onUploaded={handleUploaded} /> : null}
+      {step === 0 ? <UploadStep onAnalyzed={handleAnalyzed} /> : null}
 
-      {step === 1 && preview ? (
-        <PreviewDiff
-          preview={preview}
-          onBack={handleReset}
-          onConfirm={() => setStep(2)}
+      {step === 1 && analysis ? (
+        <MappingStep
+          analysis={analysis}
+          onBack={() => setStep(0)}
+          onConfirm={handleMappingConfirmed}
+          isLoading={uploadPreview.isPending}
         />
       ) : null}
 
       {step === 2 && preview ? (
+        <PreviewDiff
+          preview={preview}
+          onBack={() => setStep(1)}
+          onConfirm={() => setStep(3)}
+        />
+      ) : null}
+
+      {step === 3 && preview ? (
         <div className="space-y-4">
           <DivisionPicker selected={divisionCodes} onChange={setDivisionCodes} />
           <PreviewDiff
             preview={preview}
-            onBack={() => setStep(1)}
+            onBack={() => setStep(2)}
             onConfirm={handleConfirm}
             isApplying={apply.isPending}
           />
         </div>
       ) : null}
 
-      {step === 3 && preview ? (
+      {step === 4 && preview ? (
         <div className="space-y-4">
           <ApplyProgress run={status.data} isLoading={!status.data || !applyTriggered} />
           {isTerminal && status.data ? (

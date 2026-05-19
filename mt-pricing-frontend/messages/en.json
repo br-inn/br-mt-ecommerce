@@ -694,6 +694,7 @@
     "noPermission": "You do not have permission to run imports.",
     "wizard": {
       "step1": "Upload file",
+      "stepMapping": "Column mapping",
       "step2": "Preview",
       "step3": "Confirm",
       "step4": "Apply & report"

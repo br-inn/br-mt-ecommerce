@@ -694,6 +694,7 @@
     "noPermission": "No tienes permisos para ejecutar importaciones.",
     "wizard": {
       "step1": "Subir archivo",
+      "stepMapping": "Mapeo de columnas",
       "step2": "Vista previa",
       "step3": "Confirmar",
       "step4": "Aplicar y reporte"

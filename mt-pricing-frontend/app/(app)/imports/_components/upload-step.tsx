@@ -7,8 +7,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
-import { useUploadImport } from "@/lib/hooks/imports/use-imports";
-import type { ImportPreview } from "@/lib/api/endpoints/imports";
+import { useAnalyzeImport } from "@/lib/hooks/imports/use-imports";
+import type { AnalyzeImportResponse } from "@/lib/api/endpoints/imports";
 
 const ACCEPTED = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -17,17 +17,17 @@ const ACCEPTED = [
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB (NFR importer)
 
 interface Props {
-  onUploaded: (preview: ImportPreview) => void;
+  onAnalyzed: (analysis: AnalyzeImportResponse, file: File) => void;
 }
 
-/** Step 1: drop zone + upload. */
-export function UploadStep({ onUploaded }: Props) {
+/** Step 1: drop zone + analyze (detects headers + LLM mapping proposal). */
+export function UploadStep({ onAnalyzed }: Props) {
   const t = useTranslations("imports.upload");
   const tCommon = useTranslations("common");
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
-  const upload = useUploadImport();
+  const analyze = useAnalyzeImport();
 
   const validate = (f: File): string | null => {
     if (f.size > MAX_BYTES) return t("errors.tooLarge");
@@ -66,8 +66,8 @@ export function UploadStep({ onUploaded }: Props) {
   const handleSubmit = async () => {
     if (!file) return;
     try {
-      const preview = await upload.mutateAsync({ file });
-      onUploaded(preview);
+      const analysis = await analyze.mutateAsync({ file });
+      onAnalyzed(analysis, file);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : tCommon("error"));
     }
@@ -142,10 +142,10 @@ export function UploadStep({ onUploaded }: Props) {
       <div className="flex justify-end">
         <Button
           onClick={handleSubmit}
-          disabled={!file || upload.isPending}
+          disabled={!file || analyze.isPending}
           data-testid="import-upload-submit"
         >
-          {upload.isPending ? t("uploading") : t("startPreview")}
+          {analyze.isPending ? t("uploading") : t("startPreview")}
         </Button>
       </div>
     </div>
