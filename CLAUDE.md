@@ -8,7 +8,7 @@
 - **Worker**: Celery + Redis. Schedules en `public.job_definitions` — nunca hardcodear en `celery_config.py`
 - **Auth**: Supabase Auth. App conecta como rol `mt_app` (NO `service_role` ni `anon`)
 - **Storage**: Supabase Storage — bucket `product-images` obligatorio para imágenes
-- **Deploy**: Hetzner + Docker Compose. NO Vercel, Prisma, Auth.js, BullMQ, R2, AWS
+- **Deploy**: AWS EC2 + Docker Compose. NO Vercel, Prisma, Auth.js, BullMQ, R2, Hetzner
 
 **Migrations split**: Alembic para `public.*`; Supabase migrations para `auth.*`/`storage.*`/RLS (aplicar Supabase primero, luego Alembic).
 

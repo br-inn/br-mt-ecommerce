@@ -1,5 +1,12 @@
 # =============================================================================
-# Deploy staging — SSH a EC2 + docker compose pull/up (US-1A-CICD-01)
+# Deploy staging — SSH a AWS EC2 + docker compose pull/up (US-1A-CICD-01)
+# =============================================================================
+# Servidor: AWS EC2 Ubuntu. Secrets requeridos:
+#   STAGING_SSH_KEY      — clave privada Ed25519 del key pair EC2
+#   STAGING_SSH_HOST     — IP pública del servidor EC2
+#   STAGING_SSH_USER     — usuario EC2 (típicamente `ubuntu`)
+#   STAGING_DOMAIN       — dominio para healthcheck (e.g. 100-53-214-97.sslip.io)
+#   ENV_STAGING          — contenido completo del .env.staging
 # =============================================================================
 ---
 name: deploy-staging

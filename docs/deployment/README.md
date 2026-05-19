@@ -17,7 +17,7 @@ Documentación operativa de despliegue, releases y rollbacks.
 | Migrations + IaC + secrets | [`mt-migrations-iac-secrets-design.md`](../../_bmad-output/planning-artifacts/mt-migrations-iac-secrets-design.md) |
 | DR runbooks + SLA | [`mt-dr-runbooks-sla-design.md`](../../_bmad-output/planning-artifacts/mt-dr-runbooks-sla-design.md) |
 | Observability design | [`mt-observability-design.md`](../../_bmad-output/planning-artifacts/mt-observability-design.md) |
-| ADR-050 IaC Hetzner Terraform | [`ADR-050-iac-hetzner-terraform.md`](../../_bmad-output/planning-artifacts/adr/ADR-050-iac-hetzner-terraform.md) |
+| ADR-050 IaC (histórico — Hetzner) | [`ADR-050-iac-hetzner-terraform.md`](../../_bmad-output/planning-artifacts/adr/ADR-050-iac-hetzner-terraform.md) |
 | ADR-051 Secrets Doppler | [`ADR-051-secrets-management-doppler.md`](../../_bmad-output/planning-artifacts/adr/ADR-051-secrets-management-doppler.md) |
 | ADR-053 Backup & DR | [`ADR-053-backup-dr-strategy.md`](../../_bmad-output/planning-artifacts/adr/ADR-053-backup-dr-strategy.md) |
 
@@ -28,8 +28,8 @@ Documentación operativa de despliegue, releases y rollbacks.
 | Entorno | Propósito | Hosting | URL (placeholder) |
 |---|---|---|---|
 | `dev_local` | Desarrollo individual | Docker Compose en máquina del dev | `http://localhost:3000` |
-| `staging` | Validación con MT (Paula) | Hetzner Cloud (UAE) | `https://staging.mt.<dominio>` |
-| `prod` | Producción para MT | Hetzner Cloud (UAE) | `https://mt.<dominio>` |
+| `staging` | Validación con MT (Paula) | AWS EC2 (UAE / sslip.io) | `https://100-53-214-97.sslip.io` |
+| `prod` | Producción para MT | AWS EC2 (UAE) | `https://mt.<dominio>` |
 
 Variables y secretos se gestionan con **Doppler** (proyecto `mt-pricing`).
 Los stages Doppler reflejan los entornos: `dev_local`, `staging`, `prod`.

@@ -1,5 +1,5 @@
 # =============================================================================
-# Docker Compose — Staging (Hetzner, imágenes pre-built, Doppler secrets)
+# Docker Compose — Staging (AWS EC2, imágenes pre-built desde GHCR, secrets via ENV_STAGING)
 # =============================================================================
 # Modelo de despliegue staging:
 #   - Imágenes de ghcr.io por tag (no build local).

@@ -19,7 +19,7 @@ PR opened
 push tag v*
   └── release-images.yml      (build + push GHCR backend/frontend)            [NUEVO S5]
        └── on workflow_run "release-images" success
-            └── deploy-staging.yml (SSH Hetzner staging + docker compose)    [NUEVO S5]
+            └── deploy-staging.yml (SSH AWS EC2 staging + docker compose)    [NUEVO S5]
 ```
 
 ## 2. Workflows nuevos S5
@@ -49,7 +49,7 @@ push tag v*
 
 - Trigger: `workflow_run` de `release-images.yml` en estado `success`.
 - Steps:
-  1. SSH al Hetzner staging app server (key en GH Encrypted Secret `STAGING_SSH_KEY`).
+  1. SSH al AWS EC2 staging app server (key en GH Encrypted Secret `STAGING_SSH_KEY`).
   2. `docker compose pull` (pulls tag `latest` o tag específico via input).
   3. `docker compose up -d --remove-orphans`.
   4. Healthcheck `/health/ready` con timeout 90s, retry 3x.
@@ -62,9 +62,9 @@ push tag v*
 | Secret | Uso | Owner |
 |--------|-----|-------|
 | `GHCR_TOKEN` (auto via `GITHUB_TOKEN`) | push images | GitHub |
-| `STAGING_SSH_KEY` | SSH a Hetzner staging | TI MT |
-| `STAGING_SSH_HOST` | hostname/IP | TI MT |
-| `STAGING_SSH_USER` | typically `mt-deploy` | TI MT |
+| `STAGING_SSH_KEY` | SSH a AWS EC2 staging (clave privada Ed25519 del key pair EC2) | TI MT |
+| `STAGING_SSH_HOST` | IP pública del servidor EC2 | TI MT |
+| `STAGING_SSH_USER` | usuario EC2, típicamente `ubuntu` | TI MT |
 | `DOPPLER_STAGING_TOKEN` | service token Doppler config staging | TI MT |
 | `SLACK_WEBHOOK_URL` | notifications | DevOps |
 
@@ -75,7 +75,7 @@ push tag v*
 `deploy-staging.yml` rollback step se dispara si healthcheck falla:
 
 ```bash
-ssh mt-deploy@$STAGING_HOST "cd ~/mt-deploy && \
+ssh ubuntu@$STAGING_HOST "cd ~/mt-deploy && \
   PREVIOUS_TAG=\$(jq -r .previous_tag state.json) && \
   TAG=\$PREVIOUS_TAG docker compose up -d"
 ```
@@ -95,9 +95,10 @@ ssh mt-deploy@$STAGING_HOST "cd ~/mt-deploy && \
 
 ## 6. Bloqueos conocidos
 
-- **Hetzner staging server pendiente** — TI MT debe provisionarlo (US-1A-IAC-01).
-- **Doppler workspace MT pendiente** — fallback `.env.staging` cifrado con `age`
-  (R-051) hasta que esté listo.
+- **`STAGING_SSH_KEY` debe coincidir con el key pair EC2** — verificar en AWS Console que
+  la clave pública del par esté asociada a la instancia. Usuario típico: `ubuntu`.
+- **`ENV_STAGING`** — contenido del `.env.staging` inyectado por el deploy step.
+  Gestionar vía GitHub Encrypted Secrets (no Doppler en staging).
 - **Cosign keyless** requiere OIDC habilitado en GH org — verificar pre-merge.
 - **Trivy scan** puede bloquear en CVEs HIGH no patcheables — usar `.trivyignore` con
   justificación firmada.

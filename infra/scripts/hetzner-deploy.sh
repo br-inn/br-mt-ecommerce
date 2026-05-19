@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
+# [DEPRECADO] — El servidor de staging/prod migró a AWS EC2.
+# Este script era para Hetzner Cloud + Terraform. Ya no se usa en el pipeline activo.
+# El deploy real ocurre via .github/workflows/release-images.yml (SSH a EC2).
+# =============================================================================
 # Hetzner deploy — terraform apply + provisión post-init via SSH (US-1A-IAC-01)
 # =============================================================================
 # Wraps:
