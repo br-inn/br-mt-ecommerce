@@ -50,7 +50,7 @@ jobs:
       # 2. Instalar pnpm
       # -----------------------------------------------------------------------
       - name: "[3] Setup pnpm"
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.0.0
 
