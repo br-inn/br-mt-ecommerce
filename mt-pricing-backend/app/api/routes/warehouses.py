@@ -23,6 +23,7 @@ from app.schemas.inventory import (
     WarehouseCreate,
     WarehouseLocationCreate,
     WarehouseLocationRead,
+    WarehousePatch,
     WarehouseRead,
     WarehouseZoneCreate,
     WarehouseZoneRead,
@@ -66,6 +67,21 @@ async def create_warehouse(
     repo: InventoryRepository = Depends(_repo),
 ) -> WarehouseRead:
     return await repo.create_warehouse(payload)
+
+
+@router.patch(
+    "/{warehouse_id}",
+    response_model=WarehouseRead,
+    summary="Actualizar atributos de un almacén",
+    operation_id="warehousesPatch",
+)
+async def patch_warehouse(
+    warehouse_id: UUID,
+    payload: WarehousePatch,
+    _user: User = Depends(require_permissions("purchases:write")),
+    repo: InventoryRepository = Depends(_repo),
+) -> WarehouseRead:
+    return await repo.patch_warehouse(warehouse_id, payload)
 
 
 # ---------------------------------------------------------------------------

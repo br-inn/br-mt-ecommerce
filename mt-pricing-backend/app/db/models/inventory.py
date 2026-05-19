@@ -431,6 +431,8 @@ class StockMovementType(Base):
     posts_accounting: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # mig 144 — default reason code to carry onto movements of this type
+    reason_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
@@ -489,6 +491,13 @@ class StockMovement(Base):
         ForeignKey("stock_movements.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # mig 144 — accounting link (no FK to avoid circular dep with journal_entries)
+    accounting_document_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        nullable=True,
+    )
+    # mig 144 — reason code (e.g. 'SCRAP', 'DAMAGE', 'ADJUSTMENT')
+    reason_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     posted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -618,6 +627,10 @@ class Warehouse(UuidPkMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    # mig 146 — FEFO picking enabled for this warehouse (default true)
+    fefo_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
 
@@ -897,4 +910,75 @@ class CycleCountSchedule(UuidPkMixin, TimestampMixin, Base):
             "is_active",
             postgresql_where=text("is_active = true"),
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-07: Cycle Count execution records (mig 137)
+# ---------------------------------------------------------------------------
+
+
+class CycleCount(UuidPkMixin, TimestampMixin, Base):
+    """Registro de ejecución de un conteo cíclico por schedule × SKU × almacén.
+
+    ``variance`` = counted_qty - system_qty, almacenado como columna regular
+    (no GENERATED ALWAYS) para compatibilidad con PG < 12 y flexibilidad de ajuste.
+    """
+
+    __tablename__ = "cycle_counts"
+
+    schedule_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("cycle_count_schedules.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    location_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouse_locations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    product_sku: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    warehouse_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    scheduled_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # nullable until physically counted
+    counted_qty: Mapped[Decimal | None] = mapped_column(Numeric(15, 3), nullable=True)
+    # snapshot of InventoryPosition.qty_on_hand at count time
+    system_qty: Mapped[Decimal | None] = mapped_column(Numeric(15, 3), nullable=True)
+    # counted_qty - system_qty, maintained by application logic
+    variance: Mapped[Decimal | None] = mapped_column(Numeric(15, 3), nullable=True)
+    status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'scheduled'")
+    )
+    counted_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        # FK to auth.users — managed via Supabase Auth
+        nullable=True,
+    )
+    approved_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        nullable=True,
+    )
+    counted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('scheduled','in_progress','pending_approval','approved','rejected')",
+            name="ck_cycle_counts_status",
+        ),
+        Index("ix_cc_schedule", "schedule_id"),
+        Index("ix_cc_sku_wh", "product_sku", "warehouse_id", "scheduled_date"),
     )

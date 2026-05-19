@@ -62,6 +62,12 @@ class GlAccount(UuidPkMixin, Base):
     )
     is_reconciling: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_blocked: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    # normal_balance — DEBIT para activos/gastos; CREDIT para pasivos/equity/revenue (mig 141)
+    normal_balance: Mapped[str] = mapped_column(
+        Text, server_default=text("'DEBIT'"), nullable=False
+    )
+    # is_active — columna explícita (no GENERATED ALWAYS); inicio true (mig 141)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), server_default="AED", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
@@ -71,6 +77,10 @@ class GlAccount(UuidPkMixin, Base):
         CheckConstraint(
             "account_type IN ('ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE','CONTRA')",
             name="ck_gl_accounts_account_type",
+        ),
+        CheckConstraint(
+            "normal_balance IN ('DEBIT', 'CREDIT')",
+            name="ck_gl_accounts_normal_balance",
         ),
     )
 
@@ -98,7 +108,7 @@ class PostingPeriod(UuidPkMixin, Base):
     period_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     date_from: Mapped[date] = mapped_column(Date, nullable=False)
     date_to: Mapped[date] = mapped_column(Date, nullable=False)
-    status: Mapped[str] = mapped_column(Text, server_default="open", nullable=False)  # open|closed|locked
+    status: Mapped[str] = mapped_column(Text, server_default="open", nullable=False)  # open|soft_closed|closed|locked
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_by: Mapped[UUID | None] = mapped_column(
         UUID_PG(as_uuid=True),
@@ -108,7 +118,7 @@ class PostingPeriod(UuidPkMixin, Base):
 
     __table_args__ = (
         CheckConstraint("period_num BETWEEN 1 AND 16", name="ck_posting_periods_period_num"),
-        CheckConstraint("status IN ('open','closed','locked')", name="ck_posting_periods_status"),
+        CheckConstraint("status IN ('open','soft_closed','closed','locked')", name="ck_posting_periods_status"),
         UniqueConstraint("fiscal_year", "period_num", name="uq_posting_periods_fy_period"),
     )
 

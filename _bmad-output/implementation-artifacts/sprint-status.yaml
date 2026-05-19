@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-16T23:59:00.000Z"  # S15+S16 SCR: EP-SCR-04(05,06,07,08a,08b) → review; ERP stories backlog → review
+last_updated: "2026-05-19T20:00:00.000Z"  # S17 cierre completo: 4 stories review → done (ERP-01-04, ERP-03-01/02, ERP-04-05); mig 151 return_deliveries
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -150,17 +150,17 @@ development_status:
   # EP-SCR-02 — Revisión y Validación UI (PARCIAL)
   epic-EP-SCR-02: in-progress    # UI Pool + Validación — FR-08/09 done, FR-15 pendiente
 
-  US-SCR-02-01: review          # Fix empty state /comparator/pool (skeleton infinito FR-15) — 3 SP — S13
+  US-SCR-02-01: done            # Fix empty state /comparator/pool (skeleton infinito FR-15) — 3 SP ✅ S17 audit
 
   epic-EP-SCR-02-retrospective: optional
 
   # EP-SCR-03 — Gestión Marcas Competidoras con Scraping Resiliente (PARCIAL)
   epic-EP-SCR-03: in-progress    # Marcas competidoras + resiliencia — FR-10/11/12/13 done, 10 FRs pendientes
 
-  US-SCR-03-01: review          # i18n ES/EN/AR + RBAC roles + nav lateral (FR-16/17/18) — 5 SP — S13
-  US-SCR-03-02: review          # Test suite ≥80% cobertura (FR-14) — 5 SP — S13
-  US-SCR-03-03: backlog         # Rate limiter Redis token bucket + fingerprint rotation (FR-31/30) — 5 SP — S14
-  US-SCR-03-04: backlog         # Circuit breaker dominio + proxy pool distribuido Redis (FR-28/36) — 8 SP — S14
+  US-SCR-03-01: done            # i18n ES/EN/AR + RBAC roles + nav lateral (FR-16/17/18) — 5 SP ✅ S17 fix: scraper:read/write permissions
+  US-SCR-03-02: done            # Test suite ≥80% cobertura (FR-14) — 5 SP ✅ S17 fix: test_circuit_breaker.py (23 tests) + test_curl_cffi_amazon_uae.py (22 tests)
+  US-SCR-03-03: done            # Rate limiter Redis token bucket + fingerprint rotation (FR-31/30) — 5 SP ✅ S17 fix: pool rotation + RPM 5
+  US-SCR-03-04: done            # Circuit breaker dominio + proxy pool distribuido Redis (FR-28/36) — 8 SP ✅ S17 fix: recovery 300s + proxy cooldown
   US-SCR-03-05: backlog         # Dashboard salud canales + CRUD proxies UI sin redeploy (FR-33/38) — 8 SP — S14
 
   epic-EP-SCR-03-retrospective: optional
@@ -168,10 +168,10 @@ development_status:
   # EP-SCR-04 — Monitoreo Autónomo + Price Intelligence (PENDIENTE S14-S16)
   epic-EP-SCR-04: backlog        # Price intelligence completo — 21 FRs — S14-S16
 
-  US-SCR-04-01: backlog         # TimescaleDB hypertable + price_daily_stats continuous aggregate (FR-29/23) — 8 SP — S14
-  US-SCR-04-02: backlog         # price_monitor_task liviana + workers colas especializadas (FR-40/43/44/45) — 8 SP — S14
+  US-SCR-04-01: done            # TimescaleDB hypertable + price_daily_stats continuous aggregate (FR-29/23) — 8 SP ✅ S17 audit
+  US-SCR-04-02: done            # price_monitor_task liviana + workers colas especializadas (FR-40/43/44/45) — 8 SP ✅ S17 audit
   US-SCR-04-03: backlog         # Bootstrap coordinator + workers on-demand + UI diferenciación (FR-42/46/39/41) — 8 SP — S14
-  US-SCR-04-04: backlog         # Job definitions automáticos + Noon UAE en scrape_brand (FR-19/21) — 5 SP — S14
+  US-SCR-04-04: done            # Job definitions automáticos + Noon UAE en scrape_brand (FR-19/21) — 5 SP ✅ S17 audit
   US-SCR-04-05: backlog         # Price alerts pg_notify + heartbeat 26h + email SendGrid (FR-24/34/37) — 8 SP — S15
   US-SCR-04-06: backlog         # KPI dashboard Price Gap/Index/Position + listings por marca (FR-25/22/20) — 8 SP — S15
   US-SCR-04-07: backlog         # Monitor calidad matching histograma confidence 7d (FR-35) — 3 SP — S15
@@ -185,100 +185,112 @@ development_status:
 # Epic file: epics-and-stories-ep-erp-best-practices.md
 
 # ─── EP-ERP-01 — UX Producto: SAP Fiori / Akeneo patterns ────────────────────
-  epic-EP-ERP-01: in-progress    # UX Producto — SAP Fiori/Akeneo — 34 SP total (S13-S14)
+  epic-EP-ERP-01: done           # UX Producto — SAP Fiori/Akeneo — 34 SP ✅ S17 (6/6 stories done)
 
-  US-ERP-01-01: review           # LifecycleStatusBadge + Quick Facts header (UX-01+02) — 5 SP — S13 ⬆ 2026-05-31
-  US-ERP-01-02: review           # Tab "Mercados" + product_releases + "Activar mercado" (UX-03+10) — 8 SP — S13 ⬆ 2026-05-31
-  US-ERP-01-03: review           # Tab "Unidades" — base_uom + conversiones (UX-04) — 5 SP — S13 ⬆ 2026-05-31
-  US-ERP-01-04: review           # GTIN en specs + lifecycle chip en listado (UX-05+07) — 3 SP — S13 ⬆ 2026-05-31
-  US-ERP-01-05: review           # Completeness ring (Akeneo) + Breadcrumb navegable (UX-06+08) — 5 SP — S14 ⬆ 2026-05-16
-  US-ERP-01-06: review           # Inline edit mode — toggle View/Edit (UX-09) — 8 SP — S14 ⬆ 2026-05-16
+  US-ERP-01-01: done             # LifecycleStatusBadge + Quick Facts header (UX-01+02) — 5 SP ✅ S17 fix: badge null→"Sin estado"
+  US-ERP-01-02: done             # Tab "Mercados" + product_releases + "Activar mercado" (UX-03+10) — 8 SP ✅ S17 fix: fecha activación + staleTime
+  US-ERP-01-03: done             # Tab "Unidades" — base_uom + conversiones (UX-04) — 5 SP ✅ S17 fix: Agregar conversión dialog + staleTime
+  US-ERP-01-04: done             # GTIN en specs + lifecycle chip en listado (UX-05+07) — 3 SP ✅ S17 fix: gtin en ProductListItem + LifecycleStatusBadge column + i18n columns.status ES/EN/AR
+  US-ERP-01-05: done             # Completeness ring (Akeneo) + Breadcrumb navegable (UX-06+08) — 5 SP ✅ S17 audit
+  US-ERP-01-06: done             # Inline edit mode — toggle View/Edit (UX-09) — 8 SP ✅ S17 fix: product-header inline edit + PATCH /products/{sku}
 
   epic-EP-ERP-01-retrospective: optional
 
 # ─── EP-ERP-02 — Inventario v2: Movement Types, Trazabilidad, Almacenes ───────
   epic-EP-ERP-02: in-progress    # Inventario v2 — 55 SP total (S13-S16)
 
-  US-ERP-02-01: review           # Movement Types catalog + stock_movements + accounting doc (INV-01+02+03) — 8 SP — S13 ⬆ 2026-05-16
-  US-ERP-02-02: review           # Stock types diferenciados + inventory_positions 5D (INV-05+12) — 8 SP — S13 ⬆ 2026-05-16
-  US-ERP-02-03: review           # Lot tracking: inventory_lots + trazabilidad UP/DOWN (INV-06+07) — 8 SP — S14 ⬆ 2026-05-16
-  US-ERP-02-04: review           # Jerarquía almacén: Warehouse → Zone → Location (INV-11+14) — 5 SP — S14 ⬆ 2026-05-16
-  US-ERP-02-05: review           # FEFO automático en picking + alertas expiración Celery (INV-08+09) — 5 SP — S15 ⬆ 2026-05-16
-  US-ERP-02-06: review           # Replenishment params por producto-almacén + job ROP (INV-15+16) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-02-07: review           # ABC classification automática + Cycle count schedule (INV-17+18+19) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-02-08: review           # Dashboard KPIs inventario: Turnover, DOH, Fill Rate (INV-23+25) — 5 SP — S16 ⬆ 2026-05-16
+  US-ERP-02-01: done             # Movement Types catalog + stock_movements + accounting doc (INV-01+02+03) — 8 SP ✅ S17 fix: mig 144 accounting_document_id + reason_code + SCRAP seed
+  US-ERP-02-02: done             # Stock types diferenciados + inventory_positions 5D (INV-05+12) — 8 SP ✅ S17 fix: mig 145 VIEW inventory_positions_5d 5 columnas pivot
+  US-ERP-02-03: done             # Lot tracking: inventory_lots + trazabilidad UP/DOWN (INV-06+07) — 8 SP ✅ S17 code-review: traceability UP/DOWN ✓
+  US-ERP-02-04: done             # Jerarquía almacén: Warehouse → Zone → Location (INV-11+14) — 5 SP ✅ S17 fix: PATCH /warehouses/{id} + WarehousePatch schema + patch_warehouse repo
+  US-ERP-02-05: done             # FEFO automático en picking + alertas expiración Celery (INV-08+09) — 5 SP ✅ S17 fix: mig 146 fefo_enabled BOOLEAN + ORM Warehouse.fefo_enabled
+  US-ERP-02-06: done             # Replenishment params por producto-almacén + job ROP (INV-15+16) — 8 SP ✅ S17 code-review: ROP job + UPSERT dedup ✓
+  US-ERP-02-07: done             # ABC classification automática + Cycle count schedule (INV-17+18+19) — 8 SP ✅ S17 fix: generate_cycle_count_records Celery task mt.inventory.generate_cycle_counts
+  US-ERP-02-08: done             # Dashboard KPIs inventario: Turnover, DOH, Fill Rate (INV-23+25) — 5 SP ✅ S17 code-review: 6 KPIs + frontend dashboard ✓
 
   epic-EP-ERP-02-retrospective: optional
 
 # ─── EP-ERP-03 — Compras P2P: PR, Approval Matrix, PIR, 3-Way Match ──────────
-  epic-EP-ERP-03: in-progress    # Compras P2P — 42 SP total (S13-S16)
+  epic-EP-ERP-03: done           # Compras P2P — 42 SP ✅ S17 (6/6 stories done)
 
-  US-ERP-03-01: review           # Purchase Requisition entity + lifecycle + log inmutable (PRC-01+02+07) — 8 SP — S13 ⬆ 2026-05-16
-  US-ERP-03-02: review           # Approval matrix configurable + escalación automática (PRC-04+05+06) — 8 SP — S14 ⬆ 2026-05-16
-  US-ERP-03-03: review           # PO types + Purchasing Info Record (precio proveedor) (PRC-08+11) — 5 SP — S14 ⬆ 2026-05-16
-  US-ERP-03-04: review           # Three-way match + tolerance keys + payment block (PRC-17+18+20) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-03-05: review           # Source List (proveedores aprobados) + RFQ básico (PRC-12+14+16) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-03-06: review           # Dashboard KPIs procurement + spend analysis (PRC-21+22+23) — 5 SP — S16 ⬆ 2026-05-16
+  US-ERP-03-01: done             # Purchase Requisition entity + lifecycle + log inmutable (PRC-01+02+07) — 8 SP ✅ S17 fix: convert_pr_to_po bug (PurchaseRequisitionLine no existe) + GET /decisions
+  US-ERP-03-02: done             # Approval matrix configurable + escalación automática (PRC-04+05+06) — 8 SP ✅ S17 fix: DELETE /approval-rules/{id} + GET /requisitions/{id}/decisions
+  US-ERP-03-03: done             # PO types + Purchasing Info Record (precio proveedor) (PRC-08+11) — 5 SP ✅ S17 code-review: PIR auto-populate en PO ✓
+  US-ERP-03-04: done             # Three-way match + tolerance keys + payment block (PRC-17+18+20) — 8 SP ✅ S17 code-review: 3-way match + release endpoint ✓
+  US-ERP-03-05: done             # Source List (proveedores aprobados) + RFQ básico (PRC-12+14+16) — 8 SP ✅ S17 fix: mig 147 warehouse_id en source_list + convert_pr_to_po endpoint
+  US-ERP-03-06: done             # Dashboard KPIs procurement + spend analysis (PRC-21+22+23) — 5 SP ✅ S17 audit
 
   epic-EP-ERP-03-retrospective: optional
 
 # ─── EP-ERP-04 — Ventas O2C: ATP, Credit Management, RMA ────────────────────
-  epic-EP-ERP-04: in-progress    # Ventas O2C — 47 SP total (S14-S16)
+  epic-EP-ERP-04: done           # Ventas O2C — 47 SP ✅ S17 (6/6 stories done)
 
-  US-ERP-04-01: review           # SO types + document chain reference completa (VEN-01+03) — 5 SP — S14 ⬆ 2026-05-16
-  US-ERP-04-02: review           # ATP check en SO + soft reservation de stock (VEN-05+06+07+08) — 13 SP — S14 ⬆ 2026-05-16
-  US-ERP-04-03: review           # Credit check automático + auto-release (VEN-09+10+11) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-04-04: review           # Outbound Delivery entity + Goods Issue → inventario + AR (VEN-12+15+16) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-04-05: review           # Returns RMA + Return Delivery + Credit Memo automático (VEN-17+18+19) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-04-06: review           # Dashboard O2C KPIs + Backorder report (VEN-20+21) — 5 SP — S16 ⬆ 2026-05-16
+  US-ERP-04-01: done             # SO types + document chain reference completa (VEN-01+03) — 5 SP ✅ S17 fix: chain ahora incluye invoices
+  US-ERP-04-02: done             # ATP check en SO + soft reservation de stock (VEN-05+06+07+08) — 13 SP ✅ S17 audit
+  US-ERP-04-03: done             # Credit check automático + auto-release (VEN-09+10+11) — 8 SP ✅ S17 fix: AED 500 skip + skipped/reason schema + auto_release_credit_holds task
+  US-ERP-04-04: done             # Outbound Delivery entity + Goods Issue → inventario + AR (VEN-12+15+16) — 8 SP ✅ S17 fix: GI actualiza InventoryPosition.qty_on_hand
+  US-ERP-04-05: done             # Returns RMA + Return Delivery + Credit Memo automático (VEN-17+18+19) — 8 SP ✅ S17 fix: ReturnDelivery model + mig 151 + receive-goods crea delivery record
+  US-ERP-04-06: done             # Dashboard O2C KPIs + Backorder report (VEN-20+21) — 5 SP ✅ S17 fix: revenue_mtd + order_count_mtd + fill_rate_pct en O2CKpisOut
 
   epic-EP-ERP-04-retrospective: optional
 
 # ─── EP-ERP-05 — Billing & Facturación: Invoice Types, Dunning, e-Invoicing ──
   epic-EP-ERP-05: in-progress    # Billing & Facturación — 42 SP total (S14-S16)
 
-  US-ERP-05-01: review           # Billing types + doc chain + precio copiado del SO (BIL-01+02+03+04) — 5 SP — S14 ⬆ 2026-05-16
-  US-ERP-05-02: review           # Asientos FI automáticos + desglose revenue + link acctg (BIL-05+06+07) — 8 SP — S14 ⬆ 2026-05-16
-  US-ERP-05-03: review           # Dunning automático por aging buckets + payment terms (BIL-12+13) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-05-04: review           # CFDI 4.0 + ZATCA Fatoora + e_invoice_submissions audit (BIL-08+09+10+11) — 13 SP — S15 ⬆ 2026-05-16
-  US-ERP-05-05: review           # AR Aging Report tiempo real + promesas de pago (BIL-14+15) — 5 SP — S16 ⬆ 2026-05-16
-  US-ERP-05-06: review           # Dashboard KPIs billing: DSO, CEI + alerta 24h (BIL-19+20) — 3 SP — S16 ⬆ 2026-05-16
+  US-ERP-05-01: done             # Billing types + doc chain + precio copiado del SO (BIL-01+02+03+04) — 5 SP ✅ S17 fix: N+1 fix create_invoice_from_delivery (IN query) + early payment discount
+  US-ERP-05-02: done             # Asientos FI automáticos + desglose revenue + link acctg (BIL-05+06+07) — 8 SP ✅ S17 code-review: FI por línea + accounting_document_id ✓
+  US-ERP-05-03: done             # Dunning automático por aging buckets + payment terms (BIL-12+13) — 8 SP ✅ S17 code-review: dunning_levels + Celery daily task ✓
+  US-ERP-05-04: done             # CFDI 4.0 + ZATCA Fatoora + e_invoice_submissions audit (BIL-08+09+10+11) — 13 SP ✅ S17 fix: retry_e_invoice INSERT-only nueva fila inmutable
+  US-ERP-05-05: done             # AR Aging Report tiempo real + promesas de pago (BIL-14+15) — 5 SP ✅ S17 code-review: 5 buckets + payment_promises ✓
+  US-ERP-05-06: done             # Dashboard KPIs billing: DSO, CEI + alerta 24h (BIL-19+20) — 3 SP ✅ S17 code-review: DSO + CEI + alerta 24h Celery ✓
 
   epic-EP-ERP-05-retrospective: optional
 
 # ─── EP-ERP-06 — Finanzas: Universal Journal, CoA, Profit Centers, Period Close
   epic-EP-ERP-06: in-progress    # Finanzas — 60 SP total (S13-S16)
 
-  US-ERP-06-01: review           # Chart of Accounts (200 cuentas) + Posting Periods control (FIN-02+03) — 5 SP — S13 ⬆ 2026-05-16
-  US-ERP-06-02: review           # Cost Centers hierarchy + Profit Centers básicos (FIN-09+10) — 5 SP — S13 ⬆ 2026-05-16
-  US-ERP-06-03: review           # Universal Journal — financial_entries table (FIN-01) — 8 SP — S14 ⬆ 2026-05-16
-  US-ERP-06-04: review           # AP Aging automático + Payment Run configurable (FIN-04+05+06) — 8 SP — S14 ⬆ 2026-05-16
-  US-ERP-06-05: review           # Standard Cost por SKU + varianza precio compra (FIN-11+12) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-06-06: review           # P&L real-time (vista materializada) + Balance Sheet recon (FIN-15+16) — 8 SP — S15 ⬆ 2026-05-16
-  US-ERP-06-07: review           # Period Close Checklist automatizado + UAE CIT provisioning (FIN-14+19) — 5 SP — S15 ⬆ 2026-05-16
-  US-ERP-06-08: review           # FX Revaluation al cierre + Journal SoD controls (FIN-20+21) — 5 SP — S16 ⬆ 2026-05-16
-  US-ERP-06-09: review           # CO-PA contribution margin + Cash Flow + Budget vs Actual (FIN-13+17+22) — 8 SP — S16 ⬆ 2026-05-16
+  US-ERP-06-01: done             # Chart of Accounts (200 cuentas) + Posting Periods control (FIN-02+03) — 5 SP ✅ S17 fix: mig 149 ~150 GL accounts adicionales 1101-6230 (200+ total)
+  US-ERP-06-02: done             # Cost Centers hierarchy + Profit Centers básicos (FIN-09+10) — 5 SP ✅ S17 audit
+  US-ERP-06-03: done             # Universal Journal — financial_entries table (FIN-01) — 8 SP ✅ S17 fix: period blocking añadido
+  US-ERP-06-04: done             # AP Aging automático + Payment Run configurable (FIN-04+05+06) — 8 SP ✅ S17 fix: 2% early payment discount en create_payment_run (≥10d antes del vencimiento)
+  US-ERP-06-05: done             # Standard Cost por SKU + varianza precio compra (FIN-11+12) — 8 SP ✅ S17 fix: alerta >5% añadida
+  US-ERP-06-06: done             # P&L real-time (vista materializada) + Balance Sheet recon (FIN-15+16) — 8 SP ✅ S17 fix: run_balance_reconciliation task añadida
+  US-ERP-06-07: done             # Period Close Checklist automatizado + UAE CIT provisioning (FIN-14+19) — 5 SP ✅ S17 audit
+  US-ERP-06-08: done             # FX Revaluation al cierre + Journal SoD controls (FIN-20+21) — 5 SP ✅ S17 audit
+  US-ERP-06-09: done             # CO-PA contribution margin + Cash Flow + Budget vs Actual (FIN-13+17+22) — 8 SP ✅ S17 code-review: mv_copa + cash-flow 13w + budget-vs-actual ✓
 
   epic-EP-ERP-06-retrospective: optional
 
 # ─── EP-SCR — Scraper, Matching & Comparador de Precios (S14) ────────────────
   epic-EP-SCR: in-progress    # Scraper infrastructure + price monitoring — S13-S16
 
-  US-SCR-03-03: review         # Rate limiter Redis token bucket + UA rotation — 5 SP — S14 ⬆ 2026-05-16
-  US-SCR-03-04: review         # Circuit breaker per-domain + proxy pool distribuido Redis — 8 SP — S14 ⬆ 2026-05-16
-  US-SCR-03-05: review         # Dashboard salud canales + CRUD proxies UI sin redeploy — 8 SP — S14 ⬆ 2026-05-16
-  US-SCR-04-01: review         # price_history_raw (partitioned PG) + price_daily_stats matview + mig 134 — 8 SP — S14 ⬆ 2026-05-16
-  US-SCR-04-02: review         # price_monitor_task + cola scraper.price_monitor — 8 SP — S14 ⬆ 2026-05-16
-  US-SCR-04-03: review         # Bootstrap coordinator + UI diferenciación monitoring — 8 SP — S14 ⬆ 2026-05-16
-  US-SCR-04-04: review         # Job definitions automáticos al crear marca + Noon UAE verificado — 5 SP — S14 ⬆ 2026-05-16
+  US-SCR-03-03: done           # Rate limiter Redis token bucket + UA rotation — 5 SP ✅ S17 fix
+  US-SCR-03-04: done           # Circuit breaker per-domain + proxy pool distribuido Redis — 8 SP ✅ S17 fix
+  US-SCR-03-05: done           # Dashboard salud canales + CRUD proxies UI sin redeploy — 8 SP ✅ S17 code-review: health endpoint + proxy CRUD + refetch 30s ✓
+  US-SCR-04-01: done           # price_history_raw (partitioned PG) + price_daily_stats matview + mig 134 — 8 SP ✅ S17 audit
+  US-SCR-04-02: done           # price_monitor_task + cola scraper.price_monitor — 8 SP ✅ S17 audit
+  US-SCR-04-03: done           # Bootstrap coordinator + UI diferenciación monitoring — 8 SP ✅ S17 fix: Modo column + Bootstrap Scan button en competitor-brands/_client.tsx
+  US-SCR-04-04: done           # Job definitions automáticos al crear marca + Noon UAE verificado — 5 SP ✅ S17 audit
 
   # ─ S15 stories ─────────────────────────────────────────────────────────────
-  US-SCR-04-05: review         # Price alerts pg_notify + heartbeat 26h + email SendGrid — mig 135 + tasks existentes — 8 SP — S15 ⬆ 2026-05-16
-  US-SCR-04-06: review         # KPI dashboard Price Gap/Index/Position + listings por marca — backend + frontend + i18n — 8 SP — S15 ⬆ 2026-05-16
-  US-SCR-04-07: review         # Monitor calidad matching histograma confidence 7d — backend + frontend — 3 SP — S15 ⬆ 2026-05-16
+  US-SCR-04-05: done           # Price alerts pg_notify + heartbeat 26h + email SendGrid — mig 135 + tasks existentes — 8 SP ✅ S17 code-review: trigger pg_notify + SendGrid task ✓
+  US-SCR-04-06: done           # KPI dashboard Price Gap/Index/Position + listings por marca — backend + frontend + i18n — 8 SP ✅ S17 fix: price_gap/index/position formulas + mt_price_aed param
+  US-SCR-04-07: done           # Monitor calidad matching histograma confidence 7d — backend + frontend — 3 SP ✅ S17 fix: histogram 4 bins AC-spec [0-0.5,0.5-0.7,0.7-0.85,0.85-1.0]
 
   # ─ S16 stories ─────────────────────────────────────────────────────────────
-  US-SCR-04-08a: review        # Cross-encoder ms-marco-MiniLM + cache Redis + Anthropic prompt caching — integrado en match_service — 8 SP — S16 ⬆ 2026-05-16
-  US-SCR-04-08b: review        # HITL queue uncertainty×value AED 1K — mig 136 + routes + auto-enqueue — 5 SP — S16 ⬆ 2026-05-16
+  US-SCR-04-08a: done          # Cross-encoder ms-marco-MiniLM + cache Redis + Anthropic prompt caching — integrado en match_service — 8 SP ✅ S17 fix: settings.ENABLE_CROSS_ENCODER_RERANKER + warmup lifespan
+  US-SCR-04-08b: done          # HITL queue uncertainty×value AED 1K — mig 136 + routes + auto-enqueue — 5 SP ✅ S17 code-review: high_value_review + is_first_appearance + priority formula ✓
 
   epic-EP-SCR-retrospective: optional
+
+# ─── EP-SCR-05 — Brand Extractor: LLM-generated attribute mapping ─────────────
+# Patrón inspirado en llm-scraper/generate mode (mishushakov): Claude genera el
+# JSON mapping de atributos UNA VEZ por marca en Bootstrap; reutilizado sin LLM
+# en cada monitoring scrape → mejor cobertura de specs sin costo por scrape.
+
+  epic-EP-SCR-05: in-progress    # Brand Extractor — S17+
+
+  US-SCR-05-01: done             # JSON attribute mapping generado por Claude × marca × marketplace — 8 SP ✅ S17
+                                  # mig 150 scraper_brand_extractors + BrandExtractorService
+                                  # + generate_brand_extractor_task + POST /bootstrap-scan
+                                  # + apply_mapping en curl_cffi_amazon_uae + POC script

@@ -124,3 +124,58 @@ async def _re_evaluate_backorders_async() -> dict[str, Any]:
         error_count,
     )
     return {"confirmed_lines": confirmed_count, "errors": error_count}
+
+
+@celery_app.task(
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    default_retry_delay=60,
+    name="mt.sales.auto_release_credit_holds",
+)
+def auto_release_credit_holds(self: Any, dry_run: bool = False) -> dict[str, Any]:
+    """Auto-release credit holds where exposure is now under the limit (US-ERP-04-03).
+
+    Ejecutado por job_definition 'check-credit-holds'. Cron: cada 6h.
+    """
+    from decimal import Decimal as _Decimal
+
+    from sqlalchemy import func as _func, select as _select
+
+    from app.core.database import AsyncSessionLocal
+    from app.db.models.sales import CustomerCreditLimit, CustomerOpenItem, SalesOrder
+
+    async def _inner() -> dict[str, Any]:
+        async with AsyncSessionLocal() as session:
+            held_q = _select(SalesOrder).where(SalesOrder.status == "on_credit_hold")
+            result = await session.execute(held_q)
+            held_orders = result.scalars().all()
+
+            released = 0
+            for so in held_orders:
+                cl_r = await session.execute(
+                    _select(CustomerCreditLimit).where(
+                        CustomerCreditLimit.customer_id == so.customer_id
+                    )
+                )
+                cl = cl_r.scalar_one_or_none()
+                if not cl or cl.is_blocked:
+                    continue
+
+                open_r = await session.execute(
+                    _select(_func.coalesce(_func.sum(CustomerOpenItem.amount), _Decimal("0"))).where(
+                        CustomerOpenItem.customer_id == so.customer_id,
+                        CustomerOpenItem.status != "paid",
+                    )
+                )
+                exposure = open_r.scalar_one() or _Decimal("0")
+                if exposure <= (cl.credit_limit or _Decimal("0")):
+                    if not dry_run:
+                        so.status = "confirmed"
+                    released += 1
+
+            if not dry_run:
+                await session.commit()
+            return {"released": released, "dry_run": dry_run}
+
+    return _run_async(_inner())

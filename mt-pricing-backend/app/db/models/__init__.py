@@ -15,7 +15,7 @@ from app.db.models.attributes import (
 )
 from app.db.models.audit import AuditEvent
 from app.db.models.compatibility import ProductCompatibility
-from app.db.models.comparator import CompetitorBrand, CompetitorListing, ManufacturerWhitelist, MatchDecision
+from app.db.models.comparator import BrandExtractor, CompetitorBrand, CompetitorListing, ManufacturerWhitelist, MatchDecision
 from app.db.models.dimensions import (
     ActuationCode,
     DimensionCell,
@@ -287,6 +287,8 @@ __all__ = [
     "CompetitorBrand",
     "CompetitorListing",
     "MatchDecision",
+    # US-SCR-05-01 — brand extractor LLM mapping (mig. 20260519_150)
+    "BrandExtractor",
     # US-F15-02-03 — manufacturers whitelist para RIS boost (mig. 075)
     "ManufacturerWhitelist",
     # DR drills (mig. 076)

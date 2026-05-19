@@ -272,12 +272,12 @@ async def reverse_movement(
     operation_id="inventoryLotsList",
 )
 async def list_lots(
-    product_id: Annotated[UUID | None, Query()] = None,
+    product_sku: Annotated[str | None, Query(max_length=64)] = None,
     quality_status: Annotated[str | None, Query(max_length=32)] = None,
     _user: User = Depends(require_permissions("purchases:write")),
     repo: InventoryRepository = Depends(_repo),
 ) -> list[InventoryLotRead]:
-    return await repo.list_lots(product_id=product_id, quality_status=quality_status)
+    return await repo.list_lots(product_sku=product_sku, quality_status=quality_status)
 
 
 @router.get(

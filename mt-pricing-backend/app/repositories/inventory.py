@@ -59,6 +59,7 @@ from app.schemas.inventory import (
     WarehouseCreate,
     WarehouseLocationCreate,
     WarehouseLocationRead,
+    WarehousePatch,
     WarehouseRead,
     WarehouseZoneCreate,
     WarehouseZoneRead,
@@ -156,7 +157,6 @@ class InventoryRepository:
         """Stock unrestricted de un SKU, agrupado por warehouse."""
         stmt = (
             select(
-                InventoryPosition.product_id,
                 InventoryPosition.sku,
                 InventoryPosition.warehouse_id,
                 func.sum(InventoryPosition.qty_on_hand).label("qty_available"),
@@ -169,7 +169,6 @@ class InventoryRepository:
                 )
             )
             .group_by(
-                InventoryPosition.product_id,
                 InventoryPosition.sku,
                 InventoryPosition.warehouse_id,
             )
@@ -178,7 +177,7 @@ class InventoryRepository:
         rows = result.all()
         return [
             InventoryAvailabilityRead(
-                product_id=row.product_id,
+                product_sku=row.sku,
                 sku=row.sku,
                 warehouse_id=row.warehouse_id,
                 qty_available=row.qty_available,
@@ -298,7 +297,7 @@ class InventoryRepository:
 
         movement = StockMovement(
             movement_type_id=payload.movement_type_id,
-            product_id=payload.product_id,
+            product_sku=payload.product_sku,
             qty=payload.qty,
             lot_id=payload.lot_id,
             warehouse_id=payload.warehouse_id,
@@ -351,7 +350,7 @@ class InventoryRepository:
 
         reverse_payload = StockMovementCreate(
             movement_type_id=original.movement_type_id,
-            product_id=original.product_id,
+            product_sku=original.product_sku,
             qty=-original.qty,
             lot_id=original.lot_id,
             warehouse_id=original.warehouse_id,
@@ -389,12 +388,12 @@ class InventoryRepository:
     async def list_lots(
         self,
         *,
-        product_id: UUID | None = None,
+        product_sku: str | None = None,
         quality_status: str | None = None,
     ) -> list[InventoryLotRead]:
         conditions: list[Any] = []
-        if product_id is not None:
-            conditions.append(InventoryLot.product_id == product_id)
+        if product_sku is not None:
+            conditions.append(InventoryLot.product_sku == product_sku)
         if quality_status is not None:
             conditions.append(InventoryLot.quality_status == quality_status)
 
@@ -520,6 +519,21 @@ class InventoryRepository:
         )
         self.session.add(wh)
         await self.session.flush()
+        return WarehouseRead.model_validate(wh)
+
+    async def patch_warehouse(self, warehouse_id: UUID, payload: "WarehousePatch") -> "WarehouseRead":
+        from app.schemas.inventory import WarehousePatch, WarehouseRead
+        result = await self.session.execute(
+            select(Warehouse).where(Warehouse.id == warehouse_id)
+        )
+        wh = result.scalar_one_or_none()
+        if not wh:
+            raise HTTPException(status_code=404, detail="Almacén no encontrado")
+        data = payload.model_dump(exclude_none=True)
+        for k, v in data.items():
+            setattr(wh, k, v)
+        await self.session.flush()
+        await self.session.refresh(wh)
         return WarehouseRead.model_validate(wh)
 
     async def list_zones(self, warehouse_id: UUID) -> list[WarehouseZoneRead]:

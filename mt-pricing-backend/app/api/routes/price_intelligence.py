@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
@@ -42,6 +43,7 @@ async def get_price_intelligence_dashboard(
     marketplace: str | None = Query(None, description="amazon_uae | noon_uae"),
     date_from: datetime | None = Query(None, description="Inicio rango (ISO8601)"),
     date_to: datetime | None = Query(None, description="Fin rango (ISO8601)"),
+    mt_price_aed: float | None = Query(None, description="Precio MT en AED para calcular KPIs"),
 ) -> dict:
     """Retorna KPIs de precio: Price Gap, Price Index, Price Position.
 
@@ -103,22 +105,18 @@ async def get_price_intelligence_dashboard(
     mkt_max = float(row["mkt_max_price"]) if row and row["mkt_max_price"] else None
     total_records = int(row["total_records"]) if row and row["total_records"] else 0
 
-    # ── Price Gap: diferencia MT vs mercado ────────────────────────────────
-    # Para Price Gap necesitamos el precio MT (de products.cost_aed o similar)
-    # En esta versión, usamos el avg del mercado como referencia
-    # price_gap = (mkt_avg - mt_price) / mt_price × 100 (positivo = MT más caro)
-    # Simplificado: retornar stats de mercado y dejar cálculo al frontend con precio MT
-    price_gap_pct = None  # requires MT price data not available at this layer
-
-    # ── Price Index: MT/mkt_avg × 100 ─────────────────────────────────────
-    # Se calcula en frontend: (mt_price / mkt_avg) × 100
-    # Aquí retornamos mkt_avg para que el frontend lo calcule con su precio MT
-
-    # ── Price Position: rank en marketplace ───────────────────────────────
-    # Calculamos posición relativa del precio más bajo (proxy)
+    # ── Price Gap: (MT price - mkt_avg) / mkt_avg × 100 ──────────────────
+    # ── Price Index: MT price / mkt_avg × 100 ─────────────────────────────
+    # ── Price Position: rank of MT price among competitor prices ──────────
+    price_gap_pct = None
+    price_index = None
     price_position_rank = None
-    if mkt_min and mkt_avg and mkt_avg > 0:
-        price_position_rank = round((mkt_min / mkt_avg) * 100, 1)
+    if mt_price_aed and mkt_avg and mkt_avg > 0:
+        mt_dec = Decimal(str(mt_price_aed))
+        price_gap_pct = round(float((mt_dec - Decimal(str(mkt_avg))) / Decimal(str(mkt_avg)) * 100), 2)
+        price_index = round(float(mt_dec / Decimal(str(mkt_avg)) * 100), 2)
+    if mt_price_aed and mkt_min and mkt_avg and mkt_avg > 0:
+        price_position_rank = round(float(Decimal(str(mkt_min)) / Decimal(str(mkt_avg)) * 100), 1)
 
     return {
         "date_from": date_from.isoformat(),
@@ -133,10 +131,10 @@ async def get_price_intelligence_dashboard(
         },
         "kpis": {
             "price_gap_pct": price_gap_pct,
-            "price_index_base": mkt_avg,
-            "price_position_index": price_position_rank,
+            "price_index": price_index,
+            "price_position_rank": price_position_rank,
         },
-        "note": "price_gap and price_index require MT product price — pass via query param or calculate on frontend",
+        "note": "price_gap, price_index and price_position_rank require mt_price_aed query param",
     }
 
 
@@ -245,21 +243,15 @@ async def get_matching_quality(
 
     histogram_sql = text("""
         SELECT
-            SUM(CASE WHEN calibrated_confidence < 0.2 THEN 1 ELSE 0 END)                              AS bin_00_02,
-            SUM(CASE WHEN calibrated_confidence >= 0.2 AND calibrated_confidence < 0.4 THEN 1 ELSE 0 END) AS bin_02_04,
-            SUM(CASE WHEN calibrated_confidence >= 0.4 AND calibrated_confidence < 0.6 THEN 1 ELSE 0 END) AS bin_04_06,
-            SUM(CASE WHEN calibrated_confidence >= 0.6 AND calibrated_confidence < 0.8 THEN 1 ELSE 0 END) AS bin_06_08,
-            SUM(CASE WHEN calibrated_confidence >= 0.8 THEN 1 ELSE 0 END)                             AS bin_08_10,
-            COUNT(*) FILTER (WHERE calibrated_confidence IS NOT NULL)                                  AS total_with_confidence,
-            COUNT(*)                                                                                    AS total,
-            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY calibrated_confidence)                         AS median_confidence,
-            ROUND(
-                100.0 * SUM(CASE WHEN calibrated_confidence >= 0.8 THEN 1 ELSE 0 END)
-                / NULLIF(COUNT(*) FILTER (WHERE calibrated_confidence IS NOT NULL), 0),
-                2
-            )                                                                                          AS pct_above_08
-        FROM match_candidates
+            SUM(CASE WHEN calibrated_confidence < 0.5  THEN 1 ELSE 0 END) AS bin_0_50,
+            SUM(CASE WHEN calibrated_confidence >= 0.5  AND calibrated_confidence < 0.7  THEN 1 ELSE 0 END) AS bin_50_70,
+            SUM(CASE WHEN calibrated_confidence >= 0.7  AND calibrated_confidence < 0.85 THEN 1 ELSE 0 END) AS bin_70_85,
+            SUM(CASE WHEN calibrated_confidence >= 0.85 THEN 1 ELSE 0 END) AS bin_85_100,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY calibrated_confidence) AS median_confidence,
+            AVG(CASE WHEN calibrated_confidence >= 0.8 THEN 1.0 ELSE 0.0 END) AS pct_above_08
+        FROM competitor_prices
         WHERE updated_at >= :cutoff
+          AND calibrated_confidence IS NOT NULL
     """)
 
     result = await session.execute(histogram_sql, {"cutoff": seven_days_ago})
@@ -275,11 +267,10 @@ async def get_matching_quality(
         }
 
     histogram = [
-        {"bin": "0.0-0.2", "count": int(row["bin_00_02"] or 0)},
-        {"bin": "0.2-0.4", "count": int(row["bin_02_04"] or 0)},
-        {"bin": "0.4-0.6", "count": int(row["bin_04_06"] or 0)},
-        {"bin": "0.6-0.8", "count": int(row["bin_06_08"] or 0)},
-        {"bin": "0.8-1.0", "count": int(row["bin_08_10"] or 0)},
+        {"bin": "0.0-0.5",  "count": int(row["bin_0_50"]   or 0)},
+        {"bin": "0.5-0.7",  "count": int(row["bin_50_70"]  or 0)},
+        {"bin": "0.7-0.85", "count": int(row["bin_70_85"]  or 0)},
+        {"bin": "0.85-1.0", "count": int(row["bin_85_100"] or 0)},
     ]
 
     return {
@@ -287,6 +278,4 @@ async def get_matching_quality(
         "histogram": histogram,
         "median_confidence": float(row["median_confidence"]) if row["median_confidence"] else None,
         "pct_above_80": float(row["pct_above_08"]) if row["pct_above_08"] else None,
-        "total": int(row["total"] or 0),
-        "total_with_confidence": int(row["total_with_confidence"] or 0),
     }

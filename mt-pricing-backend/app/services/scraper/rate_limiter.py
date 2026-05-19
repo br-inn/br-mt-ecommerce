@@ -87,7 +87,7 @@ class RateLimiter:
         self,
         redis_url: str,
         *,
-        rpm: int = 20,
+        rpm: int = 5,
         window_seconds: int = 60,
         ua_pool: list[str] | None = None,
     ) -> None:
@@ -208,7 +208,7 @@ def get_rate_limiter() -> RateLimiter:
 
         _rate_limiter_instance = RateLimiter(
             redis_url=str(settings.REDIS_URL),
-            rpm=getattr(settings, "SCRAPER_RATE_LIMIT_RPM", 20),
+            rpm=getattr(settings, "SCRAPER_RATE_LIMIT_RPM", 5),
             ua_pool=ua_pool,
         )
     return _rate_limiter_instance

@@ -13,6 +13,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -20,12 +21,14 @@ from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user, get_db_session, require_role
+from app.db.models.audit import AuditEvent
+from app.db.models.billing import Invoice
 from app.db.models.inventory import (
     InventoryPosition,
     StockMovement,
@@ -64,6 +67,8 @@ from app.schemas.sales import (
     OutboundDeliveryStatusUpdate,
     RmaCreate,
     RmaOut,
+    ReturnDeliveryCreate,
+    ReturnDeliveryOut,
     SalesOrderCreate,
     SalesOrderListOut,
     SalesOrderOut,
@@ -322,18 +327,24 @@ async def get_document_chain(
 ) -> DocumentChainOut:
     so = await _get_so_or_404(db, so_id)
 
-    # Load deliveries
-    del_result = await db.execute(
-        select(OutboundDelivery)
-        .options(selectinload(OutboundDelivery.lines))
-        .where(OutboundDelivery.so_id == so_id)
+    # Load deliveries and invoices in parallel
+    del_result, inv_result = await asyncio.gather(
+        db.execute(
+            select(OutboundDelivery)
+            .options(selectinload(OutboundDelivery.lines))
+            .where(OutboundDelivery.so_id == so_id)
+        ),
+        db.execute(
+            select(Invoice).where(Invoice.so_id == so_id)
+        ),
     )
     deliveries = del_result.scalars().all()
+    invoices = inv_result.scalars().all()
 
     return DocumentChainOut(
         so=SalesOrderOut.model_validate(so),
         deliveries=[OutboundDeliveryOut.model_validate(d) for d in deliveries],
-        invoices=[],  # Future: invoice module
+        invoices=invoices,
     )
 
 
@@ -426,6 +437,18 @@ async def credit_check(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> CreditCheckOut:
     so = await _get_so_or_404(db, so_id)
+
+    # Orders ≤ AED 500 skip credit check (low-value fast path)
+    _LOW_VALUE_THRESHOLD = Decimal("500")
+    if (so.total_amount or _ZERO) <= _LOW_VALUE_THRESHOLD:
+        return CreditCheckOut(
+            status="skipped",
+            exposure=so.total_amount or _ZERO,
+            limit=None,
+            available=None,
+            skipped=True,
+            reason="order_below_aed_500_threshold",
+        )
 
     # Get credit limit
     cl_result = await db.execute(
@@ -562,6 +585,45 @@ async def release_credit_block(
     await db.commit()
     await db.refresh(cl)
     return CreditLimitOut.model_validate(cl)
+
+
+@router.post(
+    "/orders/{so_id}/release-credit-hold",
+    response_model=SalesOrderOut,
+    summary="Liberar bloqueo de crédito de un SO específico (rol gerente)",
+    operation_id="salesOrdersReleaseCreditHold",
+)
+async def release_so_credit_hold(
+    so_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
+    reason: str = Body(..., embed=True, min_length=10),
+) -> SalesOrderOut:
+    so = await _get_so_or_404(db, so_id)
+    if so.status != "on_credit_hold":
+        raise HTTPException(
+            status_code=400,
+            detail=f"SO is not on credit hold (current status: '{so.status}')",
+        )
+    so.status = "confirmed"
+
+    # Audit trail
+    audit_evt = AuditEvent(
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        actor_role="gerente",
+        entity_type="sales_order",
+        entity_id=str(so.id),
+        action="release_credit_hold",
+        before={"status": "on_credit_hold"},
+        after={"status": "confirmed"},
+        reason=reason,
+    )
+    db.add(audit_evt)
+
+    await db.commit()
+    await db.refresh(so)
+    return SalesOrderOut.model_validate(so)
 
 
 # ---------------------------------------------------------------------------
@@ -739,6 +801,17 @@ async def goods_issue(
             )
             db.add(movement)
 
+        # 1b. Decrement unrestricted InventoryPosition.qty_on_hand
+        await db.execute(
+            update(InventoryPosition)
+            .where(
+                InventoryPosition.sku == dl.product_sku,
+                InventoryPosition.warehouse_id == delivery.warehouse_id,
+                InventoryPosition.stock_type == "unrestricted",
+            )
+            .values(qty_on_hand=InventoryPosition.qty_on_hand - qty)
+        )
+
         # 2. Consume active reservations for this SO line
         res_result = await db.execute(
             select(StockReservation).where(
@@ -870,17 +943,31 @@ async def approve_rma(
 @router.post(
     "/returns/{rma_id}/receive-goods",
     response_model=RmaOut,
-    summary="Confirmar recepción de devolución — genera movimientos de stock",
+    summary="Confirmar recepción de devolución — crea ReturnDelivery + movimientos de stock",
     operation_id="salesReturnsReceiveGoods",
 )
 async def receive_return_goods(
     rma_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db_session)],
     current_user: Annotated[User, Depends(get_current_user)],
+    body: ReturnDeliveryCreate = ReturnDeliveryCreate(),
 ) -> RmaOut:
+    from datetime import date as _date
+    from app.db.models.sales import ReturnDelivery
+
     rma = await _get_rma_or_404(db, rma_id)
     if rma.status != "approved":
         raise HTTPException(status_code=400, detail=f"RMA not approved: '{rma.status}'")
+
+    # Create ReturnDelivery record (VEN-18)
+    delivery = ReturnDelivery(
+        rma_id=rma_id,
+        warehouse_id=body.warehouse_id,
+        received_date=body.received_date or _date.today(),
+        received_by=current_user.id,
+        notes=body.notes,
+    )
+    db.add(delivery)
 
     gr_return_mt_id = await _gr_return_movement_type_id(db)
     qi_mt_id = await _qi_movement_type_id(db)
@@ -976,32 +1063,86 @@ async def get_kpis(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> O2CKpisOut:
-    # open_so_count
-    open_so_result = await db.execute(
-        select(func.count(SalesOrder.id)).where(
-            SalesOrder.status.in_(["confirmed", "in_fulfillment", "partially_delivered"])
-        )
-    )
-    open_so_count = open_so_result.scalar_one() or 0
-
-    # backorder_count: SO lines open (no confirmed_qty or confirmed_qty < qty)
-    backorder_result = await db.execute(
-        select(func.count(SalesOrderLine.id)).where(
-            SalesOrderLine.status == "open",
-        )
-    )
-    backorder_count = backorder_result.scalar_one() or 0
-
-    # on_time_delivery_pct (last 30 days)
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    total_deliveries_result = await db.execute(
-        select(func.count(OutboundDelivery.id)).where(
-            OutboundDelivery.status == "goods_issued",
-            OutboundDelivery.shipped_at >= thirty_days_ago,
-        )
-    )
-    total_deliveries = total_deliveries_result.scalar_one() or 0
+    first_of_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+    # Run 9 independent count queries in parallel (1 round-trip to DB)
+    (
+        open_so_result,
+        backorder_result,
+        total_deliveries_result,
+        avg_result,
+        credit_holds_result,
+        rma_result,
+        revenue_mtd_result,
+        order_count_mtd_result,
+        fill_rate_result,
+    ) = await asyncio.gather(
+        db.execute(
+            select(func.count(SalesOrder.id)).where(
+                SalesOrder.status.in_(["confirmed", "in_fulfillment", "partially_delivered"])
+            )
+        ),
+        db.execute(
+            select(func.count(SalesOrderLine.id)).where(
+                SalesOrderLine.status == "open",
+            )
+        ),
+        db.execute(
+            select(func.count(OutboundDelivery.id)).where(
+                OutboundDelivery.status == "goods_issued",
+                OutboundDelivery.shipped_at >= thirty_days_ago,
+            )
+        ),
+        db.execute(
+            select(func.coalesce(func.avg(SalesOrder.total_amount), _ZERO)).where(
+                SalesOrder.created_at >= thirty_days_ago,
+                SalesOrder.total_amount.is_not(None),
+            )
+        ),
+        db.execute(
+            select(func.count(SalesOrder.id)).where(SalesOrder.status == "on_credit_hold")
+        ),
+        db.execute(
+            select(func.count(RmaHeader.id)).where(
+                RmaHeader.status.in_(["requested", "approved", "goods_received"])
+            )
+        ),
+        db.execute(
+            select(func.coalesce(func.sum(SalesOrder.total_amount), _ZERO)).where(
+                SalesOrder.created_at >= first_of_month,
+                SalesOrder.status.not_in(["cancelled", "on_credit_hold"]),
+                SalesOrder.total_amount.is_not(None),
+            )
+        ),
+        db.execute(
+            select(func.count(SalesOrder.id)).where(
+                SalesOrder.created_at >= first_of_month,
+                SalesOrder.status.not_in(["cancelled"]),
+            )
+        ),
+        db.execute(
+            select(func.count(OutboundDeliveryLine.id)).where(
+                OutboundDeliveryLine.qty_picked >= OutboundDeliveryLine.qty_planned,
+            )
+        ),
+    )
+
+    open_so_count = open_so_result.scalar_one() or 0
+    backorder_count = backorder_result.scalar_one() or 0
+    total_deliveries = total_deliveries_result.scalar_one() or 0
+    avg_order_value = avg_result.scalar_one() or _ZERO
+    open_credit_holds = credit_holds_result.scalar_one() or 0
+    rma_open_count = rma_result.scalar_one() or 0
+    revenue_mtd = revenue_mtd_result.scalar_one() or _ZERO
+    order_count_mtd = order_count_mtd_result.scalar_one() or 0
+    # fill_rate: lines fully fulfilled / total lines (simple ratio)
+    fill_rate_numerator = fill_rate_result.scalar_one() or 0
+    total_lines_result = await db.execute(select(func.count(OutboundDeliveryLine.id)))
+    total_lines = total_lines_result.scalar_one() or 0
+    fill_rate_pct = round((fill_rate_numerator / total_lines * 100) if total_lines > 0 else 0.0, 2)
+
+    # on_time delivery count — only if there are deliveries to avoid extra query
     on_time_count = 0
     if total_deliveries > 0:
         on_time_result = await db.execute(
@@ -1017,29 +1158,6 @@ async def get_kpis(
 
     otd_pct = (on_time_count / total_deliveries * 100) if total_deliveries > 0 else 0.0
 
-    # avg_order_value (last 30 days)
-    avg_result = await db.execute(
-        select(func.coalesce(func.avg(SalesOrder.total_amount), _ZERO)).where(
-            SalesOrder.created_at >= thirty_days_ago,
-            SalesOrder.total_amount.is_not(None),
-        )
-    )
-    avg_order_value = avg_result.scalar_one() or _ZERO
-
-    # open_credit_holds
-    credit_holds_result = await db.execute(
-        select(func.count(SalesOrder.id)).where(SalesOrder.status == "on_credit_hold")
-    )
-    open_credit_holds = credit_holds_result.scalar_one() or 0
-
-    # rma_open_count
-    rma_result = await db.execute(
-        select(func.count(RmaHeader.id)).where(
-            RmaHeader.status.in_(["requested", "approved", "goods_received"])
-        )
-    )
-    rma_open_count = rma_result.scalar_one() or 0
-
     return O2CKpisOut(
         open_so_count=open_so_count,
         backorder_count=backorder_count,
@@ -1047,6 +1165,9 @@ async def get_kpis(
         avg_order_value=avg_order_value,
         open_credit_holds=open_credit_holds,
         rma_open_count=rma_open_count,
+        revenue_mtd=revenue_mtd,
+        order_count_mtd=order_count_mtd,
+        fill_rate_pct=fill_rate_pct,
     )
 
 

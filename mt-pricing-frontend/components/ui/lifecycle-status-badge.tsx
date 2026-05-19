@@ -21,7 +21,11 @@ interface Props {
 }
 
 export function LifecycleStatusBadge({ status, className }: Props) {
-  if (!status) return null;
+  if (!status) return (
+    <Badge variant="outline" className={`text-gray-500 gap-1.5 ${className ?? ""}`}>
+      Sin estado
+    </Badge>
+  );
   const cfg = LIFECYCLE_CONFIG[status] ?? LIFECYCLE_CONFIG.active;
   return (
     <Badge variant={cfg.badgeVariant} className={`gap-1.5 ${className ?? ""}`}>

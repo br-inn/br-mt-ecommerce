@@ -335,6 +335,12 @@ class SourceList(UuidPkMixin, Base):
     )
     vendor_id: Mapped[str] = mapped_column(Text, nullable=False)
     vendor_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # mig 147 — optional warehouse scoping for vendor-of-record rules
+    warehouse_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     is_preferred: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )

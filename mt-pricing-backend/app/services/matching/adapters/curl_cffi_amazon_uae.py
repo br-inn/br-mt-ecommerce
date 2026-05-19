@@ -27,6 +27,7 @@ import random
 from datetime import datetime, timezone
 from decimal import Decimal
 from urllib.parse import quote_plus
+from uuid import UUID
 
 from curl_cffi.requests import AsyncSession
 
@@ -75,10 +76,24 @@ class CurlCffiAmazonUaeFetcher:
 
     channel = "amazon_uae"
 
-    def __init__(self) -> None:
-        self._impersonate: str = os.environ.get("SCRAPER_IMPERSONATE", _DEFAULT_IMPERSONATE)
+    def __init__(
+        self,
+        brand_id: UUID | None = None,
+        brand_attribute_map: dict | None = None,
+    ) -> None:
+        # Impersonation pool — rotate randomly on each session to avoid fingerprinting.
+        # SCRAPER_IMPERSONATE_POOL overrides; falls back to legacy SCRAPER_IMPERSONATE
+        # (single value) and then to the built-in default pool.
+        _pool_str = os.environ.get("SCRAPER_IMPERSONATE_POOL", "")
+        if _pool_str:
+            self._impersonate_pool: list[str] = [s.strip() for s in _pool_str.split(",") if s.strip()]
+        else:
+            _single = os.environ.get("SCRAPER_IMPERSONATE", "")
+            self._impersonate_pool = [_single] if _single else ["chrome120", "chrome124", "chrome126"]
         self._timeout: int = int(os.environ.get("SCRAPER_TIMEOUT", _DEFAULT_TIMEOUT))
         self._proxy: str | None = os.environ.get("SCRAPER_PROXY_URL") or None
+        self._brand_id: UUID | None = brand_id
+        self._brand_attribute_map: dict = brand_attribute_map or {}
 
     async def fetch(self, query: Query, *, sku: str | None = None) -> list[CandidateRaw]:
         """Fetch live candidates from Amazon UAE for the given query.
@@ -119,6 +134,21 @@ class CurlCffiAmazonUaeFetcher:
                 _ADMIN_KEYS = {"title_pdp", "canonical_url", "raw_pairs", "asin",
                                "manufacturer_part_number", "model_number"}
                 specs = {k: v for k, v in pdp_specs.items() if k not in _ADMIN_KEYS}
+
+                # Apply brand-specific attribute mapping if available (US-SCR-05-01).
+                # raw_pairs from the PDP extractor contain the unprocessed Amazon table.
+                _raw_pairs_for_mapping = pdp_specs.get("raw_pairs") or []
+                if _raw_pairs_for_mapping and self._brand_id:
+                    try:
+                        from app.services.scraper.brand_extractor_service import (
+                            BrandExtractorService, apply_mapping,
+                        )
+                        _mapped = apply_mapping(self._brand_attribute_map, _raw_pairs_for_mapping)
+                        if _mapped:
+                            specs.update(_mapped)
+                    except Exception:  # noqa: BLE001
+                        pass  # fallback to generic extraction silently
+
                 if not specs and title:
                     raw_pairs: list[dict] = []
                     _extract_specs_from_title(title, raw_pairs)
@@ -168,8 +198,10 @@ class CurlCffiAmazonUaeFetcher:
     # ------------------------------------------------------------------
 
     def _make_session(self) -> AsyncSession:
+        impersonate = random.choice(self._impersonate_pool)
+        logger.debug("scraper.session.impersonate", extra={"target": impersonate})
         kwargs: dict = {
-            "impersonate": self._impersonate,
+            "impersonate": impersonate,
             "headers": _BASE_HEADERS,
             "timeout": self._timeout,
         }

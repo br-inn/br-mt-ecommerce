@@ -54,6 +54,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "feature_flags.bootstrap_failed — usando defaults (todo False)"
         )
 
+    # Warm up cross-encoder reranker if enabled
+    import logging as _logging
+    _lifespan_logger = _logging.getLogger(__name__)
+    from app.core.config import settings as _settings
+    if _settings.ENABLE_CROSS_ENCODER_RERANKER:
+        try:
+            from app.services.matching.cross_encoder_reranker import CrossEncoderReranker
+            CrossEncoderReranker()  # triggers model load
+            _lifespan_logger.info("Cross-encoder reranker warmed up")
+        except Exception as _e:
+            _lifespan_logger.warning("Cross-encoder warmup failed: %s", _e)
+
     yield
     await dispose_engine()
     await close_redis()

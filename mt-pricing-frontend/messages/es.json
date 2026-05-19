@@ -200,6 +200,7 @@
       "pn": "PN",
       "material": "Material",
       "dataQuality": "Calidad",
+      "status": "Estado",
       "active": "Activo",
       "actions": "Acciones"
     },

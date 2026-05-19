@@ -227,13 +227,18 @@ async def create_invoice_from_delivery(
     )
     dlv_lines = list(r2.scalars().all())
 
+    # Fetch all SO lines in one query (avoid N+1)
+    sol_ids = [dl.so_line_id for dl in dlv_lines if dl.so_line_id]
+    sol_map: dict = {}
+    if sol_ids:
+        r3 = await session.execute(
+            select(SalesOrderLine).where(SalesOrderLine.id.in_(sol_ids))
+        )
+        sol_map = {sol.id: sol for sol in r3.scalars().all()}
+
     inv_lines: list[InvoiceLineCreate_] = []
     for dl in dlv_lines:
-        # Get unit_price from SO line
-        r3 = await session.execute(
-            select(SalesOrderLine).where(SalesOrderLine.id == dl.so_line_id)
-        )
-        sol = r3.scalar_one_or_none()
+        sol = sol_map.get(dl.so_line_id)
         unit_price = sol.unit_price if sol else Decimal("0")
         discount_pct = sol.discount_pct if sol else Decimal("0")
 
@@ -327,39 +332,99 @@ async def post_invoice(session: AsyncSession, invoice: Invoice) -> Invoice:
     invoice.status = "posted"
     await session.flush()
 
-    # Graceful insert into financial_entries if table exists (EP-ERP-06)
+    # Graceful insert into financial_entries if table exists (EP-ERP-06).
+    #
+    # Bug fixes applied here:
+    #   Bug 2 — capture the AR entry UUID via RETURNING id and assign it to
+    #            invoice.accounting_document_id.
+    #   Bug 3 — emit one CR Revenue entry per InvoiceLine (cost center /
+    #            profit center reporting) instead of a single entry for the
+    #            whole subtotal.
+    #
+    # Schema note: financial_entries.cost_center_id and
+    # financial_entries.profit_center_id columns must exist for the per-line
+    # revenue entries to carry those attributes.  Add them via Alembic if not
+    # already present.
     try:
-        await session.execute(
+        table_check = await session.execute(
             text(
                 """
-                DO $$
-                BEGIN
-                  IF EXISTS (
-                    SELECT 1 FROM information_schema.tables
-                    WHERE table_schema = 'public'
-                    AND table_name = 'financial_entries'
-                  ) THEN
-                    INSERT INTO financial_entries
-                      (id, entry_date, description, debit_account, credit_account, amount, currency, reference_id, reference_type, created_at)
-                    VALUES
-                      (gen_random_uuid(), CURRENT_DATE, :desc_ar, 'AR', NULL,       :total,    :curr, :inv_id, 'INVOICE', now()),
-                      (gen_random_uuid(), CURRENT_DATE, :desc_rev, NULL, 'REVENUE', :subtotal, :curr, :inv_id, 'INVOICE', now()),
-                      (gen_random_uuid(), CURRENT_DATE, :desc_tax, NULL, 'TAX_PAYABLE', :tax,  :curr, :inv_id, 'INVOICE', now());
-                  END IF;
-                END $$;
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = 'financial_entries'
                 """
-            ),
-            {
-                "desc_ar": f"AR {invoice.invoice_number}",
-                "desc_rev": f"Revenue {invoice.invoice_number}",
-                "desc_tax": f"Tax Payable {invoice.invoice_number}",
-                "total": str(invoice.total_amount or 0),
-                "subtotal": str(invoice.subtotal or 0),
-                "tax": str(invoice.tax_amount or 0),
-                "curr": invoice.currency,
-                "inv_id": str(invoice.id),
-            },
+            )
         )
+        if table_check.scalar_one_or_none() is not None:
+            # DR Accounts-Receivable — capture generated UUID for accounting_document_id
+            ar_result = await session.execute(
+                text(
+                    """
+                    INSERT INTO financial_entries
+                      (id, entry_date, description, debit_account, credit_account,
+                       amount, currency, reference_id, reference_type, created_at)
+                    VALUES
+                      (gen_random_uuid(), CURRENT_DATE, :desc_ar, 'AR', NULL,
+                       :total, :curr, :inv_id, 'INVOICE', now())
+                    RETURNING id
+                    """
+                ),
+                {
+                    "desc_ar": f"AR {invoice.invoice_number}",
+                    "total": str(invoice.total_amount or 0),
+                    "curr": invoice.currency,
+                    "inv_id": str(invoice.id),
+                },
+            )
+            accounting_doc_id = ar_result.scalar_one()
+            invoice.accounting_document_id = accounting_doc_id
+
+            # CR Revenue — one entry per InvoiceLine (Bug 3 fix)
+            for line in invoice.lines:
+                line_net = (line.qty * line.unit_price * (1 - line.discount_pct / 100)).quantize(
+                    Decimal("0.0001")
+                )
+                await session.execute(
+                    text(
+                        """
+                        INSERT INTO financial_entries
+                          (id, entry_date, description, debit_account, credit_account,
+                           amount, currency, reference_id, reference_type, created_at)
+                        VALUES
+                          (gen_random_uuid(), CURRENT_DATE, :desc_rev, NULL, 'REVENUE',
+                           :line_amount, :curr, :inv_id, 'INVOICE', now())
+                        """
+                        # TODO: add cost_center_id = :cost_center_id and
+                        # profit_center_id = :profit_center_id once those columns
+                        # are added to financial_entries via Alembic migration.
+                    ),
+                    {
+                        "desc_rev": f"Revenue {invoice.invoice_number} / {line.product_sku or line.id}",
+                        "line_amount": str(line_net),
+                        "curr": invoice.currency,
+                        "inv_id": str(invoice.id),
+                    },
+                )
+
+            # CR Tax Payable — single entry for the whole invoice
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO financial_entries
+                      (id, entry_date, description, debit_account, credit_account,
+                       amount, currency, reference_id, reference_type, created_at)
+                    VALUES
+                      (gen_random_uuid(), CURRENT_DATE, :desc_tax, NULL, 'TAX_PAYABLE',
+                       :tax, :curr, :inv_id, 'INVOICE', now())
+                    """
+                ),
+                {
+                    "desc_tax": f"Tax Payable {invoice.invoice_number}",
+                    "tax": str(invoice.tax_amount or 0),
+                    "curr": invoice.currency,
+                    "inv_id": str(invoice.id),
+                },
+            )
     except Exception:
         logger.warning("financial_entries insert skipped (EP-ERP-06 not deployed yet)")
 
@@ -393,13 +458,14 @@ async def post_invoice(session: AsyncSession, invoice: Invoice) -> Invoice:
 
 
 async def cancel_invoice(session: AsyncSession, invoice: Invoice) -> Invoice:
-    """Cancela invoice (status → cancelled)."""
-    if invoice.status not in ("draft", "posted"):
-        raise ValueError(f"Cannot cancel invoice in status '{invoice.status}'")
-    invoice.status = "cancelled"
+    """Cancela invoice (status → cancelled).
 
-    # Reverse FI entry (graceful)
+    Only posted invoices receive a reversal FI entry; draft invoices are
+    cancelled silently.  Any other status raises ValueError.
+    """
     if invoice.status == "posted":
+        # Create reversal financial entry BEFORE changing status so we can
+        # still distinguish the original status inside this block.
         try:
             await session.execute(
                 text(
@@ -427,6 +493,14 @@ async def cancel_invoice(session: AsyncSession, invoice: Invoice) -> Invoice:
             )
         except Exception:
             pass
+        invoice.status = "cancelled"
+    elif invoice.status == "draft":
+        invoice.status = "cancelled"
+    else:
+        raise ValueError(
+            f"Cannot cancel invoice in status '{invoice.status}': "
+            "only 'draft' or 'posted' invoices may be cancelled"
+        )
 
     await session.flush()
     await session.refresh(invoice)
@@ -599,12 +673,19 @@ async def retry_e_invoice(
         raise ValueError(f"Submission {submission_id} not found")
     if sub.status not in ("rejected", "pending"):
         raise ValueError(f"Cannot retry submission in status '{sub.status}'")
-    sub.status = "submitted"
-    sub.retry_count += 1
-    sub.submitted_at = datetime.now(timezone.utc)
+    # INSERT a new submission row for the retry (immutable audit trail)
+    new_sub = EInvoiceSubmission(
+        invoice_id=sub.invoice_id,
+        submission_type=sub.submission_type,
+        status="submitted",
+        retry_count=sub.retry_count + 1,
+        submitted_at=datetime.now(timezone.utc),
+        request_payload=sub.request_payload,
+    )
+    session.add(new_sub)
     await session.flush()
-    await session.refresh(sub)
-    return sub
+    await session.refresh(new_sub)
+    return new_sub
 
 
 # ---------------------------------------------------------------------------

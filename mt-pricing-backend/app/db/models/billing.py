@@ -89,10 +89,22 @@ class Invoice(UuidPkMixin, Base):
     )
     # Accounting document ref — FK añadida post-merge EP-ERP-06
     accounting_document_id: Mapped[UUID | None] = mapped_column(UUID_PG, nullable=True)
+    # FK a la factura origen para notas de crédito y cancelaciones (mig 138)
+    original_invoice_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("invoices.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     payment_terms: Mapped[str] = mapped_column(
         Text,
         nullable=False,
         server_default=text("'NET30'"),
+    )
+    # FK a payment_terms catalog (mig 139) — nullable para retrocompatibilidad
+    payment_terms_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("payment_terms.id", ondelete="SET NULL"),
+        nullable=True,
     )
     # e-invoice compliance (US-ERP-05-04)
     e_invoice_status: Mapped[str] = mapped_column(
@@ -142,7 +154,7 @@ class Invoice(UuidPkMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "invoice_type IN ('STANDARD','CREDIT_MEMO','DEBIT_MEMO','PROFORMA','INTERCOMPANY')",
+            "invoice_type IN ('STANDARD','CREDIT_MEMO','DEBIT_MEMO','PROFORMA','INTERCOMPANY','CANCELLATION')",
             name="ck_invoice_type",
         ),
         CheckConstraint(
@@ -325,6 +337,48 @@ class EInvoiceSubmission(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-05-05 — Payment Promises
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# US-ERP-05-03 — Payment Terms catalog (mig 139)
+# ---------------------------------------------------------------------------
+
+class PaymentTerms(UuidPkMixin, Base):
+    """Catálogo de condiciones de pago (NET30, NET60, 2/10 NET30, etc.)."""
+
+    __tablename__ = "payment_terms"
+
+    code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    net_days: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("30"),
+    )
+    discount_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        nullable=False,
+        server_default=text("0"),
+    )
+    discount_days: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+
+    __table_args__ = (
+        Index("idx_payment_terms_code", "code"),
+    )
+
 
 class PaymentPromise(UuidPkMixin, Base):
     """Promesa de pago por cliente — seguimiento AR."""

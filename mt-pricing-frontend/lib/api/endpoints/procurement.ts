@@ -19,7 +19,7 @@ export interface PurchaseRequisitionRead {
   id: string;
   pr_number: string;
   requester_id: string;
-  product_id: string | null;
+  product_sku: string | null;
   qty: string;
   uom: string;
   required_date: string | null;
@@ -33,7 +33,7 @@ export interface PurchaseRequisitionRead {
 }
 
 export interface PRCreatePayload {
-  product_id?: string | null;
+  product_sku?: string | null;
   qty: string;
   uom?: string;
   required_date?: string | null;
@@ -78,7 +78,7 @@ export interface ApprovalRuleCreatePayload {
 export interface VendorConditionRead {
   id: string;
   vendor_id: string;
-  product_id: string;
+  product_sku: string;
   price: string;
   uom: string;
   moq: number;
@@ -92,7 +92,7 @@ export interface VendorConditionRead {
 
 export interface VendorConditionCreatePayload {
   vendor_id: string;
-  product_id: string;
+  product_sku: string;
   price: string;
   uom?: string;
   moq?: number;
@@ -239,7 +239,7 @@ export const procurementApi = {
   // --- Vendor Conditions (PIR) ----------------------------------------------
   listVendorConditions: (params: {
     vendor_id?: string;
-    product_id?: string;
+    product_sku?: string;
     active_only?: boolean;
   } = {}): Promise<VendorConditionRead[]> =>
     authedFetch<VendorConditionRead[]>(

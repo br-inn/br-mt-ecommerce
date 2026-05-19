@@ -17,7 +17,6 @@ export interface InventoryPositionRead {
   total_stock_value_aed: string | null;
   last_gr_id: string | null;
   last_updated_at: string | null;
-  product_id: string | null;
   warehouse_id: string | null;
   lot_id: string | null;
   location_id: string | null;
@@ -78,7 +77,7 @@ export interface JournalEntryRead {
 export interface StockMovementRead {
   id: string;
   movement_type_id: string;
-  product_id: string;
+  product_sku: string;
   qty: string;
   lot_id: string | null;
   warehouse_id: string | null;
@@ -94,7 +93,7 @@ export interface StockMovementRead {
 
 export interface StockMovementCreate {
   movement_type_id: string;
-  product_id: string;
+  product_sku: string;
   qty: number;
   lot_id?: string;
   warehouse_id?: string;
@@ -111,7 +110,7 @@ export interface StockMovementCreate {
 export interface InventoryLotRead {
   id: string;
   lot_number: string;
-  product_id: string;
+  product_sku: string;
   manufacture_date: string | null;
   expiry_date: string | null;
   country_of_origin: string | null;
@@ -293,7 +292,7 @@ export const inventoryApi = {
     }),
 
   // US-ERP-02-03: Lots
-  listLots: (filters: { product_id?: string; quality_status?: string } = {}): Promise<InventoryLotRead[]> =>
+  listLots: (filters: { product_sku?: string; quality_status?: string } = {}): Promise<InventoryLotRead[]> =>
     authedFetch<InventoryLotRead[]>(`${BASE}/lots${buildQuery(filters)}`),
 
   getLot: (lotId: string): Promise<InventoryLotRead> =>

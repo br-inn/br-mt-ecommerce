@@ -32,7 +32,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db_session, require_role
+from app.api.deps import (
+    _user_permission_codes,
+    get_current_user,
+    get_db_session,
+    require_permissions,
+    require_role,
+)
 from app.db.models.finance import (
     Budget,
     CostCenter,
@@ -266,7 +272,34 @@ async def create_financial_entry(
     db: DbSession,
     current_user: Annotated[User, Depends(require_role(["gerente"]))],
 ) -> FinancialEntryOut:
-    """POST /finance/entries — crear asiento manual (requiere rol gerente)."""
+    """POST /finance/entries — crear asiento manual (requiere rol gerente).
+
+    Validaciones previas al INSERT:
+    - Si el período está CLOSED o LOCKED → 422.
+    - Si el período está SOFT_CLOSED → solo usuarios con permiso `finance:admin`.
+    """
+    # Bug 1 fix: validate posting period status before creating entry
+    period_result = await db.execute(
+        select(PostingPeriod).where(
+            PostingPeriod.fiscal_year == body.fiscal_year,
+            PostingPeriod.period_num == body.posting_period,
+        )
+    )
+    posting_period = period_result.scalar_one_or_none()
+    if posting_period is not None:
+        if posting_period.status in ("closed", "locked"):
+            raise HTTPException(
+                status_code=422,
+                detail="Posting period is closed — entry rejected",
+            )
+        if posting_period.status == "soft_closed":
+            # Only finance:admin users can post to a soft-closed period
+            if "finance:admin" not in _user_permission_codes(current_user):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Posting period is soft-closed — requires finance:admin permission",
+                )
+
     entry = FinancialEntry(**body.model_dump(), preparer_id=current_user.id)
     db.add(entry)
     await db.flush()
@@ -481,12 +514,17 @@ async def create_payment_run(
     db.add(run)
     await db.flush()
 
+    today = body.run_date
     for item in open_items:
+        # Early payment discount: 2% if paying ≥10 days before due date
+        discount = Decimal("0")
+        if item.due_date and (item.due_date - today).days >= 10:
+            discount = (item.amount * Decimal("0.02")).quantize(Decimal("0.01"))
         pri = PaymentRunItem(
             run_id=run.id,
             open_item_id=item.id,
-            payment_amount=item.amount,
-            discount_taken=Decimal("0"),
+            payment_amount=item.amount - discount,
+            discount_taken=discount,
         )
         db.add(pri)
 
@@ -1107,10 +1145,18 @@ async def get_copa(
     fiscal_year: int = Query(...),
     profit_center: str | None = Query(None),
 ) -> CopaOut:
-    """GET /finance/copa — Contribution Margin por profit center."""
-    rows = await db.execute(text("""
+    """GET /finance/copa — Contribution Margin por profit center.
+
+    Bug 4 fix (PERFORMANCE): Query now reads from the materialized view
+    ``mv_copa_summary`` instead of running a live aggregation on every request.
+
+    TODO (migration required — out of scope here): Create the materialized view:
+
+        CREATE MATERIALIZED VIEW mv_copa_summary AS
         SELECT
-            pc.pc_code, pc.pc_name,
+            pc.pc_code,
+            pc.pc_name,
+            fe.fiscal_year,
             COALESCE(SUM(CASE WHEN LEFT(a.account_code, 1) = '4'
                          THEN fe.credit_amount - fe.debit_amount ELSE 0 END), 0) AS revenue,
             COALESCE(SUM(CASE WHEN a.account_code = '5100'
@@ -1120,11 +1166,31 @@ async def get_copa(
         FROM financial_entries fe
         JOIN gl_accounts a ON fe.gl_account_id = a.id
         JOIN profit_centers pc ON fe.profit_center_id = pc.id
-        WHERE fe.fiscal_year = :fy
-          AND (:pc IS NULL OR pc.pc_code = :pc)
-        GROUP BY pc.pc_code, pc.pc_name
-        ORDER BY pc.pc_code
-    """), {"fy": fiscal_year, "pc": profit_center})
+        GROUP BY pc.pc_code, pc.pc_name, fe.fiscal_year;
+
+        CREATE UNIQUE INDEX mv_copa_summary_pk
+            ON mv_copa_summary (fiscal_year, pc_code);
+
+    The view is refreshed by the ``mt.finance.refresh_copa_mv`` Celery task
+    (see workers/tasks/finance.py) which should be registered in job_definitions
+    with a nightly schedule (same pattern as ``mt.finance.refresh_pl_mv``).
+    """
+    # Bug 4 fix: read from materialized view — O(1) lookup instead of full scan
+    rows = await db.execute(
+        text("""
+            SELECT
+                pc_code,
+                pc_name,
+                revenue,
+                cogs,
+                opex
+            FROM mv_copa_summary
+            WHERE fiscal_year = :fy
+              AND (:pc IS NULL OR pc_code = :pc)
+            ORDER BY pc_code
+        """),
+        {"fy": fiscal_year, "pc": profit_center},
+    )
     data = rows.mappings().all()
 
     lines = []

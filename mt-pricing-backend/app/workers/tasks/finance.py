@@ -1,10 +1,15 @@
 """EP-ERP-06 — Finanzas: Celery tasks.
 
 Tasks:
-- mt.finance.refresh_pl_mv         — refrescar mv_pl_summary (nightly)
-- mt.finance.run_fx_revaluation    — revaluación FX al cierre de período
-- mt.finance.period_close_reminder — verificar períodos pendientes de cierre
-- mt.finance.calc_price_variance   — calcular varianza al registrar GR
+- mt.finance.refresh_pl_mv            — refrescar mv_pl_summary (nightly)
+- mt.finance.refresh_copa_mv          — refrescar mv_copa_summary (nightly)
+- mt.finance.run_fx_revaluation       — revaluación FX al cierre de período
+- mt.finance.period_close_reminder    — verificar períodos pendientes de cierre
+- mt.finance.calc_price_variance      — calcular varianza al registrar GR
+- mt.finance.run_balance_reconciliation — verificar SUM(open_items) = gl_balance (daily)
+
+TODO: Register mt.finance.refresh_copa_mv and mt.finance.run_balance_reconciliation
+      in the job_definitions table with a nightly/daily schedule respectively.
 """
 
 from __future__ import annotations
@@ -302,6 +307,20 @@ def calc_price_variance(
                 actual_cost,
                 variance,
             )
+
+            # Bug 2 fix: trigger alert when variance exceeds 5%
+            if variance_pct is not None and abs(variance_pct) > 5:
+                log.warning(
+                    "FINANCE ALERT — price variance >5%% for SKU %s: "
+                    "std=%.4f actual=%.4f variance_pct=%.4f FY=%d P%02d",
+                    product_sku,
+                    standard_cost,
+                    actual_cost,
+                    variance_pct,
+                    fiscal_year,
+                    period,
+                )
+
             return {
                 "status": "ok",
                 "product_sku": product_sku,
@@ -309,6 +328,7 @@ def calc_price_variance(
                 "actual_cost": str(actual_cost),
                 "variance": str(variance),
                 "variance_pct": str(variance_pct),
+                "alert_triggered": variance_pct is not None and abs(variance_pct) > 5,
             }
 
     return _run_async(_inner())
@@ -360,6 +380,187 @@ def period_close_reminder(self: object) -> dict:
                     {"fiscal_year": p.fiscal_year, "period_num": p.period_num}
                     for p in open_periods
                 ],
+            }
+
+    return _run_async(_inner())
+
+
+# ===========================================================================
+# Bug 4 (PERFORMANCE) — Refresh mv_copa_summary materialized view (nightly)
+# TODO: CREATE MATERIALIZED VIEW mv_copa_summary migration required before
+#       this task is activated. Register in job_definitions with daily schedule.
+# ===========================================================================
+
+@celery_app.task(
+    name="mt.finance.refresh_copa_mv",
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    default_retry_delay=300,
+)
+def refresh_copa_mv(self: object) -> dict:
+    """Refrescar la vista materializada mv_copa_summary.
+
+    Ejecutar nightly después del cierre de asientos del día.
+    Se registra en job_definitions con schedule diario (igual que refresh_pl_mv).
+    """
+
+    async def _inner() -> dict:
+        from app.db.engine import get_sessionmaker
+        from sqlalchemy import text
+
+        async with get_sessionmaker()() as session:
+            await session.execute(
+                text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_copa_summary")
+            )
+            await session.commit()
+            log.info("mv_copa_summary refreshed OK")
+            return {
+                "status": "ok",
+                "refreshed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+    return _run_async(_inner())
+
+
+# ===========================================================================
+# Bug 3 fix — Daily balance reconciliation (US-ERP-06-01 spec requirement)
+# TODO: Register in job_definitions with a daily schedule (e.g. 02:00 UTC).
+# ===========================================================================
+
+@celery_app.task(
+    name="mt.finance.run_balance_reconciliation",
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    default_retry_delay=120,
+)
+def run_balance_reconciliation(self: object) -> dict:
+    """Verificar que SUM(open_items) == gl_balance para cuentas is_reconciling=True.
+
+    Para cada cuenta reconciliante:
+    - Calcula el saldo GL: SUM(debit_amount - credit_amount) de financial_entries.
+    - Calcula el saldo de partidas abiertas: SUM(amount) de vendor_open_items (status != 'paid')
+      y SUM(amount) de customer_open_items (status != 'paid').
+    - Si la diferencia absoluta > 0 → registra un warning de alerta de finanzas.
+
+    TODO: Registrar en job_definitions con schedule diario.
+    """
+
+    async def _inner() -> dict:
+        from app.db.engine import get_sessionmaker
+        from decimal import ROUND_HALF_UP
+        from sqlalchemy import func, select
+
+        from app.db.models.finance import FinancialEntry, GlAccount, VendorOpenItem
+        from app.db.models.sales import CustomerOpenItem
+
+        async with get_sessionmaker()() as session:
+            # Fetch all reconciling GL accounts
+            reconciling_accounts = (
+                await session.execute(
+                    select(GlAccount).where(
+                        GlAccount.is_reconciling.is_(True),
+                        GlAccount.is_blocked.is_(False),
+                    )
+                )
+            ).scalars().all()
+
+            if not reconciling_accounts:
+                log.info("run_balance_reconciliation: no reconciling accounts found")
+                return {"status": "ok", "mismatches": 0, "accounts_checked": 0}
+
+            mismatches: list[dict] = []
+
+            for acct in reconciling_accounts:
+                # 1. GL balance: SUM(debit - credit) for this account (all time)
+                gl_balance_row = (
+                    await session.execute(
+                        select(
+                            func.coalesce(
+                                func.sum(
+                                    FinancialEntry.debit_amount - FinancialEntry.credit_amount
+                                ),
+                                Decimal("0"),
+                            ).label("gl_balance")
+                        ).where(FinancialEntry.gl_account_id == acct.id)
+                    )
+                ).one()
+                gl_balance = Decimal(str(gl_balance_row.gl_balance))
+
+                # 2. Open items balance (vendor AP subledger — unpaid items)
+                vendor_oi_row = (
+                    await session.execute(
+                        select(
+                            func.coalesce(func.sum(VendorOpenItem.amount), Decimal("0")).label(
+                                "open_balance"
+                            )
+                        ).where(
+                            VendorOpenItem.status.notin_(["paid"]),
+                        )
+                    )
+                ).one()
+                vendor_oi_balance = Decimal(str(vendor_oi_row.open_balance))
+
+                # 3. Open items balance (customer AR subledger — uncollected items)
+                customer_oi_row = (
+                    await session.execute(
+                        select(
+                            func.coalesce(
+                                func.sum(CustomerOpenItem.amount), Decimal("0")
+                            ).label("open_balance")
+                        ).where(
+                            CustomerOpenItem.status.notin_(["paid"]),
+                        )
+                    )
+                ).one()
+                customer_oi_balance = Decimal(str(customer_oi_row.open_balance))
+
+                open_items_total = (vendor_oi_balance + customer_oi_balance).quantize(
+                    Decimal("0.0001"), rounding=ROUND_HALF_UP
+                )
+                gl_balance_q = gl_balance.quantize(
+                    Decimal("0.0001"), rounding=ROUND_HALF_UP
+                )
+                diff = abs(gl_balance_q - open_items_total)
+
+                if diff > Decimal("0"):
+                    mismatch_info = {
+                        "account_code": acct.account_code,
+                        "account_name": acct.account_name,
+                        "gl_balance": str(gl_balance_q),
+                        "open_items_total": str(open_items_total),
+                        "difference": str(diff),
+                    }
+                    mismatches.append(mismatch_info)
+                    # Alert: log warning for finance team review
+                    log.warning(
+                        "FINANCE ALERT — reconciliation mismatch on account %s (%s): "
+                        "gl_balance=%s open_items=%s diff=%s",
+                        acct.account_code,
+                        acct.account_name,
+                        gl_balance_q,
+                        open_items_total,
+                        diff,
+                    )
+
+            if mismatches:
+                log.error(
+                    "run_balance_reconciliation: %d mismatch(es) found — "
+                    "manual review required",
+                    len(mismatches),
+                )
+            else:
+                log.info(
+                    "run_balance_reconciliation: all %d reconciling account(s) balanced OK",
+                    len(reconciling_accounts),
+                )
+
+            return {
+                "status": "ok" if not mismatches else "alert",
+                "accounts_checked": len(reconciling_accounts),
+                "mismatches": len(mismatches),
+                "mismatch_detail": mismatches,
             }
 
     return _run_async(_inner())

@@ -284,6 +284,7 @@ export function MercadosClient({ sku }: Props) {
   const { data: releases, isLoading, isError } = useQuery({
     queryKey: ["product-releases", sku],
     queryFn: () => productsApi.listReleases(sku),
+    staleTime: 30_000,
   });
 
   const activateMutation = useMutation({
@@ -378,6 +379,7 @@ export function MercadosClient({ sku }: Props) {
                 <TableHead className="text-right">Precio</TableHead>
                 <TableHead>Clase fiscal</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Fecha activación</TableHead>
                 <RbacGuard permissions={["products:write"]}>
                   <TableHead className="text-right">Acciones</TableHead>
                 </RbacGuard>
@@ -428,6 +430,11 @@ export function MercadosClient({ sku }: Props) {
                     </TableCell>
                     <TableCell>
                       <ReleaseStatusIcon status={release.status} />
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {release.released_at
+                        ? new Date(release.released_at).toLocaleDateString("es-AE")
+                        : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <RbacGuard permissions={["products:write"]}>
                       <TableCell className="text-right">

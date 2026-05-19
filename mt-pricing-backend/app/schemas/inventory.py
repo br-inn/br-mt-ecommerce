@@ -28,7 +28,6 @@ class InventoryPositionRead(BaseModel):
     total_stock_value_aed: Decimal | None
     last_gr_id: UUID | None
     last_updated_at: datetime | None
-    product_id: UUID | None = None
     warehouse_id: UUID | None = None
     lot_id: UUID | None = None
     location_id: UUID | None = None
@@ -42,7 +41,7 @@ class InventoryAvailabilityRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    product_id: UUID | None
+    product_sku: str | None
     sku: str
     warehouse_id: UUID | None
     qty_available: Decimal
@@ -93,7 +92,7 @@ class StockMovementCreate(BaseModel):
     """Payload para crear un movimiento de stock."""
 
     movement_type_id: UUID
-    product_id: UUID
+    product_sku: str
     qty: Decimal
     lot_id: UUID | None = None
     warehouse_id: UUID | None = None
@@ -124,7 +123,7 @@ class StockMovementRead(BaseModel):
 
     id: UUID
     movement_type_id: UUID
-    product_id: UUID
+    product_sku: str
     qty: Decimal
     lot_id: UUID | None
     warehouse_id: UUID | None
@@ -150,7 +149,7 @@ class InventoryLotRead(BaseModel):
 
     id: UUID
     lot_number: str
-    product_id: UUID
+    product_sku: str
     manufacture_date: date | None
     expiry_date: date | None
     country_of_origin: str | None
@@ -213,6 +212,17 @@ class WarehouseRead(BaseModel):
     name: str
     address: str | None
     is_active: bool
+
+
+class WarehousePatch(BaseModel):
+    """Campos opcionales para PATCH /warehouses/{id} — US-ERP-02-04."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str | None = None
+    country: str | None = None
+    is_active: bool | None = None
+    fefo_enabled: bool | None = None
 
 
 class WarehouseZoneCreate(BaseModel):

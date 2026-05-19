@@ -183,10 +183,12 @@ class CreditLimitOut(_Base):
 
 
 class CreditCheckOut(BaseModel):
-    status: str  # 'ok' | 'warning' | 'blocked'
+    status: str  # 'ok' | 'warning' | 'blocked' | 'skipped'
     exposure: Decimal
     limit: Decimal | None
     available: Decimal | None
+    skipped: bool = False
+    reason: str | None = None
 
 
 class CustomerOpenItemOut(_Base):
@@ -299,6 +301,22 @@ class CreditMemoOut(_Base):
     created_at: datetime
 
 
+class ReturnDeliveryCreate(BaseModel):
+    warehouse_id: UUID | None = None
+    received_date: date | None = None
+    notes: str | None = None
+
+
+class ReturnDeliveryOut(_Base):
+    id: UUID
+    rma_id: UUID
+    warehouse_id: UUID | None
+    received_date: date
+    received_by: UUID | None
+    notes: str | None
+    created_at: datetime
+
+
 # ---------------------------------------------------------------------------
 # US-ERP-04-06 — Dashboard KPIs
 # ---------------------------------------------------------------------------
@@ -311,6 +329,9 @@ class O2CKpisOut(BaseModel):
     avg_order_value: Decimal
     open_credit_holds: int
     rma_open_count: int
+    revenue_mtd: Decimal = Decimal("0")
+    order_count_mtd: int = 0
+    fill_rate_pct: float = 0.0
 
 
 class BackorderLineOut(BaseModel):

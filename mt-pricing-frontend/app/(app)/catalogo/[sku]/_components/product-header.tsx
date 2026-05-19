@@ -2,9 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Barcode, ChevronLeft, ChevronRight, ImageIcon, Layers, GitBranch, Pencil, Ruler } from "lucide-react";
+import { Barcode, ChevronLeft, ChevronRight, ImageIcon, Layers, GitBranch, Pencil, Ruler, X, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LifecycleStatusBadge } from "@/components/ui/lifecycle-status-badge";
 import { CompletenessRing } from "@/components/ui/completeness-ring";
@@ -47,6 +55,44 @@ interface Props {
 export function ProductHeader({ sku }: Props) {
   const { data: product, isLoading, isError } = useProduct(sku);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Inline edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState({
+    lifecycle_status: "",
+    gtin: "",
+    name_en: "",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync draft when product loads or edit mode opens
+  useEffect(() => {
+    if (product) {
+      setEditDraft({
+        lifecycle_status: product.lifecycle_status ?? "",
+        gtin: (product as { gtin?: string | null }).gtin ?? "",
+        name_en: (product as { name_en?: string | null }).name_en ?? "",
+      });
+    }
+  }, [product]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await fetch(`/api/v1/products/${sku}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lifecycle_status: editDraft.lifecycle_status || undefined,
+          gtin: editDraft.gtin || undefined,
+          name_en: editDraft.name_en || undefined,
+        }),
+      });
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   // B2 — prev/next nav desde el catálogo
   const [navSkus, setNavSkus] = useState<string[]>([]);
@@ -219,14 +265,28 @@ export function ProductHeader({ sku }: Props) {
                     {product.parent_sku}
                   </Link>
                 ) : null}
-                <LifecycleStatusBadge status={product.lifecycle_status} />
+                {isEditing ? null : (
+                  <LifecycleStatusBadge status={product.lifecycle_status} />
+                )}
               </div>
 
               {/* Nombre + completeness ring */}
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  {getProductName(product)}
-                </h1>
+                {isEditing ? (
+                  <Input
+                    value={editDraft.name_en}
+                    onChange={(e) =>
+                      setEditDraft((prev) => ({ ...prev, name_en: e.target.value }))
+                    }
+                    placeholder="Name (EN)"
+                    className="h-8 text-xl font-semibold"
+                    disabled={isSaving}
+                  />
+                ) : (
+                  <h1 className="text-2xl font-semibold tracking-tight">
+                    {getProductName(product)}
+                  </h1>
+                )}
                 <CompletenessRing product={product} />
               </div>
 
@@ -234,10 +294,75 @@ export function ProductHeader({ sku }: Props) {
               <div className="flex flex-wrap items-center gap-2">
                 <DataQualityBadge value={product.data_quality} />
               </div>
+
+              {/* Inline edit fields — lifecycle_status + gtin */}
+              {isEditing ? (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Select
+                    value={editDraft.lifecycle_status}
+                    onValueChange={(v) =>
+                      setEditDraft((prev) => ({ ...prev, lifecycle_status: v }))
+                    }
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger className="h-7 w-[140px] text-xs">
+                      <SelectValue placeholder="Lifecycle status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="discontinued">Discontinued</SelectItem>
+                      <SelectItem value="end_of_life">End of Life</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={editDraft.gtin}
+                    onChange={(e) =>
+                      setEditDraft((prev) => ({ ...prev, gtin: e.target.value }))
+                    }
+                    placeholder="GTIN"
+                    className="h-7 w-[160px] font-mono text-xs"
+                    disabled={isSaving}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {/* Botones de acción */}
             <div className="flex shrink-0 items-center gap-2">
+              {isEditing ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                    disabled={isSaving}
+                  >
+                    <X className="h-4 w-4" />
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                  >
+                    <Check className="h-4 w-4" />
+                    {isSaving ? "Guardando…" : "Guardar"}
+                  </Button>
+                </>
+              ) : (
+                <RbacGuard permissions={["products:write"]}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Editar inline
+                  </Button>
+                </RbacGuard>
+              )}
               <RbacGuard permissions={["products:write"]}>
                 <Button
                   variant="outline"

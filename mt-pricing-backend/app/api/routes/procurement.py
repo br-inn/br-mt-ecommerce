@@ -13,7 +13,7 @@ Endpoints US-ERP-03-01/02/03 (existentes):
 - POST   /procurement/approval-rules             — crear regla
 - PATCH  /procurement/approval-rules/{id}        — actualizar regla
 
-- GET    /procurement/vendor-conditions          — PIRs vigentes (filtros vendor_id, product_id)
+- GET    /procurement/vendor-conditions          — PIRs vigentes (filtros vendor_id, product_sku)
 - POST   /procurement/vendor-conditions          — crear PIR
 - PUT    /procurement/vendor-conditions/{id}     — actualizar PIR
 
@@ -125,6 +125,24 @@ async def create_pr(
     await session.commit()
     await session.refresh(pr)
     return PROut.model_validate(pr)
+
+
+@router.post(
+    "/requisitions/{pr_id}/convert-to-po",
+    summary="Convertir PR aprobada a Purchase Order",
+    operation_id="procurementConvertPrToPo",
+    status_code=201,
+)
+async def convert_pr_to_po(
+    pr_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> dict:
+    from app.repositories.procurement import ProcurementRepository
+    repo = ProcurementRepository(db)
+    po = await repo.convert_pr_to_po(pr_id, created_by=current_user.id)
+    await db.commit()
+    return {"po_id": str(po.id), "po_number": po.po_number, "status": po.status}
 
 
 @router.get(
@@ -323,6 +341,41 @@ async def update_approval_rule(
     return ApprovalRuleOut.model_validate(rule)
 
 
+@router.delete(
+    "/approval-rules/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar regla de aprobación",
+    operation_id="procurementApprovalRulesDelete",
+    responses={404: {"model": ProblemDetails}},
+)
+async def delete_approval_rule(
+    rule_id: UUID,
+    _user: Annotated[User, Depends(require_role("ti"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> None:
+    repo = ProcurementRepository(session)
+    await repo.delete_approval_rule(rule_id)
+    await session.commit()
+
+
+@router.get(
+    "/requisitions/{pr_id}/decisions",
+    response_model=list[ApprovalDecisionOut],
+    summary="Historial de decisiones de aprobación para una PR",
+    operation_id="procurementRequisitionsDecisions",
+    responses={404: {"model": ProblemDetails}},
+)
+async def get_pr_decisions(
+    pr_id: UUID,
+    _user: Annotated[User, Depends(require_role(*_APPROVER_ROLES))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[ApprovalDecisionOut]:
+    repo = ProcurementRepository(session)
+    await repo._get_or_404(pr_id)
+    decisions = await repo.get_pr_decisions(pr_id)
+    return [ApprovalDecisionOut.model_validate(d) for d in decisions]
+
+
 # ---------------------------------------------------------------------------
 # Vendor Product Conditions / PIR
 # ---------------------------------------------------------------------------
@@ -337,13 +390,13 @@ async def list_vendor_conditions(
     _user: Annotated[User, Depends(require_permissions("purchases:write"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
     vendor_id: str | None = Query(default=None),
-    product_id: UUID | None = Query(default=None),
+    product_sku: str | None = Query(default=None),
     active_only: bool = Query(default=True),
 ) -> list[VendorConditionOut]:
     repo = ProcurementRepository(session)
     vcs = await repo.list_vendor_conditions(
         vendor_id=vendor_id,
-        product_id=product_id,
+        product_sku=product_sku,
         active_only=active_only,
     )
     return [VendorConditionOut.model_validate(vc) for vc in vcs]

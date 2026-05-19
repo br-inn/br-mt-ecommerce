@@ -464,6 +464,11 @@ class RmaHeader(UuidPkMixin, Base):
         back_populates="rma",
         lazy="dynamic",
     )
+    return_deliveries: Mapped[list["ReturnDelivery"]] = relationship(
+        "ReturnDelivery",
+        back_populates="rma",
+        lazy="noload",
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -556,4 +561,43 @@ class CreditMemo(UuidPkMixin, Base):
         ),
         Index("idx_credit_memo_rma", "rma_id"),
         Index("idx_credit_memo_customer", "customer_id"),
+    )
+
+
+class ReturnDelivery(UuidPkMixin, Base):
+    """Recepción física de devolución — VEN-18 (US-ERP-04-05).
+
+    Registra quién recibió la mercancía, en qué almacén y cuándo.
+    Se crea al confirmar la recepción de un RMA aprobado.
+    """
+
+    __tablename__ = "return_deliveries"
+
+    rma_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("rma_headers.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    warehouse_id: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("warehouses.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    received_date: Mapped[date] = mapped_column(Date, nullable=False)
+    received_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+
+    rma: Mapped["RmaHeader"] = relationship("RmaHeader", back_populates="return_deliveries")
+
+    __table_args__ = (
+        Index("idx_return_delivery_rma", "rma_id"),
     )

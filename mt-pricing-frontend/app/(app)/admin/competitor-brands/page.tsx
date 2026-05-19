@@ -20,7 +20,7 @@ export default async function CompetitorBrandsPage() {
       </header>
 
       <RbacGuard
-        permissions={["admin:read"]}
+        permissions={["scraper:read"]}
         fallback={
           <div className="rounded-md border border-amber-500/30 bg-amber-50 p-4 text-sm text-amber-800">
             {t("noPermission")}

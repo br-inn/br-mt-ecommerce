@@ -208,6 +208,7 @@ __all__ = [
     "check_lot_expiry_warnings",
     "run_rop_check",
     "run_abc_classification",
+    "generate_cycle_count_records",
 ]
 
 
@@ -534,3 +535,66 @@ def run_abc_classification(self, warehouse_id: str | None = None) -> dict[str, A
             }
 
     return _run_async(_run())
+
+
+# ---------------------------------------------------------------------------
+# US-ERP-02-07: generate_cycle_count_records
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    default_retry_delay=60,
+    name="mt.inventory.generate_cycle_counts",
+)
+def generate_cycle_count_records(self: Any, schedule_id: str) -> dict[str, Any]:
+    """Genera registros CycleCount para un schedule activo (US-ERP-02-07).
+
+    Ejecutado por la job_definition 'cycle-count-scheduler'.
+    """
+    from uuid import UUID as _UUID
+
+    from sqlalchemy import select as _select
+
+    from app.core.database import AsyncSessionLocal
+    from app.db.models.inventory import CycleCountSchedule, InventoryPosition
+
+    async def _inner() -> dict[str, Any]:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                _select(CycleCountSchedule).where(
+                    CycleCountSchedule.id == _UUID(schedule_id),
+                    CycleCountSchedule.is_active.is_(True),
+                )
+            )
+            sched = result.scalar_one_or_none()
+            if not sched:
+                return {"skipped": True, "reason": "schedule not found or inactive"}
+
+            from app.db.models.inventory import CycleCount
+            import datetime as _datetime
+
+            positions_q = _select(InventoryPosition).where(
+                InventoryPosition.warehouse_id == sched.warehouse_id,
+            )
+            pos_result = await session.execute(positions_q)
+            positions = pos_result.scalars().all()
+
+            created = 0
+            for pos in positions:
+                cc = CycleCount(
+                    schedule_id=sched.id,
+                    warehouse_id=sched.warehouse_id,
+                    product_sku=pos.sku,
+                    scheduled_date=_datetime.date.today(),
+                    status="scheduled",
+                )
+                session.add(cc)
+                created += 1
+
+            await session.commit()
+            return {"schedule_id": schedule_id, "records_created": created}
+
+    return _run_async(_inner())
