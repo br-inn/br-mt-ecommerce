@@ -44,7 +44,7 @@ jobs:
       run:
         working-directory: ${{ env.WORKDIR }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -75,7 +75,7 @@ jobs:
       ENV: development
       LOG_LEVEL: WARNING
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -128,7 +128,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       ENV: development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -173,7 +173,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:testpassword@localhost:5432/mt_pricing_alembic
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
