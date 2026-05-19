@@ -699,6 +699,18 @@
       "step3": "Confirm",
       "step4": "Apply & report"
     },
+    "mapping": {
+      "subtitle": "{cols} columns detected (header on row {row}). Review and adjust the mapping if needed.",
+      "skuRequired": "The SKU column is required.",
+      "colExcel": "Excel column",
+      "colSample": "Sample",
+      "colTarget": "Target field",
+      "colTransform": "Transform",
+      "colConfidence": "Confidence",
+      "back": "Back",
+      "confirm": "Confirm mapping & generate preview",
+      "loading": "Generating preview…"
+    },
     "upload": {
       "title": "Upload the PIM file",
       "hint": "Drag and drop the .xlsx or click to select.",

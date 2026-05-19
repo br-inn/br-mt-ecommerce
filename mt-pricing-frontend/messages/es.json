@@ -699,6 +699,18 @@
       "step3": "Confirmar",
       "step4": "Aplicar y reporte"
     },
+    "mapping": {
+      "subtitle": "{cols} columnas detectadas (cabecera en fila {row}). Revisa y ajusta el mapeo si es necesario.",
+      "skuRequired": "La columna SKU es obligatoria.",
+      "colExcel": "Columna Excel",
+      "colSample": "Muestra",
+      "colTarget": "Campo destino",
+      "colTransform": "Transformación",
+      "colConfidence": "Confianza",
+      "back": "Volver",
+      "confirm": "Confirmar mapeo y generar vista previa",
+      "loading": "Generando vista previa…"
+    },
     "upload": {
       "title": "Sube el archivo PIM",
       "hint": "Arrastra y suelta el .xlsx o haz clic para seleccionar.",
