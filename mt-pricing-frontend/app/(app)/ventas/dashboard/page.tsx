@@ -83,17 +83,20 @@ export default function VentasDashboardPage() {
   const { data: kpis, isLoading: kpisLoading } = useQuery({
     queryKey: ["sales-kpis"],
     queryFn: () => salesApi.getKpis(),
+    staleTime: 60_000,
     refetchInterval: 60_000,
   });
 
   const { data: backorders, isLoading: backordersLoading } = useQuery({
     queryKey: ["sales-backorders"],
     queryFn: () => salesApi.getBackorders(20),
+    staleTime: 30_000,
   });
 
   const { data: recentSOs, isLoading: sosLoading } = useQuery({
     queryKey: ["sales-orders-recent"],
     queryFn: () => salesApi.listOrders({ limit: 10, offset: 0 }),
+    staleTime: 30_000,
   });
 
   return (

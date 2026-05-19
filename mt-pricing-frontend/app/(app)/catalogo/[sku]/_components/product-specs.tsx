@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProduct } from "@/lib/hooks/products/use-product";
@@ -138,7 +139,11 @@ export function ProductSpecs({ sku }: { sku: string }) {
                         </span>
                       )}
                     </span>
-                  ) : null
+                  ) : (
+                    <Badge variant="outline" className="border-yellow-400 bg-yellow-50 text-yellow-700 text-[10px]">
+                      Sin GTIN
+                    </Badge>
+                  )
                 }
                 mono
               />

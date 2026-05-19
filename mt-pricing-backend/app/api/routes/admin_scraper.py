@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from app.api.deps import require_permissions
 from app.core.config import settings
 from app.db.models.user import User
-from app.services.scraper.circuit_breaker import CircuitBreaker, ProxyPool, get_circuit_breaker, get_proxy_pool
+from app.services.scraper.circuit_breaker import CircuitBreaker, CircuitState, ProxyPool, get_circuit_breaker, get_proxy_pool
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +167,34 @@ async def reset_circuit_breaker(
     cb = get_circuit_breaker()
     await cb.force_close(domain)
     logger.info("admin.circuit_breaker.reset", extra={"domain": domain})
+
+
+class SuspendCircuitResponse(BaseModel):
+    domain: str
+    state: str
+    forced: bool
+
+
+@router.post(
+    "/scraper-health/circuit/{domain}/suspend",
+    response_model=SuspendCircuitResponse,
+    operation_id="suspendCircuitBreaker",
+)
+async def suspend_circuit_breaker(
+    domain: str,
+    _user: Annotated[User, Depends(require_permissions("admin:read"))],
+) -> SuspendCircuitResponse:
+    """Fuerza el circuit breaker de un dominio a OPEN de forma indefinida (pausar canal).
+
+    A diferencia de un OPEN automático (que se recupera tras ``recovery_timeout``),
+    este estado permanece hasta que se llame a ``/reset`` manualmente.
+    """
+    if domain not in _MONITORED_DOMAINS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' no monitoreado")
+    cb = get_circuit_breaker()
+    await cb.force_open(domain)
+    logger.info("admin.circuit_breaker.suspended", extra={"domain": domain})
+    return SuspendCircuitResponse(domain=domain, state=CircuitState.OPEN, forced=True)
 
 
 @router.get(

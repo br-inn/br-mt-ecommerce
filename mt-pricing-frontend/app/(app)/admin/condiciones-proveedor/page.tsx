@@ -47,7 +47,7 @@ function ConditionForm({
   const queryClient = useQueryClient();
   const [form, setForm] = React.useState<VendorConditionCreatePayload>({
     vendor_id: "",
-    product_id: "",
+    product_sku: "",
     price: "",
     uom: "UNIT",
     moq: 1,
@@ -59,7 +59,7 @@ function ConditionForm({
     if (initial) {
       setForm({
         vendor_id: initial.vendor_id,
-        product_id: initial.product_id,
+        product_sku: initial.product_sku,
         price: initial.price,
         uom: initial.uom,
         moq: initial.moq,
@@ -122,11 +122,11 @@ function ConditionForm({
               />
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label>ID Producto (UUID) *</Label>
+              <Label>SKU Producto *</Label>
               <Input
-                value={form.product_id}
-                onChange={(e) => patch("product_id", e.target.value)}
-                placeholder="uuid del producto"
+                value={form.product_sku}
+                onChange={(e) => patch("product_sku", e.target.value)}
+                placeholder="SKU del producto"
                 className="font-mono text-xs"
                 disabled={isEdit}
                 required
@@ -205,7 +205,7 @@ function ConditionForm({
           </Button>
           <Button
             onClick={() => save()}
-            disabled={isPending || !form.vendor_id || !form.product_id || !form.price}
+            disabled={isPending || !form.vendor_id || !form.product_sku || !form.price}
           >
             {isPending ? "Guardando..." : "Guardar"}
           </Button>
@@ -274,7 +274,7 @@ export default function CondicionesProveedorPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Proveedor</TableHead>
-                <TableHead>Producto ID</TableHead>
+                <TableHead>Producto SKU</TableHead>
                 <TableHead>Precio</TableHead>
                 <TableHead>Moneda</TableHead>
                 <TableHead>MOQ</TableHead>
@@ -311,7 +311,7 @@ export default function CondicionesProveedorPage() {
                 <TableRow key={vc.id}>
                   <TableCell className="text-xs font-mono">{vc.vendor_id}</TableCell>
                   <TableCell className="max-w-[120px] truncate font-mono text-xs">
-                    {vc.product_id}
+                    {vc.product_sku}
                   </TableCell>
                   <TableCell className="text-xs font-semibold">{vc.price}</TableCell>
                   <TableCell className="text-xs">{vc.currency}</TableCell>

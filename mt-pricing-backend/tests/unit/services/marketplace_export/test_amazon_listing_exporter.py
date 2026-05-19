@@ -78,14 +78,13 @@ def _make_listing(
     lst.listing_description = listing_description
     lst.bullet_points = bullet_points
     lst.search_keywords = search_keywords
-    lst.extra = extra or {}
+    lst.extra = extra if extra is not None else {"standard_price": 45.00}
     return lst
 
 
-def _make_channel_listing(price=45.00, stock=10):
+def _make_channel_listing(stock=10):
     cl = MagicMock()
     cl.channel_code = "amazon_uae"
-    cl.standard_price = price
     cl.stock_qty = stock
     return cl
 
@@ -124,11 +123,18 @@ class TestBuildRow:
         assert row["bullet_point2"] == "Brass CW617N body"
         assert row["generic_keyword"] == "ball valve brass 1/2 PN30"
 
-    def test_price_and_stock_from_channel_listing(self):
+    def test_price_from_listing_extra_and_stock_from_channel_listing(self):
         exporter = AmazonListingExporter()
-        row = exporter.build_row(_make_product(), _make_listing(), _make_channel_listing(price=55.5, stock=7))
+        listing = _make_listing(extra={"standard_price": 55.5})
+        row = exporter.build_row(_make_product(), listing, _make_channel_listing(stock=7))
         assert row["standard_price"] == 55.5
         assert row["quantity"] == 7
+
+    def test_no_price_in_extra_returns_empty(self):
+        exporter = AmazonListingExporter()
+        listing = _make_listing(extra={})
+        row = exporter.build_row(_make_product(), listing, _make_channel_listing())
+        assert row["standard_price"] == ""
 
     def test_material_from_body_component(self):
         exporter = AmazonListingExporter()
@@ -174,9 +180,16 @@ class TestValidate:
         codes = [e["code"] for e in errors]
         assert "MISSING_TITLE" in codes
 
-    def test_missing_price_is_error(self):
+    def test_missing_price_is_error_when_not_in_extra(self):
         exporter = AmazonListingExporter()
-        errors, _ = exporter.validate(_make_product(), _make_listing(), None)
+        listing = _make_listing(extra={})
+        errors, _ = exporter.validate(_make_product(), listing, _make_channel_listing())
+        codes = [e["code"] for e in errors]
+        assert "MISSING_PRICE" in codes
+
+    def test_missing_price_is_error_when_no_listing(self):
+        exporter = AmazonListingExporter()
+        errors, _ = exporter.validate(_make_product(), None, _make_channel_listing())
         codes = [e["code"] for e in errors]
         assert "MISSING_PRICE" in codes
 

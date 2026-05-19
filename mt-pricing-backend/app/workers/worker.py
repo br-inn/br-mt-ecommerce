@@ -141,14 +141,10 @@ def make_celery() -> Celery:
             "mt.scraper.refresh_price_daily_stats": {"queue": "scraper.price_monitor"},
         },
         # --- Beat (ADR-046 — scheduler custom sobre job_definitions) ---
+        # All periodic tasks are defined in job_definitions (DB), not here.
+        # check-approval-timeouts was moved to job_definitions in mig 20260519_148.
         beat_scheduler="app.scheduler.database_scheduler:DatabaseScheduler",
-        beat_schedule={
-            "check-approval-timeouts": {
-                "task": "mt.procurement.check_approval_timeouts",
-                "schedule": 3600,  # cada hora
-                "options": {"queue": "default"},
-            },
-        },
+        beat_schedule={},
     )
 
     return app

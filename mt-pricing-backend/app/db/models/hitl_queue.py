@@ -11,6 +11,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -70,6 +71,18 @@ class HitlQueue(Base):
         UUID_PG,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    # true cuando VLM grade es A o B Y price_aed > 1000 AED (mig 142)
+    high_value_review: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    # true cuando el SKU nunca había aparecido antes en match_candidates (mig 142)
+    is_first_appearance: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

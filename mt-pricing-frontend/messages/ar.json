@@ -200,6 +200,7 @@
       "pn": "PN",
       "material": "المادة",
       "dataQuality": "الجودة",
+      "status": "الحالة",
       "active": "نشط",
       "actions": "الإجراءات"
     },

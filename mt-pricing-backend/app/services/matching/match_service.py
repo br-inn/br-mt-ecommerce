@@ -43,6 +43,7 @@ from app.services.matching.delivery_classifier import classify_delivery
 from app.services.matching.ports import CandidateRaw, FetcherPort, Query
 from app.services.matching.search_query_cache import get_or_generate_query
 from app.services.matching.query_builder import QueryBuilder
+from app.core.config import settings
 from app.services.matching.material_normalizer import MaterialNormalizer
 from app.services.matching.scoring import compute_scoring
 
@@ -277,8 +278,10 @@ class MatchService:
         # Aplica ms-marco-MiniLM-L-6-v2 si está disponible. Degradación
         # graceful: si sentence-transformers no está instalado o Redis no
         # disponible, se mantiene el orden por score determinista.
+        # Feature flag: CROSS_ENCODER_ENABLED=true (default: false).
+        _cross_encoder_enabled = settings.ENABLE_CROSS_ENCODER_RERANKER
         _rerank_query = sku_dict.get("name_en") or sku_dict.get("name") or ""
-        if persisted and _rerank_query:
+        if _cross_encoder_enabled and persisted and _rerank_query:
             try:
                 from app.services.matching.cross_encoder_reranker import rerank_candidates  # noqa: PLC0415
 
@@ -670,11 +673,18 @@ class MatchService:
             )
 
     async def __maybe_enqueue_hitl_impl(self, candidate: MatchCandidate, raw: "CandidateRaw") -> None:
-        """Implementación interna — ver _maybe_enqueue_hitl."""
+        """Implementación interna — ver _maybe_enqueue_hitl.
+
+        Lógica ampliada (mig 142 / US-SCR-04-08b):
+        - ``high_value_review``: true cuando VLM grade A/B Y price > 1000 AED.
+        - ``is_first_appearance``: true cuando el SKU nunca había aparecido en
+          match_candidates antes de este candidato.
+        - ``priority_score`` = (1 - confidence) × economic_value × (2.0 si is_first_appearance else 1.0).
+        """
         from decimal import Decimal
 
         from app.db.models.hitl_queue import HitlQueue, HITL_CONFIDENCE_THRESHOLD, HITL_VALUE_THRESHOLD_AED
-        from sqlalchemy import select as _select
+        from sqlalchemy import select as _select, func as _func
 
         # Determinar uncertainty_score (defensivo: FakeMatchRow en tests puede no tener el atributo)
         conf = getattr(candidate, "calibrated_confidence", None)
@@ -696,13 +706,40 @@ class MatchService:
                 if existing.first() is not None:
                     return  # ya en cola
 
-                priority = uncertainty * Decimal(str(price_val))
+                # ── high_value_review: VLM grade A/B + price > 1000 AED ──────
+                vlm_grade = (
+                    (candidate.specs_jsonb or {})
+                    .get("_enhanced", {})
+                    .get("visual_verdict")
+                )
+                high_value_review = (
+                    vlm_grade in ("A", "B") and float(price_val) > HITL_VALUE_THRESHOLD_AED
+                )
+
+                # ── is_first_appearance: SKU nunca visto en match_candidates ──
+                prior_count_stmt = _select(
+                    _func.count(MatchCandidate.id)
+                ).where(
+                    MatchCandidate.product_sku == candidate.product_sku,
+                    MatchCandidate.id != candidate.id,
+                )
+                prior_count_result = await self.session.execute(prior_count_stmt)
+                prior_count = prior_count_result.scalar_one()
+                is_first_appearance = prior_count == 0
+
+                # ── priority_score con multiplicador de primera aparición ─────
+                economic_value = Decimal(str(price_val))
+                first_appearance_multiplier = Decimal("2.0") if is_first_appearance else Decimal("1.0")
+                priority = uncertainty * economic_value * first_appearance_multiplier
+
                 hitl_item = HitlQueue(
                     match_id=candidate.id,
                     uncertainty_score=uncertainty,
-                    product_value_aed=Decimal(str(price_val)),
+                    product_value_aed=economic_value,
                     priority_score=priority,
                     status="pending",
+                    high_value_review=high_value_review,
+                    is_first_appearance=is_first_appearance,
                 )
                 self.session.add(hitl_item)
                 await self.session.flush()
@@ -714,6 +751,8 @@ class MatchService:
                         "uncertainty": float(uncertainty),
                         "price_aed": float(price_val),
                         "priority_score": float(priority),
+                        "high_value_review": high_value_review,
+                        "is_first_appearance": is_first_appearance,
                     },
                 )
 

@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 928 >>
+stream
+BT /F1 11 Tf 50 750 Td
+(FICHA TECNICA - VALVULA DE BOLA SERIE 4097) Tj
+0 -25 Td (Serie: 4097 / 40970) Tj
+0 -20 Td (Tipo: Valvula de bola de paso total) Tj
+0 -20 Td (Material cuerpo: Laton CW617N - Grado: CW617N - Norma: EN 12165) Tj
+0 -20 Td (Material asiento: PTFE) Tj
+0 -20 Td (Material vastago: Acero inoxidable AISI 316) Tj
+0 -20 Td (Conexion: BSP rosca hembra) Tj
+0 -20 Td (Marca: MT) Tj
+0 -25 Td (CARACTERISTICAS TECNICAS) Tj
+0 -20 Td (PN: 25 bar) Tj
+0 -20 Td (Temperatura: -20C a +120C) Tj
+0 -20 Td (Presion maxima: 25 bar) Tj
+0 -25 Td (COEFICIENTES DE FLUJO Kv) Tj
+0 -20 Td (DN15 Kv=8.5 Cv=9.8) Tj
+0 -20 Td (DN20 Kv=18.0 Cv=20.7) Tj
+0 -20 Td (DN25 Kv=30.0 Cv=34.5) Tj
+0 -25 Td (CERTIFICACIONES) Tj
+0 -20 Td (CE Directiva 2014/68/EU) Tj
+0 -20 Td (ACS cert num: ACS09SI1234 emitido por CRECEP) Tj
+0 -25 Td (DIMENSIONES EN 331) Tj
+0 -20 Td (DN15 cara-cara 65mm rosca G1/2) Tj
+0 -20 Td (DN20 cara-cara 70mm rosca G3/4) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1290
+%%EOF

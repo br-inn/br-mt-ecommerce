@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Ruler, ArrowRight, Plus, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -12,7 +13,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -26,6 +38,130 @@ import { productsApi } from "@/lib/api/endpoints/products";
 import { useProduct } from "@/lib/hooks/products/use-product";
 import type { ProductUomConversion } from "@/lib/api/endpoints/products";
 
+// ---- Dialog para crear conversión UoM -----------------------------------
+
+interface UomFormState {
+  uom_from: string;
+  uom_to: string;
+  factor: string;
+}
+
+const EMPTY_UOM_FORM: UomFormState = { uom_from: "", uom_to: "", factor: "" };
+
+function AgregarConversionDialog({
+  sku,
+  onSuccess,
+}: {
+  sku: string;
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<UomFormState>(EMPTY_UOM_FORM);
+  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      productsApi.createUomConversion(sku, {
+        uom_from: form.uom_from.trim().toUpperCase(),
+        uom_to: form.uom_to.trim().toUpperCase(),
+        factor: Number(form.factor),
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      setForm(EMPTY_UOM_FORM);
+      setError(null);
+      onSuccess();
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : "Error al crear la conversión.");
+    },
+  });
+
+  const handleOpenChange = (v: boolean) => {
+    if (!v) {
+      setForm(EMPTY_UOM_FORM);
+      setError(null);
+    }
+    setOpen(v);
+  };
+
+  const handleSubmit = () => {
+    if (!form.uom_from.trim()) { setError("UoM origen es obligatoria."); return; }
+    if (!form.uom_to.trim()) { setError("UoM destino es obligatoria."); return; }
+    const f = Number(form.factor);
+    if (!form.factor || isNaN(f) || f <= 0) { setError("El factor debe ser un número positivo."); return; }
+    setError(null);
+    createMutation.mutate();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Plus className="h-4 w-4" /> Agregar
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Agregar conversión de unidad</DialogTitle>
+          <DialogDescription>
+            Define la equivalencia entre dos unidades de medida para este producto.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="uom_from">UoM origen</Label>
+            <Input
+              id="uom_from"
+              placeholder="BOX, PALLET, PACK…"
+              value={form.uom_from}
+              onChange={(e) => setForm((f) => ({ ...f, uom_from: e.target.value }))}
+              className="uppercase"
+              maxLength={20}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="uom_to">UoM destino</Label>
+            <Input
+              id="uom_to"
+              placeholder="UNIT, EA, KG…"
+              value={form.uom_to}
+              onChange={(e) => setForm((f) => ({ ...f, uom_to: e.target.value }))}
+              className="uppercase"
+              maxLength={20}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="factor">Factor de conversión</Label>
+            <Input
+              id="factor"
+              type="number"
+              min="0.0001"
+              step="any"
+              placeholder="12"
+              value={form.factor}
+              onChange={(e) => setForm((f) => ({ ...f, factor: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Ej: 12 significa que 1 {form.uom_from || "BOX"} = 12 {form.uom_to || "UNIT"}.
+            </p>
+          </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        </div>
+        <DialogFooter>
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            disabled={createMutation.isPending}
+          >
+            {createMutation.isPending ? "Guardando…" : "Guardar conversión"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface Props {
   sku: string;
 }
@@ -37,6 +173,7 @@ export function UnidadesClient({ sku }: Props) {
   const { data: conversions, isLoading: loadingConv } = useQuery({
     queryKey: ["product-uom-conversions", sku],
     queryFn: () => productsApi.listUomConversions(sku),
+    staleTime: 30_000,
   });
 
   const deleteMutation = useMutation({
@@ -95,9 +232,14 @@ export function UnidadesClient({ sku }: Props) {
             </CardDescription>
           </div>
           <RbacGuard permissions={["products:write"]}>
-            <Button variant="outline" size="sm" disabled>
-              <Plus className="h-4 w-4" /> Agregar
-            </Button>
+            <AgregarConversionDialog
+              sku={sku}
+              onSuccess={() =>
+                void queryClient.invalidateQueries({
+                  queryKey: ["product-uom-conversions", sku],
+                })
+              }
+            />
           </RbacGuard>
         </CardHeader>
 

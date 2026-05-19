@@ -24,6 +24,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.supabase import get_supabase_admin
 from app.db.models.audit import AuditEvent
 from app.db.models.user import Permission, Role, User
@@ -327,10 +328,14 @@ class AuthService:
             )
 
         admin = get_supabase_admin()
+        redirect_url = f"{settings.APP_URL}/auth/callback"
         try:
             invite = admin.auth.admin.invite_user_by_email(
                 email,
-                {"data": {"full_name": full_name, "locale": locale}},
+                {
+                    "data": {"full_name": full_name, "locale": locale},
+                    "redirect_to": redirect_url,
+                },
             )
         except Exception as exc:  # noqa: BLE001 — supabase-py raises broad
             logger.exception("supabase.auth.admin.invite_user_by_email failed")

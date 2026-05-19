@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/data/data-table";
 import { DataQualityBadge } from "@/components/domain/data-quality-badge";
+import { LifecycleStatusBadge } from "@/components/ui/lifecycle-status-badge";
 import { SkuActionsMenu } from "@/components/domain/sku-actions-menu";
 import { useProducts } from "@/lib/hooks/products/use-products";
 import { useToggleProductActive } from "@/lib/hooks/products/use-product-mutations";
@@ -106,6 +107,22 @@ export function ProductsTable() {
         header: () => <span>{t("columns.material")}</span>,
         accessorKey: "material",
         cell: ({ row }) => row.original.material ?? "—",
+      },
+      {
+        id: "lifecycle_status",
+        header: () => <span>{t("columns.status")}</span>,
+        cell: ({ row }) => (
+          <LifecycleStatusBadge status={row.original.lifecycle_status} />
+        ),
+      },
+      {
+        id: "gtin",
+        header: () => <span>GTIN</span>,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {row.original.gtin ?? "—"}
+          </span>
+        ),
       },
       {
         id: "data_quality",

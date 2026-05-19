@@ -94,16 +94,14 @@ class PurchaseOrderRepository:
         from sqlalchemy import and_, or_
 
         from app.db.models.procurement import VendorProductCondition
-        from app.db.models.product import Product
 
         today = _date.today()
         stmt = (
             select(VendorProductCondition)
-            .join(Product, Product.id == VendorProductCondition.product_id)
             .where(
                 and_(
                     VendorProductCondition.vendor_id == supplier_code,
-                    Product.sku == sku,
+                    VendorProductCondition.product_sku == sku,
                     VendorProductCondition.is_active.is_(True),
                     VendorProductCondition.valid_from <= today,
                     or_(

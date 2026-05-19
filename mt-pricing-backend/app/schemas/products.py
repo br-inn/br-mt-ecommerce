@@ -477,6 +477,7 @@ class ProductResponse(BaseModel):
     display_pair_sku: str | None = None
     division_codes: list[str] = Field(default_factory=list)
     model_id: UUID | None = None
+    gtin: str | None = None  # ADD THIS LINE
 
     # Fase B (mig 066): active deriva de lifecycle_status para preservar
     # contrato API (FE puede seguir leyendo `.active`) mientras

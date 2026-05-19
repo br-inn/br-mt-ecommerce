@@ -181,6 +181,8 @@ export interface ProductListItem {
   division_codes: string[];
   /** Fase B — translations colocated on the response. Resolve via `getProductName/Description`. */
   translations?: ProductTranslationsMap | null;
+  /** M1-08 — GS1 global trade item number (EAN-8/12/13/14). */
+  gtin?: string | null;
 }
 
 export interface ProductMini {

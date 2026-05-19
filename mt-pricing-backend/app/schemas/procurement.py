@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class PRCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    product_id: UUID | None = None
+    product_sku: str | None = None
     qty: Decimal = Field(gt=0)
     uom: str = Field(default="UNIT", max_length=32)
     required_date: date | None = None
@@ -32,7 +32,7 @@ class PROut(BaseModel):
     id: UUID
     pr_number: str
     requester_id: UUID
-    product_id: UUID | None
+    product_sku: str | None
     qty: Decimal
     uom: str
     required_date: date | None
@@ -126,7 +126,7 @@ class VendorConditionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     vendor_id: str = Field(min_length=1, max_length=64)
-    product_id: UUID
+    product_sku: str = Field(min_length=1)
     price: Decimal = Field(ge=0)
     uom: str = Field(default="UNIT", max_length=32)
     moq: int = Field(default=1, ge=1)
@@ -142,7 +142,7 @@ class VendorConditionOut(BaseModel):
 
     id: UUID
     vendor_id: str
-    product_id: UUID
+    product_sku: str
     price: Decimal
     uom: str
     moq: int

@@ -39,7 +39,7 @@ function resetState() {
   return {
     qty: "",
     uom: "UNIT",
-    product_id: "",
+    product_sku: "",
     required_date: "",
     cost_center_id: "",
     estimated_amount: "",
@@ -75,7 +75,7 @@ export function PRForm({ open, onOpenChange, onCreated }: PRFormProps) {
     const payload: PRCreatePayload = {
       qty: form.qty,
       uom: form.uom,
-      product_id: form.product_id || null,
+      product_sku: form.product_sku || null,
       required_date: form.required_date || null,
       cost_center_id: form.cost_center_id || null,
       estimated_amount: form.estimated_amount || null,
@@ -124,12 +124,12 @@ export function PRForm({ open, onOpenChange, onCreated }: PRFormProps) {
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label htmlFor="pr-product">ID Producto (UUID)</Label>
+              <Label htmlFor="pr-product">SKU Producto</Label>
               <Input
                 id="pr-product"
-                value={form.product_id}
-                onChange={(e) => patch("product_id", e.target.value)}
-                placeholder="uuid del producto"
+                value={form.product_sku}
+                onChange={(e) => patch("product_sku", e.target.value)}
+                placeholder="SKU del producto"
                 className="font-mono text-xs"
               />
             </div>

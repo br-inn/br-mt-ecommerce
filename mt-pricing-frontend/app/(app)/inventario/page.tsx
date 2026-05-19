@@ -315,7 +315,7 @@ function MovementRow({
           {directionLabel["IN"] ?? mv.movement_type_id}
         </span>
       </TableCell>
-      <TableCell className="font-mono text-xs">{mv.product_id}</TableCell>
+      <TableCell className="font-mono text-xs">{mv.product_sku}</TableCell>
       <TableCell className="text-right font-mono text-xs">
         {parseFloat(mv.qty).toLocaleString("en-AE", { minimumFractionDigits: 4 })}
       </TableCell>

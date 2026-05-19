@@ -43,6 +43,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -95,6 +96,53 @@ class CompetitorBrand(UuidPkMixin, TimestampMixin, Base):
     @property
     def effective_search_term(self) -> str:
         return self.amazon_search_term or self.name
+
+
+class BrandExtractor(UuidPkMixin, TimestampMixin, Base):
+    """Mapeo de atributos generado por LLM por marca × marketplace (US-SCR-05-01).
+
+    Generado una vez en Bootstrap mode via Claude; reutilizado sin LLM en cada
+    monitoring scrape. ``attribute_map`` traduce labels de Amazon al schema
+    canónico de CandidateRaw.specs.
+    """
+
+    __tablename__ = "scraper_brand_extractors"
+
+    brand_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("competitor_brands.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    marketplace: Mapped[str] = mapped_column(String(32), nullable=False)
+    # {"Amazon label": {"field": "canonical_field", "type": "str|float|int"}}
+    attribute_map: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+    )
+    sample_asins: Mapped[list[str]] = mapped_column(
+        postgresql.ARRAY(Text),
+        nullable=False,
+        server_default=text("'{}'::text[]"),
+    )
+    generated_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    generated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    hit_rate: Mapped[Decimal] = mapped_column(
+        Numeric(5, 4), nullable=False, server_default=text("0")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("brand_id", "marketplace", name="uq_brand_extractor"),
+        CheckConstraint(
+            "marketplace IN ('amazon_uae', 'noon_uae')",
+            name="ck_brand_extractor_marketplace",
+        ),
+    )
 
 
 class CompetitorListing(UuidPkMixin, TimestampMixin, Base):
@@ -446,6 +494,7 @@ class ManufacturerWhitelist(Base):
 
 __all__ = [
     "MATCH_DECISIONS",
+    "BrandExtractor",
     "ComparatorModelRegistry",
     "CompetitorBrand",
     "CompetitorFetchError",

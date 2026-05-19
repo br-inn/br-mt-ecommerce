@@ -232,3 +232,22 @@ async def toggle_brand_monitoring(
         extra={"brand_id": str(brand_id), "monitoring_active": new_state},
     )
     return MonitoringToggleResponse(brand_id=str(brand_id), monitoring_active=new_state)
+
+
+@router.post(
+    "/{brand_id}/bootstrap-scan",
+    status_code=202,
+    summary="Lanzar Bootstrap Scan: genera extractor de atributos via Claude (US-SCR-05-01)",
+    operation_id="competitorBrandsBootstrapScan",
+)
+async def bootstrap_scan(
+    brand_id: UUID,
+    _user: Annotated[User, Depends(require_permissions("scraper:write"))],
+    marketplace: str = "amazon_uae",
+) -> dict:
+    from app.workers.tasks.scraper import generate_brand_extractor_task
+    task = generate_brand_extractor_task.apply_async(
+        args=[str(brand_id), marketplace],
+        queue="comparator",
+    )
+    return {"task_id": task.id, "status": "queued", "brand_id": str(brand_id)}

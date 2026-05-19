@@ -58,7 +58,7 @@ class CircuitBreaker:
         redis_url: str,
         *,
         failure_threshold: int = 5,
-        recovery_timeout: int = 60,
+        recovery_timeout: int = 300,
         failure_window: int = 120,
     ) -> None:
         self._redis_url = redis_url
@@ -217,6 +217,23 @@ class CircuitBreaker:
         except Exception as exc:
             logger.warning("circuit_breaker.force_close_error", extra={"domain": domain, "error": str(exc)[:120]})
 
+    async def force_open(self, domain: str) -> None:
+        """Fuerza el circuit a OPEN sin TTL (pausar canal manualmente).
+
+        Permanece OPEN hasta que se llame a ``force_close``. Marcar ``forced=1``
+        para que el dashboard pueda distinguirlo de un OPEN automático.
+        """
+        try:
+            r = await self._get_redis()
+            state_key, _, opened_at_key = self._keys(domain)
+            forced_key = f"circuit:{domain}:forced"
+            await r.set(state_key, CircuitState.OPEN)   # sin TTL — permanente
+            await r.set(opened_at_key, str(time.time()))
+            await r.set(forced_key, "1")
+            logger.warning("circuit_breaker.force_opened", extra={"domain": domain})
+        except Exception as exc:
+            logger.warning("circuit_breaker.force_open_error", extra={"domain": domain, "error": str(exc)[:120]})
+
     async def close(self) -> None:
         if self._redis is not None:
             await self._redis.aclose()
@@ -252,14 +269,45 @@ class ProxyPool:
         return self._redis
 
     async def get_proxy(self) -> str | None:
-        """Obtiene el siguiente proxy (round-robin). Retorna None si el pool está vacío."""
+        """Obtiene el siguiente proxy disponible (round-robin), saltando los en cooldown.
+
+        Itera hasta ``len(pool)`` veces para evitar un loop infinito cuando todos
+        están en cooldown. En ese caso retorna None (sin proxy).
+        """
         try:
             r = await self._get_redis()
-            proxy = await r.rpoplpush(PROXY_POOL_KEY, PROXY_POOL_KEY)  # type: ignore[attr-defined]
-            return proxy
+            pool_size = await r.llen(PROXY_POOL_KEY)
+            if pool_size == 0:
+                return None
+
+            for _ in range(pool_size):
+                proxy = await r.rpoplpush(PROXY_POOL_KEY, PROXY_POOL_KEY)  # type: ignore[attr-defined]
+                if proxy is None:
+                    return None
+                cooldown_key = f"proxy:cooldown:{proxy}"
+                if not await r.exists(cooldown_key):
+                    return proxy
+                logger.debug("proxy_pool.skipped_cooldown", extra={"proxy": proxy[:30]})
+
+            # Todos los proxies están en cooldown
+            logger.warning("proxy_pool.all_in_cooldown")
+            return None
         except Exception as exc:
             logger.warning("proxy_pool.get_error", extra={"error": str(exc)[:120]})
             return None
+
+    async def mark_proxy_failed(self, proxy: str, ttl: int = 3600) -> None:
+        """Marca un proxy en cooldown durante ``ttl`` segundos (SETEX).
+
+        Mientras el key exista, ``get_proxy()`` saltará este proxy.
+        """
+        try:
+            r = await self._get_redis()
+            cooldown_key = f"proxy:cooldown:{proxy}"
+            await r.set(cooldown_key, "1", ex=ttl)
+            logger.info("proxy_pool.marked_failed", extra={"proxy": proxy[:30], "ttl": ttl})
+        except Exception as exc:
+            logger.warning("proxy_pool.mark_failed_error", extra={"error": str(exc)[:120]})
 
     async def add_proxy(self, proxy: str) -> int:
         """Añade un proxy al pool. Retorna el tamaño actual del pool."""
@@ -310,7 +358,7 @@ def get_circuit_breaker() -> CircuitBreaker:
         _circuit_breaker_instance = CircuitBreaker(
             redis_url=str(settings.REDIS_URL),
             failure_threshold=getattr(settings, "SCRAPER_CB_FAILURE_THRESHOLD", 5),
-            recovery_timeout=getattr(settings, "SCRAPER_CB_RECOVERY_TIMEOUT", 60),
+            recovery_timeout=getattr(settings, "SCRAPER_CB_RECOVERY_TIMEOUT", 300),
         )
     return _circuit_breaker_instance
 

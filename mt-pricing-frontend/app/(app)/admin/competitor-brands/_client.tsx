@@ -214,7 +214,7 @@ function BrandDialog({ mode, initial, open, onClose, onSave, isSaving }: BrandDi
 export function CompetitorBrandsClient() {
   const t = useTranslations("admin.competitorBrands");
   const { hasPermission } = usePermissions();
-  const canWrite = hasPermission("products:write");
+  const canWrite = hasPermission("scraper:write");
 
   const { data: brands = [], isLoading } = useCompetitorBrands();
   const createMutation = useCreateCompetitorBrand();
@@ -297,6 +297,17 @@ export function CompetitorBrandsClient() {
       }
     } catch {
       toast.error(t("scrapeFailed"));
+    }
+  };
+
+  const handleBootstrapScan = async (brandId: string) => {
+    try {
+      await fetch(`/api/v1/competitor-brands/${encodeURIComponent(brandId)}/bootstrap-scan`, {
+        method: "POST",
+      });
+      toast.success("Bootstrap scan iniciado");
+    } catch {
+      toast.error("Error al iniciar bootstrap scan");
     }
   };
 
@@ -386,6 +397,9 @@ export function CompetitorBrandsClient() {
                 </th>
                 <th className="hidden px-4 py-2.5 text-center font-medium text-muted-foreground lg:table-cell">
                   {t("columns.monitoring")}
+                </th>
+                <th className="hidden px-4 py-2.5 text-center font-medium text-muted-foreground md:table-cell">
+                  Modo
                 </th>
                 {canWrite ? (
                   <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
@@ -490,6 +504,32 @@ export function CompetitorBrandsClient() {
                       )
                     )}
                   </td>
+                  {/* Modo column */}
+                  <td className="hidden px-4 py-3 text-center md:table-cell">
+                    <div className="flex flex-col items-center gap-1.5">
+                      {brand.monitoring_active ? (
+                        <Badge variant="secondary">Monitoreo</Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="border-orange-400 text-orange-600"
+                        >
+                          Bootstrap
+                        </Badge>
+                      )}
+                      {canWrite && !brand.monitoring_active ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => handleBootstrapScan(brand.id)}
+                        >
+                          Bootstrap Scan
+                        </Button>
+                      ) : null}
+                    </div>
+                  </td>
+
                   {canWrite ? (
                     <td className="px-4 py-3 text-right">
                       <Button

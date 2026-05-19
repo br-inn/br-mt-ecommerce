@@ -44,13 +44,13 @@ async def _next_pr_number(session: AsyncSession) -> str:
     return f"{prefix}{count + 1:04d}"
 
 
-def _active_pir_clause(vendor_id: str, product_id: UUID) -> Any:
+def _active_pir_clause(vendor_id: str, product_sku: str) -> Any:
     from datetime import date
 
     today = date.today()
     return and_(
         VendorProductCondition.vendor_id == vendor_id,
-        VendorProductCondition.product_id == product_id,
+        VendorProductCondition.product_sku == product_sku,
         VendorProductCondition.is_active.is_(True),
         VendorProductCondition.valid_from <= today,
         or_(
@@ -77,7 +77,7 @@ class ProcurementRepository:
         pr = PurchaseRequisition(
             pr_number=pr_number,
             requester_id=requester_id,
-            product_id=data.product_id,
+            product_sku=data.product_sku,
             qty=data.qty,
             uom=data.uom,
             required_date=data.required_date,
@@ -274,21 +274,42 @@ class ProcurementRepository:
         await self.session.flush()
         return rule
 
+    async def delete_approval_rule(self, rule_id: UUID) -> None:
+        rule = await self.get_approval_rule(rule_id)
+        if rule is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "rule_not_found", "title": "Regla de aprobación no existe"},
+            )
+        await self.session.delete(rule)
+        await self.session.flush()
+
+    async def get_pr_decisions(self, pr_id: UUID) -> list[ApprovalDecision]:
+        stmt = (
+            select(ApprovalDecision)
+            .where(
+                ApprovalDecision.document_id == pr_id,
+                ApprovalDecision.document_type == "purchase_requisition",
+            )
+            .order_by(ApprovalDecision.decided_at.asc())
+        )
+        return list((await self.session.execute(stmt)).scalars().all())
+
     # --- Vendor conditions (PIR) --------------------------------------------
 
     async def list_vendor_conditions(
         self,
         *,
         vendor_id: str | None = None,
-        product_id: UUID | None = None,
+        product_sku: str | None = None,
         active_only: bool = True,
     ) -> list[VendorProductCondition]:
         stmt = select(VendorProductCondition)
         clauses: list[Any] = []
         if vendor_id:
             clauses.append(VendorProductCondition.vendor_id == vendor_id)
-        if product_id:
-            clauses.append(VendorProductCondition.product_id == product_id)
+        if product_sku:
+            clauses.append(VendorProductCondition.product_sku == product_sku)
         if active_only:
             from datetime import date as _date
             today = _date.today()
@@ -312,7 +333,7 @@ class ProcurementRepository:
 
         vc = VendorProductCondition(
             vendor_id=data.vendor_id,
-            product_id=data.product_id,
+            product_sku=data.product_sku,
             price=data.price,
             uom=data.uom,
             moq=data.moq,
@@ -342,12 +363,12 @@ class ProcurementRepository:
         return vc
 
     async def get_active_pir(
-        self, vendor_id: str, product_id: UUID
+        self, vendor_id: str, product_sku: str
     ) -> VendorProductCondition | None:
         """Devuelve el PIR vigente más reciente para vendor+product."""
         stmt = (
             select(VendorProductCondition)
-            .where(_active_pir_clause(vendor_id, product_id))
+            .where(_active_pir_clause(vendor_id, product_sku))
             .order_by(VendorProductCondition.valid_from.desc())
             .limit(1)
         )
@@ -363,3 +384,37 @@ class ProcurementRepository:
                 detail={"code": "pr_not_found", "title": "Purchase Requisition no existe"},
             )
         return pr
+
+    async def convert_pr_to_po(self, pr_id: UUID, created_by: UUID | None = None) -> "PurchaseOrder":
+        import datetime as _dt
+        from app.db.models.inventory import PurchaseOrder
+
+        pr = await self._get_or_404(pr_id)
+        if pr.status != "approved":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "pr_not_approved",
+                    "title": f"Solo se pueden convertir PR aprobadas (actual: {pr.status})",
+                },
+            )
+
+        po_number = f"PO-{_dt.date.today().strftime('%Y%m%d')}-{pr_id.hex[:6].upper()}"
+        notes = f"Generado desde PR {pr.pr_number}"
+        if pr.product_sku:
+            notes += f" — SKU: {pr.product_sku}, Qty: {pr.qty} {pr.uom}"
+        po = PurchaseOrder(
+            po_number=po_number,
+            status="draft",
+            currency="AED",
+            created_by=created_by,
+            notes=notes,
+        )
+        self.session.add(po)
+        await self.session.flush()
+
+        pr.status = "converted_to_po"
+        pr.updated_at = datetime.now(tz=timezone.utc)
+        await self.session.flush()
+        await self.session.refresh(po)
+        return po

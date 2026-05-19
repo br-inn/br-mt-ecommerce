@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Any
 
 from celery import group as celery_group
 from celery.exceptions import SoftTimeLimitExceeded
@@ -19,6 +20,11 @@ from celery.exceptions import SoftTimeLimitExceeded
 from app.workers.worker import celery_app
 
 logger = logging.getLogger(__name__)
+
+
+def _run_async(coro: Any) -> Any:
+    """Run a coroutine synchronously from within a Celery task."""
+    return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +344,13 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
                     await circuit_breaker.record_success(_domain)
                 except Exception as fetch_exc:
                     await circuit_breaker.record_failure(_domain)
+                    # Cool down the proxy that was in use so it is skipped
+                    # for the next hour before being retried.
+                    if _proxy:
+                        try:
+                            await proxy_pool.mark_proxy_failed(_proxy)
+                        except Exception:
+                            pass
                     raise fetch_exc
 
                 for candidate in candidates:
@@ -431,3 +444,94 @@ def scrape_brands_batch_task(brand_ids: list[str] | None = None, *, force: bool 
         extra={"group_id": job.id, "total": len(brand_ids)},
     )
     return {"group_id": job.id, "total": len(brand_ids)}
+
+
+# ---------------------------------------------------------------------------
+# Task — Bootstrap Scan: genera attribute-mapping para una marca via Claude
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    default_retry_delay=60,
+    name="mt.scraper.generate_brand_extractor",
+)
+def generate_brand_extractor_task(self: Any, brand_id: str, marketplace: str = "amazon_uae") -> dict[str, Any]:
+    """Bootstrap: genera el JSON attribute-mapping para una marca via Claude (US-SCR-05-01).
+
+    Ejecutado al hacer Bootstrap Scan desde la UI. Fetches 3 sample ASINs
+    del brand, extrae raw_pairs, y llama a BrandExtractorService.bootstrap().
+    """
+    from uuid import UUID as _UUID
+
+    async def _inner() -> dict[str, Any]:
+        from sqlalchemy import select as _select
+
+        from app.core.db import AsyncSessionLocal
+        from app.db.models.comparator import CompetitorBrand
+        from app.services.matching.adapter_registry import get_fetcher
+        from app.services.matching.ports import Query
+        from app.services.scraper.brand_extractor_service import BrandExtractorService
+
+        async with AsyncSessionLocal() as session:
+            # Load brand
+            r = await session.execute(
+                _select(CompetitorBrand).where(CompetitorBrand.id == _UUID(brand_id))
+            )
+            brand = r.scalar_one_or_none()
+            if not brand:
+                return {"error": f"Brand {brand_id} not found"}
+
+            # Fetch sample products for this brand (up to 3 ASINs)
+            fetcher = get_fetcher(marketplace)
+            query = Query(
+                text=brand.effective_search_term,
+                source=marketplace,
+                type="brand",
+                dept=brand.amazon_dept,
+                category_node=brand.amazon_category_node,
+            )
+            try:
+                candidates = await fetcher.fetch(query)
+            except Exception as exc:  # noqa: BLE001
+                return {"error": f"Fetch failed: {exc}"}
+
+            if not candidates:
+                return {"error": "No candidates fetched — cannot generate extractor"}
+
+            # Collect raw_pairs from up to 3 candidates
+            sample_raw_pairs: list[dict] = []
+            sample_asins: list[str] = []
+            for cand in candidates[:3]:
+                # raw_pairs may be in raw_payload or specs
+                asins = cand.raw_payload.get("asin")
+                if asins:
+                    sample_asins.append(asins)
+                # Build flat list of {"label": k, "value": v} from specs
+                for k, v in cand.specs.items():
+                    sample_raw_pairs.append({"label": k, "value": str(v), "asin": asins})
+
+            if not sample_raw_pairs:
+                return {"error": "No specs/raw_pairs collected from candidates"}
+
+            # Generate + save mapping via Claude
+            svc = BrandExtractorService(session)
+            attribute_map = await svc.bootstrap(
+                brand_id=_UUID(brand_id),
+                brand_name=brand.name,
+                marketplace=marketplace,
+                sample_raw_pairs=sample_raw_pairs,
+                sample_asins=sample_asins,
+            )
+
+            return {
+                "brand_id": brand_id,
+                "brand_name": brand.name,
+                "marketplace": marketplace,
+                "mappings_generated": len(attribute_map),
+                "sample_asins": sample_asins,
+            }
+
+    return _run_async(_inner())

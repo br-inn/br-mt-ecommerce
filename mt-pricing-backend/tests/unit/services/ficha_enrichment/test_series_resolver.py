@@ -2,6 +2,7 @@
 import pytest
 from app.services.ficha_enrichment.series_resolver import (
     extract_series_prefix,
+    extract_all_series_from_text,
     dn_label_to_int,
     generate_candidate_skus,
 )
@@ -66,3 +67,51 @@ def test_generate_candidate_skus_empty_dims():
     extraction = _make_extraction([])
     skus = generate_candidate_skus("4097", extraction)
     assert skus == []
+
+
+# ---------------------------------------------------------------------------
+# extract_all_series_from_text
+# ---------------------------------------------------------------------------
+
+def test_extract_all_series_single_pair():
+    text = "4097 / 40972 Pag. 3/9"
+    result = extract_all_series_from_text(text)
+    assert result == [("4097", "40972")]
+
+
+def test_extract_all_series_multi_pair():
+    text = (
+        "4295 / 42952 Pag. 1/9\n"
+        "4097 / 40972 Pag. 3/9\n"
+        "4098 / 40982 Pag. 5/9\n"
+    )
+    result = extract_all_series_from_text(text)
+    assert ("4295", "42952") in result
+    assert ("4097", "40972") in result
+    assert ("4098", "40982") in result
+    assert len(result) == 3
+
+
+def test_extract_all_series_no_false_positive_page_numbers():
+    text = "Pag. 3/9\nDN 1/2\"\n"
+    result = extract_all_series_from_text(text)
+    assert result == []
+
+
+def test_extract_all_series_independent_series():
+    text = "4100 / 4200 ver especificaciones"
+    result = extract_all_series_from_text(text)
+    # Neither is a color variant of the other (4200 != 4100 + "2")
+    assert ("4100", None) in result
+    assert ("4200", None) in result
+
+
+def test_extract_all_series_deduplicates():
+    text = "4097 / 40972 Pag. 3/9\n4097 / 40972 Pag. 4/9\n"
+    result = extract_all_series_from_text(text)
+    assert len(result) == 1
+    assert result[0] == ("4097", "40972")
+
+
+def test_extract_all_series_empty_text():
+    assert extract_all_series_from_text("") == []
