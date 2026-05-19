@@ -46,7 +46,7 @@ export function ImportWizard() {
   const uploadPreview = useUploadImport();
   const apply = useApplyImport();
   // Polling sólo cuando el step es "applying" (4) y tenemos run_id.
-  const status = useImportStatus(preview?.id, step === 4 && !!preview);
+  const status = useImportStatus(preview?.run_id, step === 4 && !!preview);
 
   // Cuando llega status terminal completed/failed, ya no avanzamos step
   // pero render cambia (ImportReport) basado en status.data.
@@ -85,7 +85,7 @@ export function ImportWizard() {
     if (!preview) return;
     try {
       await apply.mutateAsync({
-        runId: preview.id,
+        runId: preview.run_id,
         division_codes: divisionCodes.length > 0 ? divisionCodes : null,
       });
       setApplyTriggered(true);

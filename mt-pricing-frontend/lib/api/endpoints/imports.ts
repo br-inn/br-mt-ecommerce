@@ -62,7 +62,7 @@ export interface ImportProgress {
 }
 
 export interface ImportRun {
-  id: string;
+  run_id: string;
   type: "pim";
   status: ImportStatus;
   filename: string | null;
