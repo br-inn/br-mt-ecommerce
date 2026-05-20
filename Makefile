@@ -17,6 +17,7 @@
 # =============================================================================
 
 .PHONY: test test-backend test-frontend \
+        test-e2e test-e2e-remote seed-e2e-users \
         lint lint-backend lint-frontend \
         typecheck typecheck-backend typecheck-frontend \
         help
@@ -45,6 +46,36 @@ test-frontend:
 	@echo "▶ Frontend — typecheck + vitest"
 	cd $(FRONTEND) && pnpm typecheck
 	cd $(FRONTEND) && pnpm test --reporter=verbose
+
+# ---------------------------------------------------------------------------
+# e2e — Playwright (requiere usuarios seed; ver docs/e2e-test-users.md)
+# ---------------------------------------------------------------------------
+
+# Local Docker stack (E2E_USE_REAL_SUPABASE=1 + usuarios seed)
+E2E_LOCAL_URL ?= http://localhost:8081
+
+test-e2e:
+	@echo "▶ E2E — Playwright contra Docker local"
+	cd $(FRONTEND) && \
+	  E2E_BASE_URL=$(E2E_LOCAL_URL) \
+	  E2E_USE_REAL_SUPABASE=1 \
+	  pnpm test:e2e --project=chromium
+
+# Contra servidor remoto: make test-e2e-remote E2E_URL=https://100-53-214-97.sslip.io
+E2E_URL ?= https://100-53-214-97.sslip.io
+
+test-e2e-remote:
+	@echo "▶ E2E — Playwright contra $(E2E_URL)"
+	cd $(FRONTEND) && \
+	  E2E_BASE_URL=$(E2E_URL) \
+	  E2E_BACKEND_URL=$(E2E_URL) \
+	  E2E_USE_REAL_SUPABASE=1 \
+	  pnpm test:e2e --project=chromium
+
+# Crea/actualiza los usuarios E2E en Supabase Auth + public.users
+seed-e2e-users:
+	@echo "▶ Seed usuarios E2E (docker exec mt-backend)"
+	docker exec mt-backend python -m scripts.seed_e2e_users
 
 # ---------------------------------------------------------------------------
 # lint
@@ -87,4 +118,9 @@ help:
 	@echo "  make test-frontend     tsc typecheck + vitest"
 	@echo "  make lint              ruff + eslint"
 	@echo "  make typecheck         mypy + tsc"
+	@echo "  make seed-e2e-users    Crea/actualiza usuarios E2E en Supabase + DB"
+	@echo "  make test-e2e          E2E Playwright — Docker local (E2E_LOCAL_URL=…)"
+	@echo "  make test-e2e-remote   E2E Playwright — servidor remoto (E2E_URL=…)"
+	@echo ""
+	@echo "Docs: docs/e2e-test-users.md"
 	@echo ""
