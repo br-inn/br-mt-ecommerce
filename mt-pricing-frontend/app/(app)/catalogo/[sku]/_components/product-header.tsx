@@ -218,6 +218,8 @@ export function ProductHeader({ sku }: Props) {
             <img
               src={product.primary_image_url}
               alt={getProductName(product)}
+              fetchPriority="high"
+              decoding="async"
               className="h-[140px] w-[140px] rounded-lg object-cover"
               style={{ border: "1px solid hsl(var(--border))" }}
             />

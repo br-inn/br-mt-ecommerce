@@ -426,6 +426,7 @@ async def export_products_csv(
         media_type="text/csv",
         headers={
             "Content-Disposition": 'attachment; filename="products-export.csv"',
+            "Cache-Control": "no-store",
         },
     )
 
