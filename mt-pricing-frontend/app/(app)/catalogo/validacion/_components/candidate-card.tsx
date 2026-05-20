@@ -40,11 +40,13 @@ export function CandidateCard({
   onValidate,
   onDiscard,
   pending,
+  onRevert,
 }: {
   candidate: MatchCandidate;
   onValidate: () => void;
   onDiscard: (reason?: string) => void;
   pending: boolean;
+  onRevert?: () => void;
 }) {
   const [discardOpen, setDiscardOpen] = React.useState(false);
   const { brand, external_id, title, kind, price_aed, score, status, delivery_text, specs_jsonb, channel, image_url, source_url, delivery_category, price_confidence_score, pack_units, calibrated_confidence, review_priority } =
@@ -52,6 +54,8 @@ export function CandidateCard({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const specs = (specs_jsonb ?? {}) as Record<string, any>;
   const enhanced = (specs._enhanced ?? {}) as Record<string, unknown>;
+  const agentApplied =
+    (specs as { _agent?: { applied?: boolean } })?._agent?.applied === true;
   const priceNum = price_aed === null ? null : Number(price_aed);
   const packSize = pack_units != null && pack_units > 1 ? pack_units : null;
   const pricePerUnit = packSize != null && priceNum != null ? priceNum / packSize : null;
@@ -323,6 +327,15 @@ export function CandidateCard({
               <X className="size-3" /> Descartar
             </button>
           </>
+        )}
+        {agentApplied && onRevert && (
+          <button
+            type="button"
+            onClick={onRevert}
+            className="text-[10px] text-gray-400 hover:underline font-mono text-center"
+          >
+            Revertir decisión del agente
+          </button>
         )}
         {source_url ? (
           <a
