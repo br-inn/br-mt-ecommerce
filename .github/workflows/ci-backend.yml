@@ -106,7 +106,10 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
     services:
       postgres:
-        image: postgres:16-alpine
+        # pgvector/pgvector:pg16 incluye la extensión `vector` que requiere
+        # la migración base (CREATE EXTENSION IF NOT EXISTS vector).
+        # postgres:16-alpine no la tiene → migraciones fallaban.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: testpassword
@@ -129,8 +132,15 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:testpassword@localhost:5432/mt_pricing_test
+      ALEMBIC_DATABASE_URL: postgresql+psycopg2://postgres:testpassword@localhost:5432/mt_pricing_test
       REDIS_URL: redis://localhost:6379/0
       ENVIRONMENT: test
+      # Valores de prueba para los tests de autenticación (JWT signing/verify).
+      # No son credenciales reales — el valor debe tener ≥32 caracteres.
+      SUPABASE_JWT_SECRET: test-jwt-secret-deterministic-32chars!
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test-key
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test-key
     steps:
       - uses: actions/checkout@v6
 
