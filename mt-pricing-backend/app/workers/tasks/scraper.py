@@ -557,3 +557,109 @@ def generate_brand_extractor_task(self: Any, brand_id: str, marketplace: str = "
             }
 
     return _run_async(_inner())
+
+
+# ---------------------------------------------------------------------------
+# Task configurable — un ScraperSource
+# ---------------------------------------------------------------------------
+
+
+async def _scrape_source_async(
+    session,
+    source_id: str,
+    *,
+    search_text: str,
+    html_fetcher=None,
+) -> dict:
+    """Ejecuta un ScraperSource configurable y upserta los listings resultantes.
+
+    Reutiliza el contrato CandidateRaw → CompetitorListing del scraper existente.
+    Requiere que la source tenga ``competitor_brand_id`` (perfil competitor_price).
+    """
+    from uuid import UUID
+
+    from app.repositories.competitor_brands import CompetitorBrandRepository
+    from app.repositories.scraper_sources import ScraperSourceRepository
+    from app.services.matching.adapter_registry import resolve_fetcher
+    from app.services.matching.ports import Query
+
+    src_repo = ScraperSourceRepository(session)
+    source = await src_repo.get(UUID(source_id))
+    if source is None:
+        return {"source_id": source_id, "status": "not_found", "upserted": 0}
+    if source.status != "active":
+        return {"source_id": source_id, "status": "inactive", "upserted": 0}
+    if source.competitor_brand_id is None:
+        return {"source_id": source_id, "status": "no_brand", "upserted": 0}
+
+    fetcher = await resolve_fetcher(source.slug, session, html_fetcher=html_fetcher)
+    query = Query(text=search_text, source=source.slug)
+    candidates = await fetcher.fetch(query)
+
+    brand_repo = CompetitorBrandRepository(session)
+    upserted = 0
+    for candidate in candidates:
+        await brand_repo.upsert_listing(
+            candidate, competitor_brand_id=source.competitor_brand_id
+        )
+        upserted += 1
+    await session.commit()
+    return {"source_id": source_id, "status": "ok", "upserted": upserted}
+
+
+@celery_app.task(
+    bind=True,
+    name="mt.scraper.scrape_source",
+    max_retries=3,
+    default_retry_delay=120,
+    acks_late=True,
+    queue="scraper",
+)
+def scrape_source_task(self, source_id: str, *, search_text: str) -> dict:  # type: ignore[override]
+    """Celery task: ejecuta un ScraperSource configurable."""
+    logger.info("scraper.source_start", extra={"source_id": source_id})
+
+    async def _run() -> dict:
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.pool import NullPool
+
+        from app.core.config import settings
+
+        engine = create_async_engine(
+            str(settings.DATABASE_URL),
+            poolclass=NullPool,
+            connect_args={
+                "statement_cache_size": 0,
+                "server_settings": {
+                    "application_name": "mt-scraper-worker",
+                    "timezone": "UTC",
+                },
+            },
+        )
+        session_factory = async_sessionmaker(
+            bind=engine, expire_on_commit=False, autoflush=False, class_=AsyncSession
+        )
+        try:
+            async with session_factory() as session:
+                return await _scrape_source_async(
+                    session, source_id, search_text=search_text
+                )
+        finally:
+            await engine.dispose()
+
+    try:
+        result = asyncio.run(_run())
+        logger.info(
+            "scraper.source_done",
+            extra={"source_id": source_id, "upserted": result.get("upserted", 0)},
+        )
+        return result
+    except SoftTimeLimitExceeded:
+        logger.warning("scraper.source_soft_timeout", extra={"source_id": source_id})
+        raise
+    except Exception as exc:
+        logger.exception(
+            "scraper.source_failed",
+            extra={"source_id": source_id, "error": str(exc)},
+        )
+        raise self.retry(exc=exc, countdown=120 * (2 ** self.request.retries))
