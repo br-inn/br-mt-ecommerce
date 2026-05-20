@@ -446,7 +446,7 @@ export function ProductWizard(props: Props) {
         <CardContent className="space-y-4">
           {step === 0 ? (
             <>
-              <Field label={tFields("sku")} error={form.formState.errors.sku?.message}>
+              <Field label={tFields("sku")} error={form.formState.errors.sku?.message} required>
                 <Input
                   {...form.register("sku")}
                   placeholder="VAL-DN50-PN16"
@@ -455,10 +455,10 @@ export function ProductWizard(props: Props) {
                   className={isEdit ? "bg-muted" : undefined}
                 />
               </Field>
-              <Field label={tFields("name_en")} error={form.formState.errors.name_en?.message}>
+              <Field label={tFields("name_en")} error={form.formState.errors.name_en?.message} required>
                 <Input {...form.register("name_en")} />
               </Field>
-              <Field label={tFields("family")} error={form.formState.errors.family?.message}>
+              <Field label={tFields("family")} error={form.formState.errors.family?.message} required>
                 <Select
                   value={form.watch("family")}
                   onValueChange={(v) =>
@@ -835,15 +835,20 @@ function Field({
   label,
   error,
   children,
+  required,
 }: {
   label: string;
   error?: string | undefined;
   children: React.ReactNode;
+  required?: boolean;
 }) {
   const id = React.useId();
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required && <span className="text-destructive ml-0.5" aria-hidden="true">*</span>}
+      </Label>
       <div id={id}>{children}</div>
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
     </div>

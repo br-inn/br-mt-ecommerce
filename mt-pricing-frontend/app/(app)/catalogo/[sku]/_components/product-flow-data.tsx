@@ -28,9 +28,9 @@ export function ProductFlowData({ sku }: { sku: string }) {
         <table className="w-full text-sm">
           <thead className="bg-muted/40">
             <tr>
-              <th className="px-3 py-2 text-right text-xs font-medium">Kv (m³/h)</th>
-              <th className="px-3 py-2 text-right text-xs font-medium">Cv</th>
-              <th className="px-3 py-2 text-right text-xs font-medium">Malla (mm)</th>
+              <th scope="col" className="px-3 py-2 text-right text-xs font-medium">Kv (m³/h)</th>
+              <th scope="col" className="px-3 py-2 text-right text-xs font-medium">Cv</th>
+              <th scope="col" className="px-3 py-2 text-right text-xs font-medium">Malla (mm)</th>
             </tr>
           </thead>
           <tbody>
