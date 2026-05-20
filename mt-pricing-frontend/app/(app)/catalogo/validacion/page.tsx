@@ -10,17 +10,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import {
   FilterChip,
@@ -149,7 +139,6 @@ export default function ValidacionMatchesPage() {
   const [confirmClearOpen, setConfirmClearOpen] = React.useState(false);
 
   async function executeClearAll() {
-    setConfirmClearOpen(false);
     setClearing(true);
     try {
       const { deleted } = await matchesApi.clearAll();
@@ -247,35 +236,26 @@ export default function ValidacionMatchesPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <AlertDialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
-            <AlertDialogTrigger asChild>
-              <MtButton
-                size="sm"
-                icon={<Trash2 className="size-3" />}
-                disabled={clearing}
-              >
-                {clearing ? "Limpiando…" : "Limpiar pruebas"}
-              </MtButton>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Borrar todos los candidatos de prueba?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción eliminará todos los candidatos de validación actuales.
-                  No se puede deshacer.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => void executeClearAll()}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Borrar todo
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <>
+            <MtButton
+              size="sm"
+              icon={<Trash2 className="size-3" />}
+              disabled={clearing}
+              onClick={() => setConfirmClearOpen(true)}
+            >
+              {clearing ? "Limpiando…" : "Limpiar pruebas"}
+            </MtButton>
+            <ConfirmDialog
+              open={confirmClearOpen}
+              onOpenChange={setConfirmClearOpen}
+              title="¿Borrar todos los candidatos de prueba?"
+              description="Esta acción eliminará todos los candidatos de validación actuales. No se puede deshacer."
+              confirmLabel="Borrar todo"
+              destructive
+              onConfirm={executeClearAll}
+              busy={clearing}
+            />
+          </>
           <MtButton
             size="sm"
             icon={<RefreshCcw className={`size-3 ${scraping ? "animate-spin" : ""}`} />}
