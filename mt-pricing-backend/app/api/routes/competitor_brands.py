@@ -7,11 +7,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
+from app.db.models.comparator import BrandExtractor
 from app.db.models.user import User
 from app.repositories.competitor_brands import CompetitorBrandRepository
+from app.schemas.brand_extractor import BrandExtractorRead
 from app.schemas.competitor_brands import (
     BrandScrapeRunRequest,
     BrandScrapeRunResponse,
@@ -137,6 +140,41 @@ async def get_brand(
     if not brand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brand not found")
     return CompetitorBrandRead.model_validate(brand)
+
+
+@router.get(
+    "/{brand_id}/extractor",
+    response_model=BrandExtractorRead,
+    operation_id="getCompetitorBrandExtractor",
+    summary="Obtener extractor de atributos de una marca (US-SCR-05-03)",
+)
+async def get_brand_extractor(
+    brand_id: UUID,
+    _user: Annotated[User, Depends(require_permissions("scraper:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    marketplace: str = "amazon_uae",
+) -> BrandExtractorRead:
+    stmt = select(BrandExtractor).where(
+        BrandExtractor.brand_id == brand_id,
+        BrandExtractor.marketplace == marketplace,
+    )
+    result = await session.execute(stmt)
+    extractor = result.scalar_one_or_none()
+    if extractor is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No extractor found",
+        )
+    return BrandExtractorRead(
+        brand_id=extractor.brand_id,
+        marketplace=extractor.marketplace,
+        generated_at=extractor.generated_at,
+        generated_by=extractor.generated_by,
+        hit_rate=float(extractor.hit_rate),
+        sample_asins=extractor.sample_asins or [],
+        attribute_count=len(extractor.attribute_map or {}),
+        last_used_at=extractor.last_used_at,
+    )
 
 
 @router.patch(

@@ -27,6 +27,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { usePermissions } from "@/lib/hooks/use-permissions";
 import {
   useCompetitorBrands,
@@ -36,6 +42,7 @@ import {
   useUpdateCompetitorBrand,
 } from "@/lib/hooks/admin/use-competitor-brands";
 import type { CompetitorBrandRead } from "@/lib/api/endpoints/competitor-brands";
+import { ExtractorBadge, ExtractorPanel } from "./extractor-panel";
 
 // ---------------------------------------------------------------------------
 // Form state
@@ -81,10 +88,12 @@ interface BrandDialogProps {
   onClose: () => void;
   onSave: (form: BrandFormState) => Promise<void>;
   isSaving: boolean;
+  brandId: string | null; // only set when mode === "edit"
 }
 
-function BrandDialog({ mode, initial, open, onClose, onSave, isSaving }: BrandDialogProps) {
+function BrandDialog({ mode, initial, open, onClose, onSave, isSaving, brandId }: BrandDialogProps) {
   const t = useTranslations("admin.competitorBrands.form");
+  const tExt = useTranslations("admin.brandExtractor");
   const [form, setForm] = React.useState<BrandFormState>(initial);
 
   React.useEffect(() => {
@@ -100,108 +109,129 @@ function BrandDialog({ mode, initial, open, onClose, onSave, isSaving }: BrandDi
     await onSave(form);
   };
 
+  // General tab form content — extracted so it can live inside Tabs
+  const generalForm = (
+    <form onSubmit={handleSubmit} className="space-y-4 py-2">
+      {/* Name */}
+      <div className="space-y-1.5">
+        <Label htmlFor="name">{t("name")} *</Label>
+        <Input
+          id="name"
+          value={form.name}
+          onChange={set("name")}
+          placeholder={t("namePlaceholder")}
+          required
+          disabled={isSaving}
+        />
+      </div>
+
+      {/* Amazon search term */}
+      <div className="space-y-1.5">
+        <Label htmlFor="amazon_search_term">{t("amazonSearchTerm")}</Label>
+        <Input
+          id="amazon_search_term"
+          value={form.amazon_search_term}
+          onChange={set("amazon_search_term")}
+          placeholder={t("amazonSearchTermPlaceholder")}
+          disabled={isSaving}
+        />
+        <p className="text-xs text-muted-foreground">{t("amazonSearchTermHint")}</p>
+      </div>
+
+      {/* Dept + Category node — 2 col */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="amazon_dept">{t("amazonDept")}</Label>
+          <Input
+            id="amazon_dept"
+            value={form.amazon_dept}
+            onChange={set("amazon_dept")}
+            placeholder={t("amazonDeptPlaceholder")}
+            disabled={isSaving}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="amazon_category_node">{t("amazonCategoryNode")}</Label>
+          <Input
+            id="amazon_category_node"
+            value={form.amazon_category_node}
+            onChange={set("amazon_category_node")}
+            placeholder={t("amazonCategoryNodePlaceholder")}
+            disabled={isSaving}
+          />
+        </div>
+      </div>
+
+      {/* Active */}
+      <div className="flex items-center gap-3">
+        <Checkbox
+          id="is_active"
+          checked={form.is_active}
+          onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_active: v === true }))}
+          disabled={isSaving}
+        />
+        <Label htmlFor="is_active" className="cursor-pointer font-normal">
+          {t("isActive")}
+        </Label>
+      </div>
+
+      {/* Notes */}
+      <div className="space-y-1.5">
+        <Label htmlFor="notes">{t("notes")}</Label>
+        <Textarea
+          id="notes"
+          value={form.notes}
+          onChange={set("notes")}
+          placeholder={t("notesPlaceholder")}
+          rows={2}
+          disabled={isSaving}
+        />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
+          {t("cancel")}
+        </Button>
+        <Button type="submit" disabled={isSaving || !form.name.trim()}>
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {t("saving")}
+            </>
+          ) : (
+            t("save")
+          )}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[540px]">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? t("createTitle") : t("editTitle")}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          {/* Name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="name">{t("name")} *</Label>
-            <Input
-              id="name"
-              value={form.name}
-              onChange={set("name")}
-              placeholder={t("namePlaceholder")}
-              required
-              disabled={isSaving}
-            />
-          </div>
-
-          {/* Amazon search term */}
-          <div className="space-y-1.5">
-            <Label htmlFor="amazon_search_term">{t("amazonSearchTerm")}</Label>
-            <Input
-              id="amazon_search_term"
-              value={form.amazon_search_term}
-              onChange={set("amazon_search_term")}
-              placeholder={t("amazonSearchTermPlaceholder")}
-              disabled={isSaving}
-            />
-            <p className="text-xs text-muted-foreground">{t("amazonSearchTermHint")}</p>
-          </div>
-
-          {/* Dept + Category node — 2 col */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="amazon_dept">{t("amazonDept")}</Label>
-              <Input
-                id="amazon_dept"
-                value={form.amazon_dept}
-                onChange={set("amazon_dept")}
-                placeholder={t("amazonDeptPlaceholder")}
-                disabled={isSaving}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="amazon_category_node">{t("amazonCategoryNode")}</Label>
-              <Input
-                id="amazon_category_node"
-                value={form.amazon_category_node}
-                onChange={set("amazon_category_node")}
-                placeholder={t("amazonCategoryNodePlaceholder")}
-                disabled={isSaving}
-              />
-            </div>
-          </div>
-
-          {/* Active */}
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="is_active"
-              checked={form.is_active}
-              onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_active: v === true }))}
-              disabled={isSaving}
-            />
-            <Label htmlFor="is_active" className="cursor-pointer font-normal">
-              {t("isActive")}
-            </Label>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">{t("notes")}</Label>
-            <Textarea
-              id="notes"
-              value={form.notes}
-              onChange={set("notes")}
-              placeholder={t("notesPlaceholder")}
-              rows={2}
-              disabled={isSaving}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={isSaving || !form.name.trim()}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("saving")}
-                </>
-              ) : (
-                t("save")
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+        {/* Edit mode: show tabs General + Extractor */}
+        {mode === "edit" && brandId !== null ? (
+          <Tabs defaultValue="general">
+            <TabsList className="mb-2">
+              <TabsTrigger value="general">{tExt("tabGeneral")}</TabsTrigger>
+              <TabsTrigger value="extractor">{tExt("tabLabel")}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="general">
+              {generalForm}
+            </TabsContent>
+            <TabsContent value="extractor">
+              <ExtractorPanel brandId={brandId} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          generalForm
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -213,6 +243,7 @@ function BrandDialog({ mode, initial, open, onClose, onSave, isSaving }: BrandDi
 
 export function CompetitorBrandsClient() {
   const t = useTranslations("admin.competitorBrands");
+  const tExt = useTranslations("admin.brandExtractor");
   const { hasPermission } = usePermissions();
   const canWrite = hasPermission("scraper:write");
 
@@ -401,6 +432,9 @@ export function CompetitorBrandsClient() {
                 <th className="hidden px-4 py-2.5 text-center font-medium text-muted-foreground md:table-cell">
                   Modo
                 </th>
+                <th className="hidden px-4 py-2.5 text-center font-medium text-muted-foreground lg:table-cell">
+                  {tExt("columnTitle")}
+                </th>
                 {canWrite ? (
                   <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
                     {t("columns.actions")}
@@ -530,6 +564,11 @@ export function CompetitorBrandsClient() {
                     </div>
                   </td>
 
+                  {/* Extractor column */}
+                  <td className="hidden px-4 py-3 text-center lg:table-cell">
+                    <ExtractorBadge brandId={brand.id} />
+                  </td>
+
                   {canWrite ? (
                     <td className="px-4 py-3 text-right">
                       <Button
@@ -559,6 +598,7 @@ export function CompetitorBrandsClient() {
           onClose={closeDialog}
           onSave={handleSave}
           isSaving={isSaving}
+          brandId={editTarget?.id ?? null}
         />
       ) : null}
     </>

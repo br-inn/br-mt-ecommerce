@@ -1236,6 +1236,28 @@
         "colClassifiedAt": "Clasificado"
       }
     },
+    "brandExtractor": {
+      "columnTitle": "Extractor",
+      "noExtractor": "Sin extractor",
+      "generatedAt": "Generado",
+      "generatedBy": "Modelo",
+      "hitRate": "Cobertura",
+      "sampleAsins": "ASINs de muestra",
+      "attributeCount": "{count} atributos mapeados",
+      "lastUsedAt": "Último uso",
+      "neverUsed": "Nunca usado",
+      "regenerate": "Regenerar extractor",
+      "generate": "Generar extractor",
+      "confirmRegenerate": "Se llamará a Claude para regenerar el mapping. Esto consume ~1K tokens. ¿Continuar?",
+      "confirmTitle": "Regenerar extractor de atributos",
+      "regenerating": "Regenerando...",
+      "regenerateSuccess": "Extractor regenerado",
+      "noExtractorMessage": "Sin extractor generado para esta marca",
+      "tabLabel": "Extractor",
+      "tabGeneral": "General",
+      "ageDays": "hace {count} días",
+      "coveragePct": "{pct}% cobertura"
+    },
     "competitorBrands": {
       "title": "Marcas competidoras",
       "description": "Gestiona las marcas de la competencia para el scraper de Amazon UAE",

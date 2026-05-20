@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-20T18:00:00.000Z"  # S18: US-SCR-05-02 done (review fixes aplicados)
+last_updated: "2026-05-20T20:00:00.000Z"  # S18: US-SCR-05-03 done
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -295,5 +295,5 @@ development_status:
                                   # + generate_brand_extractor_task + POST /bootstrap-scan
                                   # + apply_mapping en curl_cffi_amazon_uae + POC script
   US-SCR-05-02: done             # Integración del Brand Extractor en scrape_brand_task + price_monitor_task — 5 SP — S18 ✅
-  US-SCR-05-03: ready-for-dev    # UI Admin para gestión de Brand Extractors (badge semáforo + pestaña detalle + regenerar) — 5 SP — S18
+  US-SCR-05-03: done             # UI Admin para gestión de Brand Extractors (badge semáforo + pestaña detalle + regenerar) — 5 SP — S18 ✅
   US-SCR-05-04: ready-for-dev    # Métricas de cobertura + alerta degradación >20pp + tabla scraper_extractor_alerts — 3 SP — S18

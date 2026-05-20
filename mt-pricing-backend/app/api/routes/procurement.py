@@ -344,6 +344,7 @@ async def update_approval_rule(
 @router.delete(
     "/approval-rules/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Eliminar regla de aprobación",
     operation_id="procurementApprovalRulesDelete",
     responses={404: {"model": ProblemDetails}},

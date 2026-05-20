@@ -129,3 +129,49 @@ US-SCR-05-01 (DONE): tabla `scraper_brand_extractors` + `generate_brand_extracto
 ## Estimación
 
 5 SP — 2 endpoints backend + componente React de panel + i18n
+
+---
+
+## Dev Agent Record
+
+### Completion Notes
+
+Implementación completada con 2 agentes en paralelo (backend + frontend).
+
+**Backend:**
+- `app/schemas/brand_extractor.py` — `BrandExtractorRead` + `ExtractorStatRow` (Pydantic v2)
+- `app/api/routes/competitor_brands.py` — `GET /{brand_id}/extractor?marketplace=` (scraper:read, 404 si no existe)
+- `app/api/routes/scraper.py` — `GET /extractor-stats` (JOIN competitor_brands, ordenado por hit_rate ASC)
+- 5/5 tests unitarios pasando
+
+**Frontend:**
+- `extractor-panel.tsx` — hook `useExtractorStatus`, badge semáforo (gris/verde/amarillo/rojo), panel completo con links amazon.ae, `ConfirmDialog` para regenerar
+- `_client.tsx` — columna "Extractor" con `ExtractorBadge` por fila; pestaña "Extractor" en dialog de edición (tabs General/Extractor)
+- `messages/es.json`, `en.json`, `ar.json` — namespace `admin.brandExtractor` con 20 keys; 0 errores TypeScript
+
+---
+
+## File List
+
+- `mt-pricing-backend/app/schemas/brand_extractor.py` (nuevo)
+- `mt-pricing-backend/app/api/routes/competitor_brands.py`
+- `mt-pricing-backend/app/api/routes/scraper.py`
+- `mt-pricing-backend/app/api/routes/procurement.py` (fix pre-existente FastAPI compat)
+- `mt-pricing-backend/tests/unit/api/routes/test_brand_extractor_endpoints.py` (nuevo)
+- `mt-pricing-frontend/app/(app)/admin/competitor-brands/extractor-panel.tsx` (nuevo)
+- `mt-pricing-frontend/app/(app)/admin/competitor-brands/_client.tsx`
+- `mt-pricing-frontend/messages/es.json`
+- `mt-pricing-frontend/messages/en.json`
+- `mt-pricing-frontend/messages/ar.json`
+
+---
+
+## Change Log
+
+- 2026-05-20: Implementación US-SCR-05-03 — 2 endpoints backend + UI badge/panel extractor + i18n; 5 tests backend passing
+
+---
+
+## Status
+
+done
