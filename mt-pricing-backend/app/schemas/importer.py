@@ -61,3 +61,27 @@ class ImportRunStatusResponse(BaseModel):
     summary: dict[str, Any] = Field(default_factory=dict)
     apply: dict[str, Any] | None = None
     error: str | None = None
+
+
+class ColumnMappingItemSchema(BaseModel):
+    """Un ítem del mapeo columna Excel → campo product."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    excel_col: str
+    target_field: str
+    transform: str = "text"
+    confidence: float = 1.0
+    notes: str = ""
+
+
+class AnalyzeImportResponse(BaseModel):
+    """Respuesta del endpoint POST /imports/analyze."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    filename: str
+    detected_header_row: int
+    headers: list[str]
+    sample_rows: list[list[str | None]]
+    proposed_mapping: list[ColumnMappingItemSchema]

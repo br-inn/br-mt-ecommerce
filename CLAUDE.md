@@ -99,3 +99,29 @@ diferentes del mismo objeto, consolidar en un endpoint más rico o usar
 **8. Páginas de detalle:** el primer render debe mostrar skeleton de inmediato.
 No bloquear el render esperando datos. Cada sección carga su propio estado
 de carga de forma independiente (`isLoading` por sección).
+
+## LLM / Anthropic — Directrices
+
+**9. `cache_control` de Anthropic — cuándo aplicar.**
+
+Los 5 servicios actuales con llamadas a Claude (`llm_query_generator`, `llm_spec_extractor`,
+`vlm_judge_adapter`, `vision_matcher`, `listing_generator`) NO son candidatos para prompt caching:
+
+- Los system prompts son cortos (< 600 tokens). Haiku 4.5 exige mínimo **4 096 tokens** de prefijo;
+  Sonnet 4.6 exige **2 048 tokens**. Prefijos menores al mínimo simplemente no cachean (sin error).
+- Los servicios VLM envían imágenes base64 que cambian en cada request, invalidando el prefijo completo.
+
+**Aplicar `cache_control` solo si se cumple alguna de estas condiciones:**
+- Se añade un corpus largo estático al system prompt (≥ 4 096 tokens fijos para Haiku 4.5, ≥ 2 048 para
+  Sonnet 4.6) — por ejemplo, tabla de referencia de productos PVF o muchos few-shot examples.
+- Se implementa un pipeline multi-turno donde el historial de conversación crece entre llamadas.
+
+**Patrón cuando sí aplique:**
+```python
+system=[{
+    "type": "text",
+    "text": LARGE_STATIC_CONTEXT,          # > 4096 tokens fijos
+    "cache_control": {"type": "ephemeral"} # TTL 5 min (1.25× write cost, 0.1× read cost)
+}]
+```
+El bloque dinámico (datos del producto, pregunta) va DESPUÉS del breakpoint, sin `cache_control`.

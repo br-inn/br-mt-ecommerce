@@ -1,0 +1,33 @@
+## Summary
+
+- Adds `POST /imports/analyze` endpoint that auto-detects the header row in any xlsx file and calls Claude to propose a column→field mapping
+- Extends `POST /imports/preview` to accept a confirmed `mapping_json` and use it instead of hardcoded `EXPECTED_HEADERS`
+- Adds a new **Mapping step** to the import wizard (5 steps total: upload → mapping → preview → confirm → report) so users can review and adjust the LLM-proposed mapping before generating the diff
+- Fixes import failure for `PIM completo_JcS_1.xlsx` (2 title rows + 42 columns vs old 17-column hardcoded spec)
+- Also fixes pre-existing `run_id` vs `id` field mismatch that was breaking the apply step
+
+## What changed
+
+**Backend**
+- `mapping_detector.py` — `detect_header_row()` (heuristic xlsx scanner) + `suggest_mapping()` (Claude `claude-sonnet-4-6`)
+- `column_mapper.py` — `map_row_with_mapping()` + `bool_check` / `percent` / `cm_to_mm` transforms
+- `parser.py` — `parse_xlsx_stream()` extended with `header_row_index` + `custom_mapping` params
+- `importer_service.py` / `routes/imports.py` / `schemas/importer.py` — new endpoint + preview wiring
+
+**Frontend**
+- `mapping-step.tsx` — new component: editable table with Select dropdowns + confidence badges
+- `import-wizard.tsx` — 4-step to 5-step wizard; new analyze→mapping→preview flow
+- `upload-step.tsx` — now calls `analyze` instead of `preview` directly
+- `imports.ts` / `use-imports.ts` — `ColumnMappingItem`, `AnalyzeImportResponse` types + hooks
+- i18n strings in es/en/ar
+
+## Test Plan
+
+- [ ] Upload `PIM completo_JcS_1.xlsx` at `/imports` — wizard should advance to Mapeo de columnas step showing 42 columns with LLM-proposed mapping
+- [ ] Verify `SKU` maps to `sku`, `Alto pieza (cm)` maps to `dimensions.high_mm` with `cm_to_mm` transform, `Nombre EN` maps to `specs.name_en`
+- [ ] Click Confirmar mapeo — wizard advances to Vista previa showing product diff
+- [ ] Complete the import and verify products are created/updated
+- [ ] Verify old import path (files matching `EXPECTED_HEADERS`) still works without custom mapping
+- [ ] Run unit tests: `cd mt-pricing-backend && python -m pytest tests/unit/importer/ -v`
+
+Generated with Claude Code

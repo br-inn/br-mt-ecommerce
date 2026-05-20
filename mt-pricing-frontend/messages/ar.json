@@ -694,9 +694,22 @@
     "noPermission": "ليس لديك صلاحية تشغيل عمليات الاستيراد.",
     "wizard": {
       "step1": "رفع الملف",
+      "stepMapping": "تعيين الأعمدة",
       "step2": "المعاينة",
       "step3": "التأكيد",
       "step4": "التطبيق والتقرير"
+    },
+    "mapping": {
+      "subtitle": "تم اكتشاف {cols} عمود (الرأس في الصف {row}). راجع التعيين وعدّله إذا لزم الأمر.",
+      "skuRequired": "عمود SKU مطلوب.",
+      "colExcel": "عمود Excel",
+      "colSample": "عينة",
+      "colTarget": "الحقل المستهدف",
+      "colTransform": "التحويل",
+      "colConfidence": "الثقة",
+      "back": "رجوع",
+      "confirm": "تأكيد التعيين وإنشاء المعاينة",
+      "loading": "جارٍ إنشاء المعاينة…"
     },
     "upload": {
       "title": "ارفع ملف PIM",
