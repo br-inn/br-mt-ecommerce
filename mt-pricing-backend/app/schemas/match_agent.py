@@ -68,7 +68,7 @@ class MatchAgentDecisionResponse(BaseModel):
     mode: AgentMode
     applied: bool
     signal: AgentSignal
-    score: int
+    score: int = Field(ge=0, le=100)
     calibrated_confidence: Decimal | None = None
     review_priority: str | None = None
     calibrator_version: str | None = None
