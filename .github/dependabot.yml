@@ -1,8 +1,9 @@
 # =============================================================================
 # Dependabot configuration
 # =============================================================================
-# Weekly updates for backend (pip), frontend (npm), GitHub Actions, and Docker.
-# Dev/minor updates auto-merge via .github/workflows/dependabot-auto-merge.yml.
+# groups agrupa todas las updates de un ecosistema en 1 PR en vez de N.
+# Major bumps ignorados — revisión manual por riesgo de breaking changes.
+# Auto-merge de patch/minor via dependabot-auto-merge.yml.
 # =============================================================================
 ---
 version: 2
@@ -17,13 +18,21 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Madrid"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     labels:
       - dependencies
       - backend
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    groups:
+      python-patch:
+        update-types: ["patch"]
+      python-minor:
+        update-types: ["minor"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # ---------------------------------------------------------------------------
   # Frontend npm/pnpm dependencies.
@@ -35,16 +44,25 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Madrid"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     labels:
       - dependencies
       - frontend
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    groups:
+      npm-patch:
+        update-types: ["patch"]
+      npm-minor:
+        update-types: ["minor"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # ---------------------------------------------------------------------------
-  # GitHub Actions versions (pin SHA tags to mitigate supply chain risk).
+  # GitHub Actions — agrupa todas en 1 PR (incluye actions/* que necesitan
+  # actualización a v6 para Node 20).
   # ---------------------------------------------------------------------------
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -53,31 +71,58 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Madrid"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     labels:
       - dependencies
       - ci
     commit-message:
       prefix: "chore(ci)"
       include: "scope"
+    groups:
+      github-actions-all:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # ---------------------------------------------------------------------------
-  # Docker base images.
+  # Docker base images — 1 PR por Dockerfile.
   # ---------------------------------------------------------------------------
   - package-ecosystem: "docker"
     directory: "/mt-pricing-backend"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 2
     labels:
       - dependencies
       - backend
       - docker
+    groups:
+      docker-backend:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/mt-pricing-frontend"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 2
     labels:
       - dependencies
       - frontend
       - docker
+    groups:
+      docker-frontend:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
