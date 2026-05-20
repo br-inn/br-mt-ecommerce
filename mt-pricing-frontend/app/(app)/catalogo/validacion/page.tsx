@@ -36,23 +36,26 @@ import type {
 } from "@/lib/api/endpoints/matches";
 
 // ---------------------------------------------------------------------------
-// SKU queue — unique SKUs with pending matches, ordered by first appearance.
+// SKU queue — unique SKUs with pending matches, ordered by first appearance,
+// plus per-SKU candidate count and best score.
 // ---------------------------------------------------------------------------
 
-function usePendingSkuQueue() {
-  return useQuery<string[], Error>({
-    queryKey: ["matches", "pending-sku-queue"],
+function useSkuQueue() {
+  return useQuery<{ skus: string[]; stats: Map<string, { count: number; best: number }> }, Error>({
+    queryKey: ["matches", "sku-queue"],
     queryFn: async () => {
       const res = await matchesApi.list({ status: "pending", limit: 200, include_total: false });
-      const seen = new Set<string>();
+      const stats = new Map<string, { count: number; best: number }>();
       const skus: string[] = [];
       for (const c of res.items) {
-        if (!seen.has(c.product_sku)) {
-          seen.add(c.product_sku);
-          skus.push(c.product_sku);
-        }
+        const prev = stats.get(c.product_sku);
+        if (!prev) skus.push(c.product_sku);
+        stats.set(c.product_sku, {
+          count: (prev?.count ?? 0) + 1,
+          best: Math.max(prev?.best ?? 0, c.score),
+        });
       }
-      return skus;
+      return { skus, stats };
     },
     staleTime: 60_000,
   });
@@ -61,9 +64,6 @@ function usePendingSkuQueue() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const fmtAED = (n: number | null) =>
-  n == null ? "—" : `AED ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
 function exportToCsv(items: MatchCandidate[], sku: string) {
   const headers: Array<keyof MatchCandidate> = [
@@ -106,7 +106,8 @@ const FILTER_TABS: Array<{ l: string; status: MatchStatus | "all" }> = [
 
 export default function ValidacionMatchesPage() {
   // A1 — Dynamic SKU queue
-  const { data: queue = [] } = usePendingSkuQueue();
+  const { data: queueData } = useSkuQueue();
+  const queue = React.useMemo(() => queueData?.skus ?? [], [queueData]);
   const [skuIndex, setSkuIndex] = React.useState(0);
 
   // When queue loads, keep index in bounds
@@ -151,31 +152,13 @@ export default function ValidacionMatchesPage() {
     }
   }
 
-  // SKU queue stats — candidate count + best score per SKU
-  const { data: queueStats } = useQuery<{ sku: string; count: number; best: number }[]>({
-    queryKey: ["matches", "sku-queue-stats"],
-    queryFn: async () => {
-      const res = await matchesApi.list({ status: "pending", limit: 200, include_total: false });
-      const map = new Map<string, { count: number; best: number }>();
-      for (const c of res.items) {
-        const prev = map.get(c.product_sku);
-        map.set(c.product_sku, {
-          count: (prev?.count ?? 0) + 1,
-          best: Math.max(prev?.best ?? 0, c.score),
-        });
-      }
-      return Array.from(map.entries()).map(([sku, v]) => ({ sku, ...v }));
-    },
-    staleTime: 60_000,
-  });
-
   const queueEntries: SkuQueueEntry[] = React.useMemo(
     () =>
       queue.map((s) => {
-        const stats = queueStats?.find((q) => q.sku === s);
-        return { sku: s, candidateCount: stats?.count ?? 0, bestScore: stats?.best ?? null };
+        const st = queueData?.stats.get(s);
+        return { sku: s, candidateCount: st?.count ?? 0, bestScore: st?.best ?? null };
       }),
-    [queue, queueStats],
+    [queue, queueData],
   );
 
   const [queueCollapsed, setQueueCollapsed] = React.useState(false);
@@ -192,6 +175,17 @@ export default function ValidacionMatchesPage() {
     if (canPrev) setSkuIndex((i) => i - 1);
   }, [canPrev]);
 
+  const goNextUnvalidated = React.useCallback(() => {
+    for (let i = clampedIndex + 1; i < queue.length; i++) {
+      const st = queueData?.stats.get(queue[i]!);
+      if ((st?.count ?? 0) > 0) {
+        setSkuIndex(i);
+        return;
+      }
+    }
+    if (canNext) setSkuIndex((x) => x + 1);
+  }, [clampedIndex, queue, queueData, canNext]);
+
   // Keyboard nav: ← → for SKU navigation, V/X for validate/discard first pending
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -199,10 +193,14 @@ export default function ValidacionMatchesPage() {
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "ArrowRight") goNext();
       if (e.key === "ArrowLeft") goPrev();
+      const firstPending = items.find((c) => c.status === "pending");
+      if (!firstPending || mutating) return;
+      if (e.key === "v" || e.key === "V") validate.mutate(firstPending.id);
+      if (e.key === "x" || e.key === "X") discard.mutate({ id: firstPending.id });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, items, mutating, validate, discard]);
 
   const tabCounts: Record<string, number | undefined> = {
     all: statusFilter === "all" ? (total ?? undefined) : undefined,
@@ -448,7 +446,7 @@ export default function ValidacionMatchesPage() {
           size="sm"
           tone="primary"
           icon={<ArrowRight className="size-3.5" />}
-          onClick={goNext}
+          onClick={goNextUnvalidated}
           disabled={!canNext}
         >
           Siguiente sin validar
