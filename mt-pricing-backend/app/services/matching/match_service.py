@@ -809,6 +809,8 @@ class MatchService:
             candidate_id, user_id=user_id
         )
         assert updated is not None  # acabamos de leer el row
+        updated.label = "accept"
+        await self._record_human_feedback(updated, label=1, user_id=user_id)
         return updated
 
     async def discard_candidate(
@@ -819,7 +821,37 @@ class MatchService:
             raise MatchInvalidTransitionError(obj.status, "discarded")
         updated = await self._matches_repo.mark_discarded(candidate_id, reason=reason)
         assert updated is not None
+        updated.label = "reject"
+        await self._record_human_feedback(updated, label=0, user_id=None)
         return updated
+
+    async def _record_human_feedback(
+        self, candidate: MatchCandidate, *, label: int, user_id: UUID | None
+    ) -> None:
+        """Cierra el lazo de feedback: golden_labels + human_outcome del agente."""
+        from app.repositories.golden_labels import GoldenLabelRepository  # noqa: PLC0415
+        from app.repositories.match_agent import MatchAgentDecisionRepository  # noqa: PLC0415
+
+        try:
+            await GoldenLabelRepository(self.session).upsert(
+                sku=candidate.product_sku,
+                candidate_id=candidate.id,
+                label=label,
+                score=candidate.score / 100.0,
+                judged_by=user_id,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("match_service._record_human_feedback.golden_labels_failed", exc_info=True)
+
+        try:
+            outcome = "validated" if label == 1 else "discarded"
+            await MatchAgentDecisionRepository(self.session).set_human_outcome(
+                candidate.id, outcome
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("match_service._record_human_feedback.human_outcome_failed", exc_info=True)
+
+        await self.session.flush()
 
     # ----------------------------------------------------------------------
     # Three-way summary (pricing)
