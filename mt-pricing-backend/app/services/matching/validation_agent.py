@@ -96,9 +96,12 @@ class MatchValidationAgent:
 
             decided = 0
             for cand in candidates:
-                # Idempotencia: si ya hay una decisión aplicada, saltar.
+                # Idempotencia: si ya hay una decisión registrada para este
+                # candidato, saltar. En modo sombra `applied` siempre es False,
+                # así que comprobar solo `applied` re-insertaría filas duplicadas
+                # en cada re-scrape.
                 existing = await self._decision_repo.latest_for_candidate(cand.id)
-                if existing is not None and existing.applied:
+                if existing is not None:
                     continue
 
                 specs = dict(cand.specs_jsonb or {})
