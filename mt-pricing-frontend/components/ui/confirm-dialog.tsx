@@ -21,6 +21,7 @@ export interface ConfirmDialogProps {
   destructive?: boolean;
   onConfirm: () => void | Promise<void>;
   busy?: boolean;
+  children?: React.ReactNode;
 }
 
 /**
@@ -41,6 +42,7 @@ export function ConfirmDialog({
   destructive = false,
   onConfirm,
   busy = false,
+  children,
 }: ConfirmDialogProps) {
   const handleConfirm = async () => {
     await onConfirm();
@@ -56,6 +58,7 @@ export function ConfirmDialog({
             <DialogDescription>{description}</DialogDescription>
           ) : null}
         </DialogHeader>
+        {children}
         <DialogFooter className="gap-2">
           <Button
             type="button"

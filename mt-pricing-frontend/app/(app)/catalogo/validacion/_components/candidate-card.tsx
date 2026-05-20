@@ -6,6 +6,7 @@ import { ScorePill } from "@/components/mt/primitives";
 import { MT } from "@/components/mt/tokens";
 import type { MatchCandidate } from "@/lib/api/endpoints/matches";
 import { MatchAnalysisPanel } from "./match-analysis-panel";
+import { DiscardReasonDialog } from "./discard-reason-dialog";
 
 const fmtAED = (n: number | null, decimals = 0) =>
   n == null
@@ -39,17 +40,22 @@ export function CandidateCard({
   onValidate,
   onDiscard,
   pending,
+  onRevert,
 }: {
   candidate: MatchCandidate;
   onValidate: () => void;
-  onDiscard: () => void;
+  onDiscard: (reason?: string) => void;
   pending: boolean;
+  onRevert?: () => void;
 }) {
-  const { brand, external_id, title, kind, price_aed, score, status, delivery_text, specs_jsonb, channel, image_url, source_url, delivery_category, price_confidence_score, pack_units } =
+  const [discardOpen, setDiscardOpen] = React.useState(false);
+  const { brand, external_id, title, kind, price_aed, score, status, delivery_text, specs_jsonb, channel, image_url, source_url, delivery_category, price_confidence_score, pack_units, calibrated_confidence, review_priority } =
     candidate;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const specs = (specs_jsonb ?? {}) as Record<string, any>;
   const enhanced = (specs._enhanced ?? {}) as Record<string, unknown>;
+  const agentApplied =
+    (specs as { _agent?: { applied?: boolean } })?._agent?.applied === true;
   const priceNum = price_aed === null ? null : Number(price_aed);
   const packSize = pack_units != null && pack_units > 1 ? pack_units : null;
   const pricePerUnit = packSize != null && priceNum != null ? priceNum / packSize : null;
@@ -259,7 +265,30 @@ export function CandidateCard({
           </span>
         )}
         <ScorePill score={score} size="lg" />
+        {review_priority && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[9px] font-semibold ${
+              review_priority === "low"
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-red-200 bg-red-50 text-red-700"
+            }`}
+            title="Prioridad de revisión derivada del intervalo conformal"
+          >
+            {review_priority === "low" ? "Agente: validar" : "Agente: descartar"}
+          </span>
+        )}
+        {calibrated_confidence != null && (
+          <span className="text-[9px] font-mono text-gray-400">
+            Conf. calibrada: {Math.round(Number(calibrated_confidence) * 100)}%
+          </span>
+        )}
       </div>
+
+      <DiscardReasonDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        onConfirm={(reason) => { setDiscardOpen(false); onDiscard(reason); }}
+      />
 
       {/* Decisión */}
       <div className="flex w-36 shrink-0 flex-col items-stretch gap-1.5 pt-0.5">
@@ -290,7 +319,7 @@ export function CandidateCard({
             </button>
             <button
               type="button"
-              onClick={onDiscard}
+              onClick={() => setDiscardOpen(true)}
               disabled={pending}
               className="inline-flex h-6 cursor-pointer items-center justify-center gap-1 rounded-[5px] border text-[11px] font-medium disabled:opacity-50"
               style={{ color: MT.ink3, borderColor: MT.border }}
@@ -298,6 +327,15 @@ export function CandidateCard({
               <X className="size-3" /> Descartar
             </button>
           </>
+        )}
+        {agentApplied && onRevert && (
+          <button
+            type="button"
+            onClick={onRevert}
+            className="text-[10px] text-gray-400 hover:underline font-mono text-center"
+          >
+            Revertir decisión del agente
+          </button>
         )}
         {source_url ? (
           <a

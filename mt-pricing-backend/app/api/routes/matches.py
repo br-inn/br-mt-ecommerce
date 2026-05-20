@@ -40,6 +40,15 @@ from app.schemas.matches import (
     MatchRefreshStatusResponse,
     ThreeWaySummaryResponse,
 )
+from app.repositories.match_agent import (
+    MatchAgentConfigRepository,
+    MatchAgentDecisionRepository,
+)
+from app.schemas.match_agent import (
+    MatchAgentConfigResponse,
+    MatchAgentConfigUpdate,
+    MatchAgentMetrics,
+)
 from app.services.matching.adapter_registry import get_fetcher
 from app.services.matching.match_service import (
     MatchDomainError,
@@ -141,7 +150,144 @@ def _to_detail(row: Any) -> MatchCandidateDetail:
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Endpoints — agent config / metrics (MUST come before /{candidate_id} routes)
+# ---------------------------------------------------------------------------
+@router.get(
+    "/agent/config",
+    response_model=MatchAgentConfigResponse,
+    summary="Configuración del agente de validación",
+    operation_id="matchesAgentConfig",
+)
+async def get_agent_config(
+    _user: User = Depends(require_permissions("matches:read")),
+    session: AsyncSession = Depends(get_db_session),
+) -> MatchAgentConfigResponse:
+    cfg = await MatchAgentConfigRepository(session).get()
+    if cfg is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "agent_config_missing", "title": "Falta la fila singleton de config."},
+        )
+    return MatchAgentConfigResponse.model_validate(cfg)
+
+
+@router.put(
+    "/agent/config",
+    response_model=MatchAgentConfigResponse,
+    summary="Actualizar la configuración del agente",
+    operation_id="matchesAgentConfigUpdate",
+)
+async def update_agent_config(
+    payload: MatchAgentConfigUpdate,
+    user: User = Depends(require_permissions("matches:write")),
+    session: AsyncSession = Depends(get_db_session),
+) -> MatchAgentConfigResponse:
+    from sqlalchemy import func as _func  # noqa: PLC0415
+
+    repo = MatchAgentConfigRepository(session)
+    cfg = await repo.get()
+    if cfg is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "agent_config_missing", "title": "Config ausente"},
+        )
+
+    if payload.mode == "active":
+        try:
+            from app.db.models.golden_label import GoldenLabel  # noqa: PLC0415
+
+            total = int(
+                (await session.execute(select(_func.count(GoldenLabel.id)))).scalar_one() or 0
+            )
+        except Exception:  # noqa: BLE001
+            total = 0
+        gate = int(payload.min_labels_gate or cfg.min_labels_gate)
+        if total < gate:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "labels_gate_not_reached",
+                    "title": f"Faltan golden_labels: {total}/{gate}.",
+                },
+            )
+
+    updated = await repo.update(
+        mode=payload.mode,
+        alpha=payload.alpha,
+        min_labels_gate=payload.min_labels_gate,
+        updated_by=user.id,
+    )
+    await session.commit()
+    return MatchAgentConfigResponse.model_validate(updated)
+
+
+@router.get(
+    "/agent/metrics",
+    response_model=MatchAgentMetrics,
+    summary="Métricas del agente (labels, precisión sombra, salud del calibrador)",
+    operation_id="matchesAgentMetrics",
+)
+async def get_agent_metrics(
+    _user: User = Depends(require_permissions("matches:read")),
+    session: AsyncSession = Depends(get_db_session),
+) -> MatchAgentMetrics:
+    from sqlalchemy import func as _func  # noqa: PLC0415
+
+    cfg = await MatchAgentConfigRepository(session).get()
+    if cfg is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "agent_config_missing", "title": "Config ausente"},
+        )
+
+    total = 0
+    try:
+        from app.db.models.golden_label import GoldenLabel  # noqa: PLC0415
+
+        total = int(
+            (await session.execute(select(_func.count(GoldenLabel.id)))).scalar_one() or 0
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    decision_repo = MatchAgentDecisionRepository(session)
+    shadow_count = await decision_repo.count_shadow()
+    _, precision = await decision_repo.shadow_precision()
+
+    active_cal = None
+    try:
+        from app.repositories.golden_labels import CalibratorVersionRepository  # noqa: PLC0415
+
+        active_cal = await CalibratorVersionRepository(session).get_active()
+    except Exception:  # noqa: BLE001
+        pass
+
+    return MatchAgentMetrics(
+        golden_labels_total=total,
+        min_labels_gate=cfg.min_labels_gate,
+        gate_reached=total >= cfg.min_labels_gate,
+        shadow_decisions=shadow_count,
+        shadow_precision=precision,
+        calibrator_version=active_cal.version if active_cal else None,
+        calibrator_brier=(
+            float(active_cal.brier_score)
+            if active_cal and getattr(active_cal, "brier_score", None) is not None
+            else None
+        ),
+        calibrator_ece=(
+            float(active_cal.ece)
+            if active_cal and getattr(active_cal, "ece", None) is not None
+            else None
+        ),
+        calibrator_trained_on=(
+            getattr(active_cal, "trained_on_count", None) if active_cal else None
+        ),
+        mode=cfg.mode,  # type: ignore[arg-type]
+    )
+
+
+# ---------------------------------------------------------------------------
+# Endpoints — candidates listing / detail
 # ---------------------------------------------------------------------------
 @router.get(
     "",
@@ -376,6 +522,50 @@ async def discard_match(
         row = await service.discard_candidate(candidate_id, reason=reason)
     except MatchDomainError as e:
         _raise_domain(e)
+    return _to_response(row)
+
+
+@router.post(
+    "/{candidate_id}/revert",
+    response_model=MatchCandidateResponse,
+    summary="Revertir una decisión del agente (vuelve a pending)",
+    operation_id="matchesRevert",
+)
+async def revert_agent_decision(
+    candidate_id: UUID,
+    _user: User = Depends(require_permissions("matches:write")),
+    session: AsyncSession = Depends(get_db_session),
+    service: MatchService = Depends(get_match_service),
+) -> MatchCandidateResponse:
+    try:
+        row = await service.get_candidate(candidate_id)
+    except MatchDomainError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "title": e.message},
+        ) from e
+    agent_block = (row.specs_jsonb or {}).get("_agent")
+    if not isinstance(agent_block, dict) or not agent_block.get("applied"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "not_agent_decision",
+                "title": "El candidato no fue resuelto por el agente.",
+            },
+        )
+    specs = dict(row.specs_jsonb or {})
+    specs.pop("_agent", None)
+    row.specs_jsonb = specs
+    row.status = "pending"
+    row.label = None
+    if hasattr(row, "validated_by"):
+        row.validated_by = None
+    if hasattr(row, "validated_at"):
+        row.validated_at = None
+    if hasattr(row, "discarded_reason"):
+        row.discarded_reason = None
+    await session.commit()
+    await session.refresh(row)
     return _to_response(row)
 
 

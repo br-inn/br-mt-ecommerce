@@ -148,6 +148,7 @@ from app.db.models.norm_equivalence import NormEquivalence  # noqa: F401
 from app.db.models.match_rule_stat import MatchRuleStat  # noqa: F401
 from app.db.models.rule_suggestion import RuleSuggestion  # noqa: F401
 from app.db.models.marketplace_listing import MarketplaceListing  # noqa: F401
+from app.db.models.match_agent import MatchAgentConfig, MatchAgentDecision  # noqa: F401
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -386,4 +387,7 @@ __all__ = [
     "RuleSuggestion",
     # Marketplace export listings (Task 1 migration)
     "MarketplaceListing",
+    # Match Validation Agent — config singleton + decision log (Task 3)
+    "MatchAgentConfig",
+    "MatchAgentDecision",
 ]

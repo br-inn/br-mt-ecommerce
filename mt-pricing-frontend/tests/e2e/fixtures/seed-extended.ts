@@ -351,7 +351,11 @@ interface MatchSeed {
   score: number;
   price_aed: string | null;
   delivery_text: string | null;
-  specs_jsonb: Record<string, string>;
+  specs_jsonb: Record<string, unknown>;
+  calibrated_confidence: number | null;
+  conf_lower: number | null;
+  conf_upper: number | null;
+  review_priority: "low" | "high" | null;
 }
 
 export const FAKE_MATCHES: MatchSeed[] = [
@@ -371,7 +375,12 @@ export const FAKE_MATCHES: MatchSeed[] = [
       thread: "NPT",
       pn: "PN16",
       norma: "ISO",
+      _enhanced: { method: "llm", auto_validate: false, visual_verdict: null },
     },
+    calibrated_confidence: null,
+    conf_lower: null,
+    conf_upper: null,
+    review_priority: null,
   },
   {
     id: "m-002",
@@ -384,6 +393,10 @@ export const FAKE_MATCHES: MatchSeed[] = [
     price_aed: "210.0",
     delivery_text: "5 días",
     specs_jsonb: { material: "brass", pn: "PN16" },
+    calibrated_confidence: null,
+    conf_lower: null,
+    conf_upper: null,
+    review_priority: null,
   },
 ];
 
@@ -430,6 +443,64 @@ export function installMatchesMocks(page: Page): void {
       status: 202,
       contentType: "application/json",
       body: JSON.stringify({ task_id: "task-refresh-001" }),
+    });
+  });
+
+  // Agent endpoints mocks
+  page.route("**/api/v1/matches/agent/config**", async (route: Route) => {
+    if (route.request().method() === "PUT") {
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          mode: body["mode"] ?? "shadow",
+          alpha: body["alpha"] ?? "0.020",
+          min_labels_gate: body["min_labels_gate"] ?? 200,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        mode: "shadow",
+        alpha: "0.020",
+        min_labels_gate: 200,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  });
+
+  page.route("**/api/v1/matches/agent/metrics**", async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        golden_labels_total: 12,
+        min_labels_gate: 200,
+        gate_reached: false,
+        shadow_decisions: 5,
+        shadow_precision: 0.8,
+        calibrator_version: null,
+        calibrator_brier: null,
+        calibrator_ece: null,
+        calibrator_trained_on: null,
+        mode: "shadow",
+      }),
+    });
+  });
+
+  page.route(/\/api\/v1\/matches\/[^/]+\/revert$/, async (route: Route) => {
+    const url = route.request().url();
+    const id = url.split("/matches/")[1]?.split("/revert")[0];
+    const match = FAKE_MATCHES.find((m) => m.id === id);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ...(match ?? FAKE_MATCHES[0]!), status: "pending", specs_jsonb: {} }),
     });
   });
 }

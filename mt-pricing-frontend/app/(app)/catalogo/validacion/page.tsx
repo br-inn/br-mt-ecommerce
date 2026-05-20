@@ -20,6 +20,8 @@ import {
 import { CandidateCard } from "./_components/candidate-card";
 import { MtProductPanel } from "./_components/mt-product-panel";
 import { SkuQueuePanel, type SkuQueueEntry } from "./_components/sku-queue-panel";
+import { BulkAcceptBar } from "./_components/bulk-accept-bar";
+import { AgentMetricsPanel } from "./_components/agent-metrics-panel";
 import { MtEmpty, MtError } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import {
@@ -28,6 +30,7 @@ import {
   useRefreshMatches,
   useValidateMatch,
 } from "@/lib/hooks/matches/use-matches";
+import { useRevertMatch } from "@/lib/hooks/matches/use-match-agent";
 import { matchesApi } from "@/lib/api/endpoints/matches";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
@@ -36,23 +39,26 @@ import type {
 } from "@/lib/api/endpoints/matches";
 
 // ---------------------------------------------------------------------------
-// SKU queue — unique SKUs with pending matches, ordered by first appearance.
+// SKU queue — unique SKUs with pending matches, ordered by first appearance,
+// plus per-SKU candidate count and best score.
 // ---------------------------------------------------------------------------
 
-function usePendingSkuQueue() {
-  return useQuery<string[], Error>({
-    queryKey: ["matches", "pending-sku-queue"],
+function useSkuQueue() {
+  return useQuery<{ skus: string[]; stats: Map<string, { count: number; best: number }> }, Error>({
+    queryKey: ["matches", "sku-queue"],
     queryFn: async () => {
       const res = await matchesApi.list({ status: "pending", limit: 200, include_total: false });
-      const seen = new Set<string>();
+      const stats = new Map<string, { count: number; best: number }>();
       const skus: string[] = [];
       for (const c of res.items) {
-        if (!seen.has(c.product_sku)) {
-          seen.add(c.product_sku);
-          skus.push(c.product_sku);
-        }
+        const prev = stats.get(c.product_sku);
+        if (!prev) skus.push(c.product_sku);
+        stats.set(c.product_sku, {
+          count: (prev?.count ?? 0) + 1,
+          best: Math.max(prev?.best ?? 0, c.score),
+        });
       }
-      return skus;
+      return { skus, stats };
     },
     staleTime: 60_000,
   });
@@ -61,9 +67,6 @@ function usePendingSkuQueue() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const fmtAED = (n: number | null) =>
-  n == null ? "—" : `AED ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
 function exportToCsv(items: MatchCandidate[], sku: string) {
   const headers: Array<keyof MatchCandidate> = [
@@ -106,7 +109,8 @@ const FILTER_TABS: Array<{ l: string; status: MatchStatus | "all" }> = [
 
 export default function ValidacionMatchesPage() {
   // A1 — Dynamic SKU queue
-  const { data: queue = [] } = usePendingSkuQueue();
+  const { data: queueData } = useSkuQueue();
+  const queue = React.useMemo(() => queueData?.skus ?? [], [queueData]);
   const [skuIndex, setSkuIndex] = React.useState(0);
 
   // When queue loads, keep index in bounds
@@ -132,7 +136,20 @@ export default function ValidacionMatchesPage() {
   const refresh = useRefreshMatches();
   const validate = useValidateMatch();
   const discard = useDiscardMatch();
+  const revert = useRevertMatch();
   const mutating = validate.isPending || discard.isPending;
+
+  const [showAgentOnly, setShowAgentOnly] = React.useState(false);
+
+  const visibleItems = React.useMemo(
+    () =>
+      showAgentOnly
+        ? items.filter(
+            (c) => (c.specs_jsonb as { _agent?: { applied?: boolean } })?._agent?.applied === true,
+          )
+        : items,
+    [items, showAgentOnly],
+  );
   const scraping = refresh.isPending || refresh.isPolling;
 
   const [clearing, setClearing] = React.useState(false);
@@ -151,31 +168,13 @@ export default function ValidacionMatchesPage() {
     }
   }
 
-  // SKU queue stats — candidate count + best score per SKU
-  const { data: queueStats } = useQuery<{ sku: string; count: number; best: number }[]>({
-    queryKey: ["matches", "sku-queue-stats"],
-    queryFn: async () => {
-      const res = await matchesApi.list({ status: "pending", limit: 200, include_total: false });
-      const map = new Map<string, { count: number; best: number }>();
-      for (const c of res.items) {
-        const prev = map.get(c.product_sku);
-        map.set(c.product_sku, {
-          count: (prev?.count ?? 0) + 1,
-          best: Math.max(prev?.best ?? 0, c.score),
-        });
-      }
-      return Array.from(map.entries()).map(([sku, v]) => ({ sku, ...v }));
-    },
-    staleTime: 60_000,
-  });
-
   const queueEntries: SkuQueueEntry[] = React.useMemo(
     () =>
       queue.map((s) => {
-        const stats = queueStats?.find((q) => q.sku === s);
-        return { sku: s, candidateCount: stats?.count ?? 0, bestScore: stats?.best ?? null };
+        const st = queueData?.stats.get(s);
+        return { sku: s, candidateCount: st?.count ?? 0, bestScore: st?.best ?? null };
       }),
-    [queue, queueStats],
+    [queue, queueData],
   );
 
   const [queueCollapsed, setQueueCollapsed] = React.useState(false);
@@ -192,6 +191,17 @@ export default function ValidacionMatchesPage() {
     if (canPrev) setSkuIndex((i) => i - 1);
   }, [canPrev]);
 
+  const goNextUnvalidated = React.useCallback(() => {
+    for (let i = clampedIndex + 1; i < queue.length; i++) {
+      const st = queueData?.stats.get(queue[i]!);
+      if ((st?.count ?? 0) > 0) {
+        setSkuIndex(i);
+        return;
+      }
+    }
+    if (canNext) setSkuIndex((x) => x + 1);
+  }, [clampedIndex, queue, queueData, canNext]);
+
   // Keyboard nav: ← → for SKU navigation, V/X for validate/discard first pending
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -199,10 +209,14 @@ export default function ValidacionMatchesPage() {
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "ArrowRight") goNext();
       if (e.key === "ArrowLeft") goPrev();
+      const firstPending = items.find((c) => c.status === "pending");
+      if (!firstPending || mutating) return;
+      if (e.key === "v" || e.key === "V") validate.mutate(firstPending.id);
+      if (e.key === "x" || e.key === "X") discard.mutate({ id: firstPending.id });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, items, mutating, validate, discard]);
 
   const tabCounts: Record<string, number | undefined> = {
     all: statusFilter === "all" ? (total ?? undefined) : undefined,
@@ -220,7 +234,7 @@ export default function ValidacionMatchesPage() {
       >
         <div className="flex items-center gap-2">
           <span className="mt-mono text-[10.5px] uppercase tracking-[1px]" style={{ color: MT.ink4 }}>
-            Validación
+            Validación humana asistida
           </span>
           <span style={{ color: MT.border }}>›</span>
           <span className="mt-mono text-[12px] font-semibold" style={{ color: MT.ink }}>
@@ -267,6 +281,9 @@ export default function ValidacionMatchesPage() {
         </div>
       </div>
 
+      {/* Agent metrics panel */}
+      <AgentMetricsPanel />
+
       {/* Toolbar */}
       <div
         className="flex items-center justify-between gap-4 border-b bg-mt-surface px-6 py-2.5"
@@ -293,6 +310,17 @@ export default function ValidacionMatchesPage() {
               />
             </button>
           ))}
+          <span className="mx-1.5 h-4 w-px" style={{ background: MT.border }} />
+          <button
+            type="button"
+            onClick={() => setShowAgentOnly((v) => !v)}
+            className="cursor-pointer"
+          >
+            <FilterChip
+              label="Auto-validados"
+              active={showAgentOnly}
+            />
+          </button>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="mt-mono text-[11px]" style={{ color: MT.ink3 }}>
@@ -358,9 +386,17 @@ export default function ValidacionMatchesPage() {
               Candidatos Amazon UAE
             </span>
             <span className="mt-mono text-[11px]" style={{ color: MT.ink3 }}>
-              {items.length} resultado{items.length !== 1 ? "s" : ""}
+              {visibleItems.length} resultado{visibleItems.length !== 1 ? "s" : ""}
             </span>
           </div>
+
+          {/* Bulk accept bar — agent recommendations */}
+          <BulkAcceptBar
+            items={items}
+            busy={mutating}
+            onAcceptAll={(ids) => ids.forEach((id) => validate.mutate(id))}
+          />
+
           <div className="flex flex-col gap-2 p-3">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
@@ -370,20 +406,21 @@ export default function ValidacionMatchesPage() {
                     style={{ background: MT.surface3 }}
                   />
                 ))
-              : items.map((c) => (
+              : visibleItems.map((c) => (
                   <CandidateCard
                     key={c.id}
                     candidate={c}
                     pending={mutating}
                     onValidate={() => validate.mutate(c.id)}
-                    onDiscard={() => discard.mutate({ id: c.id })}
+                    onDiscard={(reason) => discard.mutate(reason !== undefined ? { id: c.id, reason } : { id: c.id })}
+                    onRevert={() => revert.mutate(c.id)}
                   />
                 ))}
           </div>
-          {!isLoading && items.length === 0 && !isError ? (
+          {!isLoading && visibleItems.length === 0 && !isError ? (
             <MtEmpty
               title="Sin candidatos"
-              hint="Pulsa Re-scrape para encolar un nuevo barrido del scraper."
+              hint={showAgentOnly ? "No hay candidatos auto-validados por el agente." : "Pulsa Re-scrape para encolar un nuevo barrido del scraper."}
             />
           ) : null}
         </div>
@@ -448,7 +485,7 @@ export default function ValidacionMatchesPage() {
           size="sm"
           tone="primary"
           icon={<ArrowRight className="size-3.5" />}
-          onClick={goNext}
+          onClick={goNextUnvalidated}
           disabled={!canNext}
         >
           Siguiente sin validar

@@ -52,6 +52,10 @@ class MatchCandidateBase(BaseModel):
         ge=1,
         description="Unidades por pack. NULL/1 = precio individual. Si >1, precio/unidad = price_aed / pack_units.",
     )
+    calibrated_confidence: Decimal | None = None
+    conf_lower: Decimal | None = None
+    conf_upper: Decimal | None = None
+    review_priority: str | None = None
 
 
 class MatchCandidateResponse(MatchCandidateBase):

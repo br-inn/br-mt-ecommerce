@@ -61,6 +61,24 @@ def _get_thresholds(cache=None) -> tuple[int, int]:
         return peer, drop
     return 70, 40
 
+
+def populate_conformal_fields(candidate: Any, calibrator: Any | None) -> None:
+    """Puebla calibrated_confidence/conf_lower/conf_upper/review_priority.
+
+    Si calibrator es None, no hace nada.
+    """
+    if calibrator is None:
+        return
+    from decimal import Decimal as _D  # noqa: PLC0415
+
+    raw = candidate.score / 100.0
+    pred = calibrator.predict_with_interval(raw)
+    candidate.calibrated_confidence = _D(str(round(pred.point_estimate, 4)))
+    candidate.conf_lower = _D(str(round(pred.lower_bound, 4)))
+    candidate.conf_upper = _D(str(round(pred.upper_bound, 4)))
+    candidate.review_priority = pred.review_priority
+
+
 # PSI→PN conversion: Amazon UAE listings express pressure in PSI/WOG.
 _PSI_PER_BAR = 14.5038
 _PN_GRADES = [6, 10, 16, 25, 40, 63, 100, 160]
@@ -791,6 +809,8 @@ class MatchService:
             candidate_id, user_id=user_id
         )
         assert updated is not None  # acabamos de leer el row
+        updated.label = "accept"
+        await self._record_human_feedback(updated, label=1, user_id=user_id)
         return updated
 
     async def discard_candidate(
@@ -801,7 +821,37 @@ class MatchService:
             raise MatchInvalidTransitionError(obj.status, "discarded")
         updated = await self._matches_repo.mark_discarded(candidate_id, reason=reason)
         assert updated is not None
+        updated.label = "reject"
+        await self._record_human_feedback(updated, label=0, user_id=None)
         return updated
+
+    async def _record_human_feedback(
+        self, candidate: MatchCandidate, *, label: int, user_id: UUID | None
+    ) -> None:
+        """Cierra el lazo de feedback: golden_labels + human_outcome del agente."""
+        from app.repositories.golden_labels import GoldenLabelRepository  # noqa: PLC0415
+        from app.repositories.match_agent import MatchAgentDecisionRepository  # noqa: PLC0415
+
+        try:
+            await GoldenLabelRepository(self.session).upsert(
+                sku=candidate.product_sku,
+                candidate_id=candidate.id,
+                label=label,
+                score=candidate.score / 100.0,
+                judged_by=user_id,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("match_service._record_human_feedback.golden_labels_failed", exc_info=True)
+
+        try:
+            outcome = "validated" if label == 1 else "discarded"
+            await MatchAgentDecisionRepository(self.session).set_human_outcome(
+                candidate.id, outcome
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("match_service._record_human_feedback.human_outcome_failed", exc_info=True)
+
+        await self.session.flush()
 
     # ----------------------------------------------------------------------
     # Three-way summary (pricing)
@@ -969,6 +1019,31 @@ class MatchService:
 
         results: list[tuple[MatchCandidate, EnhancedMatchResult]] = []
 
+        # Cargar el calibrador conformal activo (None en fase bootstrap).
+        conformal: Any | None = None
+        try:
+            from app.repositories.golden_labels import (  # noqa: PLC0415
+                CalibratorVersionRepository,
+                GoldenLabelRepository,
+            )
+            from app.services.matching.calibrator import ConformalWrapper  # noqa: PLC0415
+            from app.services.matching.calibrator_storage import CalibratorStorage  # noqa: PLC0415
+
+            storage = CalibratorStorage(CalibratorVersionRepository(self.session))
+            base_cal = await storage.load_active()
+            if base_cal is not None:
+                labels = await GoldenLabelRepository(self.session).list_for_training()
+                if len(labels) >= 200:
+                    wrapper = ConformalWrapper(calibrator=base_cal, method="venn_abers")
+                    wrapper.fit(
+                        [float(row.score) for row in labels],
+                        [int(row.label) for row in labels],
+                    )
+                    conformal = wrapper
+        except Exception:  # noqa: BLE001
+            logger.warning("refresh_candidates_enhanced.conformal_load_failed", exc_info=True)
+            conformal = None
+
         for candidate in candidates:
             jsonb = dict(candidate.specs_jsonb or {})
 
@@ -1037,6 +1112,8 @@ class MatchService:
             # Actualizar score si el pipeline lo mejoró
             if result.score != candidate.score:
                 candidate.score = result.score
+
+            populate_conformal_fields(candidate, conformal)
 
             candidate.specs_jsonb = current_specs
             await self.session.flush()

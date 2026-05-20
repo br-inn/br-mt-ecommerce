@@ -58,8 +58,8 @@ test.describe("Validación matches @critico", () => {
       timeout: 15_000,
     });
 
-    // Hay 2 botones "Validar match" (uno por fila pending) — primero
-    const validateBtns = page.getByRole("button", { name: /Validar match/i });
+    // Hay 2 botones "Validar" (uno por fila pending) — primero
+    const validateBtns = page.getByRole("button", { name: /^Validar$/i });
     await expect(validateBtns.first()).toBeVisible();
     await validateBtns.first().click();
     // Tras la mutación el backend mock devuelve status=validated y la fila
@@ -82,5 +82,32 @@ test.describe("Validación matches @critico", () => {
     await expect(
       page.getByRole("button", { name: /Re-scrape/i }),
     ).toBeEnabled({ timeout: 5_000 });
+  });
+
+  test("atajo de teclado V valida el primer pendiente", async ({ page }) => {
+    await page.goto("/catalogo/validacion");
+    await expect(page.getByText(FAKE_MATCHES[0]!.brand).first()).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press("v");
+    await expect(page.getByText(/Validado/i).first()).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("panel del agente muestra modo y progreso de labels", async ({ page }) => {
+    await page.goto("/catalogo/validacion");
+    await expect(page.getByText(/Agente · modo sombra/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Labels:/i)).toBeVisible();
+  });
+
+  test("descartar abre diálogo de motivo", async ({ page }) => {
+    await page.goto("/catalogo/validacion");
+    await expect(page.getByText(FAKE_MATCHES[0]!.brand).first()).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: /^Descartar$/i }).first().click();
+    await expect(page.getByText(/Indica el motivo del descarte/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("filtro 'Auto-validados' se puede activar", async ({ page }) => {
+    await page.goto("/catalogo/validacion");
+    await expect(page.getByText(/Candidatos/i).first()).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: /Auto-validados/i }).click();
+    await expect(page.getByText(/Sin candidatos/i).first()).toBeVisible({ timeout: 5_000 });
   });
 });

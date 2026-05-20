@@ -113,6 +113,7 @@ class Settings(BaseSettings):
     FEATURE_COMPARATOR_ENABLED: bool = False
     FEATURE_OCR_ENABLED: bool = False
     HUMAN_QUEUE_ENABLED: bool = True  # US-RND-01-10: cola validación humana
+    MATCH_AGENT_ENABLED: bool = False  # US-1A-09: invocar MatchValidationAgent tras scoring
 
     # --- PIM importer (Stage 3 Wave 11 — division mapping) ---
     # Códigos de división por defecto que el PIM importer aplica a cada
