@@ -20,6 +20,8 @@ import {
 import { CandidateCard } from "./_components/candidate-card";
 import { MtProductPanel } from "./_components/mt-product-panel";
 import { SkuQueuePanel, type SkuQueueEntry } from "./_components/sku-queue-panel";
+import { BulkAcceptBar } from "./_components/bulk-accept-bar";
+import { AgentMetricsPanel } from "./_components/agent-metrics-panel";
 import { MtEmpty, MtError } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import {
@@ -28,6 +30,7 @@ import {
   useRefreshMatches,
   useValidateMatch,
 } from "@/lib/hooks/matches/use-matches";
+import { useRevertMatch } from "@/lib/hooks/matches/use-match-agent";
 import { matchesApi } from "@/lib/api/endpoints/matches";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
@@ -133,7 +136,20 @@ export default function ValidacionMatchesPage() {
   const refresh = useRefreshMatches();
   const validate = useValidateMatch();
   const discard = useDiscardMatch();
+  const revert = useRevertMatch();
   const mutating = validate.isPending || discard.isPending;
+
+  const [showAgentOnly, setShowAgentOnly] = React.useState(false);
+
+  const visibleItems = React.useMemo(
+    () =>
+      showAgentOnly
+        ? items.filter(
+            (c) => (c.specs_jsonb as { _agent?: { applied?: boolean } })?._agent?.applied === true,
+          )
+        : items,
+    [items, showAgentOnly],
+  );
   const scraping = refresh.isPending || refresh.isPolling;
 
   const [clearing, setClearing] = React.useState(false);
@@ -265,6 +281,9 @@ export default function ValidacionMatchesPage() {
         </div>
       </div>
 
+      {/* Agent metrics panel */}
+      <AgentMetricsPanel />
+
       {/* Toolbar */}
       <div
         className="flex items-center justify-between gap-4 border-b bg-mt-surface px-6 py-2.5"
@@ -291,6 +310,17 @@ export default function ValidacionMatchesPage() {
               />
             </button>
           ))}
+          <span className="mx-1.5 h-4 w-px" style={{ background: MT.border }} />
+          <button
+            type="button"
+            onClick={() => setShowAgentOnly((v) => !v)}
+            className="cursor-pointer"
+          >
+            <FilterChip
+              label="Auto-validados"
+              active={showAgentOnly}
+            />
+          </button>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="mt-mono text-[11px]" style={{ color: MT.ink3 }}>
@@ -356,9 +386,17 @@ export default function ValidacionMatchesPage() {
               Candidatos Amazon UAE
             </span>
             <span className="mt-mono text-[11px]" style={{ color: MT.ink3 }}>
-              {items.length} resultado{items.length !== 1 ? "s" : ""}
+              {visibleItems.length} resultado{visibleItems.length !== 1 ? "s" : ""}
             </span>
           </div>
+
+          {/* Bulk accept bar — agent recommendations */}
+          <BulkAcceptBar
+            items={items}
+            busy={mutating}
+            onAcceptAll={(ids) => ids.forEach((id) => validate.mutate(id))}
+          />
+
           <div className="flex flex-col gap-2 p-3">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
@@ -368,20 +406,21 @@ export default function ValidacionMatchesPage() {
                     style={{ background: MT.surface3 }}
                   />
                 ))
-              : items.map((c) => (
+              : visibleItems.map((c) => (
                   <CandidateCard
                     key={c.id}
                     candidate={c}
                     pending={mutating}
                     onValidate={() => validate.mutate(c.id)}
                     onDiscard={(reason) => discard.mutate(reason !== undefined ? { id: c.id, reason } : { id: c.id })}
+                    onRevert={() => revert.mutate(c.id)}
                   />
                 ))}
           </div>
-          {!isLoading && items.length === 0 && !isError ? (
+          {!isLoading && visibleItems.length === 0 && !isError ? (
             <MtEmpty
               title="Sin candidatos"
-              hint="Pulsa Re-scrape para encolar un nuevo barrido del scraper."
+              hint={showAgentOnly ? "No hay candidatos auto-validados por el agente." : "Pulsa Re-scrape para encolar un nuevo barrido del scraper."}
             />
           ) : null}
         </div>
