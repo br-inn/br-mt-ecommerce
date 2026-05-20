@@ -23,7 +23,9 @@ _BASE_HEADERS = {
 }
 
 
-async def _curl_cffi_fetch(url: str) -> str:
+async def curl_cffi_fetch(url: str) -> str:
+    """Fetch HTML estático con curl_cffi (modo de fetch 'static'). Parte de la
+    superficie pública del módulo: lo usan el fetcher y el router de validación."""
     from curl_cffi.requests import AsyncSession
 
     impersonate = os.environ.get("SCRAPER_IMPERSONATE", "chrome124")
@@ -50,7 +52,7 @@ class GenericConfigurableFetcher:
         if html_fetcher is not None:
             self._html_fetcher: HtmlFetcher = html_fetcher
         elif source.fetch_mode == "static":
-            self._html_fetcher = _curl_cffi_fetch
+            self._html_fetcher = curl_cffi_fetch
         else:
             raise NotImplementedError(
                 f"fetch_mode {source.fetch_mode!r} no soportado en F1 — solo 'static'"

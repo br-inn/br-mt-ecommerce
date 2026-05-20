@@ -1,7 +1,10 @@
 """Router REST del módulo Scraper Source Builder (F1)."""
 from __future__ import annotations
 
+import ipaddress
+import socket
 from typing import Annotated
+from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,6 +14,7 @@ from app.api.deps import get_db_session, require_permissions
 from app.db.models.user import User
 from app.repositories.scraper_sources import ScraperSourceRepository
 from app.schemas.scraper_sources import (
+    ActivateRequest,
     RecipeRead,
     RecipeSubmit,
     ScraperSourceCreate,
@@ -18,10 +22,52 @@ from app.schemas.scraper_sources import (
     ValidateRequest,
     ValidateResponse,
 )
-from app.services.matching.adapters.generic_configurable import _curl_cffi_fetch
+from app.services.matching.adapters.generic_configurable import curl_cffi_fetch
 from app.services.scraper.source_validation_service import SourceValidationService
 
 router = APIRouter(prefix="/scraper-sources", tags=["scraper-sources"])
+
+
+def _assert_public_url(url: str) -> None:
+    """Mitigación SSRF — rechaza URLs no-HTTP(S) o que resuelvan a IPs internas.
+
+    ``validate_recipe`` hace un fetch en vivo de una URL provista por el usuario;
+    sin este guard un usuario con ``products:write`` podría sondear servicios
+    internos (metadata de la nube, red privada).
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="test_url debe usar esquema http o https",
+        )
+    host = parsed.hostname
+    if not host:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="test_url no tiene un host válido",
+        )
+    try:
+        addr_infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"no se pudo resolver el host de test_url: {host}",
+        ) from exc
+    for info in addr_infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="test_url apunta a una dirección no permitida (red interna)",
+            )
 
 
 @router.post(
@@ -112,13 +158,14 @@ async def validate_recipe(
     _user: Annotated[User, Depends(require_permissions("products:write"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ValidateResponse:
+    _assert_public_url(body.test_url)
     repo = ScraperSourceRepository(session)
     if await repo.get(source_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="source not found")
     service = SourceValidationService(session)
     try:
         result = await service.validate(
-            source_id, body.recipe_id, body.test_url, html_fetcher=_curl_cffi_fetch
+            source_id, body.recipe_id, body.test_url, html_fetcher=curl_cffi_fetch
         )
     except ValueError as exc:
         raise HTTPException(
@@ -135,7 +182,7 @@ async def validate_recipe(
 )
 async def activate_source(
     source_id: UUID,
-    body: ValidateRequest,
+    body: ActivateRequest,
     _user: Annotated[User, Depends(require_permissions("products:write"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ScraperSourceRead:

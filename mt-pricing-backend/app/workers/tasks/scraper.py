@@ -603,7 +603,7 @@ async def _scrape_source_async(
             candidate, competitor_brand_id=source.competitor_brand_id
         )
         upserted += 1
-    await session.commit()
+    # El commit lo hace el dueño de la sesión (la task Celery), no este helper.
     return {"source_id": source_id, "status": "ok", "upserted": upserted}
 
 
@@ -641,9 +641,11 @@ def scrape_source_task(self, source_id: str, *, search_text: str) -> dict:  # ty
         )
         try:
             async with session_factory() as session:
-                return await _scrape_source_async(
+                result = await _scrape_source_async(
                     session, source_id, search_text=search_text
                 )
+                await session.commit()
+                return result
         finally:
             await engine.dispose()
 

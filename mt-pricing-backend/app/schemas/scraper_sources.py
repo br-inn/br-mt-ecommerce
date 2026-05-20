@@ -116,3 +116,9 @@ class ValidateResponse(BaseModel):
     status: str
     field_results: dict[str, str]
     records: list[dict[str, Any]]
+
+
+class ActivateRequest(BaseModel):
+    """Body de activación — solo necesita la receta a promover a is_live."""
+
+    recipe_id: UUID

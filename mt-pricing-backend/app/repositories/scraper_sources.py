@@ -103,6 +103,7 @@ class ScraperSourceRepository:
                 ScraperSourceRecipe.is_live.is_(True),
             )
             .values(is_live=False)
+            .execution_options(synchronize_session="fetch")
         )
         await self._session.flush()
         recipe.is_live = True
