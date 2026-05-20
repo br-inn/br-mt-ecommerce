@@ -54,3 +54,65 @@ class Recipe(BaseModel):
     pagination: RecipePagination | None = None
     fields: list[RecipeField] = Field(min_length=1)
     anti_bot_hints: dict[str, Any] = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Task 10 — API request / response schemas
+# ---------------------------------------------------------------------------
+from datetime import datetime  # noqa: E402
+from uuid import UUID  # noqa: E402
+
+
+class ScraperSourceCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    slug: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9-]+$")
+    base_url: str = Field(min_length=1)
+    destination_profile: Literal["competitor_price", "product_data"]
+    fetch_mode: Literal["static", "headless", "stealth"] = "static"
+    description: str | None = None
+    competitor_brand_id: UUID | None = None
+
+
+class ScraperSourceRead(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    base_url: str
+    description: str | None
+    destination_profile: str
+    fetch_mode: str
+    status: str
+    competitor_brand_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RecipeSubmit(BaseModel):
+    """Receta enviada por el cliente — se valida contra el schema Recipe."""
+
+    recipe: Recipe
+
+
+class RecipeRead(BaseModel):
+    id: UUID
+    source_id: UUID
+    version: int
+    is_live: bool
+    validation_status: str
+    has_unapproved_snippet: bool
+    recipe: dict[str, Any]
+
+    model_config = {"from_attributes": True}
+
+
+class ValidateRequest(BaseModel):
+    recipe_id: UUID
+    test_url: str = Field(min_length=1)
+
+
+class ValidateResponse(BaseModel):
+    status: str
+    field_results: dict[str, str]
+    records: list[dict[str, Any]]

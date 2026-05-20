@@ -65,6 +65,7 @@ from app.api.routes import (
     roles,
     schemes,
     scraper,
+    scraper_sources,
     suppliers,
     translations_workflow,
     users,
@@ -221,3 +222,5 @@ router.include_router(hitl_queue_price.router)
 router.include_router(rule_engine.router)
 # Amazon Marketplace Export — validate, export CSV, CRUD listing, AI generate
 router.include_router(marketplace_listings.router)
+# EP-F1 — Scraper Source Builder (CRUD sources + recipes + validate + activate)
+router.include_router(scraper_sources.router)
