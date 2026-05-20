@@ -374,7 +374,7 @@ export default function ValidacionMatchesPage() {
                     candidate={c}
                     pending={mutating}
                     onValidate={() => validate.mutate(c.id)}
-                    onDiscard={() => discard.mutate({ id: c.id })}
+                    onDiscard={(reason) => discard.mutate(reason !== undefined ? { id: c.id, reason } : { id: c.id })}
                   />
                 ))}
           </div>
