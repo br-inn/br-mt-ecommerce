@@ -27,6 +27,10 @@ export interface MatchCandidate {
   validated_by: string | null;
   validated_at: string | null;
   discarded_reason: string | null;
+  calibrated_confidence: string | null;
+  conf_lower: string | null;
+  conf_upper: string | null;
+  review_priority: "low" | "high" | null;
   created_at: string;
   updated_at: string;
 }
