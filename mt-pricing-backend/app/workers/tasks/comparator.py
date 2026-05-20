@@ -104,6 +104,18 @@ def refresh_sku_task(self: Any, sku: str) -> dict[str, Any]:  # type: ignore[no-
                 try:
                     pairs = await service.refresh_candidates_enhanced(sku, mt_image_url=None)
                     count = len(pairs)
+
+                    # Agente de validación — corre inline tras el scoring.
+                    if settings.MATCH_AGENT_ENABLED:
+                        from app.services.matching.validation_agent import (  # noqa: PLC0415
+                            MatchValidationAgent,
+                        )
+                        agent_decided = await MatchValidationAgent(session).run(sku)
+                        logger.info(
+                            "comparator.refresh_sku.agent",
+                            extra={"sku": sku, "agent_decided": agent_decided},
+                        )
+
                     await session.commit()
                     logger.info(
                         "comparator.refresh_sku.done",
