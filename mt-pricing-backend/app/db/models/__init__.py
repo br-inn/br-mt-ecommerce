@@ -149,6 +149,11 @@ from app.db.models.match_rule_stat import MatchRuleStat  # noqa: F401
 from app.db.models.rule_suggestion import RuleSuggestion  # noqa: F401
 from app.db.models.marketplace_listing import MarketplaceListing  # noqa: F401
 from app.db.models.match_agent import MatchAgentConfig, MatchAgentDecision  # noqa: F401
+from app.db.models.scraper_sources import (  # noqa: F401
+    ScraperSource,
+    ScraperSourceRecipe,
+    ScraperSourceTestRun,
+)
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -390,4 +395,8 @@ __all__ = [
     # Match Validation Agent — config singleton + decision log (Task 3)
     "MatchAgentConfig",
     "MatchAgentDecision",
+    # Scraper Source Builder — motor configurable data-driven (Task 2)
+    "ScraperSource",
+    "ScraperSourceRecipe",
+    "ScraperSourceTestRun",
 ]
