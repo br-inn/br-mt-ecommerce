@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TranslationStatusPill } from "@/components/domain/translation-status-pill";
 import { RbacGuard } from "@/components/auth/rbac-guard";
+import { MtError } from "@/components/mt/states";
 import { useProduct } from "@/lib/hooks/products/use-product";
 import {
   useApproveTranslation,
@@ -47,7 +48,7 @@ type TranslationFormValues = z.infer<typeof translationSchema>;
 
 export function TranslationsTab({ sku }: { sku: string }) {
   const t = useTranslations("catalog.translations");
-  const { data: product, isLoading: loadingProduct } = useProduct(sku);
+  const { data: product, isLoading: loadingProduct, isError, refetch } = useProduct(sku);
   const { data: translations, isLoading: loadingTranslations } = useProductTranslations(
     product?.id,
   );
@@ -62,7 +63,14 @@ export function TranslationsTab({ sku }: { sku: string }) {
     );
   }
 
-  if (!product) return null;
+  if (isError || !product) {
+    return (
+      <MtError
+        message="No se pudo cargar el producto."
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   const findTranslation = (lang: Language): ProductTranslationRead | undefined =>
     translations?.find((tr) => tr.language === lang);
