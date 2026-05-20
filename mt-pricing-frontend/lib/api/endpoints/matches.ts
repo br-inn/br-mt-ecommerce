@@ -76,6 +76,36 @@ export interface MatchFilters {
   include_total?: boolean;
 }
 
+// --- Agente de validación ---
+export type AgentMode = "shadow" | "active";
+export type AgentVerdict = "auto_validate" | "auto_discard" | "human";
+
+export interface MatchAgentConfig {
+  mode: AgentMode;
+  alpha: string;
+  min_labels_gate: number;
+  updated_at: string;
+}
+
+export interface MatchAgentConfigUpdate {
+  mode?: AgentMode;
+  alpha?: number;
+  min_labels_gate?: number;
+}
+
+export interface MatchAgentMetrics {
+  golden_labels_total: number;
+  min_labels_gate: number;
+  gate_reached: boolean;
+  shadow_decisions: number;
+  shadow_precision: number | null;
+  calibrator_version: string | null;
+  calibrator_brier: number | null;
+  calibrator_ece: number | null;
+  calibrator_trained_on: number | null;
+  mode: AgentMode;
+}
+
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
@@ -113,4 +143,15 @@ export const matchesApi = {
     }),
   clearAll: (): Promise<{ deleted: number }> =>
     authedFetch<{ deleted: number }>("/api/v1/matches", { method: "DELETE" }),
+  agentConfig: (): Promise<MatchAgentConfig> =>
+    authedFetch<MatchAgentConfig>("/api/v1/matches/agent/config"),
+  updateAgentConfig: (body: MatchAgentConfigUpdate): Promise<MatchAgentConfig> =>
+    authedFetch<MatchAgentConfig>("/api/v1/matches/agent/config", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  agentMetrics: (): Promise<MatchAgentMetrics> =>
+    authedFetch<MatchAgentMetrics>("/api/v1/matches/agent/metrics"),
+  revert: (id: string): Promise<MatchCandidate> =>
+    authedFetch<MatchCandidate>(`/api/v1/matches/${id}/revert`, { method: "POST" }),
 };
