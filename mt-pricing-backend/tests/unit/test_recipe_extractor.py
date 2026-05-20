@@ -38,17 +38,16 @@ def test_extract_records_field_values():
 
 
 def test_extract_attr():
+    """Extracción de un atributo HTML de un elemento hijo del item."""
     recipe = {
         "url_templates": {"search": "x"},
         "list_item_selector": "div.product",
-        "fields": [{"name": "external_id", "selector": "div.product", "extract": "attr:data-id"}],
+        "fields": [{"name": "url", "selector": "a.pdp", "extract": "attr:href"}],
     }
-    # selector relativo al item: el propio nodo no se re-selecciona, usamos un hijo
     html = _FIXTURE.read_text(encoding="utf-8")
-    recipe["fields"][0]["selector"] = "h2.name"
-    recipe["fields"][0]["extract"] = "text"
     records = extract_records(html, recipe)
-    assert records[0]["external_id"] == 'Bola de acero inox 1/2"'
+    assert records[0]["url"] == "/product/P-1001"
+    assert records[1]["url"] == "/product/P-1002"
 
 
 def test_field_results_pass_fail():
