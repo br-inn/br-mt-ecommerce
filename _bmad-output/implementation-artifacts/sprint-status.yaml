@@ -296,4 +296,4 @@ development_status:
                                   # + apply_mapping en curl_cffi_amazon_uae + POC script
   US-SCR-05-02: done             # Integración del Brand Extractor en scrape_brand_task + price_monitor_task — 5 SP — S18 ✅
   US-SCR-05-03: done             # UI Admin para gestión de Brand Extractors (badge semáforo + pestaña detalle + regenerar) — 5 SP — S18 ✅
-  US-SCR-05-04: ready-for-dev    # Métricas de cobertura + alerta degradación >20pp + tabla scraper_extractor_alerts — 3 SP — S18
+  US-SCR-05-04: review           # Métricas de cobertura + alerta degradación >20pp + tabla scraper_extractor_alerts — 3 SP — S18 ✅

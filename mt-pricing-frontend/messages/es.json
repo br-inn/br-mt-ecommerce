@@ -1256,7 +1256,14 @@
       "tabLabel": "Extractor",
       "tabGeneral": "General",
       "ageDays": "hace {count} días",
-      "coveragePct": "{pct}% cobertura"
+      "coveragePct": "{pct}% cobertura",
+      "alertActive": "Alerta activa",
+      "alertBadgeTooltip": "Cobertura degradó {delta}pp — considera regenerar el extractor",
+      "markResolved": "Marcar como resuelto",
+      "resolving": "Resolviendo...",
+      "resolvedSuccess": "Alerta marcada como resuelta",
+      "gaugeTooltip": "Porcentaje de candidatos en los que el extractor encontró al menos 1 atributo canónico",
+      "hitRateGauge": "Tasa de cobertura"
     },
     "competitorBrands": {
       "title": "Marcas competidoras",

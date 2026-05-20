@@ -1256,7 +1256,14 @@
       "tabLabel": "المستخرج",
       "tabGeneral": "عام",
       "ageDays": "منذ {count} يوم",
-      "coveragePct": "تغطية {pct}%"
+      "coveragePct": "تغطية {pct}%",
+      "alertActive": "تنبيه نشط",
+      "alertBadgeTooltip": "انخفضت التغطية بمقدار {delta} نقطة — يُنصح بإعادة توليد المستخرج",
+      "markResolved": "تحديد كمحلول",
+      "resolving": "جارٍ الحل...",
+      "resolvedSuccess": "تم تحديد التنبيه كمحلول",
+      "gaugeTooltip": "نسبة المرشحين الذين وجد فيهم المستخرج سمة معيارية واحدة على الأقل",
+      "hitRateGauge": "معدل التغطية"
     },
     "competitorBrands": {
       "title": "العلامات التجارية المنافسة",
