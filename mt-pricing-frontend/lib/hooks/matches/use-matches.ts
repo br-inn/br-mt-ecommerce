@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import {
   matchesApi,
+  type MatchBulkValidateResponse,
   type MatchCandidate,
   type MatchCandidateDetail,
   type MatchFilters,
@@ -121,5 +122,21 @@ export function useDiscardMatch() {
       toast.success("Candidato descartado");
     },
     onError: (e) => toast.error(`No se pudo descartar: ${e.message}`),
+  });
+}
+
+export function useBulkValidateMatches() {
+  const qc = useQueryClient();
+  return useMutation<MatchBulkValidateResponse, Error, string[]>({
+    mutationFn: (ids) => matchesApi.bulkValidate(ids),
+    onSuccess: (res) => {
+      void qc.invalidateQueries({ queryKey: matchKeys.all });
+      const msg =
+        res.skipped.length > 0
+          ? `${res.validated} validados · ${res.skipped.length} omitidos`
+          : `${res.validated} candidatos validados`;
+      toast.success(msg);
+    },
+    onError: (e) => toast.error(`No se pudieron validar: ${e.message}`),
   });
 }

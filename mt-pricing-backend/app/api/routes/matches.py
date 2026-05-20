@@ -32,6 +32,8 @@ from app.db.models.match_candidate import MatchCandidate
 from app.db.models.user import User
 from app.schemas.common import Cursor, Pagination, ProblemDetails
 from app.schemas.matches import (
+    MatchBulkValidateRequest,
+    MatchBulkValidateResponse,
     MatchCandidateDetail,
     MatchCandidateResponse,
     MatchDiscardRequest,
@@ -467,6 +469,34 @@ async def validate_match(
     except MatchDomainError as e:
         _raise_domain(e)
     return _to_response(row)
+
+
+@router.post(
+    "/bulk-validate",
+    response_model=MatchBulkValidateResponse,
+    summary="Validar varios candidatos en una sola petición",
+    description=(
+        "Valida en bloque hasta 200 candidatos. Reemplaza N llamadas a "
+        "POST /matches/{id}/validate por una sola. Los candidatos cuya "
+        "transición FSM sea ilegal (o que no existan) se omiten y se listan "
+        "en `skipped`; el resto se valida igualmente."
+    ),
+    operation_id="matchesBulkValidate",
+)
+async def bulk_validate_matches(
+    payload: MatchBulkValidateRequest,
+    user: Annotated[User, Depends(require_permissions("matches:write"))],
+    service: Annotated[MatchService, Depends(get_match_service)],
+) -> MatchBulkValidateResponse:
+    validated = 0
+    skipped: list[UUID] = []
+    for candidate_id in payload.ids:
+        try:
+            await service.validate_candidate(candidate_id, user_id=user.id)
+            validated += 1
+        except MatchDomainError:
+            skipped.append(candidate_id)
+    return MatchBulkValidateResponse(validated=validated, skipped=skipped)
 
 
 @router.get(
