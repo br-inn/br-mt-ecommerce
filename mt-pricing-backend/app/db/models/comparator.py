@@ -367,6 +367,51 @@ class ProductEquivalence(Base):
     )
 
 
+class ExtractorAlert(Base):
+    """Alerta de degradación de hit_rate del Brand Extractor (US-SCR-05-04).
+
+    Se crea/actualiza cuando el hit_rate de un BrandExtractor cae > 20pp
+    respecto a la baseline de 7 días. ``resolved_at`` NULL = alerta activa.
+    """
+
+    __tablename__ = "scraper_extractor_alerts"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    brand_id: Mapped[UUID] = mapped_column(
+        UUID_PG,
+        ForeignKey("competitor_brands.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    marketplace: Mapped[str] = mapped_column(String(32), nullable=False)
+    triggered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    hit_rate_now: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    hit_rate_baseline: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    delta_pp: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    resolved_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_extractor_alerts_brand_mkt_resolved",
+            "brand_id",
+            "marketplace",
+            "resolved_at",
+        ),
+    )
+
+
 class PriceCalibrationRange(Base):
     """Rango P10/P90 de calibración de precios por categoría+divisa (US-F15-02-04).
 

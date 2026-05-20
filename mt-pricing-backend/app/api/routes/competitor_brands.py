@@ -5,13 +5,18 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
+from app.db.models.comparator import BrandExtractor, ExtractorAlert
 from app.db.models.user import User
 from app.repositories.competitor_brands import CompetitorBrandRepository
+from app.schemas.brand_extractor import BrandExtractorRead, ExtractorAlertResolve, ExtractorCoverageStats
 from app.schemas.competitor_brands import (
     BrandScrapeRunRequest,
     BrandScrapeRunResponse,
@@ -137,6 +142,117 @@ async def get_brand(
     if not brand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brand not found")
     return CompetitorBrandRead.model_validate(brand)
+
+
+@router.get(
+    "/{brand_id}/extractor",
+    response_model=BrandExtractorRead,
+    operation_id="getCompetitorBrandExtractor",
+    summary="Obtener extractor de atributos de una marca (US-SCR-05-03)",
+)
+async def get_brand_extractor(
+    brand_id: UUID,
+    _user: Annotated[User, Depends(require_permissions("scraper:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    marketplace: str = "amazon_uae",
+) -> BrandExtractorRead:
+    stmt = select(BrandExtractor).where(
+        BrandExtractor.brand_id == brand_id,
+        BrandExtractor.marketplace == marketplace,
+    )
+    result = await session.execute(stmt)
+    extractor = result.scalar_one_or_none()
+    if extractor is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No extractor found",
+        )
+    return BrandExtractorRead(
+        brand_id=extractor.brand_id,
+        marketplace=extractor.marketplace,
+        generated_at=extractor.generated_at,
+        generated_by=extractor.generated_by,
+        hit_rate=float(extractor.hit_rate),
+        sample_asins=extractor.sample_asins or [],
+        attribute_count=len(extractor.attribute_map or {}),
+        last_used_at=extractor.last_used_at,
+    )
+
+
+@router.get(
+    "/{brand_id}/extractor/coverage-stats",
+    response_model=ExtractorCoverageStats,
+    operation_id="getExtractorCoverageStats",
+    summary="Métricas de cobertura del extractor para una marca (US-SCR-05-04)",
+)
+async def get_extractor_coverage_stats(
+    brand_id: UUID,
+    _user: Annotated[User, Depends(require_permissions("scraper:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    marketplace: str = "amazon_uae",
+) -> ExtractorCoverageStats:
+    ext_result = await session.execute(
+        select(BrandExtractor).where(
+            BrandExtractor.brand_id == brand_id,
+            BrandExtractor.marketplace == marketplace,
+        )
+    )
+    extractor = ext_result.scalar_one_or_none()
+    if extractor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No extractor found")
+
+    alert_result = await session.execute(
+        select(ExtractorAlert).where(
+            ExtractorAlert.brand_id == brand_id,
+            ExtractorAlert.marketplace == marketplace,
+            ExtractorAlert.resolved_at.is_(None),
+        )
+    )
+    active_alert = alert_result.scalar_one_or_none()
+
+    hit_rate_current = float(extractor.hit_rate)
+    baseline = float(active_alert.hit_rate_baseline) if active_alert else 0.80
+    delta_pp = (baseline - hit_rate_current) * 100
+
+    return ExtractorCoverageStats(
+        brand_id=brand_id,
+        marketplace=marketplace,
+        hit_rate_current=hit_rate_current,
+        hit_rate_baseline=baseline,
+        delta_pp=delta_pp,
+        alert_active=active_alert is not None,
+        alert_id=active_alert.id if active_alert else None,
+    )
+
+
+@router.patch(
+    "/{brand_id}/extractor/alerts/{alert_id}/resolve",
+    status_code=status.HTTP_200_OK,
+    operation_id="resolveExtractorAlert",
+    summary="Marcar alerta de degradación como resuelta (US-SCR-05-04)",
+)
+async def resolve_extractor_alert(
+    brand_id: UUID,
+    alert_id: UUID,
+    body: ExtractorAlertResolve,
+    _user: Annotated[User, Depends(require_permissions("scraper:write"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict:
+    alert_result = await session.execute(
+        select(ExtractorAlert).where(
+            ExtractorAlert.id == alert_id,
+            ExtractorAlert.brand_id == brand_id,
+            ExtractorAlert.resolved_at.is_(None),
+        )
+    )
+    alert = alert_result.scalar_one_or_none()
+    if alert is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active alert not found")
+
+    alert.resolved_at = datetime.now(timezone.utc)
+    alert.resolved_by = body.resolved_by
+    await session.commit()
+    return {"alert_id": str(alert_id), "resolved": True}
 
 
 @router.patch(

@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, exists, func, or_, select, update as sa_update
-from sqlalchemy.orm import noload, selectinload
+from sqlalchemy.orm import joinedload, noload, selectinload
 
 from app.db.enums import DataQuality
 from app.db.models.product import Product, ProductBoreDimension, ProductImage, ProductTranslation
@@ -45,11 +45,10 @@ class ProductRepository(BaseRepository[Product]):
     async def get_by_sku_for_matching(self, sku: str) -> Product | None:
         """Like get_by_sku but eager-loads product.model for matching pipeline."""
         from sqlalchemy import select
-        from sqlalchemy.orm import selectinload
 
         stmt = (
             select(Product)
-            .options(selectinload(Product.model))
+            .options(joinedload(Product.model))
             .where(Product.sku == sku)
         )
         result = await self.session.execute(stmt)
@@ -76,7 +75,7 @@ class ProductRepository(BaseRepository[Product]):
                 selectinload(Product.product_divisions).selectinload(
                     ProductDivision.division
                 ),
-                selectinload(Product.model),
+                joinedload(Product.model),
             )
         )
         result = await self.session.execute(stmt)

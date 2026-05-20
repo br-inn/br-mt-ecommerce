@@ -109,12 +109,36 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
                     )
                     return {"sku": sku, "marketplace": marketplace, "status": "circuit_open", "alert": False}
 
+                # ── Brand Extractor mapping (US-SCR-05-02 / AC-4) ─────────
+                from app.db.models.comparator import CompetitorBrand
+                from app.services.scraper.brand_extractor_service import BrandExtractorService
+
+                brand_svc = BrandExtractorService(session)
+                brand_uuid = None
+                brand_mapping: dict = {}
+                brand_row = await session.execute(
+                    select(CompetitorBrand).where(CompetitorBrand.name == sku)
+                )
+                brand_obj = brand_row.scalar_one_or_none()
+                if brand_obj:
+                    brand_uuid = brand_obj.id
+                    brand_mapping = await brand_svc.get_mapping(brand_obj.id, marketplace) or {}
+                    if not brand_mapping:
+                        logger.debug(
+                            "price_monitor.no_extractor",
+                            extra={"sku": sku, "marketplace": marketplace},
+                        )
+
                 # ── Rate limiter ───────────────────────────────────────────
                 rate_limiter = get_rate_limiter()
                 await rate_limiter.acquire(marketplace)
 
                 # ── Fetch precio via adapter ───────────────────────────────
-                fetcher = get_fetcher(marketplace)
+                fetcher = get_fetcher(
+                    marketplace,
+                    brand_id=brand_uuid,
+                    brand_attribute_map=brand_mapping or None,
+                )
                 query = Query(
                     text=sku,
                     source=marketplace,
@@ -143,6 +167,24 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
 
                 # Usar el primer candidato (mayor score) para el precio
                 top = candidates[0]
+
+                # ── Enriquecer normalized_jsonb con specs del mapping (AC-4) ─
+                if brand_uuid and hasattr(top, "external_id") and top.external_id:
+                    from app.db.models.comparator import CompetitorListing
+
+                    listing_row = await session.execute(
+                        select(CompetitorListing).where(
+                            CompetitorListing.source == marketplace,
+                            CompetitorListing.source_id == top.external_id,
+                        )
+                    )
+                    listing_obj = listing_row.scalar_one_or_none()
+                    if listing_obj and top.specs:
+                        existing_nj = dict(listing_obj.normalized_jsonb or {})
+                        existing_nj["specs"] = {**(existing_nj.get("specs") or {}), **top.specs}
+                        listing_obj.normalized_jsonb = existing_nj
+                        await session.flush()
+
                 raw = top if isinstance(top, dict) else vars(top)
                 price_raw = raw.get("price") or raw.get("price_aed") or raw.get("price_usd")
                 if price_raw is None:
@@ -277,6 +319,83 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
 
 
 # ---------------------------------------------------------------------------
+# _evaluate_extractor_alerts — US-SCR-05-04
+# ---------------------------------------------------------------------------
+
+async def _evaluate_extractor_alerts() -> int:
+    """Detecta degradación de hit_rate > 20pp y crea/actualiza ExtractorAlerts.
+
+    Umbral: hit_rate < 0.60 (>20pp por debajo de la baseline asumida de 0.80).
+    Retorna el número de alertas creadas o actualizadas.
+    """
+    from decimal import Decimal
+    from datetime import datetime, timezone
+
+    from sqlalchemy import and_, select
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from app.core.config import settings
+    from app.db.models.comparator import BrandExtractor, ExtractorAlert
+
+    _BASELINE = Decimal("0.80")
+    _MIN_RATE = Decimal("0.60")  # 0.80 - 0.20 = 0.60 → degradación de 20pp
+
+    engine = create_async_engine(
+        str(settings.DATABASE_URL),
+        poolclass=NullPool,
+        connect_args={"statement_cache_size": 0},
+    )
+    session_factory = async_sessionmaker(
+        bind=engine, class_=AsyncSession, autoflush=False, expire_on_commit=False
+    )
+    alerts_modified = 0
+    try:
+        async with session_factory() as session:
+            now = datetime.now(timezone.utc)
+            result = await session.execute(select(BrandExtractor))
+            extractors = result.scalars().all()
+
+            for ext in extractors:
+                current_rate = ext.hit_rate
+
+                alert_result = await session.execute(
+                    select(ExtractorAlert).where(
+                        and_(
+                            ExtractorAlert.brand_id == ext.brand_id,
+                            ExtractorAlert.marketplace == ext.marketplace,
+                            ExtractorAlert.resolved_at.is_(None),
+                        )
+                    )
+                )
+                existing_alert = alert_result.scalar_one_or_none()
+
+                if current_rate < _MIN_RATE:
+                    if existing_alert is None:
+                        delta = (_BASELINE - current_rate) * 100
+                        session.add(ExtractorAlert(
+                            brand_id=ext.brand_id,
+                            marketplace=ext.marketplace,
+                            triggered_at=now,
+                            hit_rate_now=current_rate,
+                            hit_rate_baseline=_BASELINE,
+                            delta_pp=delta,
+                        ))
+                    else:
+                        existing_alert.hit_rate_now = current_rate
+                        existing_alert.delta_pp = (
+                            existing_alert.hit_rate_baseline - current_rate
+                        ) * 100
+                    alerts_modified += 1
+
+            await session.commit()
+    finally:
+        await engine.dispose()
+
+    return alerts_modified
+
+
+# ---------------------------------------------------------------------------
 # bootstrap_price_monitoring — US-SCR-04-03
 # ---------------------------------------------------------------------------
 
@@ -336,7 +455,16 @@ def bootstrap_price_monitoring_task() -> dict:
         "price_monitor.bootstrap_dispatched",
         extra={"brands": len(brand_names), "dispatched": dispatched},
     )
-    return {"total": len(brand_names), "dispatched": dispatched}
+
+    # ── Evaluar degradación de hit_rate en extractores (US-SCR-05-04 / AC-2) ─
+    alerts_modified = asyncio.run(_evaluate_extractor_alerts())
+    if alerts_modified:
+        logger.info(
+            "price_monitor.extractor_alerts_evaluated",
+            extra={"alerts_modified": alerts_modified},
+        )
+
+    return {"total": len(brand_names), "dispatched": dispatched, "alerts_modified": alerts_modified}
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-19T20:00:00.000Z"  # S17 cierre completo: 4 stories review → done (ERP-01-04, ERP-03-01/02, ERP-04-05); mig 151 return_deliveries
+last_updated: "2026-05-20T20:00:00.000Z"  # S18: US-SCR-05-03 done
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -161,22 +161,22 @@ development_status:
   US-SCR-03-02: done            # Test suite ≥80% cobertura (FR-14) — 5 SP ✅ S17 fix: test_circuit_breaker.py (23 tests) + test_curl_cffi_amazon_uae.py (22 tests)
   US-SCR-03-03: done            # Rate limiter Redis token bucket + fingerprint rotation (FR-31/30) — 5 SP ✅ S17 fix: pool rotation + RPM 5
   US-SCR-03-04: done            # Circuit breaker dominio + proxy pool distribuido Redis (FR-28/36) — 8 SP ✅ S17 fix: recovery 300s + proxy cooldown
-  US-SCR-03-05: backlog         # Dashboard salud canales + CRUD proxies UI sin redeploy (FR-33/38) — 8 SP — S14
+  US-SCR-03-05: done  # ✅ S17 — ver sección EP-SCR
 
   epic-EP-SCR-03-retrospective: optional
 
   # EP-SCR-04 — Monitoreo Autónomo + Price Intelligence (PENDIENTE S14-S16)
-  epic-EP-SCR-04: backlog        # Price intelligence completo — 21 FRs — S14-S16
+  epic-EP-SCR-04: done           # Price intelligence completo — S14-S16 — CERRADA S17 (ver sección EP-SCR)
 
   US-SCR-04-01: done            # TimescaleDB hypertable + price_daily_stats continuous aggregate (FR-29/23) — 8 SP ✅ S17 audit
   US-SCR-04-02: done            # price_monitor_task liviana + workers colas especializadas (FR-40/43/44/45) — 8 SP ✅ S17 audit
-  US-SCR-04-03: backlog         # Bootstrap coordinator + workers on-demand + UI diferenciación (FR-42/46/39/41) — 8 SP — S14
+  US-SCR-04-03: done  # ✅ S17 — ver sección EP-SCR
   US-SCR-04-04: done            # Job definitions automáticos + Noon UAE en scrape_brand (FR-19/21) — 5 SP ✅ S17 audit
-  US-SCR-04-05: backlog         # Price alerts pg_notify + heartbeat 26h + email SendGrid (FR-24/34/37) — 8 SP — S15
-  US-SCR-04-06: backlog         # KPI dashboard Price Gap/Index/Position + listings por marca (FR-25/22/20) — 8 SP — S15
-  US-SCR-04-07: backlog         # Monitor calidad matching histograma confidence 7d (FR-35) — 3 SP — S15
-  US-SCR-04-08a: backlog        # Cross-encoder re-ranking + cache Redis + Anthropic prompt caching (FR-26) — 8 SP — S16
-  US-SCR-04-08b: backlog        # HITL queue scoring uncertainty×value + high-value threshold AED 1K (FR-27) — 5 SP — S16
+  US-SCR-04-05: done  # ✅ S17 — ver sección EP-SCR
+  US-SCR-04-06: done  # ✅ S17 — ver sección EP-SCR
+  US-SCR-04-07: done  # ✅ S17 — ver sección EP-SCR
+  US-SCR-04-08a: done  # ✅ S17 — ver sección EP-SCR
+  US-SCR-04-08b: done  # ✅ S17 — ver sección EP-SCR
 
   epic-EP-SCR-04-retrospective: optional
 
@@ -294,3 +294,6 @@ development_status:
                                   # mig 150 scraper_brand_extractors + BrandExtractorService
                                   # + generate_brand_extractor_task + POST /bootstrap-scan
                                   # + apply_mapping en curl_cffi_amazon_uae + POC script
+  US-SCR-05-02: done             # Integración del Brand Extractor en scrape_brand_task + price_monitor_task — 5 SP — S18 ✅
+  US-SCR-05-03: done             # UI Admin para gestión de Brand Extractors (badge semáforo + pestaña detalle + regenerar) — 5 SP — S18 ✅
+  US-SCR-05-04: review           # Métricas de cobertura + alerta degradación >20pp + tabla scraper_extractor_alerts — 3 SP — S18 ✅

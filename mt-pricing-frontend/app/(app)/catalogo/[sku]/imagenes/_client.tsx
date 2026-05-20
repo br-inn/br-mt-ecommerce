@@ -5,15 +5,23 @@ import { ImageGallery } from "@/components/domain/image-gallery";
 import { ImageUploader } from "@/components/domain/image-uploader";
 import { AssetGalleryPolymorphic } from "@/components/domain/asset-gallery-polymorphic";
 import { RbacGuard } from "@/components/auth/rbac-guard";
+import { MtError } from "@/components/mt/states";
 import { useProduct } from "@/lib/hooks/products/use-product";
 
 export function ImagesTab({ sku }: { sku: string }) {
-  const { data: product, isLoading } = useProduct(sku);
+  const { data: product, isLoading, isError, refetch } = useProduct(sku);
 
   if (isLoading) {
     return <Skeleton className="h-64 w-full rounded-lg" />;
   }
-  if (!product) return null;
+  if (isError || !product) {
+    return (
+      <MtError
+        message="No se pudo cargar la información del producto."
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">

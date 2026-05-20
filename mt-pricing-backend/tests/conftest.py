@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import os
 import pathlib
+import subprocess
 from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
@@ -53,31 +54,86 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
 # =============================================================================
 # Containers (integration tests only — marca @pytest.mark.integration)
 # =============================================================================
+
+_BACKEND_DIR = pathlib.Path(__file__).parent.parent
+
+
+def _run_migrations() -> None:
+    """Corre `alembic upgrade head` en el directorio del backend.
+
+    Usa ALEMBIC_DATABASE_URL (psycopg sync) que debe estar seteada antes de
+    llamar a esta función.
+    """
+    result = subprocess.run(
+        ["uv", "run", "alembic", "upgrade", "head"],
+        capture_output=True,
+        text=True,
+        cwd=_BACKEND_DIR,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Alembic migration failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
+
+
 @pytest.fixture(scope="session")
 def postgres_container() -> Iterator[str]:
-    """Levanta un Postgres efímero. Devuelve la URL `postgresql+asyncpg://...`.
+    """Devuelve la URL `postgresql+asyncpg://...` de una DB de tests.
 
-    Se importa testcontainers dentro del fixture para que tests unit puros
-    no paguen el coste del import si no usan este fixture.
+    - Modo CI: si DATABASE_URL ya está en el entorno (servicio de GitHub Actions),
+      la reutiliza directamente y corre las migraciones Alembic contra ella.
+    - Modo local: levanta un contenedor efímero `pgvector/pgvector:pg16` via
+      testcontainers (no requiere Docker pre-configurado más allá del daemon local).
+
+    En ambos casos corre `alembic upgrade head` una vez por sesión.
     """
+    existing = os.environ.get("DATABASE_URL")
+    if existing:
+        # CI / entorno externo: usar la DB ya provisionada.
+        # Derivar la URL sync para Alembic: asyncpg → psycopg.
+        alembic_url = existing.replace("+asyncpg", "+psycopg2").replace("+asyncpg", "")
+        if "+psycopg" not in alembic_url and "postgresql" in alembic_url:
+            alembic_url = alembic_url.replace("postgresql://", "postgresql+psycopg2://")
+        os.environ.setdefault("ALEMBIC_DATABASE_URL", alembic_url)
+        _run_migrations()
+        yield existing
+        return
+
+    # Modo local: testcontainers.
+    # `pgvector/pgvector:pg16` incluye la extensión `vector` requerida por
+    # la migración base. `postgres:16-alpine` no la tiene.
     from testcontainers.postgres import PostgresContainer
 
-    # `pgvector/pgvector:pg16` trae la extensión `vector` preinstalada que
-    # necesita la migración base 001 (`CREATE EXTENSION IF NOT EXISTS vector`).
-    # `postgres:16-alpine` no la incluye → integration suites fallaban con
-    # "extension vector is not available".
     with PostgresContainer("pgvector/pgvector:pg16") as pg:
         url = pg.get_connection_url().replace("psycopg2", "asyncpg")
         os.environ["DATABASE_URL"] = url
         os.environ["ALEMBIC_DATABASE_URL"] = pg.get_connection_url().replace(
             "psycopg2", "psycopg",
         )
+        _run_migrations()
         yield url
 
 
 @pytest.fixture(scope="session")
 def redis_container() -> Iterator[str]:
-    """Levanta un Redis efímero. Devuelve `redis://host:port/0`."""
+    """Devuelve la URL `redis://host:port/0` de un Redis de tests.
+
+    - Modo CI: si REDIS_URL ya está en el entorno, la reutiliza.
+    - Modo local: levanta un contenedor efímero via testcontainers.
+    """
+    existing = os.environ.get("REDIS_URL")
+    if existing:
+        os.environ.setdefault("CELERY_BROKER_URL", existing)
+        os.environ.setdefault("CELERY_RESULT_BACKEND", existing)
+        from app.core import config as _cfg
+        from app.core import redis as _redis_mod
+
+        _cfg.get_settings.cache_clear()
+        _cfg.settings = _cfg.get_settings()
+        _redis_mod.get_redis.cache_clear()
+        yield existing
+        return
+
     from testcontainers.redis import RedisContainer
 
     with RedisContainer("redis:7-alpine") as r:
@@ -86,8 +142,6 @@ def redis_container() -> Iterator[str]:
         os.environ["CELERY_BROKER_URL"] = url
         os.environ["CELERY_RESULT_BACKEND"] = url
 
-        # Refresca settings y clear de los singletons cacheados — `Settings`
-        # se construye con .env en import time y get_redis() está lru_cache.
         from app.core import config as _cfg
         from app.core import redis as _redis_mod
 

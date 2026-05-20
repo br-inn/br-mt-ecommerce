@@ -299,6 +299,17 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
                     logger.info("scraper.brand.inactive", extra={"brand_id": brand_id})
                     return {"brand_id": brand_id, "status": "inactive", "upserted": 0}
 
+                # ── Brand Extractor mapping (US-SCR-05-02) ──────────────────
+                from app.services.scraper.brand_extractor_service import BrandExtractorService
+
+                svc = BrandExtractorService(session)
+                mapping = await svc.get_mapping(brand.id, "amazon_uae")
+                if mapping is None:
+                    logger.debug(
+                        "scraper.brand.no_extractor",
+                        extra={"brand_id": brand_id, "marketplace": "amazon_uae"},
+                    )
+
                 # ── Rate limiter + circuit breaker ──────────────────────────
                 from urllib.parse import urlparse
 
@@ -309,7 +320,7 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
                 )
                 from app.services.scraper.rate_limiter import get_rate_limiter
 
-                fetcher = get_fetcher("amazon_uae")
+                fetcher = get_fetcher("amazon_uae", brand_id=brand.id, brand_attribute_map=mapping)
                 query = _build_brand_query(brand)
 
                 # Determinar dominio para rate limiter / circuit breaker
@@ -356,6 +367,17 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
                 for candidate in candidates:
                     await repo.upsert_listing(candidate, competitor_brand_id=brand.id)
                     upserted += 1
+
+                # ── Record extractor hit rate per candidate (AC-2) ─────────
+                if mapping is not None:
+                    canonical_fields = {
+                        v["field"]
+                        for v in mapping.values()
+                        if isinstance(v, dict) and "field" in v
+                    }
+                    for candidate in candidates:
+                        hit = bool(canonical_fields & set(candidate.specs.keys()))
+                        await svc.record_hit(brand.id, "amazon_uae", hit=hit)
 
                 await repo.touch_scraped(brand)
                 await session.commit()

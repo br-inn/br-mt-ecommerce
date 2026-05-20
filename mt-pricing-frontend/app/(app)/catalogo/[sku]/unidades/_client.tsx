@@ -34,6 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RbacGuard } from "@/components/auth/rbac-guard";
+import { MtError } from "@/components/mt/states";
 import { productsApi } from "@/lib/api/endpoints/products";
 import { useProduct } from "@/lib/hooks/products/use-product";
 import type { ProductUomConversion } from "@/lib/api/endpoints/products";
@@ -168,7 +169,7 @@ interface Props {
 
 export function UnidadesClient({ sku }: Props) {
   const queryClient = useQueryClient();
-  const { data: product, isLoading: loadingProduct } = useProduct(sku);
+  const { data: product, isLoading: loadingProduct, isError: productError, refetch } = useProduct(sku);
 
   const { data: conversions, isLoading: loadingConv } = useQuery({
     queryKey: ["product-uom-conversions", sku],
@@ -192,6 +193,15 @@ export function UnidadesClient({ sku }: Props) {
         <Skeleton className="h-28 w-full rounded-lg" />
         <Skeleton className="h-48 w-full rounded-lg" />
       </div>
+    );
+  }
+
+  if (productError || !product) {
+    return (
+      <MtError
+        message="No se pudo cargar el producto."
+        onRetry={() => void refetch()}
+      />
     );
   }
 

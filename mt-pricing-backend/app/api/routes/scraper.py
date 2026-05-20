@@ -26,7 +26,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
+from app.db.models.comparator import BrandExtractor, CompetitorBrand
 from app.db.models.user import User
+from app.schemas.brand_extractor import ExtractorStatRow
 from app.schemas.scraper import ScrapeJobStatus, ScrapeRunRequest, ScrapeRunResponse
 
 logger = logging.getLogger(__name__)
@@ -174,3 +176,45 @@ async def get_scraper_job(
     _user: Annotated[User, Depends(require_permissions("products:read"))],
 ) -> ScrapeJobStatus:
     return _celery_group_status(job_id)
+
+
+@router.get(
+    "/extractor-stats",
+    response_model=list[ExtractorStatRow],
+    summary="Estadísticas de extractores de marcas (US-SCR-05-03)",
+    description=(
+        "Lista todos los extractores generados ordenados por hit_rate ASC "
+        "(primero los de menor cobertura). JOIN con competitor_brands para "
+        "incluir el nombre de la marca."
+    ),
+    operation_id="listExtractorStats",
+)
+async def list_extractor_stats(
+    _user: Annotated[User, Depends(require_permissions("scraper:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[ExtractorStatRow]:
+    stmt = (
+        select(
+            BrandExtractor.brand_id,
+            CompetitorBrand.name.label("brand_name"),
+            BrandExtractor.marketplace,
+            BrandExtractor.hit_rate,
+            BrandExtractor.generated_at,
+            BrandExtractor.attribute_map,
+        )
+        .join(CompetitorBrand, BrandExtractor.brand_id == CompetitorBrand.id)
+        .order_by(BrandExtractor.hit_rate.asc())
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+    return [
+        ExtractorStatRow(
+            brand_id=row.brand_id,
+            brand_name=row.brand_name,
+            marketplace=row.marketplace,
+            hit_rate=float(row.hit_rate),
+            generated_at=row.generated_at,
+            attribute_count=len(row.attribute_map or {}),
+        )
+        for row in rows
+    ]

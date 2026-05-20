@@ -61,7 +61,11 @@ from app.schemas.billing import (
 )
 from app.services import billing as svc
 
-router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
+router = APIRouter(
+    prefix="/api/v1/billing",
+    tags=["billing"],
+    dependencies=[Depends(require_role("admin", "gerente"))],
+)
 
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]

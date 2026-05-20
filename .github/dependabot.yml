@@ -105,6 +105,10 @@ updates:
       docker-backend:
         patterns: ["*"]
     ignore:
+      # python:3.11-slim → 3.14-slim es semver-minor (major=3 no cambia).
+      # Actualización de Python base image es decisión manual, no automática.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 

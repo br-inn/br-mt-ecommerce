@@ -9,6 +9,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import {
   FilterChip,
@@ -134,15 +136,16 @@ export default function ValidacionMatchesPage() {
   const scraping = refresh.isPending || refresh.isPolling;
 
   const [clearing, setClearing] = React.useState(false);
-  async function handleClearAll() {
-    if (!window.confirm("¿Borrar TODOS los candidatos de prueba? Esta acción no se puede deshacer.")) return;
+  const [confirmClearOpen, setConfirmClearOpen] = React.useState(false);
+
+  async function executeClearAll() {
     setClearing(true);
     try {
       const { deleted } = await matchesApi.clearAll();
       await queryClient.invalidateQueries({ queryKey: ["matches"] });
-      window.alert(`${deleted} candidatos eliminados.`);
+      toast.success(`${deleted} candidatos eliminados.`);
     } catch (err) {
-      window.alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`Error al limpiar: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setClearing(false);
     }
@@ -233,14 +236,26 @@ export default function ValidacionMatchesPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <MtButton
-            size="sm"
-            icon={<Trash2 className="size-3" />}
-            onClick={() => void handleClearAll()}
-            disabled={clearing}
-          >
-            {clearing ? "Limpiando…" : "Limpiar pruebas"}
-          </MtButton>
+          <>
+            <MtButton
+              size="sm"
+              icon={<Trash2 className="size-3" />}
+              disabled={clearing}
+              onClick={() => setConfirmClearOpen(true)}
+            >
+              {clearing ? "Limpiando…" : "Limpiar pruebas"}
+            </MtButton>
+            <ConfirmDialog
+              open={confirmClearOpen}
+              onOpenChange={setConfirmClearOpen}
+              title="¿Borrar todos los candidatos de prueba?"
+              description="Esta acción eliminará todos los candidatos de validación actuales. No se puede deshacer."
+              confirmLabel="Borrar todo"
+              destructive
+              onConfirm={executeClearAll}
+              busy={clearing}
+            />
+          </>
           <MtButton
             size="sm"
             icon={<RefreshCcw className={`size-3 ${scraping ? "animate-spin" : ""}`} />}

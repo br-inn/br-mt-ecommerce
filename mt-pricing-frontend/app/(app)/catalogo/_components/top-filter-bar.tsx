@@ -253,6 +253,7 @@ export function TopFilterBar({
             value={searchInput}
             onChange={(e) => onSearchInput(e.target.value || null)}
             placeholder="Buscar SKU o nombre…"
+            aria-label="Buscar productos"
             className="flex-1 bg-transparent outline-none placeholder:text-[color:var(--mt-ink-4)]"
             style={{ color: MT.ink }}
           />

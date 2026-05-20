@@ -1,6 +1,7 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { MtError } from "@/components/mt/states";
 import { useProduct } from "@/lib/hooks/products/use-product";
 import { ProductWizard } from "../../_components/product-wizard";
 
@@ -11,14 +12,19 @@ import { ProductWizard } from "../../_components/product-wizard";
  * el alta, con SKU read-only en step 0 y diff preview en step 4.
  */
 export function EditClient({ sku }: { sku: string }) {
-  const { data: product, isLoading, isError } = useProduct(sku);
+  const { data: product, isLoading, isError, refetch } = useProduct(sku);
 
   if (isLoading || (!product && !isError)) {
     return <Skeleton className="h-96 w-full rounded-lg" />;
   }
 
   if (isError || !product) {
-    return null;
+    return (
+      <MtError
+        message="No se pudo cargar el producto para editar."
+        onRetry={() => void refetch()}
+      />
+    );
   }
 
   return <ProductWizard mode="edit" product={product} />;
