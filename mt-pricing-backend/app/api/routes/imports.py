@@ -189,7 +189,7 @@ async def preview_import(
                     status_code=422,
                     detail={"code": "import_invalid_mapping", "title": "mapping_json debe ser un array"},
                 )
-            custom_mapping = [
+            parsed = [
                 _CMI(
                     excel_col=m["excel_col"],
                     target_field=m["target_field"],
@@ -200,11 +200,8 @@ async def preview_import(
                 for m in raw_mapping
                 if isinstance(m, dict) and "excel_col" in m and "target_field" in m
             ]
-            if not custom_mapping:
-                raise HTTPException(
-                    status_code=422,
-                    detail={"code": "import_invalid_mapping", "title": "mapping_json no contiene items válidos"},
-                )
+            # Si el array está vacío (LLM falló) → caer al flujo sin custom mapping.
+            custom_mapping = parsed if parsed else None
         except HTTPException:
             raise
         except Exception:  # noqa: BLE001

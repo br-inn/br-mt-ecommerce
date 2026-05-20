@@ -52,7 +52,7 @@ export function useApplyImport() {
       return importsApi.apply(vars.runId, opts);
     },
     onSuccess: (run) => {
-      qc.setQueryData(importKeys.status(run.id), run);
+      qc.setQueryData(importKeys.status(run.run_id), run);
     },
   });
 }
