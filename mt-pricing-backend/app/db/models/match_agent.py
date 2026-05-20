@@ -1,4 +1,12 @@
-"""MatchAgentConfig + MatchAgentDecision — agente de validación de matches."""
+"""MatchAgentConfig + MatchAgentDecision — agente de validación de matches.
+
+MatchAgentConfig: fila singleton (id=1) con la configuración editable del
+agente (modo sombra/activo, alpha conformal, gate de labels mínimos).
+
+MatchAgentDecision: serie temporal — un registro por cada veredicto del agente
+(sombra o activo). human_outcome se rellena al validar/descartar para medir la
+precisión de sombra.
+"""
 
 from __future__ import annotations
 
@@ -25,6 +33,10 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
+AGENT_MODES: tuple[str, ...] = ("shadow", "active")
+AGENT_VERDICTS: tuple[str, ...] = ("auto_validate", "auto_discard", "human")
+AGENT_SIGNALS: tuple[str, ...] = ("conformal", "bootstrap")
+
 
 class MatchAgentConfig(Base):
     """Configuración singleton del agente (siempre id=1)."""
@@ -50,9 +62,15 @@ class MatchAgentConfig(Base):
 
     __table_args__ = (
         CheckConstraint("id = 1", name="ck_match_agent_config_singleton"),
-        CheckConstraint("mode IN ('shadow','active')", name="ck_match_agent_config_mode"),
-        CheckConstraint("alpha > 0 AND alpha < 1", name="ck_match_agent_config_alpha"),
-        CheckConstraint("min_labels_gate >= 1", name="ck_match_agent_config_gate"),
+        CheckConstraint(
+            "mode IN ('shadow','active')", name="ck_match_agent_config_mode"
+        ),
+        CheckConstraint(
+            "alpha > 0 AND alpha < 1", name="ck_match_agent_config_alpha"
+        ),
+        CheckConstraint(
+            "min_labels_gate >= 1", name="ck_match_agent_config_gate"
+        ),
     )
 
 
@@ -87,8 +105,13 @@ class MatchAgentDecision(UuidPkMixin, Base):
             "verdict IN ('auto_validate','auto_discard','human')",
             name="ck_match_agent_decisions_verdict",
         ),
-        CheckConstraint("mode IN ('shadow','active')", name="ck_match_agent_decisions_mode"),
-        CheckConstraint("signal IN ('conformal','bootstrap')", name="ck_match_agent_decisions_signal"),
+        CheckConstraint(
+            "mode IN ('shadow','active')", name="ck_match_agent_decisions_mode"
+        ),
+        CheckConstraint(
+            "signal IN ('conformal','bootstrap')",
+            name="ck_match_agent_decisions_signal",
+        ),
         CheckConstraint(
             "human_outcome IS NULL OR human_outcome IN ('validated','discarded')",
             name="ck_match_agent_decisions_outcome",
