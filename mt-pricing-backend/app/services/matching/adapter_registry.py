@@ -21,7 +21,13 @@ from app.services.feature_flags.flag_service import (
 from app.services.feature_flags.kill_switch import is_kill_switch_engaged
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from app.services.matching.ports import CandidateRaw, FetcherPort, Query
+
+    HtmlFetcher = Callable[[str], Awaitable[str]]
 
 
 _LIVE_ENV = "MT_LIVE_NETWORK"
@@ -161,8 +167,45 @@ def get_fetcher(
     raise ValueError(f"Unknown matching channel: {channel!r}")
 
 
+async def resolve_fetcher(
+    channel: str,
+    session: "AsyncSession",
+    *,
+    html_fetcher: "HtmlFetcher | None" = None,
+) -> "FetcherPort":
+    """Resuelve un canal a un fetcher.
+
+    Canales hardcodeados (``SUPPORTED_CHANNELS``) delegan en ``get_fetcher()``.
+    Cualquier otro canal se interpreta como el ``slug`` de un ``ScraperSource``:
+    si existe y está ``active``/``testing`` con receta ``is_live``, devuelve un
+    ``GenericConfigurableFetcher``.
+
+    Raises:
+        ValueError: canal desconocido o source sin receta live.
+    """
+    from app.services.matching.ports import SUPPORTED_CHANNELS
+
+    if channel in SUPPORTED_CHANNELS:
+        return get_fetcher(channel)
+
+    from app.repositories.scraper_sources import ScraperSourceRepository
+    from app.services.matching.adapters.generic_configurable import (
+        GenericConfigurableFetcher,
+    )
+
+    repo = ScraperSourceRepository(session)
+    source = await repo.get_by_slug(channel)
+    if source is None or source.status not in ("active", "testing"):
+        raise ValueError(f"Unknown matching channel: {channel!r}")
+    live = await repo.get_live_recipe(source.id)
+    if live is None:
+        raise ValueError(f"Source {channel!r} has no live recipe")
+    return GenericConfigurableFetcher(source, live.recipe, html_fetcher=html_fetcher)
+
+
 __all__ = [
     "FLAG_LIVE_SCRAPER_AMAZON_UAE",
     "FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE",
     "get_fetcher",
+    "resolve_fetcher",
 ]
