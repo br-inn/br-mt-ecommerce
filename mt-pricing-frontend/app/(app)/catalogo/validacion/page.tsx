@@ -234,7 +234,7 @@ export default function ValidacionMatchesPage() {
       >
         <div className="flex items-center gap-2">
           <span className="mt-mono text-[10.5px] uppercase tracking-[1px]" style={{ color: MT.ink4 }}>
-            Validación
+            Validación humana asistida
           </span>
           <span style={{ color: MT.border }}>›</span>
           <span className="mt-mono text-[12px] font-semibold" style={{ color: MT.ink }}>

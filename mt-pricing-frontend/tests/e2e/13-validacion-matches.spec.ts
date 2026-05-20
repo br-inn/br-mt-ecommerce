@@ -58,8 +58,8 @@ test.describe("Validación matches @critico", () => {
       timeout: 15_000,
     });
 
-    // Hay 2 botones "Validar match" (uno por fila pending) — primero
-    const validateBtns = page.getByRole("button", { name: /Validar match/i });
+    // Hay 2 botones "Validar" (uno por fila pending) — primero
+    const validateBtns = page.getByRole("button", { name: /^Validar$/i });
     await expect(validateBtns.first()).toBeVisible();
     await validateBtns.first().click();
     // Tras la mutación el backend mock devuelve status=validated y la fila
