@@ -109,12 +109,36 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
                     )
                     return {"sku": sku, "marketplace": marketplace, "status": "circuit_open", "alert": False}
 
+                # ── Brand Extractor mapping (US-SCR-05-02 / AC-4) ─────────
+                from app.db.models.comparator import CompetitorBrand
+                from app.services.scraper.brand_extractor_service import BrandExtractorService
+
+                brand_svc = BrandExtractorService(session)
+                brand_uuid = None
+                brand_mapping: dict = {}
+                brand_row = await session.execute(
+                    select(CompetitorBrand).where(CompetitorBrand.name == sku)
+                )
+                brand_obj = brand_row.scalar_one_or_none()
+                if brand_obj:
+                    brand_uuid = brand_obj.id
+                    brand_mapping = await brand_svc.get_mapping(brand_obj.id, marketplace) or {}
+                    if not brand_mapping:
+                        logger.debug(
+                            "price_monitor.no_extractor",
+                            extra={"sku": sku, "marketplace": marketplace},
+                        )
+
                 # ── Rate limiter ───────────────────────────────────────────
                 rate_limiter = get_rate_limiter()
                 await rate_limiter.acquire(marketplace)
 
                 # ── Fetch precio via adapter ───────────────────────────────
-                fetcher = get_fetcher(marketplace)
+                fetcher = get_fetcher(
+                    marketplace,
+                    brand_id=brand_uuid,
+                    brand_attribute_map=brand_mapping or None,
+                )
                 query = Query(
                     text=sku,
                     source=marketplace,
@@ -143,6 +167,24 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
 
                 # Usar el primer candidato (mayor score) para el precio
                 top = candidates[0]
+
+                # ── Enriquecer normalized_jsonb con specs del mapping (AC-4) ─
+                if brand_uuid and hasattr(top, "external_id") and top.external_id:
+                    from app.db.models.comparator import CompetitorListing
+
+                    listing_row = await session.execute(
+                        select(CompetitorListing).where(
+                            CompetitorListing.source == marketplace,
+                            CompetitorListing.source_id == top.external_id,
+                        )
+                    )
+                    listing_obj = listing_row.scalar_one_or_none()
+                    if listing_obj and top.specs:
+                        existing_nj = dict(listing_obj.normalized_jsonb or {})
+                        existing_nj["specs"] = {**(existing_nj.get("specs") or {}), **top.specs}
+                        listing_obj.normalized_jsonb = existing_nj
+                        await session.flush()
+
                 raw = top if isinstance(top, dict) else vars(top)
                 price_raw = raw.get("price") or raw.get("price_aed") or raw.get("price_usd")
                 if price_raw is None:

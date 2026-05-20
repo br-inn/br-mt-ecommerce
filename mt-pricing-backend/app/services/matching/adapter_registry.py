@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from app.services.feature_flags.flag_service import (
     FLAG_LIVE_NETWORK_NOON_UAE,
@@ -84,7 +85,10 @@ class _BlockFallbackWrapper:
             return await self._fallback.fetch(query, sku=sku)
 
 
-def _get_amazon_uae_fetcher() -> "FetcherPort":
+def _get_amazon_uae_fetcher(
+    brand_id: UUID | None = None,
+    brand_attribute_map: dict | None = None,
+) -> "FetcherPort":
     """Prioridad: curl_cffi → patchright → vacío (nunca stubs)."""
     import logging
     log = logging.getLogger(__name__)
@@ -110,7 +114,10 @@ def _get_amazon_uae_fetcher() -> "FetcherPort":
         else:
             fallback = empty
 
-        return _BlockFallbackWrapper(CurlCffiAmazonUaeFetcher(), fallback)
+        return _BlockFallbackWrapper(
+            CurlCffiAmazonUaeFetcher(brand_id=brand_id, brand_attribute_map=brand_attribute_map),
+            fallback,
+        )
 
     if patchright_active:
         try:
@@ -123,17 +130,24 @@ def _get_amazon_uae_fetcher() -> "FetcherPort":
     return empty
 
 
-def get_fetcher(channel: str) -> "FetcherPort":
+def get_fetcher(
+    channel: str,
+    *,
+    brand_id: UUID | None = None,
+    brand_attribute_map: dict | None = None,
+) -> "FetcherPort":
     """Devuelve el fetcher adecuado para un canal.
 
     Args:
         channel: ``amazon_uae`` o ``noon_uae``.
+        brand_id: UUID de la marca para enriquecimiento de specs (Amazon UAE only).
+        brand_attribute_map: Mapping JSON generado por BrandExtractorService (Amazon UAE only).
 
     Raises:
         ValueError: canal desconocido.
     """
     if channel == "amazon_uae":
-        return _get_amazon_uae_fetcher()
+        return _get_amazon_uae_fetcher(brand_id=brand_id, brand_attribute_map=brand_attribute_map)
 
     if channel == "noon_uae":
         if _live_for(FLAG_LIVE_NETWORK_NOON_UAE):
