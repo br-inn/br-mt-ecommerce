@@ -25,6 +25,7 @@ import { AgentMetricsPanel } from "./_components/agent-metrics-panel";
 import { MtEmpty, MtError } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import {
+  useBulkValidateMatches,
   useDiscardMatch,
   useMatches,
   useRefreshMatches,
@@ -137,6 +138,7 @@ export default function ValidacionMatchesPage() {
   const validate = useValidateMatch();
   const discard = useDiscardMatch();
   const revert = useRevertMatch();
+  const bulkValidate = useBulkValidateMatches();
   const mutating = validate.isPending || discard.isPending;
 
   const [showAgentOnly, setShowAgentOnly] = React.useState(false);
@@ -393,8 +395,8 @@ export default function ValidacionMatchesPage() {
           {/* Bulk accept bar — agent recommendations */}
           <BulkAcceptBar
             items={items}
-            busy={mutating}
-            onAcceptAll={(ids) => ids.forEach((id) => validate.mutate(id))}
+            busy={mutating || bulkValidate.isPending}
+            onAcceptAll={(ids) => bulkValidate.mutate(ids)}
           />
 
           <div className="flex flex-col gap-2 p-3">

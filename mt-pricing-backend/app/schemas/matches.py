@@ -126,6 +126,23 @@ class MatchDiscardRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=512)
 
 
+class MatchBulkValidateRequest(BaseModel):
+    """Body para POST /matches/bulk-validate — validar varios candidatos."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ids: list[UUID] = Field(min_length=1, max_length=200)
+
+
+class MatchBulkValidateResponse(BaseModel):
+    """Resultado de la validación en bloque."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    validated: int = Field(ge=0)
+    skipped: list[UUID] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Three-way summary — US-ERP-03-04 / matching pricing
 # ---------------------------------------------------------------------------

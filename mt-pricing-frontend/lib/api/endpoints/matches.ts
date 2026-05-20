@@ -80,6 +80,11 @@ export interface MatchFilters {
   include_total?: boolean;
 }
 
+export interface MatchBulkValidateResponse {
+  validated: number;
+  skipped: string[];
+}
+
 // --- Agente de validación ---
 export type AgentMode = "shadow" | "active";
 export type AgentVerdict = "auto_validate" | "auto_discard" | "human";
@@ -147,6 +152,11 @@ export const matchesApi = {
     }),
   clearAll: (): Promise<{ deleted: number }> =>
     authedFetch<{ deleted: number }>("/api/v1/matches", { method: "DELETE" }),
+  bulkValidate: (ids: string[]): Promise<MatchBulkValidateResponse> =>
+    authedFetch<MatchBulkValidateResponse>("/api/v1/matches/bulk-validate", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
   agentConfig: (): Promise<MatchAgentConfig> =>
     authedFetch<MatchAgentConfig>("/api/v1/matches/agent/config"),
   updateAgentConfig: (body: MatchAgentConfigUpdate): Promise<MatchAgentConfig> =>
