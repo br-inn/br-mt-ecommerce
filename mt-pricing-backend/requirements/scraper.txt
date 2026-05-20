@@ -2,7 +2,7 @@
 # Installed inside Dockerfile.scraper-worker on top of the Playwright base image.
 # Pin minor versions; patch updates are safe via Dependabot.
 patchright>=0.4.0
-camoufox>=0.4.0
+camoufox>=0.4.11
 celery[redis]>=5.3
 tenacity>=8.2
 selectolax>=0.3.17
