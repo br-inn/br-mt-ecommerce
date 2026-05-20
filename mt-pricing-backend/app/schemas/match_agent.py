@@ -1,4 +1,3 @@
-# app/schemas/match_agent.py
 """Pydantic schemas — MatchValidationAgent (config, métricas, decisiones)."""
 
 from __future__ import annotations

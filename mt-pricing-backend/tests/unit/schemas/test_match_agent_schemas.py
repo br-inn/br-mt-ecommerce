@@ -1,4 +1,3 @@
-# tests/unit/schemas/test_match_agent_schemas.py
 """Tests de schemas del agente de validación."""
 from __future__ import annotations
 
