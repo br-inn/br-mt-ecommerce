@@ -316,8 +316,6 @@ async def apply_ficha_series(
             skus=all_processed_skus,
         )
 
-    await session.commit()
-
     return FichaSeriesApplyResponse(
         series=body.series,
         results=results,
