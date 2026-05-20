@@ -136,7 +136,7 @@ async def list_accounts(
 async def create_account(
     body: GlAccountCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["ti", "gerente"]))],
+    current_user: Annotated[User, Depends(require_role("ti", "gerente"))],
 ) -> GlAccountOut:
     """POST /finance/accounts — crear cuenta contable."""
     existing = await db.execute(
@@ -156,7 +156,7 @@ async def update_account(
     account_id: UUID,
     body: GlAccountUpdate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["ti", "gerente"]))],
+    current_user: Annotated[User, Depends(require_role("ti", "gerente"))],
 ) -> GlAccountOut:
     """PATCH /finance/accounts/{id} — actualizar cuenta."""
     result = await db.execute(select(GlAccount).where(GlAccount.id == account_id))
@@ -195,7 +195,7 @@ async def list_posting_periods(
 async def create_posting_period(
     body: PostingPeriodCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["ti", "gerente"]))],
+    current_user: Annotated[User, Depends(require_role("ti", "gerente"))],
 ) -> PostingPeriodOut:
     period = PostingPeriod(**body.model_dump())
     db.add(period)
@@ -208,7 +208,7 @@ async def create_posting_period(
 async def close_posting_period(
     period_id: UUID,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> PostingPeriodOut:
     result = await db.execute(select(PostingPeriod).where(PostingPeriod.id == period_id))
     period = result.scalar_one_or_none()
@@ -238,7 +238,7 @@ async def list_cost_centers(db: DbSession, current_user: CurrentUser) -> list[Co
 async def create_cost_center(
     body: CostCenterCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["ti", "gerente"]))],
+    current_user: Annotated[User, Depends(require_role("ti", "gerente"))],
 ) -> CostCenterOut:
     cc = CostCenter(**body.model_dump())
     db.add(cc)
@@ -257,7 +257,7 @@ async def list_profit_centers(db: DbSession, current_user: CurrentUser) -> list[
 async def create_profit_center(
     body: ProfitCenterCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["ti", "gerente"]))],
+    current_user: Annotated[User, Depends(require_role("ti", "gerente"))],
 ) -> ProfitCenterOut:
     pc = ProfitCenter(**body.model_dump())
     db.add(pc)
@@ -274,7 +274,7 @@ async def create_profit_center(
 async def create_financial_entry(
     body: FinancialEntryCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> FinancialEntryOut:
     """POST /finance/entries — crear asiento manual (requiere rol gerente).
 
@@ -341,7 +341,7 @@ async def list_financial_entries(
 async def reverse_financial_entry(
     entry_id: UUID,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> FinancialEntryOut:
     """POST /finance/entries/{id}/reverse — crear asiento de reversión."""
     result = await db.execute(select(FinancialEntry).where(FinancialEntry.id == entry_id))
@@ -414,7 +414,7 @@ async def review_financial_entry(
 async def approve_financial_entry(
     entry_id: UUID,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> EntryReviewApproveOut:
     """POST /finance/entries/{id}/approve — aprobar (approver != preparer, != reviewer)."""
     result = await db.execute(select(FinancialEntry).where(FinancialEntry.id == entry_id))
@@ -541,7 +541,7 @@ async def create_payment_run(
 async def approve_payment_run(
     run_id: UUID,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> PaymentRunOut:
     result = await db.execute(select(PaymentRun).where(PaymentRun.id == run_id))
     run = result.scalar_one_or_none()
@@ -560,7 +560,7 @@ async def approve_payment_run(
 async def execute_payment_run(
     run_id: UUID,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> PaymentRunOut:
     """POST /finance/payment-runs/{id}/execute — ejecutar: marca items como paid + crea financial_entries."""
     result = await db.execute(
@@ -647,7 +647,7 @@ async def list_standard_costs(
 async def create_standard_cost(
     body: StandardCostCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["ti", "gerente"]))],
+    current_user: Annotated[User, Depends(require_role("ti", "gerente"))],
 ) -> StandardCostOut:
     sc = StandardCost(**body.model_dump(), created_by=current_user.id)
     db.add(sc)
@@ -842,7 +842,7 @@ async def start_period_close(
     fiscal_year: int,
     period_num: int,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> PeriodCloseChecklistOut:
     """POST /finance/period-close/{fy}/{period} — iniciar cierre, crear checklist."""
     existing = await db.execute(
@@ -912,7 +912,7 @@ async def update_checklist_item(
 async def close_period_checklist(
     checklist_id: UUID,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> PeriodCloseChecklistOut:
     """POST /finance/period-close/{id}/close — cerrar período (todos ítems OK + gerente)."""
     result = await db.execute(
@@ -963,7 +963,7 @@ async def close_period_checklist(
 async def calculate_cit_provision(
     fiscal_year: int,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> CitProvisionResult:
     """POST /finance/cit-provision/{fy} — calcular CIT UAE 9% sobre utilidades > AED 375,000."""
     # Calcular utilidad neta desde financial_entries
@@ -1023,7 +1023,7 @@ async def run_fx_revaluation(
     fiscal_year: int,
     period: int,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["gerente"]))],
+    current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> FxRevalResult:
     """POST /finance/fx-revaluation/{fy}/{period} — revaluar saldos en moneda extranjera."""
     # Obtener cuentas con currency != AED
@@ -1240,7 +1240,7 @@ async def list_budgets(
 async def create_budget(
     body: BudgetCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(require_role(["ti", "gerente"]))],
+    current_user: Annotated[User, Depends(require_role("ti", "gerente"))],
 ) -> BudgetOut:
     budget = Budget(**body.model_dump())
     db.add(budget)
