@@ -16,7 +16,7 @@ from app.api.deps import get_db_session, require_permissions
 from app.db.models.comparator import BrandExtractor, ExtractorAlert
 from app.db.models.user import User
 from app.repositories.competitor_brands import CompetitorBrandRepository
-from app.schemas.brand_extractor import BrandExtractorRead, ExtractorAlertResolve, ExtractorCoverageStats
+from app.schemas.brand_extractor import BrandExtractorRead, ExtractorCoverageStats
 from app.schemas.competitor_brands import (
     BrandScrapeRunRequest,
     BrandScrapeRunResponse,
@@ -234,8 +234,7 @@ async def get_extractor_coverage_stats(
 async def resolve_extractor_alert(
     brand_id: UUID,
     alert_id: UUID,
-    body: ExtractorAlertResolve,
-    _user: Annotated[User, Depends(require_permissions("scraper:write"))],
+    user: Annotated[User, Depends(require_permissions("scraper:write"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> dict:
     alert_result = await session.execute(
@@ -250,7 +249,7 @@ async def resolve_extractor_alert(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active alert not found")
 
     alert.resolved_at = datetime.now(timezone.utc)
-    alert.resolved_by = body.resolved_by
+    alert.resolved_by = user.id
     await session.commit()
     return {"alert_id": str(alert_id), "resolved": True}
 

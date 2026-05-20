@@ -40,12 +40,6 @@ class ExtractorCoverageStats(BaseModel):
     marketplace: str
     hit_rate_current: float
     hit_rate_baseline: float  # asumida 0.80 si no hay alerta previa
-    delta_pp: float           # (baseline - current) * 100, negativo = degradación
+    delta_pp: float           # (baseline - current) * 100, positivo = degradación
     alert_active: bool
     alert_id: UUID | None = None
-
-
-class ExtractorAlertResolve(BaseModel):
-    """Body de PATCH /competitor-brands/{id}/extractor/alerts/{alert_id}/resolve."""
-
-    resolved_by: UUID | None = None

@@ -330,13 +330,13 @@ export function ExtractorPanel({
     try {
       const resp = await fetch(
         `/api/v1/competitor-brands/${encodeURIComponent(brandId)}/extractor/alerts/${encodeURIComponent(coverage.alert_id)}/resolve`,
-        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }
+        { method: "PATCH" }
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       await qc.invalidateQueries({ queryKey: ["extractor-coverage", brandId, marketplace] });
       toast.success(t("resolvedSuccess"));
     } catch {
-      toast.error(t("resolving"));
+      toast.error(t("resolveError"));
     } finally {
       setResolving(false);
     }
@@ -423,7 +423,7 @@ export function ExtractorPanel({
 
         {/* Attribute count */}
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-muted-foreground">Atributos</span>
+          <span className="text-muted-foreground">{t("attributes")}</span>
           <span className="font-medium">
             {t("attributeCount", { count: data.attribute_count })}
           </span>

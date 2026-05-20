@@ -544,6 +544,7 @@ __all__ = [
     "CompetitorBrand",
     "CompetitorFetchError",
     "CompetitorListing",
+    "ExtractorAlert",
     "ManufacturerWhitelist",
     "MatchDecision",
     "PriceCalibrationRange",

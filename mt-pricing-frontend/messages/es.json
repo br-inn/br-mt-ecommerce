@@ -1262,6 +1262,8 @@
       "markResolved": "Marcar como resuelto",
       "resolving": "Resolviendo...",
       "resolvedSuccess": "Alerta marcada como resuelta",
+      "resolveError": "Error al marcar la alerta como resuelta",
+      "attributes": "Atributos",
       "gaugeTooltip": "Porcentaje de candidatos en los que el extractor encontró al menos 1 atributo canónico",
       "hitRateGauge": "Tasa de cobertura"
     },

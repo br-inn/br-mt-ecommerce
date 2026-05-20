@@ -1262,6 +1262,8 @@
       "markResolved": "Mark as resolved",
       "resolving": "Resolving...",
       "resolvedSuccess": "Alert marked as resolved",
+      "resolveError": "Error marking the alert as resolved",
+      "attributes": "Attributes",
       "gaugeTooltip": "Percentage of candidates where the extractor found at least 1 canonical attribute",
       "hitRateGauge": "Coverage rate"
     },

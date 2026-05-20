@@ -331,7 +331,7 @@ async def _evaluate_extractor_alerts() -> int:
     from decimal import Decimal
     from datetime import datetime, timezone
 
-    from sqlalchemy import and_, select
+    from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
 
@@ -356,19 +356,18 @@ async def _evaluate_extractor_alerts() -> int:
             result = await session.execute(select(BrandExtractor))
             extractors = result.scalars().all()
 
+            # Pre-cargar todas las alertas activas en un solo query (evita N+1)
+            alerts_result = await session.execute(
+                select(ExtractorAlert).where(ExtractorAlert.resolved_at.is_(None))
+            )
+            alerts_by_key: dict[tuple, ExtractorAlert] = {
+                (a.brand_id, a.marketplace): a
+                for a in alerts_result.scalars().all()
+            }
+
             for ext in extractors:
                 current_rate = ext.hit_rate
-
-                alert_result = await session.execute(
-                    select(ExtractorAlert).where(
-                        and_(
-                            ExtractorAlert.brand_id == ext.brand_id,
-                            ExtractorAlert.marketplace == ext.marketplace,
-                            ExtractorAlert.resolved_at.is_(None),
-                        )
-                    )
-                )
-                existing_alert = alert_result.scalar_one_or_none()
+                existing_alert = alerts_by_key.get((ext.brand_id, ext.marketplace))
 
                 if current_rate < _MIN_RATE:
                     if existing_alert is None:
@@ -457,12 +456,19 @@ def bootstrap_price_monitoring_task() -> dict:
     )
 
     # ── Evaluar degradación de hit_rate en extractores (US-SCR-05-04 / AC-2) ─
-    alerts_modified = asyncio.run(_evaluate_extractor_alerts())
-    if alerts_modified:
-        logger.info(
-            "price_monitor.extractor_alerts_evaluated",
-            extra={"alerts_modified": alerts_modified},
+    try:
+        alerts_modified = asyncio.run(_evaluate_extractor_alerts())
+        if alerts_modified:
+            logger.info(
+                "price_monitor.extractor_alerts_evaluated",
+                extra={"alerts_modified": alerts_modified},
+            )
+    except Exception as exc:
+        logger.warning(
+            "price_monitor.extractor_alerts_failed",
+            extra={"error": str(exc)[:200]},
         )
+        alerts_modified = 0
 
     return {"total": len(brand_names), "dispatched": dispatched, "alerts_modified": alerts_modified}
 
