@@ -3,7 +3,7 @@
 **Epic**: EP-SCR-05 — Brand Extractor  
 **Sprint**: S18  
 **Story Points**: 3 SP  
-**Estado**: review  
+**Estado**: done  
 **Fecha**: 2026-05-20
 
 ---

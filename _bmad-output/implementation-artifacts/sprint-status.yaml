@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-20T20:00:00.000Z"  # S18: US-SCR-05-03 done
+last_updated: "2026-05-20T21:00:00.000Z"  # S18: US-SCR-05-04 done — EP-SCR-05 cerrado — todos epics ERP/SCR cerrados
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
@@ -148,14 +148,14 @@ development_status:
   epic-EP-SCR-01-retrospective: optional
 
   # EP-SCR-02 — Revisión y Validación UI (PARCIAL)
-  epic-EP-SCR-02: in-progress    # UI Pool + Validación — FR-08/09 done, FR-15 pendiente
+  epic-EP-SCR-02: done           # UI Pool + Validación — CERRADA S18 (stories done)
 
   US-SCR-02-01: done            # Fix empty state /comparator/pool (skeleton infinito FR-15) — 3 SP ✅ S17 audit
 
   epic-EP-SCR-02-retrospective: optional
 
   # EP-SCR-03 — Gestión Marcas Competidoras con Scraping Resiliente (PARCIAL)
-  epic-EP-SCR-03: in-progress    # Marcas competidoras + resiliencia — FR-10/11/12/13 done, 10 FRs pendientes
+  epic-EP-SCR-03: done           # Marcas competidoras + resiliencia — CERRADA S18 (5/5 stories done)
 
   US-SCR-03-01: done            # i18n ES/EN/AR + RBAC roles + nav lateral (FR-16/17/18) — 5 SP ✅ S17 fix: scraper:read/write permissions
   US-SCR-03-02: done            # Test suite ≥80% cobertura (FR-14) — 5 SP ✅ S17 fix: test_circuit_breaker.py (23 tests) + test_curl_cffi_amazon_uae.py (22 tests)
@@ -197,7 +197,7 @@ development_status:
   epic-EP-ERP-01-retrospective: optional
 
 # ─── EP-ERP-02 — Inventario v2: Movement Types, Trazabilidad, Almacenes ───────
-  epic-EP-ERP-02: in-progress    # Inventario v2 — 55 SP total (S13-S16)
+  epic-EP-ERP-02: done           # Inventario v2 — CERRADA S18 (8/8 stories done, 55 SP)
 
   US-ERP-02-01: done             # Movement Types catalog + stock_movements + accounting doc (INV-01+02+03) — 8 SP ✅ S17 fix: mig 144 accounting_document_id + reason_code + SCRAP seed
   US-ERP-02-02: done             # Stock types diferenciados + inventory_positions 5D (INV-05+12) — 8 SP ✅ S17 fix: mig 145 VIEW inventory_positions_5d 5 columnas pivot
@@ -235,7 +235,7 @@ development_status:
   epic-EP-ERP-04-retrospective: optional
 
 # ─── EP-ERP-05 — Billing & Facturación: Invoice Types, Dunning, e-Invoicing ──
-  epic-EP-ERP-05: in-progress    # Billing & Facturación — 42 SP total (S14-S16)
+  epic-EP-ERP-05: done           # Billing & Facturación — CERRADA S18 (6/6 stories done, 42 SP)
 
   US-ERP-05-01: done             # Billing types + doc chain + precio copiado del SO (BIL-01+02+03+04) — 5 SP ✅ S17 fix: N+1 fix create_invoice_from_delivery (IN query) + early payment discount
   US-ERP-05-02: done             # Asientos FI automáticos + desglose revenue + link acctg (BIL-05+06+07) — 8 SP ✅ S17 code-review: FI por línea + accounting_document_id ✓
@@ -247,7 +247,7 @@ development_status:
   epic-EP-ERP-05-retrospective: optional
 
 # ─── EP-ERP-06 — Finanzas: Universal Journal, CoA, Profit Centers, Period Close
-  epic-EP-ERP-06: in-progress    # Finanzas — 60 SP total (S13-S16)
+  epic-EP-ERP-06: done           # Finanzas — CERRADA S18 (9/9 stories done, 60 SP)
 
   US-ERP-06-01: done             # Chart of Accounts (200 cuentas) + Posting Periods control (FIN-02+03) — 5 SP ✅ S17 fix: mig 149 ~150 GL accounts adicionales 1101-6230 (200+ total)
   US-ERP-06-02: done             # Cost Centers hierarchy + Profit Centers básicos (FIN-09+10) — 5 SP ✅ S17 audit
@@ -262,7 +262,7 @@ development_status:
   epic-EP-ERP-06-retrospective: optional
 
 # ─── EP-SCR — Scraper, Matching & Comparador de Precios (S14) ────────────────
-  epic-EP-SCR: in-progress    # Scraper infrastructure + price monitoring — S13-S16
+  epic-EP-SCR: done           # Scraper infrastructure + price monitoring — CERRADA S18 (todas stories done)
 
   US-SCR-03-03: done           # Rate limiter Redis token bucket + UA rotation — 5 SP ✅ S17 fix
   US-SCR-03-04: done           # Circuit breaker per-domain + proxy pool distribuido Redis — 8 SP ✅ S17 fix
@@ -288,7 +288,7 @@ development_status:
 # JSON mapping de atributos UNA VEZ por marca en Bootstrap; reutilizado sin LLM
 # en cada monitoring scrape → mejor cobertura de specs sin costo por scrape.
 
-  epic-EP-SCR-05: in-progress    # Brand Extractor — S17+
+  epic-EP-SCR-05: done           # Brand Extractor — S17-S18 — CERRADA S18 (4/4 stories done)
 
   US-SCR-05-01: done             # JSON attribute mapping generado por Claude × marca × marketplace — 8 SP ✅ S17
                                   # mig 150 scraper_brand_extractors + BrandExtractorService
@@ -296,4 +296,4 @@ development_status:
                                   # + apply_mapping en curl_cffi_amazon_uae + POC script
   US-SCR-05-02: done             # Integración del Brand Extractor en scrape_brand_task + price_monitor_task — 5 SP — S18 ✅
   US-SCR-05-03: done             # UI Admin para gestión de Brand Extractors (badge semáforo + pestaña detalle + regenerar) — 5 SP — S18 ✅
-  US-SCR-05-04: review           # Métricas de cobertura + alerta degradación >20pp + tabla scraper_extractor_alerts — 3 SP — S18 ✅
+  US-SCR-05-04: done             # Métricas de cobertura + alerta degradación >20pp + tabla scraper_extractor_alerts — 3 SP — S18 ✅ code-review: N+1 fix + try/except + resolved_by user.id
