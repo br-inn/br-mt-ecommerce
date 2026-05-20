@@ -196,7 +196,7 @@ function ListSection({
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="filtrar…"
-                aria-label="Filtrar opciones"
+                aria-label={`Filtrar ${title}`}
                 className="w-full rounded-sm border bg-transparent py-1 pl-6 pr-2 text-[11.5px] outline-none focus-visible:ring-1 focus-visible:ring-mt-brand"
                 style={{ borderColor: MT.border, color: MT.ink }}
               />
