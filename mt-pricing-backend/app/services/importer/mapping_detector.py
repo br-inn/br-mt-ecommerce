@@ -134,6 +134,7 @@ JSONB sub-fields (dot notation):
   dimensions.high_mm, dimensions.wide_mm, dimensions.deep_mm
   packaging.qty_per_box, packaging.box_high_mm, packaging.box_wide_mm,
   packaging.box_deep_mm, packaging.moq_inner_box, packaging.x_pallet
+  specs.name_en, specs.name_es, specs.name_fr, specs.name_de, specs.name_it, specs.name_pt
   specs.<any_key>   ← use for EANs, names, flags, percentages, etc.
 
 Special:
