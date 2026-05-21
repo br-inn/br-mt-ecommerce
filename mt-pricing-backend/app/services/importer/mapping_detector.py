@@ -213,5 +213,14 @@ def suggest_mapping(
             if isinstance(item, dict) and "excel_col" in item
         ]
     except Exception:  # noqa: BLE001
-        logger.exception("suggest_mapping LLM call failed — returning empty mapping")
-        return []
+        logger.exception("suggest_mapping LLM call failed — returning _skip fallback")
+        return [
+            ColumnMappingItem(
+                excel_col=h,
+                target_field="_skip",
+                transform="text",
+                confidence=0.0,
+                notes="LLM no disponible — mapeo manual requerido",
+            )
+            for h in headers
+        ]
