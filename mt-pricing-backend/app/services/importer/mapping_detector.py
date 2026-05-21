@@ -161,22 +161,27 @@ def suggest_mapping(
     """
     import anthropic
 
-    samples_text = "\n".join(
-        f"  Row {i + 1}: " + ", ".join(
-            f"{h}={repr(row[j]) if j < len(row) else None}"
-            for j, h in enumerate(headers[:10])  # primeras 10 cols para no saturar
-        )
-        for i, row in enumerate(sample_rows[:3])
-    )
+    # Tabla columna → valores de muestra (todas las columnas, no truncadas).
+    col_samples: list[str] = []
+    for j, h in enumerate(headers):
+        vals = [
+            repr(row[j]) if j < len(row) else "None"
+            for row in sample_rows[:3]
+        ]
+        col_samples.append(f"  {h!r}: {', '.join(vals)}")
+    samples_text = "\n".join(col_samples)
 
     prompt = (
         f"You are a product data mapping assistant for an industrial PVF "
         f"(pipes, valves, fittings) manufacturer PIM system.\n\n"
-        f"Given these Excel column headers and sample data, propose the best "
-        f"mapping from each Excel column to a product database field.\n\n"
+        f"Given these Excel column headers and their sample values, propose the "
+        f"best mapping from each Excel column to a product database field.\n\n"
+        f"Use the actual sample values to infer the correct field and transform. "
+        f"For example: a column with values like 'DN25', 'DN40' maps to 'dn' with "
+        f"transform 'text'; a column with values in cm (e.g. 12.5) that represents "
+        f"a physical dimension maps to dimensions.* with transform 'cm_to_mm'.\n\n"
         f"{_AVAILABLE_FIELDS_DOC}\n\n"
-        f"Excel headers: {headers}\n\n"
-        f"Sample data (first 3 rows):\n{samples_text}\n\n"
+        f"Column headers with sample values (up to 3 rows):\n{samples_text}\n\n"
         f"Return a JSON array — no markdown, no explanation, just JSON. "
         f"Each element:\n"
         f'  {{"excel_col": "<exact header>", "target_field": "<field>", '
