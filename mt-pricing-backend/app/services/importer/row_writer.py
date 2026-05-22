@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from app.db.models.product import Product
 
 from app.db.models.product import ProductTranslation
 from app.db.models.vocabularies import Certification, ProductCertification
@@ -157,3 +161,52 @@ class CertificationWriter:
                 .on_conflict_do_nothing()
             )
             await session.execute(stmt)
+
+
+class RowWriter:
+    """Pipeline that composes the 4 writers for a single ParsedProduct."""
+
+    def __init__(self) -> None:
+        self._scalar_writer = ScalarWriter()
+        self._jsonb_writer = JsonbWriter()
+        self._translation_writer = TranslationWriter()
+        self._cert_writer = CertificationWriter()
+
+    async def apply(
+        self,
+        session: AsyncSession,
+        parsed: Any,  # ParsedProduct — avoid circular import
+        existing: Any | None,
+        locked_fields: set[str],
+        actor_id: UUID | None,
+    ) -> WriteResult:
+        if parsed.is_error_row:
+            return WriteResult(bucket="error", errors=parsed.errors)
+
+        scalar_result = await self._scalar_writer.write(
+            session=session,
+            sku=parsed.sku,
+            existing=existing,
+            scalars=parsed.scalars,
+            locked_fields=locked_fields,
+        )
+        await self._jsonb_writer.write(
+            session=session,
+            existing=existing,
+            jsonb=parsed.jsonb,
+            locked_fields=locked_fields,
+        )
+        if parsed.has_translations:
+            await self._translation_writer.write(
+                session=session,
+                sku=parsed.sku,
+                translations=parsed.translations,
+                locked_fields=locked_fields,
+            )
+        if parsed.has_certifications:
+            await self._cert_writer.write(
+                session=session,
+                sku=parsed.sku,
+                certifications=parsed.certifications,
+            )
+        return scalar_result

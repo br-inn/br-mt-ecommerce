@@ -181,3 +181,54 @@ async def test_certification_writer_creates_if_not_found():
     session.flush.assert_called_once()
     # 2 execute calls: 1 SELECT + 1 INSERT M:N
     assert session.execute.call_count == 2
+
+
+# ── RowWriter pipeline ────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_row_writer_delegates_to_all_writers():
+    from app.services.importer.row_writer import RowWriter
+    from app.services.importer.parsed_product import ParsedProduct
+
+    session = AsyncMock()
+    product = _make_product(sku="MT-001", weight=None, dimensions={}, packaging={}, specs={})
+
+    parsed = ParsedProduct(
+        sku="MT-001",
+        scalars={"weight": Decimal("1.0")},
+        jsonb={"dimensions": {"high_mm": "50"}, "packaging": {}, "specs": {}},
+        translations={"en": "Test"},
+        certifications=["CE"],
+    )
+
+    rw = RowWriter()
+    # Patch all sub-writers to verify they are called
+    rw._scalar_writer.write = AsyncMock(
+        return_value=WriteResult(bucket="updated", changed_fields=["weight"])
+    )
+    rw._jsonb_writer.write = AsyncMock()
+    rw._translation_writer.write = AsyncMock()
+    rw._cert_writer.write = AsyncMock()
+
+    result = await rw.apply(session, parsed, existing=product, locked_fields=set(), actor_id=None)
+
+    rw._scalar_writer.write.assert_called_once()
+    rw._jsonb_writer.write.assert_called_once()
+    rw._translation_writer.write.assert_called_once()
+    rw._cert_writer.write.assert_called_once()
+    assert result.bucket == "updated"
+
+
+@pytest.mark.asyncio
+async def test_row_writer_returns_error_for_error_row():
+    from app.services.importer.row_writer import RowWriter
+    from app.services.importer.parsed_product import ParsedProduct
+
+    session = AsyncMock()
+    parsed = ParsedProduct(sku="", errors=["SKU vacío"])
+
+    rw = RowWriter()
+    result = await rw.apply(session, parsed, existing=None, locked_fields=set(), actor_id=None)
+
+    assert result.bucket == "error"
+    assert "SKU vacío" in result.errors
