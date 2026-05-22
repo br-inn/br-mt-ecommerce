@@ -1,16 +1,15 @@
 # =============================================================================
 # CI - Frontend (Next.js / Node 20 / pnpm)
 # =============================================================================
-# Stages: lint -> typecheck -> test -> build -> bundle size -> Lighthouse.
+# Runs on every PR.
+# Jobs lint/typecheck/test/build are SKIPPED automatically when no frontend
+# files changed — GitHub treats skipped jobs as passing for required checks.
 # =============================================================================
 ---
 name: ci-frontend
 
 on:
   pull_request:
-    paths:
-      - "mt-pricing-frontend/**"
-      - ".github/workflows/ci-frontend.yml"
 
 concurrency:
   group: ci-frontend-${{ github.ref }}
@@ -26,10 +25,30 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Detect whether frontend files changed. Skip heavy jobs when they didn't.
+  # ---------------------------------------------------------------------------
+  changes:
+    name: Detect frontend changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - "mt-pricing-frontend/**"
+              - ".github/workflows/ci-frontend.yml"
+
+  # ---------------------------------------------------------------------------
   # Lint (eslint via pnpm script)
   # ---------------------------------------------------------------------------
   lint:
     name: Lint
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -51,8 +70,6 @@ jobs:
           cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
-        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
-        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
         run: |
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
@@ -69,6 +86,8 @@ jobs:
   # ---------------------------------------------------------------------------
   typecheck:
     name: Typecheck
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -90,8 +109,6 @@ jobs:
           cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
-        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
-        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
         run: |
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
@@ -108,6 +125,8 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: Tests
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -129,8 +148,6 @@ jobs:
           cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
-        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
-        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
         run: |
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
@@ -155,9 +172,10 @@ jobs:
   # ---------------------------------------------------------------------------
   build:
     name: Build
+    needs: [changes, lint, typecheck, test]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [lint, typecheck, test]
     defaults:
       run:
         working-directory: ${{ env.WORKDIR }}
@@ -177,8 +195,6 @@ jobs:
           cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
-        # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
-        # normal en sprints tempranos donde el lockfile aún no esté commiteado.
         run: |
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
@@ -193,8 +209,6 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
 
       - name: Bundle size check
-        # Fails if any first-load JS bundle exceeds 250 KB gzipped (placeholder).
-        # TODO: replace with `next-bundle-analyzer` or `size-limit` once configured.
         run: |
           echo "TODO: integrate size-limit / next-bundle-analyzer"
           du -sh .next/static || true
@@ -207,20 +221,3 @@ jobs:
             ${{ env.WORKDIR }}/.next
             !${{ env.WORKDIR }}/.next/cache
           retention-days: 3
-
-  # ---------------------------------------------------------------------------
-  # Lighthouse CI — placeholder. Wires up once a preview URL is available.
-  # ---------------------------------------------------------------------------
-  lighthouse:
-    name: Lighthouse CI (placeholder)
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Lighthouse placeholder
-        run: |
-          echo "TODO: run Lighthouse CI against deploy preview."
-          echo "Suggested action: treosh/lighthouse-ci-action@v12"

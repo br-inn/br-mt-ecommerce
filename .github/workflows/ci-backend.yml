@@ -1,8 +1,9 @@
 # =============================================================================
 # CI - Backend (FastAPI / Python 3.11 / uv)
 # =============================================================================
-# Runs on PRs touching backend code and on pushes to main.
-# Stages: lint -> typecheck -> test (with services) -> security audit -> build.
+# Runs on every PR and on pushes to main.
+# Jobs lint/typecheck/test/security are SKIPPED automatically when no backend
+# files changed — GitHub treats skipped jobs as passing for required checks.
 # Docker image is only built+pushed on main (signed with cosign keyless).
 # =============================================================================
 ---
@@ -11,13 +12,7 @@ name: ci-backend
 on:
   push:
     branches: [main]
-    paths:
-      - "mt-pricing-backend/**"
-      - ".github/workflows/ci-backend.yml"
   pull_request:
-    paths:
-      - "mt-pricing-backend/**"
-      - ".github/workflows/ci-backend.yml"
 
 # Cancel in-progress runs on the same ref to avoid duplicate work.
 concurrency:
@@ -35,11 +30,31 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Detect whether backend files changed. Skip heavy jobs when they didn't.
+  # ---------------------------------------------------------------------------
+  changes:
+    name: Detect backend changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - "mt-pricing-backend/**"
+              - ".github/workflows/ci-backend.yml"
+
+  # ---------------------------------------------------------------------------
   # Lint + format check (ruff)
   # ---------------------------------------------------------------------------
   lint:
     name: Lint (ruff)
-    if: github.event_name == 'pull_request'
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -71,7 +86,8 @@ jobs:
   # ---------------------------------------------------------------------------
   typecheck:
     name: Typecheck (mypy)
-    if: github.event_name == 'pull_request'
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -101,7 +117,8 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: Tests (pytest)
-    if: github.event_name == 'pull_request'
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -178,11 +195,11 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Dependency vulnerability scan (pip-audit).
-  # Non-blocking on PRs; fails the build only on main.
   # ---------------------------------------------------------------------------
   security:
     name: Security (pip-audit)
-    if: github.event_name == 'pull_request'
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -213,7 +230,6 @@ jobs:
   build:
     name: Build & push image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint, typecheck, test, security]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
