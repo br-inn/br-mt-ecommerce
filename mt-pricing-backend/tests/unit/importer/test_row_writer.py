@@ -153,16 +153,20 @@ async def test_translation_writer_skips_locked_lang():
 
 @pytest.mark.asyncio
 async def test_certification_writer_creates_if_not_found():
-    from unittest.mock import MagicMock
     from app.services.importer.row_writer import CertificationWriter
     from app.db.models.vocabularies import Certification
 
     session = AsyncMock()
-    # First execute: SELECT → not found; second execute: INSERT M:N
-    not_found_result = MagicMock()
-    not_found_result.scalar_one_or_none.return_value = None
-    insert_result = MagicMock()
-    session.execute = AsyncMock(side_effect=[not_found_result, insert_result])
+    # First execute: SELECT returns no existing certs
+    mock_select_result = MagicMock()
+    mock_select_result.scalars.return_value.all.return_value = []
+    # Second execute: INSERT M:N (no return value needed)
+    session.execute = AsyncMock(return_value=mock_select_result)
+
+    # After flush, the added Certification needs an ID
+    def add_side_effect(obj):
+        obj.id = "uuid-123"
+    session.add = MagicMock(side_effect=add_side_effect)
 
     writer = CertificationWriter()
     await writer.write(
@@ -175,3 +179,5 @@ async def test_certification_writer_creates_if_not_found():
     assert isinstance(added, Certification)
     assert added.code == "CE"
     session.flush.assert_called_once()
+    # 2 execute calls: 1 SELECT + 1 INSERT M:N
+    assert session.execute.call_count == 2

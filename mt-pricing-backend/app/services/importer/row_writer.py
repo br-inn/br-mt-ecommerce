@@ -112,27 +112,48 @@ class CertificationWriter:
         sku: str,
         certifications: list[str],
     ) -> None:
-        for cert_name in certifications:
-            if not cert_name:
-                continue
-            code = cert_name.upper().replace(" ", "_")
-            result = await session.execute(
-                select(Certification).where(
-                    or_(
-                        Certification.code == code,
-                        func.lower(Certification.name) == cert_name.lower(),
-                    )
+        names = [n.strip() for n in certifications if n and n.strip()]
+        if not names:
+            return
+
+        name_to_code: dict[str, str] = {
+            n: n.upper().replace(" ", "_") for n in names
+        }
+        codes = list(name_to_code.values())
+        names_lower = [n.lower() for n in names]
+
+        # Single SELECT for all certs at once
+        result = await session.execute(
+            select(Certification).where(
+                or_(
+                    Certification.code.in_(codes),
+                    func.lower(Certification.name).in_(names_lower),
                 )
             )
-            cert = result.scalar_one_or_none()
+        )
+        existing_certs = result.scalars().all()
+        by_code: dict[str, Certification] = {c.code: c for c in existing_certs}
+        by_name_lower: dict[str, Certification] = {
+            c.name.lower(): c for c in existing_certs
+        }
+
+        cert_ids: list = []
+        for cert_name, code in name_to_code.items():
+            cert = by_code.get(code) or by_name_lower.get(cert_name.lower())
             if cert is None:
                 cert = Certification(code=code, name=cert_name)
                 session.add(cert)
-                await session.flush()
+                await session.flush()  # need the PK for the M:N row
+                by_code[code] = cert
+            cert_ids.append(cert.id)
 
+        if cert_ids:
             stmt = (
                 pg_insert(ProductCertification)
-                .values(product_sku=sku, certification_id=cert.id)
+                .values([
+                    {"product_sku": sku, "certification_id": cid}
+                    for cid in cert_ids
+                ])
                 .on_conflict_do_nothing()
             )
             await session.execute(stmt)
