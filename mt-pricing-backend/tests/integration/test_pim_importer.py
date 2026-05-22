@@ -39,8 +39,8 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     """Aplica `alembic upgrade head` antes de cualquier test del modulo."""
-    from alembic import command  # noqa: I001
     from alembic.config import Config
+    from alembic import command  # noqa: I001
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
@@ -53,6 +53,7 @@ async def _cleanup_products_and_runs(db_session: AsyncSession):
     del fixture. Limpiamos products + import_runs antes de cada test.
     """
     from sqlalchemy import text
+
     await db_session.execute(text("DELETE FROM product_translations;"))
     await db_session.execute(text("DELETE FROM product_images;"))
     # products tiene trigger anti-DELETE — desactivamos para tests.
@@ -250,6 +251,7 @@ async def test_pim_importer_inserts_5_rows(
 
     # Productos en BD
     from sqlalchemy import select
+
     result = await db_session.execute(select(Product).order_by(Product.sku))
     products = list(result.scalars().all())
     skus = [p.sku for p in products]
@@ -307,9 +309,8 @@ async def test_pim_importer_idempotent_on_rerun(
 
     # Verifica conteo final de productos no se duplicó.
     from sqlalchemy import func, select
-    count = (
-        await db_session.execute(select(func.count(Product.sku)))
-    ).scalar_one()
+
+    count = (await db_session.execute(select(func.count(Product.sku)))).scalar_one()
     assert count == 5
 
 
@@ -318,12 +319,63 @@ async def test_pim_importer_skips_empty_rows(
 ) -> None:
     """Filas totalmente vacias se cuentan como skipped, no error."""
     rows = [
-        ("MT-E01", "84818019", "ERP E01", None, None, None, None, None, None,
-         None, None, None, None, None, None, None, None),
-        (None, None, None, None, None, None, None, None, None,
-         None, None, None, None, None, None, None, None),  # vacia
-        ("MT-E02", "84818020", "ERP E02", None, None, None, None, None, None,
-         None, None, None, None, None, None, None, None),
+        (
+            "MT-E01",
+            "84818019",
+            "ERP E01",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),  # vacia
+        (
+            "MT-E02",
+            "84818020",
+            "ERP E02",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
     ]
     xlsx_bytes = _build_synthetic_pim_xlsx(rows=rows)
     path = _write_xlsx_to_tmp(tmp_path, xlsx_bytes)
@@ -362,9 +414,8 @@ async def test_pim_importer_header_mismatch(
     assert run.errors and "Header mismatch" in run.errors[0]["error"]
     # Productos NO se crean.
     from sqlalchemy import func, select
-    count = (
-        await db_session.execute(select(func.count(Product.sku)))
-    ).scalar_one()
+
+    count = (await db_session.execute(select(func.count(Product.sku)))).scalar_one()
     assert count == 0
 
 
@@ -409,6 +460,7 @@ async def test_pim_importer_numeric_strings_cast_ok(
     assert run.error_rows == 0
 
     from sqlalchemy import select
+
     p = (
         await db_session.execute(select(Product).where(Product.sku == "MT-NUM01"))
     ).scalar_one()
