@@ -400,7 +400,7 @@ def map_row_with_mapping(
         raw = excel_row[idx]
         caster = CASTERS.get(item.transform, _cast_text)
         try:
-            casted = caster(raw)
+            casted = caster(raw)  # type: ignore[no-untyped-call]
         except ImportCastError as exc:
             errors.append(f"col {item.excel_col!r}: {exc}")
             continue

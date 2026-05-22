@@ -46,7 +46,7 @@ class CompletionResultResponse(BaseModel):
     details: list[dict]
 
     @classmethod
-    def from_result(cls, result: CompletionResult) -> "CompletionResultResponse":
+    def from_result(cls, result: CompletionResult) -> CompletionResultResponse:
         return cls(**asdict(result))
 
 
