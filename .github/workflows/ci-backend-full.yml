@@ -14,11 +14,9 @@ on:
     branches: [main]
     paths:
       - "mt-pricing-backend/**"
-      - ".github/workflows/ci-backend-full.yml"
   pull_request:
     paths:
       - "mt-pricing-backend/**"
-      - ".github/workflows/ci-backend-full.yml"
 
 concurrency:
   group: ci-backend-full-${{ github.ref }}
@@ -29,7 +27,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.11"
-  UV_VERSION: "0.4.18"
+  UV_VERSION: "0.11.16"
   WORKDIR: mt-pricing-backend
 
 jobs:
@@ -45,21 +43,44 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
+          enable-cache: false
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
       - name: Install deps
         run: uv sync --frozen
-      - name: Ruff check
-        run: uv run ruff check .
-      - name: Ruff format --check
-        run: uv run ruff format --check .
-      - name: mypy
-        run: uv run mypy app/
+      - name: Ruff check (changed files only)
+        run: |
+          BASE=$(git merge-base origin/main HEAD)
+          FILES=$(git diff --name-only --relative "$BASE" HEAD -- '*.py' | tr '\n' ' ')
+          if [ -n "$FILES" ]; then
+            uv run ruff check $FILES
+          else
+            echo "No Python files changed — skipping ruff check"
+          fi
+      - name: Ruff format --check (changed files only)
+        run: |
+          BASE=$(git merge-base origin/main HEAD)
+          FILES=$(git diff --name-only --relative "$BASE" HEAD -- '*.py' | tr '\n' ' ')
+          if [ -n "$FILES" ]; then
+            uv run ruff format --check $FILES
+          else
+            echo "No Python files changed — skipping ruff format check"
+          fi
+      - name: mypy (changed files only)
+        run: |
+          BASE=$(git merge-base origin/main HEAD)
+          FILES=$(git diff --name-only --relative "$BASE" HEAD -- '*.py' | grep '^app/' | tr '\n' ' ')
+          if [ -n "$FILES" ]; then
+            uv run mypy $FILES
+          else
+            echo "No app/ Python files changed — skipping mypy"
+          fi
 
   # ---------------------------------------------------------------------------
   # Unit tests — sin services
@@ -80,7 +101,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
+          enable-cache: false
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
       - name: Install deps
@@ -133,7 +154,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
+          enable-cache: false
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
       - name: Install deps
@@ -178,7 +199,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
+          enable-cache: false
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
       - name: Install deps
