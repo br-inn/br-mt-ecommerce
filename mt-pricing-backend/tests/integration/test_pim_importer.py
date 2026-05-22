@@ -29,10 +29,10 @@ os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
 os.environ.setdefault("SUPABASE_ANON_KEY", "anon-test")
 os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "service-test")
 
-from app.db.models.import_run import ImportRun  # noqa: E402
-from app.db.models.product import Product  # noqa: E402
-from app.services.importer.column_mapper import EXPECTED_HEADERS  # noqa: E402
-from app.services.imports.pim_importer import PimImporter  # noqa: E402
+from app.db.models.import_run import ImportRun
+from app.db.models.product import Product
+from app.services.importer.column_mapper import EXPECTED_HEADERS
+from app.services.imports.pim_importer import PimImporter
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
