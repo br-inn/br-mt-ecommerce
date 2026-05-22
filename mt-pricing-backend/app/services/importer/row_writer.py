@@ -43,7 +43,7 @@ class ScalarWriter:
             if field_name in locked_fields:
                 continue
             current = getattr(existing, field_name, None) if existing else None
-            if current != new_val:
+            if existing is not None and current != new_val:
                 setattr(existing, field_name, new_val)
                 changed.append(field_name)
         if not changed:

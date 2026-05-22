@@ -97,3 +97,18 @@ async def test_jsonb_writer_skips_empty_buckets():
         locked_fields=set(),
     )
     assert product.dimensions == {}
+
+
+@pytest.mark.asyncio
+async def test_scalar_writer_no_change_when_existing_is_none():
+    session = AsyncMock()
+    writer = ScalarWriter()
+    result = await writer.write(
+        session=session,
+        sku="MT-NEW",
+        existing=None,
+        scalars={"weight": Decimal("1.5")},
+        locked_fields=set(),
+    )
+    # When existing is None, there is nothing to setattr on — no_change
+    assert result.bucket == "no_change"
