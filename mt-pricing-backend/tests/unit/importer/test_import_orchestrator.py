@@ -89,8 +89,8 @@ async def test_run_sync_counts_inserted():
     """Products that don't exist yet should be counted as inserted."""
     session = AsyncMock()
 
-    with patch("app.services.importer.import_orchestrator.select") as mock_select, \
-         patch("app.services.importer.import_orchestrator.Product") as MockProduct, \
+    with patch("app.services.importer.import_orchestrator.select"), \
+         patch("app.services.importer.import_orchestrator.Product"), \
          patch("app.services.importer.import_orchestrator.RowWriter") as MockRW:
 
         # Simulate: no existing product found (scalar returns None)

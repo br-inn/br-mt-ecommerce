@@ -185,7 +185,7 @@ class ImporterService:
                 )
             else:
                 parse_result = parse_xlsx_stream(bio)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ImporterDomainError(
                 code="import_parse_failed",
                 message=f"Error parseando archivo: {exc}",
@@ -290,7 +290,7 @@ class ImporterService:
                         "is_complete": rec.is_complete,
                         "missing_skus": rec.missing_skus,
                     }
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.exception("Importer apply failed run_id=%s", run_id)
                 state.status = "failed"
                 state.error = f"{type(exc).__name__}: {exc!s}"

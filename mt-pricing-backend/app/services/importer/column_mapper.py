@@ -1,7 +1,7 @@
 """Column mapping canónico ``PIM completo.xlsx`` → schema `products`.
 
 Fuente de verdad: ``_bmad-output/planning-artifacts/sprint0-pim-column-mapping.md``
-(Task 2). Verificado contra el archivo real (5085 rows × 17 cols, headers
+(Task 2). Verificado contra el archivo real (5085 rows x 17 cols, headers
 exactos coinciden con la spec).
 
 Dos mapeos:
@@ -79,7 +79,7 @@ def _cast_decimal(v: Any) -> Decimal | None:
 
 
 def _cast_cm_to_mm(v: Any) -> Decimal | None:
-    """Multiplica × 10 para uniformidad mm (sprint0 §4.1)."""
+    """Multiplica x10 para uniformidad mm (sprint0 §4.1)."""
     d = _cast_decimal(v)
     if d is None:
         return None
@@ -208,7 +208,7 @@ EXCEL_COL_TO_FIELD: dict[str, ColumnSpec] = {
         jsonb_field="packaging",
         jsonb_key="box_high_mm",
         cast="cm_to_mm",
-        notes="cm → mm (×10) para uniformidad con dimensiones de producto.",
+        notes="cm to mm (x10) para uniformidad con dimensiones de producto.",
     ),
     "Ancho caja (cm) - AX": ColumnSpec(
         excel_header="Ancho caja (cm) - AX",

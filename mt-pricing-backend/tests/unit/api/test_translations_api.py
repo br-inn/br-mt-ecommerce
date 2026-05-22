@@ -76,7 +76,7 @@ def _build_app(session_override: Any) -> FastAPI:
         for d in dep.dependencies:
             call = d.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call: Any = call) -> _FakeUser:  # noqa: ARG001
+                async def _allow(_call: Any = call) -> _FakeUser:
                     return user
                 app.dependency_overrides[call] = _allow
 

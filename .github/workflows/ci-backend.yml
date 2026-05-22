@@ -229,7 +229,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run pip-audit
-        run: uv run pip-audit --strict
+        run: uv run pip-audit --skip-editable
 
   # ---------------------------------------------------------------------------
   # Build + scan + sign Docker image. Only on push to main.

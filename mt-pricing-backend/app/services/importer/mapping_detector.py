@@ -152,10 +152,10 @@ Available transforms:
   text        plain text / string
   int         integer number
   decimal     decimal / float
-  cm_to_mm    multiply × 10 (centimeters → millimeters)
+  cm_to_mm    multiply x10 (centimeters to millimeters)
   ean         EAN barcode (digits only, valid lengths 8/12/13/14)
   bool_check  truthy check: "✓", "yes", "1", "true" → true; else false
-  percent     numeric percentage stored as integer 0–100
+  percent     numeric percentage stored as integer 0-100
 """
 
 
@@ -231,7 +231,7 @@ def suggest_mapping(
             for item in data
             if isinstance(item, dict) and "excel_col" in item
         ]
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("suggest_mapping LLM call failed — returning _skip fallback")
         return [
             ColumnMappingItem(
