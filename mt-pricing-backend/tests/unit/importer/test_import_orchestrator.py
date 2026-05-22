@@ -1,7 +1,20 @@
 # tests/unit/importer/test_import_orchestrator.py
 """Tests para ReconciliationResult + OrchestratorResult."""
 from __future__ import annotations
-from app.services.importer.import_orchestrator import ReconciliationResult, OrchestratorResult
+
+import io
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import openpyxl
+import pytest
+
+from app.services.importer.import_orchestrator import (
+    ImportOrchestrator,
+    OrchestratorResult,
+    ReconciliationResult,
+)
+from app.services.importer.mapping_detector import ColumnMappingItem
 
 
 def test_reconciliation_complete():
@@ -55,17 +68,6 @@ def test_orchestrator_result_defaults():
     assert r.updated == 0
     assert r.errors == []
     assert r.reconciliation is None
-
-
-import io
-import openpyxl
-import pytest
-from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-
-from app.services.importer.import_orchestrator import ImportOrchestrator, OrchestratorResult
-from app.services.importer.mapping_detector import ColumnMappingItem
 
 
 def _make_xlsx_bytes(rows: list[list]) -> bytes:

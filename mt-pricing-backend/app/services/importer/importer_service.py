@@ -24,7 +24,7 @@ import logging
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, BinaryIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.user import User
 from app.services.importer.applier import ApplyResult, apply_diffs_chunked
 from app.services.importer.differ import RowAction, RowDiff, compute_diff
+from app.services.importer.mapping_detector import detect_header_row
 from app.services.importer.parser import ParseResult, parse_xlsx_stream
 
 logger = logging.getLogger(__name__)
@@ -117,7 +118,7 @@ class ImportRunState:
     # Poblado en preview() — no modifica la lógica de apply.
     rejected_rows: list[RejectedRow] = field(default_factory=list)
     # Reconciliation data from the new pipeline (None if using legacy applier).
-    reconciliation: dict | None = None
+    reconciliation: dict[str, Any] | None = None
 
 
 # Almacenamiento por proceso. En tests se aísla con :func:`reset_run_store`.
@@ -165,7 +166,7 @@ class ImporterService:
         filename: str,
         actor: User,
         type_: str = "pim",
-        custom_mapping: "list[Any] | None" = None,
+        custom_mapping: list[Any] | None = None,
     ) -> ImportRunState:
         """Sube + parsea + diffea. Devuelve un run en estado ``preview_ready``."""
         if len(file_bytes) > MAX_FILE_SIZE_BYTES:
@@ -175,7 +176,6 @@ class ImporterService:
         bio: BinaryIO = io.BytesIO(file_bytes)
         try:
             if custom_mapping is not None:
-                from app.services.importer.mapping_detector import detect_header_row
                 header_idx, _headers, _samples = detect_header_row(file_bytes)
                 bio.seek(0)
                 parse_result = parse_xlsx_stream(
@@ -216,7 +216,7 @@ class ImporterService:
             type_=type_,
             filename=filename,
             status="preview_ready",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             created_by=actor.email,
             file_bytes=file_bytes,
             parse_result=parse_result,
@@ -263,7 +263,9 @@ class ImporterService:
                     division_codes=division_codes,
                 )
                 state.apply_result = apply_result
-                state.status = "completed" if apply_result.failed_chunks == 0 else "completed_with_failures"
+                state.status = (
+                    "completed" if apply_result.failed_chunks == 0 else "completed_with_failures"
+                )
                 # Refresca summary con resultados reales del apply.
                 state.summary["applied_created"] = apply_result.created
                 state.summary["applied_updated"] = apply_result.updated
@@ -271,7 +273,10 @@ class ImporterService:
                 # Wire reconciliation from ImportOrchestrator result when available.
                 # The legacy applier (apply_diffs_chunked) does not produce this yet;
                 # state.reconciliation remains None in that path.
-                if hasattr(apply_result, "reconciliation") and apply_result.reconciliation is not None:
+                if (
+                    hasattr(apply_result, "reconciliation")
+                    and apply_result.reconciliation is not None
+                ):
                     rec = apply_result.reconciliation
                     state.reconciliation = {
                         "total_excel_rows": rec.total_excel_rows,

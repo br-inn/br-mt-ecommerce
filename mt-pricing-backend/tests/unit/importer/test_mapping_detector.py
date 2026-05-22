@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import io
+import json
+from unittest.mock import MagicMock, patch
+
 import openpyxl
 
-from app.services.importer.mapping_detector import detect_header_row
+from app.services.importer.mapping_detector import detect_header_row, suggest_mapping
 
 
 def _make_xlsx(rows: list[list]) -> bytes:
@@ -51,13 +54,9 @@ def test_detect_header_row_returns_up_to_5_samples():
     """Devuelve máximo 5 filas de datos como muestra."""
     rows = [["SKU", "Familia", "HS Code"]] + [[str(i), "Val", "73071910"] for i in range(10)]
     xlsx = _make_xlsx(rows)
-    idx, headers, samples = detect_header_row(xlsx)
+    idx, _headers, samples = detect_header_row(xlsx)
     assert idx == 0
     assert len(samples) <= 5
-
-
-import json
-from unittest.mock import MagicMock, patch
 
 
 def test_suggest_mapping_parses_llm_response():
@@ -76,7 +75,6 @@ def test_suggest_mapping_parses_llm_response():
     with patch("anthropic.Anthropic") as MockAnthropicCls:
         mock_client = MockAnthropicCls.return_value
         mock_client.messages.create.return_value = mock_message
-        from app.services.importer.mapping_detector import suggest_mapping
         result = suggest_mapping(
             headers=["SKU", "Familia", "Peso neto (kg)"],
             sample_rows=[["1010", "Valvulas", 0.5]],
@@ -97,7 +95,6 @@ def test_suggest_mapping_falls_back_on_invalid_json():
     with patch("anthropic.Anthropic") as MockAnthropicCls:
         mock_client = MockAnthropicCls.return_value
         mock_client.messages.create.return_value = mock_message
-        from app.services.importer.mapping_detector import suggest_mapping
         result = suggest_mapping(
             headers=["SKU", "Familia"],
             sample_rows=[["1010", "Valvulas"]],
@@ -125,7 +122,6 @@ def test_suggest_mapping_strips_markdown_fence():
     with patch("anthropic.Anthropic") as MockAnthropicCls:
         mock_client = MockAnthropicCls.return_value
         mock_client.messages.create.return_value = mock_message
-        from app.services.importer.mapping_detector import suggest_mapping
         result = suggest_mapping(headers=["SKU"], sample_rows=[["1010"]])
 
     assert len(result) == 1

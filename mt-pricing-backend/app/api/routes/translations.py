@@ -8,7 +8,7 @@ Endpoints:
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -43,7 +43,7 @@ class CompletionResultResponse(BaseModel):
     completed: int
     skipped: int
     errors: int
-    details: list[dict]
+    details: list[dict[str, Any]]
 
     @classmethod
     def from_result(cls, result: CompletionResult) -> CompletionResultResponse:
@@ -52,7 +52,7 @@ class CompletionResultResponse(BaseModel):
 
 class TranslationCoverageResponse(BaseModel):
     total_products: int
-    coverage: list[dict]  # [{lang, count, pct}]
+    coverage: list[dict[str, Any]]  # [{lang, count, pct}]
     missing_by_lang: dict[str, int]
 
 

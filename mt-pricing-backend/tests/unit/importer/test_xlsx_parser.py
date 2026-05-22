@@ -1,11 +1,13 @@
 """Tests para XlsxParser — produce ParsedProduct por fila."""
 from __future__ import annotations
+
 import io
-import openpyxl
 from decimal import Decimal
 
-from app.services.importer.xlsx_parser import XlsxParser
+import openpyxl
+
 from app.services.importer.mapping_detector import ColumnMappingItem
+from app.services.importer.xlsx_parser import XlsxParser
 
 
 def _make_xlsx(rows: list[list]) -> bytes:

@@ -1,9 +1,11 @@
 """Tests para TranslationCompletionService."""
 from __future__ import annotations
+
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from app.services.translations.completion_service import TranslationCompletionService
 
@@ -82,7 +84,9 @@ async def test_complete_returns_zero_when_no_source_names():
 async def test_complete_empty_skus_returns_zero():
     session = AsyncMock()
     service = TranslationCompletionService(session)
-    result = await service.complete(skus=[], target_langs=["fr"], source_lang="en", actor_id=uuid4())
+    result = await service.complete(
+        skus=[], target_langs=["fr"], source_lang="en", actor_id=uuid4()
+    )
     assert result.completed == 0
     assert result.errors == 0
     session.execute.assert_not_called()

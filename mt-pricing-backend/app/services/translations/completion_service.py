@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
+from typing import Any
 from uuid import UUID
 
 import anthropic
@@ -24,7 +25,7 @@ class CompletionResult:
     completed: int = 0
     skipped: int = 0
     errors: int = 0
-    details: list[dict] = field(default_factory=list)
+    details: list[dict[str, Any]] = field(default_factory=list)
 
 
 class TranslationCompletionService:
@@ -95,10 +96,10 @@ class TranslationCompletionService:
 
     def _call_llm(
         self,
-        products: list[dict],
+        products: list[dict[str, Any]],
         source_lang: str,
         target_langs: list[str],
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         lang_list = ", ".join(target_langs)
         products_text = "\n".join(
             f"  - sku: {p['sku']}, name ({source_lang}): {p['name']}"
@@ -120,7 +121,7 @@ class TranslationCompletionService:
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = message.content[0].text.strip()
+        text = message.content[0].text.strip()  # type: ignore[union-attr]
         # Strip markdown code fences if present
         text = re.sub(r"^```[^\n]*\n?", "", text, flags=re.MULTILINE).strip()
         text = re.sub(r"```$", "", text).strip()

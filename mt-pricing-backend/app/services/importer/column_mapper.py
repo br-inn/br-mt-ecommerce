@@ -29,9 +29,10 @@ Reglas defaults (sprint0 §4.4):
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,8 +65,8 @@ def _cast_int(v: Any) -> int | None:
     try:
         # Algunos llegan como float ("250.0") o como int ya.
         return int(float(str(v).strip()))
-    except (ValueError, TypeError):
-        raise ImportCastError(f"Valor no convertible a int: {v!r}")
+    except (ValueError, TypeError) as exc:
+        raise ImportCastError(f"Valor no convertible a int: {v!r}") from exc
 
 
 def _cast_decimal(v: Any) -> Decimal | None:
@@ -73,8 +74,8 @@ def _cast_decimal(v: Any) -> Decimal | None:
         return None
     try:
         return Decimal(str(v).strip())
-    except (InvalidOperation, ValueError):
-        raise ImportCastError(f"Valor no convertible a decimal: {v!r}")
+    except (InvalidOperation, ValueError) as exc:
+        raise ImportCastError(f"Valor no convertible a decimal: {v!r}") from exc
 
 
 def _cast_cm_to_mm(v: Any) -> Decimal | None:
@@ -353,8 +354,8 @@ def _cast_percent(v: Any) -> int | None:
         return None
     try:
         n = int(float(str(v).strip()))
-    except (ValueError, TypeError):
-        raise ImportCastError(f"Valor no convertible a porcentaje: {v!r}")
+    except (ValueError, TypeError) as exc:
+        raise ImportCastError(f"Valor no convertible a porcentaje: {v!r}") from exc
     if not (0 <= n <= 100):
         raise ImportCastError(f"Porcentaje fuera de rango [0,100]: {v!r}")
     return n
@@ -368,7 +369,7 @@ CASTERS["percent"] = _cast_percent
 def map_row_with_mapping(
     excel_row: tuple[Any, ...] | list[Any],
     headers: list[str],
-    mapping: "list[Any]",  # list[ColumnMappingItem] — import lazy para evitar ciclos
+    mapping: list[Any],  # list[ColumnMappingItem] — import lazy para evitar ciclos
 ) -> tuple[dict[str, Any], list[str]]:
     """Mapea una fila usando un mapping flexible (lista de ColumnMappingItem).
 
@@ -426,6 +427,12 @@ def map_row_with_mapping(
 
 
 __all__ = [
-    "ColumnSpec", "ImportCastError", "EXCEL_COL_TO_FIELD", "EXPECTED_HEADERS",
-    "ROW_DEFAULTS", "CASTERS", "map_row", "map_row_with_mapping",
+    "CASTERS",
+    "EXCEL_COL_TO_FIELD",
+    "EXPECTED_HEADERS",
+    "ROW_DEFAULTS",
+    "ColumnSpec",
+    "ImportCastError",
+    "map_row",
+    "map_row_with_mapping",
 ]

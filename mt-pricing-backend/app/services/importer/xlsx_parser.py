@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Iterator
 from decimal import Decimal
-from typing import Any, Iterator
+from typing import Any
 
 import openpyxl
 
@@ -76,7 +77,7 @@ class XlsxParser:
             raw = row[idx]
             caster = CASTERS.get(item.transform, _cast_text)
             try:
-                casted = caster(raw)
+                casted = caster(raw)  # type: ignore[no-untyped-call]
             except ImportCastError as exc:
                 errors.append(f"col {item.excel_col!r}: {exc}")
                 continue

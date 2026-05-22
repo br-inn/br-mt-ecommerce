@@ -5,7 +5,7 @@ import io
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -190,8 +190,8 @@ def suggest_mapping(
         f"a physical dimension maps to dimensions.* with transform 'cm_to_mm'.\n"
         f"For multi-language name columns (e.g. 'Nombre ES', 'Name EN', 'Nome IT'), "
         f"use translations.<lang> (translations.es, translations.en, translations.it, etc.).\n"
-        f"For certification columns (e.g. 'Normas', 'Certifications', 'CE Mark', 'Homologaciones'), "
-        f"use 'certifications'.\n\n"
+        f"For certification columns (e.g. 'Normas', 'Certifications', 'CE Mark', "
+        f"'Homologaciones'), use 'certifications'.\n\n"
         f"{_AVAILABLE_FIELDS_DOC}\n\n"
         f"Column headers with sample values (up to 3 rows):\n{samples_text}\n\n"
         f"Return a JSON array — no markdown, no explanation, just JSON. "
@@ -209,13 +209,14 @@ def suggest_mapping(
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = message.content[0].text.strip()
+        text = message.content[0].text.strip()  # type: ignore[union-attr]
         # Strip markdown code fences (e.g. ```json ... ```)
         text = re.sub(r"^```[^\n]*\n?", "", text, flags=re.MULTILINE).strip()
         data = json.loads(text)
         if not isinstance(data, list):
             logger.warning(
-                "suggest_mapping: LLM returned %s instead of a JSON array — returning empty mapping",
+                "suggest_mapping: LLM returned %s instead of a JSON array"
+                " — returning empty mapping",
                 type(data).__name__,
             )
             return []

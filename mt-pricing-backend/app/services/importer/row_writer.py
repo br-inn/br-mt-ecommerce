@@ -2,15 +2,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-
-if TYPE_CHECKING:
-    from app.db.models.product import Product
 
 from app.db.models.product import ProductTranslation
 from app.db.models.vocabularies import Certification, ProductCertification
@@ -141,7 +138,7 @@ class CertificationWriter:
             c.name.lower(): c for c in existing_certs
         }
 
-        cert_ids: list = []
+        cert_ids: list[Any] = []
         for cert_name, code in name_to_code.items():
             cert = by_code.get(code) or by_name_lower.get(cert_name.lower())
             if cert is None:

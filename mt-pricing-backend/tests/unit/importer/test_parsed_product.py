@@ -1,5 +1,6 @@
 """Tests para ParsedProduct dataclass."""
 from __future__ import annotations
+
 from app.services.importer.parsed_product import ParsedProduct
 
 

@@ -1,11 +1,21 @@
 """Tests para RowWriter pipeline."""
 from __future__ import annotations
+
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
-from app.services.importer.row_writer import ScalarWriter, JsonbWriter, WriteResult
+from app.db.models.vocabularies import Certification
 from app.services.importer.parsed_product import ParsedProduct
+from app.services.importer.row_writer import (
+    CertificationWriter,
+    JsonbWriter,
+    RowWriter,
+    ScalarWriter,
+    TranslationWriter,
+    WriteResult,
+)
 
 
 def _make_product(sku: str = "MT-001", **kwargs) -> MagicMock:
@@ -118,8 +128,6 @@ async def test_scalar_writer_no_change_when_existing_is_none():
 
 @pytest.mark.asyncio
 async def test_translation_writer_upserts_by_sku_lang():
-    from app.services.importer.row_writer import TranslationWriter
-
     session = AsyncMock()
     session.execute = AsyncMock()
 
@@ -135,7 +143,6 @@ async def test_translation_writer_upserts_by_sku_lang():
 
 @pytest.mark.asyncio
 async def test_translation_writer_skips_locked_lang():
-    from app.services.importer.row_writer import TranslationWriter
 
     session = AsyncMock()
     session.execute = AsyncMock()
@@ -153,9 +160,6 @@ async def test_translation_writer_skips_locked_lang():
 
 @pytest.mark.asyncio
 async def test_certification_writer_creates_if_not_found():
-    from app.services.importer.row_writer import CertificationWriter
-    from app.db.models.vocabularies import Certification
-
     session = AsyncMock()
     # First execute: SELECT returns no existing certs
     mock_select_result = MagicMock()
@@ -187,9 +191,6 @@ async def test_certification_writer_creates_if_not_found():
 
 @pytest.mark.asyncio
 async def test_row_writer_delegates_to_all_writers():
-    from app.services.importer.row_writer import RowWriter
-    from app.services.importer.parsed_product import ParsedProduct
-
     session = AsyncMock()
     product = _make_product(sku="MT-001", weight=None, dimensions={}, packaging={}, specs={})
 
@@ -221,9 +222,6 @@ async def test_row_writer_delegates_to_all_writers():
 
 @pytest.mark.asyncio
 async def test_row_writer_returns_error_for_error_row():
-    from app.services.importer.row_writer import RowWriter
-    from app.services.importer.parsed_product import ParsedProduct
-
     session = AsyncMock()
     parsed = ParsedProduct(sku="", errors=["SKU vacío"])
 
