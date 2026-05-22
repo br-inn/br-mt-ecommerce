@@ -21,11 +21,10 @@ para evitar errores de redondeo.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Any
-
-import re
 
 if TYPE_CHECKING:
     from app.services.matching.material_normalizer import MaterialNormalizer
@@ -208,7 +207,7 @@ _COMPONENT_WEIGHTS: dict[str, Decimal] = {
 def _material_score_pair(
     a: str | None,
     b: str | None,
-    norm: "MaterialNormalizer",
+    norm: MaterialNormalizer,
 ) -> Decimal:
     """Score 0-1 entre dos strings de material usando homologación."""
     if a is None and b is None:
@@ -226,7 +225,7 @@ def _material_score_pair(
 def _material_score(
     sku_material: str | None,
     cand_material: str | None,
-    norm: "MaterialNormalizer | None" = None,
+    norm: MaterialNormalizer | None = None,
     sku_components: list[dict[str, str]] | None = None,
     cand_components: dict[str, str] | None = None,
 ) -> Decimal:
@@ -902,7 +901,7 @@ def compute_scoring(
     candidate: dict[str, Any],
     *,
     weights: dict[str, Decimal] | None = None,
-    material_normalizer: "MaterialNormalizer | None" = None,
+    material_normalizer: MaterialNormalizer | None = None,
 ) -> ScoringBreakdown:
     """Calcula score 0-100 del candidato vs SKU con reglas de taxonomía.
 

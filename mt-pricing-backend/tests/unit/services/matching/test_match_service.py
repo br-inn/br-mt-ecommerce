@@ -17,7 +17,7 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
@@ -72,7 +72,7 @@ class _FakeMatchRow:
         self.validated_by: UUID | None = None
         self.validated_at: datetime | None = None
         self.discarded_reason: str | None = None
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.created_at = now
         self.updated_at = now
 
@@ -142,7 +142,7 @@ class _InMemoryMatchRepo:
             return None
         row.status = "validated"
         row.validated_by = user_id
-        row.validated_at = datetime.now(tz=timezone.utc)
+        row.validated_at = datetime.now(tz=UTC)
         row.discarded_reason = None
         return row
 
@@ -175,6 +175,7 @@ def _make_service(
     *, products: dict[str, _FakeProduct] | None = None
 ) -> tuple[MatchService, _InMemoryMatchRepo]:
     from unittest.mock import AsyncMock
+
     from app.services.matching.adapters.amazon_uae_stub import AmazonUaeStubFetcher
     from app.services.matching.adapters.noon_uae_stub import NoonUaeStubFetcher
     from app.services.matching.material_normalizer import MaterialNormalizer
@@ -337,8 +338,9 @@ async def test_refresh_candidates_synthesizes_for_unknown_sku() -> None:
 
 
 def test_product_repo_get_by_sku_for_matching_returns_product_with_model() -> None:
-    """get_by_sku_for_matching returns product with .model — _product_to_dict extracts model_code."""
+    """_product_to_dict extracts model_code from a product that has .model set."""
     from unittest.mock import MagicMock
+
     from app.db.models.product_models import ProductModel
     from app.services.matching.match_service import MatchService
 
@@ -371,6 +373,7 @@ def test_product_repo_get_by_sku_for_matching_returns_product_with_model() -> No
 def test_product_to_dict_without_model_returns_none_model_fields() -> None:
     """Producto sin model_id devuelve None para los campos del modelo."""
     from unittest.mock import MagicMock
+
     from app.services.matching.match_service import MatchService
 
     mock_product = MagicMock()

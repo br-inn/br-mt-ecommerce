@@ -14,14 +14,16 @@ from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 from app.api.deps import get_current_user, get_db_session
 from app.api.routes.graphrag import (
     get_cdc_dispatcher,
     get_graph_store,
+)
+from app.api.routes.graphrag import (
     router as graphrag_router,
 )
 from app.services.graphrag.adapters.neo4j_stub import Neo4jStubGraphStore

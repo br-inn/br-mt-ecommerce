@@ -26,18 +26,19 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 from app.api.deps import get_current_user, get_db_session
-from app.api.routes.matches import get_match_service, router as matches_router
+from app.api.routes.matches import get_match_service
+from app.api.routes.matches import router as matches_router
 from app.services.matching.match_service import MatchService
 
 pytestmark = pytest.mark.unit
@@ -77,7 +78,7 @@ class _FakeMatchRow:
         self.validated_by: UUID | None = None
         self.validated_at: datetime | None = None
         self.discarded_reason: str | None = None
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.created_at = now
         self.updated_at = now
 
@@ -156,7 +157,7 @@ class _InMemoryMatchRepo:
             return None
         row.status = "validated"
         row.validated_by = user_id
-        row.validated_at = datetime.now(tz=timezone.utc)
+        row.validated_at = datetime.now(tz=UTC)
         row.discarded_reason = None
         return row
 

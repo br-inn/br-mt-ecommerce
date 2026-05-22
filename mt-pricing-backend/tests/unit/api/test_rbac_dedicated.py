@@ -19,22 +19,28 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
+import pytest
 from fastapi import FastAPI, HTTPException, status
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.routes.channels_mirror import (
     get_channel_adapters,
     get_mirror_service,
+)
+from app.api.routes.channels_mirror import (
     router as channels_router,
 )
 from app.api.routes.matches import (
     get_match_service,
+)
+from app.api.routes.matches import (
     router as matches_router,
 )
 from app.api.routes.pricing_engine import (
     get_revise_service,
+)
+from app.api.routes.pricing_engine import (
     router as pricing_engine_router,
 )
 
@@ -129,8 +135,9 @@ def _wire_rbac_app(
     app.include_router(router, prefix="/api/v1")
 
     # Patch ProductRepository so refresh endpoint works without real DB.
-    import app.repositories.product as _product_repo_mod
     from unittest.mock import MagicMock as _MagicMock
+
+    import app.repositories.product as _product_repo_mod
 
     class _FakeProductRepo:
         def __init__(self, _session: Any) -> None:
