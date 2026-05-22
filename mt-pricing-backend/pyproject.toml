@@ -114,6 +114,7 @@ exclude = ["alembic/versions/.*"]
 [[tool.mypy.overrides]]
 module = [
     "celery.*",
+    "openpyxl.*",
     "supabase.*",
     "sentry_sdk.*",
     "testcontainers.*",

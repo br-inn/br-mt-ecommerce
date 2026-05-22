@@ -11,28 +11,21 @@ from app.api.routes import (
     admin,
     admin_calibrator,
     admin_erp,
-    admin_scraper,
-    billing,
-    competitor_brands,
-    hitl_queue_price,
-    price_intelligence,
-    ficha_enrich,
-    marketplace_listings,
-    rule_engine,
-    finance,
-    sales,
     admin_erp_eventos,
     admin_flags,
     admin_manufacturers,
     admin_pim_quality,
     admin_price_calibration,
+    admin_scraper,
     asset_links,
     attributes,
     audit,
     audit_query,
     auth,
+    billing,
     channels,
     channels_mirror,
+    competitor_brands,
     costs,
     currencies,
     dashboard,
@@ -41,20 +34,24 @@ from app.api.routes import (
     dr_drills,
     exception_rules,
     exports,
+    ficha_enrich,
+    finance,
     fx_rates,
     goods_receipts,
     graphrag,
+    hitl_queue_price,
     human_queue,
-    inventory,
     imports,
     imports_costs,
     imports_datasheets,
     imports_materials,
     internal_cdc,
+    inventory,
     jobs,
+    marketplace_listings,
     matches,
     parallel_run,
-    unmatched_offers,
+    price_intelligence,
     pricing,
     pricing_admin,
     pricing_dashboard,
@@ -63,22 +60,26 @@ from app.api.routes import (
     products,
     purchase_orders,
     roles,
+    rule_engine,
+    sales,
     schemes,
     scraper,
     scraper_sources,
     suppliers,
+    translations,
     translations_workflow,
+    unmatched_offers,
     users,
     vocabularies,
     warehouses,
 )
-from app.api.routes.matches import dataset_router as comparator_dataset_router
-from app.api.routes.documents import admin_router as admin_documents_router
 from app.api.routes.attributes import (
     admin_attributes_router,
     products_attributes_router,
 )
 from app.api.routes.costs import products_costs_router
+from app.api.routes.documents import admin_router as admin_documents_router
+from app.api.routes.matches import dataset_router as comparator_dataset_router
 from app.api.routes.products_display import products_display_router
 from app.api.routes.taxonomy_extras import (
     admin_divisions_router,
@@ -123,6 +124,7 @@ router.include_router(fx_rates.router)
 router.include_router(imports_costs.router)
 router.include_router(imports_materials.router)
 router.include_router(translations_workflow.router)
+router.include_router(translations.router)
 router.include_router(products_costs_router)
 router.include_router(audit_query.router)
 router.include_router(pricing_engine.router)
@@ -216,7 +218,7 @@ router.include_router(competitor_brands.router)
 router.include_router(admin_scraper.router)
 # EP-SCR-04 — Price Intelligence: dashboard KPIs + listings + quality (US-SCR-04-06/07)
 router.include_router(price_intelligence.router)
-# EP-SCR-04 — HITL Queue priorizada uncertainty×value (US-SCR-04-08b)
+# EP-SCR-04 — HITL Queue priorizada uncertainty x value (US-SCR-04-08b)
 router.include_router(hitl_queue_price.router)
 # Match Rule Engine — taxonomy profiles, unit transforms, norm equivalences, config, suggestions
 router.include_router(rule_engine.router)

@@ -20,8 +20,6 @@ from typing import Any
 
 import pytest
 import pytest_asyncio
-from alembic import command as alembic_command
-from alembic.config import Config as AlembicConfig
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Force test env vars BEFORE importing app modules (mirror test_products pattern).
@@ -41,9 +39,12 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     """Aplica `alembic upgrade head` antes de cualquier test del modulo."""
-    cfg = AlembicConfig("alembic.ini")
+    from alembic.config import Config  # noqa: I001
+    from alembic import command
+
+    cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
-    alembic_command.upgrade(cfg, "head")
+    command.upgrade(cfg, "head")
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -54,7 +55,7 @@ async def _cleanup_products_and_runs(db_session: AsyncSession):
     from sqlalchemy import text
 
     await db_session.execute(text("DELETE FROM product_translations;"))
-    await db_session.execute(text("DELETE FROM product_images;"))
+    await db_session.execute(text("DELETE FROM product_assets;"))
     # products tiene trigger anti-DELETE — desactivamos para tests.
     await db_session.execute(
         text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete;")
@@ -460,8 +461,6 @@ async def test_pim_importer_numeric_strings_cast_ok(
 
     from sqlalchemy import select
 
-    p = (
-        await db_session.execute(select(Product).where(Product.sku == "MT-NUM01"))
-    ).scalar_one()
+    p = (await db_session.execute(select(Product).where(Product.sku == "MT-NUM01"))).scalar_one()
     assert p.packaging.get("qty_per_box") == 12  # int casted from "12"
     assert p.dimensions.get("high_mm") == "100"  # decimal stringified

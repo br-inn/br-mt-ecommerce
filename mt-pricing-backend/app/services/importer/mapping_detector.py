@@ -1,11 +1,12 @@
 """Detección automática de estructura xlsx y propuesta de mapeo via LLM."""
+
 from __future__ import annotations
 
 import io
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -22,12 +23,34 @@ AVAILABLE_TRANSFORMS: tuple[str, ...] = (
 )
 
 # Campos target disponibles (escalares directos en products).
-SCALAR_FIELDS: frozenset[str] = frozenset({
-    "sku", "family", "subfamily", "erp_name", "intrastat_code", "hs_code",
-    "connection", "brand", "weight", "bore_mm", "pressure_max_bar",
-    "temp_min_c", "temp_max_c", "series", "material", "dn", "pn",
-    "size", "revision",
-})
+SCALAR_FIELDS: frozenset[str] = frozenset(
+    {
+        "sku",
+        "family",
+        "subfamily",
+        "type",
+        "erp_name",
+        "intrastat_code",
+        "hs_code",
+        "connection",
+        "brand",
+        "weight",
+        "bore_mm",
+        "pressure_max_bar",
+        "temp_min_c",
+        "temp_max_c",
+        "series",
+        "material",
+        "dn",
+        "pn",
+        "size",
+        "revision",
+        "external_url",
+        "gtin",
+        "dimensional_standard",
+        "country_of_origin",
+    }
+)
 
 # Prefijos JSONB válidos (el sufijo es la clave dentro del bucket).
 JSONB_PREFIXES: frozenset[str] = frozenset({"dimensions", "packaging", "specs"})
@@ -39,7 +62,7 @@ class ColumnMappingItem:
 
     excel_col: str
     target_field: str  # 'sku' | 'family' | 'dimensions.high_mm' | 'specs.ean_box' | '_skip'
-    transform: str     # uno de AVAILABLE_TRANSFORMS
+    transform: str  # uno de AVAILABLE_TRANSFORMS
     confidence: float = 1.0
     notes: str = ""
 
@@ -113,7 +136,7 @@ def detect_header_row(
 
     # Collect up to 5 non-empty data rows after the header.
     samples: list[list[Any]] = []
-    for row in all_rows[header_idx + 1:]:
+    for row in all_rows[header_idx + 1 :]:
         if any(v is not None and v != "" for v in row):
             samples.append(list(row))
         if len(samples) >= 5:
@@ -126,28 +149,35 @@ _LLM_MODEL = "claude-sonnet-4-6"
 
 _AVAILABLE_FIELDS_DOC = """
 Scalar fields (products table):
-  sku (required), family, erp_name, intrastat_code, hs_code, connection,
-  brand, weight, bore_mm, pressure_max_bar, temp_min_c, temp_max_c,
-  series, material, dn, pn, size, revision
+  sku (required), family, subfamily, type, erp_name, intrastat_code, hs_code,
+  connection, brand, weight, bore_mm, pressure_max_bar, temp_min_c, temp_max_c,
+  series, material, dn, pn, size, revision, external_url, gtin,
+  dimensional_standard, country_of_origin
 
 JSONB sub-fields (dot notation):
   dimensions.high_mm, dimensions.wide_mm, dimensions.deep_mm
   packaging.qty_per_box, packaging.box_high_mm, packaging.box_wide_mm,
   packaging.box_deep_mm, packaging.moq_inner_box, packaging.x_pallet
-  specs.name_en, specs.name_es, specs.name_fr, specs.name_de, specs.name_it, specs.name_pt
-  specs.<any_key>   ← use for EANs, names, flags, percentages, etc.
+  specs.<any_key>   ← use for EANs, booleans, flags not covered by scalars
+
+Translations (writes to product_translations.name for that lang):
+  translations.en   translations.es   translations.fr
+  translations.de   translations.it   translations.pt   translations.ar
+
+Multi-value comma-separated (M:N):
+  certifications    ← "CE, ISO 9001, WRAS" is split + each resolved to vocab
 
 Special:
-  _skip   ← ignore this column
+  _skip             ← ignore this column entirely
 
 Available transforms:
   text        plain text / string
   int         integer number
   decimal     decimal / float
-  cm_to_mm    multiply × 10 (centimeters → millimeters)
+  cm_to_mm    multiply x10 (centimeters to millimeters)
   ean         EAN barcode (digits only, valid lengths 8/12/13/14)
   bool_check  truthy check: "✓", "yes", "1", "true" → true; else false
-  percent     numeric percentage stored as integer 0–100
+  percent     numeric percentage stored as integer 0-100
 """
 
 
@@ -164,10 +194,7 @@ def suggest_mapping(
     # Tabla columna → valores de muestra (todas las columnas, no truncadas).
     col_samples: list[str] = []
     for j, h in enumerate(headers):
-        vals = [
-            repr(row[j]) if j < len(row) else "None"
-            for row in sample_rows[:3]
-        ]
+        vals = [repr(row[j]) if j < len(row) else "None" for row in sample_rows[:3]]
         col_samples.append(f"  {h!r}: {', '.join(vals)}")
     samples_text = "\n".join(col_samples)
 
@@ -179,7 +206,11 @@ def suggest_mapping(
         f"Use the actual sample values to infer the correct field and transform. "
         f"For example: a column with values like 'DN25', 'DN40' maps to 'dn' with "
         f"transform 'text'; a column with values in cm (e.g. 12.5) that represents "
-        f"a physical dimension maps to dimensions.* with transform 'cm_to_mm'.\n\n"
+        f"a physical dimension maps to dimensions.* with transform 'cm_to_mm'.\n"
+        f"For multi-language name columns (e.g. 'Nombre ES', 'Name EN', 'Nome IT'), "
+        f"use translations.<lang> (translations.es, translations.en, translations.it, etc.).\n"
+        f"For certification columns (e.g. 'Normas', 'Certifications', 'CE Mark', "
+        f"'Homologaciones'), use 'certifications'.\n\n"
         f"{_AVAILABLE_FIELDS_DOC}\n\n"
         f"Column headers with sample values (up to 3 rows):\n{samples_text}\n\n"
         f"Return a JSON array — no markdown, no explanation, just JSON. "
@@ -197,13 +228,14 @@ def suggest_mapping(
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = message.content[0].text.strip()
+        text = message.content[0].text.strip()  # type: ignore[union-attr]
         # Strip markdown code fences (e.g. ```json ... ```)
         text = re.sub(r"^```[^\n]*\n?", "", text, flags=re.MULTILINE).strip()
         data = json.loads(text)
         if not isinstance(data, list):
             logger.warning(
-                "suggest_mapping: LLM returned %s instead of a JSON array — returning empty mapping",
+                "suggest_mapping: LLM returned %s instead of a JSON array"
+                " — returning empty mapping",
                 type(data).__name__,
             )
             return []
@@ -218,7 +250,7 @@ def suggest_mapping(
             for item in data
             if isinstance(item, dict) and "excel_col" in item
         ]
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("suggest_mapping LLM call failed — returning _skip fallback")
         return [
             ColumnMappingItem(

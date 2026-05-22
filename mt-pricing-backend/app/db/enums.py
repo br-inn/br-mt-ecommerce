@@ -57,8 +57,10 @@ class Scheme(StrEnum):
 class TranslationStatus(StrEnum):
     PENDING = "pending"
     DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
     AI_GENERATED = "ai_generated"
     APPROVED = "approved"
+    STALE = "stale"
 
 
 class DataQuality(StrEnum):

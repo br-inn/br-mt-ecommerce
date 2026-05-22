@@ -60,7 +60,25 @@ class ImportRunStatusResponse(BaseModel):
     created_at: datetime
     summary: dict[str, Any] = Field(default_factory=dict)
     apply: dict[str, Any] | None = None
+    reconciliation: ReconciliationResultSchema | None = None
     error: str | None = None
+
+
+class ReconciliationResultSchema(BaseModel):
+    """Resultado de reconciliación tras un apply PIM."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    total_excel_rows: int
+    inserted: int
+    updated: int
+    no_change: int
+    error_rows: int
+    locked_rows: int
+    accounted_total: int
+    gap: int
+    is_complete: bool
+    missing_skus: list[str]
 
 
 class ColumnMappingItemSchema(BaseModel):
