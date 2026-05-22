@@ -39,7 +39,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     """Aplica `alembic upgrade head` antes de cualquier test del modulo."""
-    from alembic import command
+    from alembic import command  # noqa: I001
     from alembic.config import Config
 
     cfg = Config("alembic.ini")
