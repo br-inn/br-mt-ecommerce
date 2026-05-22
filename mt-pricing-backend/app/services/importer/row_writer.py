@@ -4,7 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from sqlalchemy import func, or_, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models.product import ProductTranslation
+from app.db.models.vocabularies import Certification, ProductCertification
 
 # Valid scalar fields on the products table
 _PRODUCT_SCALAR_FIELDS: frozenset[str] = frozenset({
@@ -72,3 +77,62 @@ class JsonbWriter:
                 if f"{bucket}.{k}" not in locked_fields
             }}
             setattr(existing, bucket, merged)
+
+
+class TranslationWriter:
+    """Upsert translations into product_translations."""
+
+    async def write(
+        self,
+        session: AsyncSession,
+        sku: str,
+        translations: dict[str, str],
+        locked_fields: set[str],
+    ) -> None:
+        for lang, name in translations.items():
+            if f"translations.{lang}" in locked_fields:
+                continue
+            stmt = (
+                pg_insert(ProductTranslation)
+                .values(sku=sku, lang=lang, name=name, status="imported")
+                .on_conflict_do_update(
+                    index_elements=["sku", "lang"],
+                    set_={"name": name, "status": "imported", "updated_at": text("now()")},
+                )
+            )
+            await session.execute(stmt)
+
+
+class CertificationWriter:
+    """Get-or-create Certification vocab entries + M:N insert. Additive-only."""
+
+    async def write(
+        self,
+        session: AsyncSession,
+        sku: str,
+        certifications: list[str],
+    ) -> None:
+        for cert_name in certifications:
+            if not cert_name:
+                continue
+            code = cert_name.upper().replace(" ", "_")
+            result = await session.execute(
+                select(Certification).where(
+                    or_(
+                        Certification.code == code,
+                        func.lower(Certification.name) == cert_name.lower(),
+                    )
+                )
+            )
+            cert = result.scalar_one_or_none()
+            if cert is None:
+                cert = Certification(code=code, name=cert_name)
+                session.add(cert)
+                await session.flush()
+
+            stmt = (
+                pg_insert(ProductCertification)
+                .values(product_sku=sku, certification_id=cert.id)
+                .on_conflict_do_nothing()
+            )
+            await session.execute(stmt)
