@@ -44,8 +44,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
@@ -81,8 +79,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
@@ -118,8 +114,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
@@ -164,8 +158,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         # `--frozen-lockfile` cuando exista pnpm-lock.yaml; fallback a install
