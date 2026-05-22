@@ -67,8 +67,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: "mt-pricing-backend/uv.lock"
+          enable-cache: false
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
@@ -101,8 +100,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: "mt-pricing-backend/uv.lock"
+          enable-cache: false
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
@@ -170,8 +168,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: "mt-pricing-backend/uv.lock"
+          enable-cache: false
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
@@ -215,8 +212,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: "mt-pricing-backend/uv.lock"
+          enable-cache: false
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
