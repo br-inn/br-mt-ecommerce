@@ -139,7 +139,7 @@ jobs:
           echo "Type-checking changed files:"
           echo "$CHANGED"
           FILES_JSON=$(echo "$CHANGED" | python3 -c \
-            "import sys,json; print(json.dumps(sys.stdin.read().strip().split('\n')))")
+            "import sys,json; files=sys.stdin.read().strip().split('\n'); setup='tests/unit/setup.ts'; all_files=[setup]+[f for f in files if f!=setup]; print(json.dumps(all_files))")
           printf '{"extends":"./tsconfig.json","include":[],"files":%s}\n' \
             "$FILES_JSON" > tsconfig.ci.json
           pnpm exec tsc --noEmit -p tsconfig.ci.json

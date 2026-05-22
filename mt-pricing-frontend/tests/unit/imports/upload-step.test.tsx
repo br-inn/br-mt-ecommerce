@@ -19,7 +19,10 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-import { importsApi, type ImportPreview } from "@/lib/api/endpoints/imports";
+import {
+  importsApi,
+  type AnalyzeImportResponse,
+} from "@/lib/api/endpoints/imports";
 import { UploadStep } from "@/app/(app)/imports/_components/upload-step";
 
 const messages = {
@@ -41,23 +44,12 @@ const messages = {
   common: { error: "Error", loading: "…" },
 };
 
-const samplePreview: ImportPreview = {
-  run_id: "run-1",
-  type: "pim",
-  status: "preview_ready",
+const sampleAnalysis: AnalyzeImportResponse = {
   filename: "PIM.xlsx",
-  uploaded_at: "2026-05-07T00:00:00Z",
-  summary: {
-    total: 10,
-    creates: 5,
-    updates: 3,
-    skipped_locked: 0,
-    no_change: 1,
-    errors: 1,
-    orphans: 0,
-  },
-  progress: null,
-  rows: [],
+  detected_header_row: 0,
+  headers: ["SKU", "Name"],
+  sample_rows: [["SKU-001", "Product 1"]],
+  proposed_mapping: [],
 };
 
 function renderStep(onAnalyzed = vi.fn()) {
@@ -80,7 +72,7 @@ describe("UploadStep (US-1A-06-01 frontend)", () => {
   });
 
   it("sube archivo válido y llama onAnalyzed con el preview", async () => {
-    const spy = vi.spyOn(importsApi, "preview").mockResolvedValue(samplePreview);
+    const spy = vi.spyOn(importsApi, "analyze").mockResolvedValue(sampleAnalysis);
     const { onAnalyzed } = renderStep();
     const file = new File(["xls-bytes"], "PIM.xlsx", {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -97,12 +89,12 @@ describe("UploadStep (US-1A-06-01 frontend)", () => {
 
     await waitFor(() => expect(spy).toHaveBeenCalled());
     await waitFor(() =>
-      expect(onAnalyzed).toHaveBeenCalledWith(samplePreview),
+      expect(onAnalyzed).toHaveBeenCalledWith(sampleAnalysis, expect.any(File)),
     );
   });
 
   it("rechaza archivo > 50 MB sin disparar el upload", async () => {
-    const spy = vi.spyOn(importsApi, "preview").mockResolvedValue(samplePreview);
+    const spy = vi.spyOn(importsApi, "analyze").mockResolvedValue(sampleAnalysis);
     renderStep();
     const big = new File([new Uint8Array(51 * 1024 * 1024)], "PIM.xlsx", {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
