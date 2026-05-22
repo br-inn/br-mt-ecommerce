@@ -1,0 +1,18 @@
+# gitleaks configuration — allowlist for known test/CI credentials
+# These are intentional fake values used exclusively in CI workflows.
+# Real secrets must always go in GitHub Secrets, never hardcoded.
+
+[allowlist]
+  description = "CI workflow test credentials (not real secrets)"
+  paths = [
+    '''.github/workflows/ci-backend\.yml''',
+    '''.github/workflows/ci-backend-full\.yml''',
+  ]
+  regexes = [
+    # Postgres test instance password used only in GitHub Actions service containers
+    '''testpassword''',
+    # Supabase test values for JWT signing in pytest — not real credentials
+    '''test-jwt-secret-deterministic-32chars!''',
+    '''anon-test-key''',
+    '''service-role-test-key''',
+  ]
