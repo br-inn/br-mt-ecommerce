@@ -146,8 +146,13 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:testpassword@localhost:5432/mt_pricing_test
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://postgres:testpassword@localhost:5432/mt_pricing_test
       REDIS_URL: redis://localhost:6379/0
       ENV: development
+      SUPABASE_JWT_SECRET: test-jwt-secret-deterministic-32chars!
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test-key
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test-key
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
@@ -163,6 +168,10 @@ jobs:
         run: |
           PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_test \
             -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      - name: Create auth schema stub (Supabase shim for bare PG)
+        run: |
+          PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_test \
+            -c "CREATE SCHEMA IF NOT EXISTS auth; CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY); CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS \$\$ SELECT NULL::uuid \$\$; DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN; END IF; END \$\$;"
       - name: pytest integration
         run: uv run pytest tests/integration -q --no-cov
 
@@ -193,6 +202,7 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:testpassword@localhost:5432/mt_pricing_alembic
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://postgres:testpassword@localhost:5432/mt_pricing_alembic
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
@@ -208,6 +218,10 @@ jobs:
         run: |
           PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_alembic \
             -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      - name: Create auth schema stub (Supabase shim for bare PG)
+        run: |
+          PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_alembic \
+            -c "CREATE SCHEMA IF NOT EXISTS auth; CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY); CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS \$\$ SELECT NULL::uuid \$\$; DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN; END IF; END \$\$;"
       - name: alembic upgrade head
         run: uv run alembic upgrade head
       - name: alembic check (no pending diff)

@@ -396,7 +396,7 @@ def _thread_score(sku_thread: str | None, cand_thread: str | None) -> tuple[Deci
 # ── DN / Tamaño ───────────────────────────────────────────────────────────────
 
 _DN_INCH_RE = re.compile(r'(\d+(?:[/-]\d+)?)\s*["“”]')  # "  o comillas tipográficas
-_DN_INCH_WORD_RE = re.compile(r'(\d+(?:[/-]\d+)?)\s*(?:inch|in\b)', re.IGNORECASE)
+_DN_INCH_WORD_RE = re.compile(r'(\d+(?:[/-]\d+)?)[- ]*(?:inch|in\b)', re.IGNORECASE)
 _DN_METRIC_RE = re.compile(r'\bDN\s*(\d{1,4})\b', re.IGNORECASE)
 _DN_INT_RE = re.compile(r'^\s*(\d{1,4})\s*$')
 

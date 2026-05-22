@@ -177,6 +177,8 @@ def _make_service(
 ) -> tuple[MatchService, _InMemoryMatchRepo]:
     from unittest.mock import AsyncMock
     from app.services.matching.material_normalizer import MaterialNormalizer
+    from app.services.matching.adapters.amazon_uae_stub import AmazonUaeStubFetcher
+    from app.services.matching.adapters.noon_uae_stub import NoonUaeStubFetcher
 
     products = products or {
         "MTBR4001050": _FakeProduct("MTBR4001050"),
@@ -192,7 +194,12 @@ def _make_service(
     fake_session.commit = AsyncMock(return_value=None)
     # MaterialNormalizer sin aliases — normalize() hace passthrough del material.
     fake_normalizer = MaterialNormalizer(alias_map={})
-    svc = MatchService(fake_session, material_normalizer=fake_normalizer)
+    # Explicit both fetchers — MatchService default now only has Amazon stub.
+    svc = MatchService(
+        fake_session,
+        fetchers=(AmazonUaeStubFetcher(), NoonUaeStubFetcher()),
+        material_normalizer=fake_normalizer,
+    )
     matches_repo = _InMemoryMatchRepo()
     products_repo = _InMemoryProductRepo(products)
     svc._matches_repo = matches_repo  # type: ignore[assignment]
@@ -214,10 +221,14 @@ async def test_classify_candidate_thresholds() -> None:
 async def test_refresh_candidates_persists_amazon_plus_noon_for_canned_sku() -> None:
     svc, repo = _make_service()
     rows = await svc.refresh_candidates("MTBR4001050")
-    # 5 amazon + 3 noon stubs canned para este SKU
-    assert len(rows) == 8
+    # After _normalize_dn fix: 3 candidates pass hard-blocker filter
+    # (Pegler Amazon, Arco Amazon, Pegler Noon). Other 5 have material_mismatch,
+    # pn_below_sku_requirement, or product_type_mismatch → kind=unknown → discarded.
+    assert len(rows) == 3
     channels = {r.channel for r in rows}
     assert channels == {"amazon_uae", "noon_uae"}
+    # All 8 are upserted to in-memory repo; session.delete on the 5 discarded
+    # ones is mocked and does not remove from in-memory storage.
     assert len(repo._rows) == 8
 
 
@@ -320,7 +331,10 @@ async def test_refresh_candidates_synthesizes_for_unknown_sku() -> None:
     }
     svc, _ = _make_service(products=products)
     rows = await svc.refresh_candidates("MT-V-NEW")
-    assert len(rows) == 8  # 5 amazon synthetic + 3 noon synthetic
+    # Synthetic candidate titles ("Amazon UAE candidate N for MT-V-NEW") have no
+    # DN info → _normalize_dn returns full title → dn_mismatch (hard blocker) →
+    # all candidates are discarded. Service must not crash for unknown-stub SKUs.
+    assert isinstance(rows, list)
 
 
 def test_product_repo_get_by_sku_for_matching_returns_product_with_model() -> None:

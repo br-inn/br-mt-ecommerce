@@ -114,6 +114,8 @@ def _fake_product_orm(
     p.tags = []
     p.video_url = None
     p.external_url = None
+    p.model_id = None
+    p.gtin = None
     # Stage 3
     p.series_id = series_id
     p.material_id = material_id

@@ -123,7 +123,7 @@ def _mock_report(total: int = 100, missing_name_en: int = 22) -> dict[str, Any]:
 
 async def test_data_quality_returns_structure() -> None:
     """Mock DB con 100 SKUs, 22 sin traducción → response con estructura correcta."""
-    user = _FakeUser(perms=["pim:read"])
+    user = _FakeUser(perms=["pim:read", "admin:read"])
     app = _build_app(user)
 
     report = _mock_report(total=100, missing_name_en=22)
@@ -171,7 +171,7 @@ async def test_data_quality_returns_structure() -> None:
 
 async def test_data_quality_pct_calculation() -> None:
     """Verifica que el porcentaje de missing_name_en se calcule correctamente."""
-    user = _FakeUser(perms=["pim:read"])
+    user = _FakeUser(perms=["pim:read", "admin:read"])
     app = _build_app(user)
 
     # 22 de 100 SKUs → 22.0%
@@ -197,7 +197,7 @@ async def test_data_quality_pct_calculation() -> None:
 
 async def test_data_quality_pct_with_zero_total() -> None:
     """Con 0 SKUs el porcentaje debe ser 0.0 sin división por cero."""
-    user = _FakeUser(perms=["pim:read"])
+    user = _FakeUser(perms=["pim:read", "admin:read"])
     app = _build_app(user)
 
     # Reporte con 0 SKUs totales

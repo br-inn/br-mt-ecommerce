@@ -16,7 +16,7 @@ pytestmark = pytest.mark.unit
 def test_matching_returns_empty_when_live_off(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MT_LIVE_NETWORK", raising=False)
     assert get_fetcher("amazon_uae").channel == "amazon_uae"
-    assert isinstance(get_fetcher("noon_uae"), NoonUaeStubFetcher)
+    assert get_fetcher("noon_uae").channel == "noon_uae"
 
 
 def test_matching_returns_real_when_live_on(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -119,6 +119,14 @@ def _build_app(
 
     graphrag_route_mod.CdcEventsRepository = _FakeCdcRepo  # type: ignore[attr-defined,assignment]
 
+    # health endpoint calls get_graph_repository() directly (not as a dep),
+    # so we patch the module-level reference to delegate to the stub store.
+    class _FakeGraphRepo:
+        async def health_check(self) -> dict[str, Any]:
+            return store.health_check()
+
+    graphrag_route_mod.get_graph_repository = lambda: _FakeGraphRepo()  # type: ignore[assignment]
+
     return app
 
 

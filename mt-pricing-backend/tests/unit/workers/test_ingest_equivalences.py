@@ -15,7 +15,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-_PATCH_TARGET = "app.services.graphrag.adapters.get_default_graph_store"
+_PATCH_TARGET = "app.workers.tasks.graphrag.get_default_graph_store"
 
 
 def _make_mock_graph() -> MagicMock:

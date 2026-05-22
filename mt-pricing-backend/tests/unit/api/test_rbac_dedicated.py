@@ -121,13 +121,35 @@ def _wire_rbac_app(
     En su lugar:
     - Override de ``get_current_user`` devolviendo ``user`` (o lanzando 401
       si user is None).
-    - Override de ``get_db_session`` con None (los services se mockean).
+    - Override de ``get_db_session`` con MagicMock (los services se mockean).
+    - ProductRepository y refresh_sku_task parcheados a nivel módulo para
+      que el endpoint /refresh funcione sin DB ni Celery real.
     """
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
 
-    async def _override_db():  # pragma: no cover
-        yield None
+    # Patch ProductRepository so refresh endpoint works without real DB.
+    import app.repositories.product as _product_repo_mod  # noqa: PLC0415
+    from unittest.mock import MagicMock as _MagicMock  # noqa: PLC0415
+
+    class _FakeProductRepo:
+        def __init__(self, _session: Any) -> None:  # noqa: ANN401
+            pass
+
+        async def get_by_sku(self, sku: str) -> Any:  # noqa: ANN401
+            return _MagicMock(sku=sku)  # non-None → SKU exists
+
+    _product_repo_mod.ProductRepository = _FakeProductRepo  # type: ignore[assignment]
+
+    # Patch Celery task so refresh endpoint doesn't need a broker.
+    import app.workers.tasks.comparator as _comparator_mod  # noqa: PLC0415
+
+    _mock_task = _MagicMock()
+    _mock_task.apply_async.return_value.id = "test-task-id"
+    _comparator_mod.refresh_sku_task = _mock_task  # type: ignore[attr-defined]
+
+    async def _override_db() -> Any:  # noqa: ANN401
+        yield _MagicMock()
 
     async def _override_user() -> _FakeUser:
         if user is None:
@@ -191,7 +213,7 @@ async def test_matches_list_ti_denied_no_matches_read() -> None:
 async def test_matches_refresh_comercial_allowed() -> None:
     user = _make_user("comercial")
     svc = MagicMock()
-    svc.refresh_candidates = AsyncMock(return_value=[])
+    svc.list_candidates = AsyncMock(return_value=([], None))
     app = _wire_rbac_app(
         router=matches_router,
         user=user,
@@ -199,7 +221,7 @@ async def test_matches_refresh_comercial_allowed() -> None:
     )
     async with await _client(app) as ac:
         resp = await ac.post("/api/v1/matches/MTBR4001050/refresh")
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 202, resp.text
 
 
 async def test_matches_refresh_auditor_denied() -> None:
