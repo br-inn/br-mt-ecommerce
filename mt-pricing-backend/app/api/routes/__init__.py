@@ -67,6 +67,7 @@ from app.api.routes import (
     scraper,
     scraper_sources,
     suppliers,
+    translations,
     translations_workflow,
     users,
     vocabularies,
@@ -123,6 +124,7 @@ router.include_router(fx_rates.router)
 router.include_router(imports_costs.router)
 router.include_router(imports_materials.router)
 router.include_router(translations_workflow.router)
+router.include_router(translations.router)
 router.include_router(products_costs_router)
 router.include_router(audit_query.router)
 router.include_router(pricing_engine.router)
