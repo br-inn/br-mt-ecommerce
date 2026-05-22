@@ -7,11 +7,6 @@
 name: ci-frontend
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "mt-pricing-frontend/**"
-      - ".github/workflows/ci-frontend.yml"
   pull_request:
     paths:
       - "mt-pricing-frontend/**"

@@ -39,6 +39,7 @@ jobs:
   # ---------------------------------------------------------------------------
   lint:
     name: Lint (ruff)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -70,6 +71,7 @@ jobs:
   # ---------------------------------------------------------------------------
   typecheck:
     name: Typecheck (mypy)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -99,6 +101,7 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: Tests (pytest)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -179,6 +182,7 @@ jobs:
   # ---------------------------------------------------------------------------
   security:
     name: Security (pip-audit)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
