@@ -1,4 +1,5 @@
 """ScalarWriter and JsonbWriter for the PIM import pipeline."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,14 +14,37 @@ from app.db.models.product import ProductTranslation
 from app.db.models.vocabularies import Certification, ProductCertification
 
 # Valid scalar fields on the products table
-_PRODUCT_SCALAR_FIELDS: frozenset[str] = frozenset({
-    "family", "subfamily", "type", "material", "dn", "pn", "connection",
-    "brand", "weight", "weight_unit", "intrastat_code", "erp_name",
-    "hs_code", "country_of_origin", "base_uom", "data_quality",
-    "bore_mm", "pressure_max_bar", "temp_min_c", "temp_max_c",
-    "series", "size", "revision", "external_url", "video_url",
-    "gtin", "dimensional_standard",
-})
+_PRODUCT_SCALAR_FIELDS: frozenset[str] = frozenset(
+    {
+        "family",
+        "subfamily",
+        "type",
+        "material",
+        "dn",
+        "pn",
+        "connection",
+        "brand",
+        "weight",
+        "weight_unit",
+        "intrastat_code",
+        "erp_name",
+        "hs_code",
+        "country_of_origin",
+        "base_uom",
+        "data_quality",
+        "bore_mm",
+        "pressure_max_bar",
+        "temp_min_c",
+        "temp_max_c",
+        "series",
+        "size",
+        "revision",
+        "external_url",
+        "video_url",
+        "gtin",
+        "dimensional_standard",
+    }
+)
 _JSONB_FIELDS: frozenset[str] = frozenset({"dimensions", "packaging", "specs"})
 
 
@@ -73,10 +97,10 @@ class JsonbWriter:
             if bucket not in _JSONB_FIELDS:
                 continue
             current: dict[str, Any] = getattr(existing, bucket, {}) or {}
-            merged = {**current, **{
-                k: v for k, v in kv.items()
-                if f"{bucket}.{k}" not in locked_fields
-            }}
+            merged = {
+                **current,
+                **{k: v for k, v in kv.items() if f"{bucket}.{k}" not in locked_fields},
+            }
             setattr(existing, bucket, merged)
 
 
@@ -117,9 +141,7 @@ class CertificationWriter:
         if not names:
             return
 
-        name_to_code: dict[str, str] = {
-            n: n.upper().replace(" ", "_") for n in names
-        }
+        name_to_code: dict[str, str] = {n: n.upper().replace(" ", "_") for n in names}
         codes = list(name_to_code.values())
         names_lower = [n.lower() for n in names]
 
@@ -134,9 +156,7 @@ class CertificationWriter:
         )
         existing_certs = result.scalars().all()
         by_code: dict[str, Certification] = {c.code: c for c in existing_certs}
-        by_name_lower: dict[str, Certification] = {
-            c.name.lower(): c for c in existing_certs
-        }
+        by_name_lower: dict[str, Certification] = {c.name.lower(): c for c in existing_certs}
 
         cert_ids: list[Any] = []
         for cert_name, code in name_to_code.items():
@@ -151,10 +171,7 @@ class CertificationWriter:
         if cert_ids:
             stmt = (
                 pg_insert(ProductCertification)
-                .values([
-                    {"product_sku": sku, "certification_id": cid}
-                    for cid in cert_ids
-                ])
+                .values([{"product_sku": sku, "certification_id": cid} for cid in cert_ids])
                 .on_conflict_do_nothing()
             )
             await session.execute(stmt)

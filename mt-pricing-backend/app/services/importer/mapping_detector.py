@@ -1,4 +1,5 @@
 """Detección automática de estructura xlsx y propuesta de mapeo via LLM."""
+
 from __future__ import annotations
 
 import io
@@ -22,13 +23,34 @@ AVAILABLE_TRANSFORMS: tuple[str, ...] = (
 )
 
 # Campos target disponibles (escalares directos en products).
-SCALAR_FIELDS: frozenset[str] = frozenset({
-    "sku", "family", "subfamily", "type", "erp_name", "intrastat_code", "hs_code",
-    "connection", "brand", "weight", "bore_mm", "pressure_max_bar",
-    "temp_min_c", "temp_max_c", "series", "material", "dn", "pn",
-    "size", "revision", "external_url", "gtin", "dimensional_standard",
-    "country_of_origin",
-})
+SCALAR_FIELDS: frozenset[str] = frozenset(
+    {
+        "sku",
+        "family",
+        "subfamily",
+        "type",
+        "erp_name",
+        "intrastat_code",
+        "hs_code",
+        "connection",
+        "brand",
+        "weight",
+        "bore_mm",
+        "pressure_max_bar",
+        "temp_min_c",
+        "temp_max_c",
+        "series",
+        "material",
+        "dn",
+        "pn",
+        "size",
+        "revision",
+        "external_url",
+        "gtin",
+        "dimensional_standard",
+        "country_of_origin",
+    }
+)
 
 # Prefijos JSONB válidos (el sufijo es la clave dentro del bucket).
 JSONB_PREFIXES: frozenset[str] = frozenset({"dimensions", "packaging", "specs"})
@@ -40,7 +62,7 @@ class ColumnMappingItem:
 
     excel_col: str
     target_field: str  # 'sku' | 'family' | 'dimensions.high_mm' | 'specs.ean_box' | '_skip'
-    transform: str     # uno de AVAILABLE_TRANSFORMS
+    transform: str  # uno de AVAILABLE_TRANSFORMS
     confidence: float = 1.0
     notes: str = ""
 
@@ -114,7 +136,7 @@ def detect_header_row(
 
     # Collect up to 5 non-empty data rows after the header.
     samples: list[list[Any]] = []
-    for row in all_rows[header_idx + 1:]:
+    for row in all_rows[header_idx + 1 :]:
         if any(v is not None and v != "" for v in row):
             samples.append(list(row))
         if len(samples) >= 5:
@@ -172,10 +194,7 @@ def suggest_mapping(
     # Tabla columna → valores de muestra (todas las columnas, no truncadas).
     col_samples: list[str] = []
     for j, h in enumerate(headers):
-        vals = [
-            repr(row[j]) if j < len(row) else "None"
-            for row in sample_rows[:3]
-        ]
+        vals = [repr(row[j]) if j < len(row) else "None" for row in sample_rows[:3]]
         col_samples.append(f"  {h!r}: {', '.join(vals)}")
     samples_text = "\n".join(col_samples)
 

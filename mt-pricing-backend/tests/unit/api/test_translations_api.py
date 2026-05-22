@@ -34,6 +34,7 @@ pytestmark = pytest.mark.unit
 # Fake user
 # ---------------------------------------------------------------------------
 
+
 class _Role:
     def __init__(self) -> None:
         self.code = "admin"
@@ -52,6 +53,7 @@ class _FakeUser:
 # ---------------------------------------------------------------------------
 # App builder
 # ---------------------------------------------------------------------------
+
 
 def _build_app(session_override: Any) -> FastAPI:
     app = FastAPI()
@@ -76,8 +78,10 @@ def _build_app(session_override: Any) -> FastAPI:
         for d in dep.dependencies:
             call = d.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call: Any = call) -> _FakeUser:
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -90,6 +94,7 @@ def _async_client(app: FastAPI) -> AsyncClient:
 # ---------------------------------------------------------------------------
 # Helpers — mock DB session for coverage endpoint
 # ---------------------------------------------------------------------------
+
 
 def _make_coverage_session(
     total: int,
@@ -113,19 +118,23 @@ def _make_coverage_session(
 # Tests — POST /complete
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_complete_endpoint_returns_completion_result() -> None:
-    fake_result = CompletionResult(completed=3, skipped=0, errors=0, details=[
-        {"sku": "MT-001", "lang": "es", "status": "ai_generated"},
-        {"sku": "MT-001", "lang": "fr", "status": "ai_generated"},
-        {"sku": "MT-002", "lang": "es", "status": "ai_generated"},
-    ])
+    fake_result = CompletionResult(
+        completed=3,
+        skipped=0,
+        errors=0,
+        details=[
+            {"sku": "MT-001", "lang": "es", "status": "ai_generated"},
+            {"sku": "MT-001", "lang": "fr", "status": "ai_generated"},
+            {"sku": "MT-002", "lang": "es", "status": "ai_generated"},
+        ],
+    )
     fake_session = MagicMock(spec=AsyncSession)
     app = _build_app(fake_session)
 
-    with patch(
-        "app.api.routes.translations.TranslationCompletionService"
-    ) as MockSvc:
+    with patch("app.api.routes.translations.TranslationCompletionService") as MockSvc:
         mock_instance = MockSvc.return_value
         mock_instance.complete = AsyncMock(return_value=fake_result)
 
@@ -154,9 +163,7 @@ async def test_complete_endpoint_passes_source_lang() -> None:
     fake_session = MagicMock(spec=AsyncSession)
     app = _build_app(fake_session)
 
-    with patch(
-        "app.api.routes.translations.TranslationCompletionService"
-    ) as MockSvc:
+    with patch("app.api.routes.translations.TranslationCompletionService") as MockSvc:
         mock_instance = MockSvc.return_value
         mock_instance.complete = AsyncMock(return_value=fake_result)
 
@@ -184,9 +191,7 @@ async def test_complete_endpoint_empty_skus_returns_zero() -> None:
     fake_session = MagicMock(spec=AsyncSession)
     app = _build_app(fake_session)
 
-    with patch(
-        "app.api.routes.translations.TranslationCompletionService"
-    ) as MockSvc:
+    with patch("app.api.routes.translations.TranslationCompletionService") as MockSvc:
         mock_instance = MockSvc.return_value
         mock_instance.complete = AsyncMock(return_value=fake_result)
 
@@ -214,6 +219,7 @@ async def test_complete_endpoint_missing_body_returns_422() -> None:
 # ---------------------------------------------------------------------------
 # Tests — GET /coverage
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_coverage_endpoint_returns_expected_shape() -> None:

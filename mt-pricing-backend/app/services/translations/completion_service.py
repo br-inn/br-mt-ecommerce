@@ -53,19 +53,12 @@ class TranslationCompletionService:
                 ProductTranslation.lang == source_lang,
             )
         )
-        source_by_sku: dict[str, str] = {
-            row.sku: row.name
-            for (row,) in rows.all()
-            if row.name
-        }
+        source_by_sku: dict[str, str] = {row.sku: row.name for (row,) in rows.all() if row.name}
 
         # Process in batches
         for i in range(0, len(skus), _BATCH_SIZE):
-            batch = skus[i: i + _BATCH_SIZE]
-            batch_context = [
-                {"sku": sku, "name": source_by_sku.get(sku, sku)}
-                for sku in batch
-            ]
+            batch = skus[i : i + _BATCH_SIZE]
+            batch_context = [{"sku": sku, "name": source_by_sku.get(sku, sku)} for sku in batch]
             try:
                 translations = self._call_llm(batch_context, source_lang, target_langs)
             except Exception as exc:
@@ -102,8 +95,7 @@ class TranslationCompletionService:
     ) -> list[dict[str, Any]]:
         lang_list = ", ".join(target_langs)
         products_text = "\n".join(
-            f"  - sku: {p['sku']}, name ({source_lang}): {p['name']}"
-            for p in products
+            f"  - sku: {p['sku']}, name ({source_lang}): {p['name']}" for p in products
         )
         prompt = (
             f"You are a product name translator for an industrial PVF "

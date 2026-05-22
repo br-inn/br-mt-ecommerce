@@ -1,4 +1,5 @@
 """Tests para XlsxParser — produce ParsedProduct por fila."""
+
 from __future__ import annotations
 
 import io
@@ -26,10 +27,12 @@ def _mapping(*items: tuple[str, str, str]) -> list[ColumnMappingItem]:
 
 
 def test_parses_scalar_fields():
-    xlsx = _make_xlsx([
-        ["sku", "Peso neto (kg)", "Conexión"],
-        ["MT-001", 1.5, "Rosca"],
-    ])
+    xlsx = _make_xlsx(
+        [
+            ["sku", "Peso neto (kg)", "Conexión"],
+            ["MT-001", 1.5, "Rosca"],
+        ]
+    )
     mapping = _mapping(
         ("sku", "sku", "text"),
         ("Peso neto (kg)", "weight", "decimal"),
@@ -45,10 +48,12 @@ def test_parses_scalar_fields():
 
 
 def test_parses_jsonb_dimensions():
-    xlsx = _make_xlsx([
-        ["sku", "Alto (cm)"],
-        ["MT-001", 10.5],
-    ])
+    xlsx = _make_xlsx(
+        [
+            ["sku", "Alto (cm)"],
+            ["MT-001", 10.5],
+        ]
+    )
     mapping = _mapping(
         ("sku", "sku", "text"),
         ("Alto (cm)", "dimensions.high_mm", "cm_to_mm"),
@@ -58,10 +63,12 @@ def test_parses_jsonb_dimensions():
 
 
 def test_parses_translations():
-    xlsx = _make_xlsx([
-        ["sku", "Nombre EN", "Nombre FR"],
-        ["MT-001", "Ball valve", "Robinet à bille"],
-    ])
+    xlsx = _make_xlsx(
+        [
+            ["sku", "Nombre EN", "Nombre FR"],
+            ["MT-001", "Ball valve", "Robinet à bille"],
+        ]
+    )
     mapping = _mapping(
         ("sku", "sku", "text"),
         ("Nombre EN", "translations.en", "text"),
@@ -72,10 +79,12 @@ def test_parses_translations():
 
 
 def test_parses_certifications_split_by_comma():
-    xlsx = _make_xlsx([
-        ["sku", "Certificaciones"],
-        ["MT-001", "CE, ISO 9001, WRAS"],
-    ])
+    xlsx = _make_xlsx(
+        [
+            ["sku", "Certificaciones"],
+            ["MT-001", "CE, ISO 9001, WRAS"],
+        ]
+    )
     mapping = _mapping(
         ("sku", "sku", "text"),
         ("Certificaciones", "certifications", "text"),
@@ -109,11 +118,13 @@ def test_empty_sku_is_error_row():
 
 
 def test_header_row_index_nonzero():
-    xlsx = _make_xlsx([
-        ["PIM Export v2"],          # título — fila 0
-        ["sku", "Peso"],            # header real — fila 1
-        ["MT-001", 0.5],
-    ])
+    xlsx = _make_xlsx(
+        [
+            ["PIM Export v2"],  # título — fila 0
+            ["sku", "Peso"],  # header real — fila 1
+            ["MT-001", 0.5],
+        ]
+    )
     mapping = _mapping(("sku", "sku", "text"), ("Peso", "weight", "decimal"))
     parser = XlsxParser(xlsx, mapping, header_row_index=1)
     products = list(parser.parse())

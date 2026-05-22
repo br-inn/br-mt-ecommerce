@@ -1,4 +1,5 @@
 """Tests para TranslationCompletionService."""
+
 from __future__ import annotations
 
 import json
@@ -23,13 +24,12 @@ async def test_complete_calls_llm_and_returns_completed_count():
     mock_scalars.all.return_value = [(mock_row,)]
     session.execute = AsyncMock(return_value=mock_scalars)
 
-    llm_response = json.dumps([
-        {"sku": "MT-001", "lang": "fr", "name": "Robinet à bille DN25"}
-    ])
+    llm_response = json.dumps([{"sku": "MT-001", "lang": "fr", "name": "Robinet à bille DN25"}])
 
-    with patch("app.services.translations.completion_service.anthropic") as mock_anthropic, \
-         patch("app.services.translations.completion_service.TranslationWriter") as MockTW:
-
+    with (
+        patch("app.services.translations.completion_service.anthropic") as mock_anthropic,
+        patch("app.services.translations.completion_service.TranslationWriter") as MockTW,
+    ):
         mock_client = MagicMock()
         mock_anthropic.Anthropic.return_value = mock_client
         mock_msg = MagicMock()

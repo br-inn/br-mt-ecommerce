@@ -75,9 +75,7 @@ def _create_auth_stub() -> None:
     )
     with psycopg.connect(raw_url, autocommit=True) as conn:
         conn.execute("CREATE SCHEMA IF NOT EXISTS auth")
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY)"
-        )
+        conn.execute("CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY)")
         # Supabase function used in RLS policies (migration 013+); stub returns NULL.
         conn.execute(
             "CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid"
@@ -142,7 +140,8 @@ def postgres_container() -> Iterator[str]:
         url = pg.get_connection_url().replace("psycopg2", "asyncpg")
         os.environ["DATABASE_URL"] = url
         os.environ["ALEMBIC_DATABASE_URL"] = pg.get_connection_url().replace(
-            "psycopg2", "psycopg",
+            "psycopg2",
+            "psycopg",
         )
         _run_migrations()
         yield url
@@ -223,9 +222,7 @@ def neo4j_container() -> Iterator[str]:
 
     from testcontainers.neo4j import Neo4jContainer
 
-    with Neo4jContainer("neo4j:5.20-community").with_env(
-        "NEO4J_AUTH", f"{user}/{password}"
-    ) as neo:
+    with Neo4jContainer("neo4j:5.20-community").with_env("NEO4J_AUTH", f"{user}/{password}") as neo:
         bolt_uri = neo.get_connection_url()
         os.environ["NEO4J_URI"] = bolt_uri
         os.environ["NEO4J_USER"] = user

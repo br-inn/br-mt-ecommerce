@@ -1,5 +1,6 @@
 # tests/unit/importer/test_import_orchestrator.py
 """Tests para ReconciliationResult + OrchestratorResult."""
+
 from __future__ import annotations
 
 import io
@@ -89,10 +90,11 @@ async def test_run_sync_counts_inserted():
     """Products that don't exist yet should be counted as inserted."""
     session = AsyncMock()
 
-    with patch("app.services.importer.import_orchestrator.select"), \
-         patch("app.services.importer.import_orchestrator.Product"), \
-         patch("app.services.importer.import_orchestrator.RowWriter") as MockRW:
-
+    with (
+        patch("app.services.importer.import_orchestrator.select"),
+        patch("app.services.importer.import_orchestrator.Product"),
+        patch("app.services.importer.import_orchestrator.RowWriter") as MockRW,
+    ):
         # Simulate: no existing product found (scalar returns None)
         mock_exec_result = MagicMock()
         mock_exec_result.scalar_one_or_none.return_value = None

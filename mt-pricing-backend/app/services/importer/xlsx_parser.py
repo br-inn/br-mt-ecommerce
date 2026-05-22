@@ -44,11 +44,7 @@ class XlsxParser:
                 if row_idx < self._header_row_index:
                     continue
                 if row_idx == self._header_row_index:
-                    col_index = {
-                        str(v).strip(): i
-                        for i, v in enumerate(raw_row)
-                        if v is not None
-                    }
+                    col_index = {str(v).strip(): i for i, v in enumerate(raw_row) if v is not None}
                     continue
                 row = list(raw_row)
                 if not any(v is not None and v != "" for v in row):
@@ -61,9 +57,7 @@ class XlsxParser:
 
     def _parse_row(self, row: list[Any], col_index: dict[str, int]) -> ParsedProduct:
         scalars: dict[str, Any] = {}
-        jsonb: dict[str, dict[str, Any]] = {
-            "dimensions": {}, "packaging": {}, "specs": {}
-        }
+        jsonb: dict[str, dict[str, Any]] = {"dimensions": {}, "packaging": {}, "specs": {}}
         translations: dict[str, str] = {}
         certifications: list[str] = []
         errors: list[str] = []
@@ -90,7 +84,7 @@ class XlsxParser:
                 lang = field.split(".", 1)[1]
                 if lang in SUPPORTED_LANGS:
                     translations[lang] = str(casted)
-                continue   # always skip after translations.* check, don't fall through
+                continue  # always skip after translations.* check, don't fall through
             elif field == "certifications":
                 parts = [p.strip() for p in str(casted).split(",") if p.strip()]
                 certifications.extend(parts)

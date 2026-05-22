@@ -1,4 +1,5 @@
 """Tests para RowWriter pipeline."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -126,6 +127,7 @@ async def test_scalar_writer_no_change_when_existing_is_none():
 
 # ── TranslationWriter ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_translation_writer_upserts_by_sku_lang():
     session = AsyncMock()
@@ -158,6 +160,7 @@ async def test_translation_writer_skips_locked_lang():
 
 # ── CertificationWriter ───────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_certification_writer_creates_if_not_found():
     session = AsyncMock()
@@ -170,6 +173,7 @@ async def test_certification_writer_creates_if_not_found():
     # After flush, the added Certification needs an ID
     def add_side_effect(obj):
         obj.id = "uuid-123"
+
     session.add = MagicMock(side_effect=add_side_effect)
 
     writer = CertificationWriter()
@@ -188,6 +192,7 @@ async def test_certification_writer_creates_if_not_found():
 
 
 # ── RowWriter pipeline ────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_row_writer_delegates_to_all_writers():
