@@ -25,7 +25,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.11"
-  UV_VERSION: "0.4.18"
+  UV_VERSION: "0.11.16"
   WORKDIR: mt-pricing-backend
 
 jobs:
