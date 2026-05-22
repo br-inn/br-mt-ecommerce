@@ -33,6 +33,7 @@ class XlsxParser:
         return self._rows_yielded
 
     def parse(self) -> Iterator[ParsedProduct]:
+        self._rows_yielded = 0
         wb = openpyxl.load_workbook(io.BytesIO(self._bytes), read_only=True, data_only=True)
         ws = wb.active
         col_index: dict[str, int] = {}
@@ -88,6 +89,7 @@ class XlsxParser:
                 lang = field.split(".", 1)[1]
                 if lang in SUPPORTED_LANGS:
                     translations[lang] = str(casted)
+                continue   # always skip after translations.* check, don't fall through
             elif field == "certifications":
                 parts = [p.strip() for p in str(casted).split(",") if p.strip()]
                 certifications.extend(parts)

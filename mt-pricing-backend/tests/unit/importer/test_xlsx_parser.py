@@ -138,3 +138,29 @@ def test_unsupported_lang_is_ignored():
     )
     products = list(XlsxParser(xlsx, mapping).parse())
     assert products[0].translations == {}
+
+
+def test_parses_jsonb_specs():
+    xlsx = _make_xlsx([["sku", "EAN"], ["MT-001", "1234567890123"]])
+    mapping = _mapping(("sku", "sku", "text"), ("EAN", "specs.ean_individual", "ean"))
+    products = list(XlsxParser(xlsx, mapping).parse())
+    assert "ean_individual" in products[0].jsonb["specs"]
+
+
+def test_parses_jsonb_packaging():
+    xlsx = _make_xlsx([["sku", "Qty"], ["MT-001", 6]])
+    mapping = _mapping(("sku", "sku", "text"), ("Qty", "packaging.qty_per_box", "int"))
+    products = list(XlsxParser(xlsx, mapping).parse())
+    assert products[0].jsonb["packaging"]["qty_per_box"] == 6
+
+
+def test_decimal_stored_as_string_in_jsonb():
+    xlsx = _make_xlsx([["sku", "Peso bruto"], ["MT-001", 2.75]])
+    mapping = _mapping(
+        ("sku", "sku", "text"),
+        ("Peso bruto", "specs.weight_gross_kg", "decimal"),
+    )
+    products = list(XlsxParser(xlsx, mapping).parse())
+    val = products[0].jsonb["specs"]["weight_gross_kg"]
+    assert isinstance(val, str)
+    assert val == "2.75"
