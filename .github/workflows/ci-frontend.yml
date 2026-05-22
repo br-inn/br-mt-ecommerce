@@ -20,6 +20,7 @@ permissions:
 
 env:
   NODE_VERSION: "20"
+  PNPM_VERSION: "9.12.0"
   WORKDIR: mt-pricing-frontend
 
 jobs:
@@ -39,6 +40,7 @@ jobs:
           filters: |
             frontend:
               - "mt-pricing-frontend/**"
+              - ".github/workflows/ci-frontend.yml"
 
   # ---------------------------------------------------------------------------
   # Lint (eslint via pnpm script)
@@ -57,11 +59,15 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         run: |
@@ -92,11 +98,15 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         run: |
@@ -127,11 +137,15 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         run: |
@@ -170,11 +184,15 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.WORKDIR }}/pnpm-lock.yaml
 
       - name: Install deps
         run: |

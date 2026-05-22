@@ -58,44 +58,12 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
 _BACKEND_DIR = pathlib.Path(__file__).parent.parent
 
 
-def _create_auth_stub() -> None:
-    """Crea el schema `auth` y tabla `auth.users` mínima si no existen.
-
-    Necesario en CI (PostgreSQL puro sin Supabase) porque algunas migraciones
-    referencia auth.users con FK. Supabase lo provee de serie; aquí lo stubamos.
-    """
-    import psycopg
-
-    alembic_url = os.environ.get("ALEMBIC_DATABASE_URL", "")
-    if not alembic_url:
-        return
-    # psycopg v3 URL: postgresql+psycopg://... → remove driver prefix
-    raw_url = alembic_url.replace("postgresql+psycopg://", "postgresql://").replace(
-        "postgresql+psycopg2://", "postgresql://"
-    )
-    with psycopg.connect(raw_url, autocommit=True) as conn:
-        conn.execute("CREATE SCHEMA IF NOT EXISTS auth")
-        conn.execute("CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY)")
-        # Supabase function used in RLS policies (migration 013+); stub returns NULL.
-        conn.execute(
-            "CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid"
-            " LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$"
-        )
-        # Supabase built-in roles used in RLS policies; create if absent.
-        conn.execute(
-            "DO $$ BEGIN"
-            "  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role')"
-            "  THEN CREATE ROLE service_role NOLOGIN; END IF; END $$"
-        )
-
-
 def _run_migrations() -> None:
     """Corre `alembic upgrade head` en el directorio del backend.
 
     Usa ALEMBIC_DATABASE_URL (psycopg sync) que debe estar seteada antes de
     llamar a esta función.
     """
-    _create_auth_stub()
     result = subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
         capture_output=True,
@@ -140,8 +108,7 @@ def postgres_container() -> Iterator[str]:
         url = pg.get_connection_url().replace("psycopg2", "asyncpg")
         os.environ["DATABASE_URL"] = url
         os.environ["ALEMBIC_DATABASE_URL"] = pg.get_connection_url().replace(
-            "psycopg2",
-            "psycopg",
+            "psycopg2", "psycopg",
         )
         _run_migrations()
         yield url
@@ -222,7 +189,9 @@ def neo4j_container() -> Iterator[str]:
 
     from testcontainers.neo4j import Neo4jContainer
 
-    with Neo4jContainer("neo4j:5.20-community").with_env("NEO4J_AUTH", f"{user}/{password}") as neo:
+    with Neo4jContainer("neo4j:5.20-community").with_env(
+        "NEO4J_AUTH", f"{user}/{password}"
+    ) as neo:
         bolt_uri = neo.get_connection_url()
         os.environ["NEO4J_URI"] = bolt_uri
         os.environ["NEO4J_USER"] = user
@@ -323,7 +292,7 @@ def _ensure_sample_pdf() -> None:
     _SAMPLE_PDF.write_bytes(build_pdf())
 
 
-def pytest_configure(config: pytest.Config) -> None:
+def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
     """Hook de sesión — genera fixtures binarias antes de cualquier test."""
     _ensure_sample_pdf()
 
