@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 from io import BytesIO
 from typing import Any
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +28,7 @@ os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
 os.environ.setdefault("SUPABASE_ANON_KEY", "anon-test")
 os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "service-test")
 
-from app.db.models.import_run import ImportRun  # noqa: I001
+from app.db.models.import_run import ImportRun
 from app.db.models.product import Product
 from app.services.importer.column_mapper import EXPECTED_HEADERS
 from app.services.imports.pim_importer import PimImporter
@@ -38,7 +39,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     """Aplica `alembic upgrade head` antes de cualquier test del modulo."""
-    from alembic import command
+    from alembic import command  # noqa: I001
     from alembic.config import Config
 
     cfg = Config("alembic.ini")
