@@ -17,6 +17,11 @@ def test_is_error_row_when_sku_empty():
     assert p.is_error_row is True
 
 
+def test_is_error_row_when_sku_whitespace_only():
+    p = ParsedProduct(sku="   ")
+    assert p.is_error_row is True
+
+
 def test_is_not_error_row_when_sku_present():
     p = ParsedProduct(sku="MT-001")
     assert p.is_error_row is False
@@ -29,4 +34,9 @@ def test_has_translations():
 
 def test_has_certifications():
     p = ParsedProduct(sku="MT-001", certifications=["CE", "ISO 9001"])
-    assert len(p.certifications) == 2
+    assert p.has_certifications is True
+
+
+def test_has_no_certifications_by_default():
+    p = ParsedProduct(sku="MT-001")
+    assert p.has_certifications is False
