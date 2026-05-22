@@ -83,6 +83,12 @@ def _create_auth_stub() -> None:
             "CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid"
             " LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$"
         )
+        # Supabase built-in roles used in RLS policies; create if absent.
+        conn.execute(
+            "DO $$ BEGIN"
+            "  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role')"
+            "  THEN CREATE ROLE service_role NOLOGIN; END IF; END $$"
+        )
 
 
 def _run_migrations() -> None:

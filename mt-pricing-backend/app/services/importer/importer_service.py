@@ -63,9 +63,7 @@ class ImportRunInvalidStateError(ImporterDomainError):
     def __init__(self, run_id: str, current: str, expected: str) -> None:
         super().__init__(
             code="import_run_invalid_state",
-            message=(
-                f"Run {run_id!r} en estado {current!r}; se esperaba {expected!r}."
-            ),
+            message=(f"Run {run_id!r} en estado {current!r}; se esperaba {expected!r}."),
             status_code=409,
         )
 
@@ -229,7 +227,9 @@ class ImporterService:
 
         logger.info(
             "Importer preview ready run_id=%s rows=%d summary=%s",
-            run_id, summary["total"], summary,
+            run_id,
+            summary["total"],
+            summary,
         )
         return state
 
@@ -246,9 +246,7 @@ class ImporterService:
         if state is None:
             raise ImportRunNotFoundError(run_id)
         if state.status != "preview_ready":
-            raise ImportRunInvalidStateError(
-                run_id, current=state.status, expected="preview_ready"
-            )
+            raise ImportRunInvalidStateError(run_id, current=state.status, expected="preview_ready")
 
         lock = _RUN_LOCKS.setdefault(run_id, asyncio.Lock())
         async with lock:
@@ -342,9 +340,7 @@ class ImporterService:
         if state is None:
             raise ImportRunNotFoundError(run_id)
         # Buckets de ejemplos para UI Pantalla 10 (Nuevos/Modificados/Errores/etc).
-        buckets: dict[str, list[dict[str, Any]]] = {
-            a.value: [] for a in RowAction
-        }
+        buckets: dict[str, list[dict[str, Any]]] = {a.value: [] for a in RowAction}
         for d in state.diffs:
             bucket = buckets[d.action.value]
             if len(bucket) < sample_per_bucket:

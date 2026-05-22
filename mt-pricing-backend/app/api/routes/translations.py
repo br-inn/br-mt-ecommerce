@@ -31,6 +31,7 @@ _SUPPORTED_LANGS = ["en", "es", "fr", "de", "it", "pt", "ar"]
 # Request / Response schemas
 # ---------------------------------------------------------------------------
 
+
 class CompleteTranslationsRequest(BaseModel):
     skus: list[str]
     target_langs: list[str]
@@ -59,6 +60,7 @@ class TranslationCoverageResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/complete",

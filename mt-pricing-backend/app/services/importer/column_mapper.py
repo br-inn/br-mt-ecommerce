@@ -292,9 +292,7 @@ def map_row(
     }
 
     if len(excel_row) < len(headers):
-        errors.append(
-            f"Fila con {len(excel_row)} columnas; esperadas {len(headers)}."
-        )
+        errors.append(f"Fila con {len(excel_row)} columnas; esperadas {len(headers)}.")
         return payload, errors
 
     for idx, header in enumerate(headers):
