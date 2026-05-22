@@ -140,6 +140,7 @@ def _build_app(user: _FakeUser, product_svc: ProductService) -> FastAPI:
     app.include_router(products_router, prefix="/api/v1")
 
     fake_session = MagicMock()
+
     # session.execute → AsyncMock devolviendo Result vacío con .all() y
     # .scalar_one_or_none() apropiados.
     async def _execute(*_a: Any, **_k: Any) -> Any:
@@ -168,8 +169,10 @@ def _build_app(user: _FakeUser, product_svc: ProductService) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call):
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -189,6 +192,7 @@ def _mock_svc() -> ProductService:
 # ---------------------------------------------------------------------------
 # Tests — list with new Stage 3 query params
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_products_stage3_division_filter_passes_to_service() -> None:
@@ -253,8 +257,7 @@ async def test_list_products_stage3_combined_filters() -> None:
     app = _build_app(user, svc)
     async with await _client(app) as ac:
         resp = await ac.get(
-            f"/api/v1/products?division=industrial&series_id={sid}"
-            f"&material_id={mid}&tier_code=gold"
+            f"/api/v1/products?division=industrial&series_id={sid}&material_id={mid}&tier_code=gold"
         )
     assert resp.status_code == 200
     kwargs = svc.list_products.await_args.kwargs
@@ -288,6 +291,7 @@ async def test_list_products_stage3_response_includes_division_codes_default_emp
 # Tests — detail response shape (Stage 3)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_product_detail_stage3_keys_present() -> None:
     user = _FakeUser()
@@ -313,6 +317,7 @@ async def test_get_product_detail_stage3_keys_present() -> None:
 # ---------------------------------------------------------------------------
 # Tests — query param signature: no 422 (matches validation contract)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_products_stage3_invalid_series_id_too_long_returns_422() -> None:

@@ -49,12 +49,12 @@ G2_MULTIPLIERS: dict[str, Decimal] = {
 # TODO(ADR-MATCH-WEIGHTS): mover pesos a `comparator_config` con override por
 # canal/familia. Ver `mt-product-matching-pipeline-detail.md` §7.1.
 SCORING_WEIGHTS: dict[str, Decimal] = {
-    "material":          Decimal("0.18"),
-    "pn":                Decimal("0.14"),
-    "thread":            Decimal("0.14"),  # connection / rosca
-    "norma":             Decimal("0.14"),
-    "brand_tier":        Decimal("0.18"),
-    "delivery":          Decimal("0.14"),
+    "material": Decimal("0.18"),
+    "pn": Decimal("0.14"),
+    "thread": Decimal("0.14"),  # connection / rosca
+    "norma": Decimal("0.14"),
+    "brand_tier": Decimal("0.18"),
+    "delivery": Decimal("0.14"),
     "data_completeness": Decimal("0.08"),
 }
 DEFAULT_WEIGHTS = SCORING_WEIGHTS  # alias público
@@ -243,6 +243,7 @@ def _material_score(
         cand_components: dict {component: material_str} del candidato.
     """
     from app.services.matching.material_normalizer import STATIC_NORMALIZER
+
     n = norm or STATIC_NORMALIZER
 
     # ── Scoring compuesto (body/ball/seat) cuando hay datos de componentes ──
@@ -356,8 +357,10 @@ def _pn_score(sku_pn: str | None, cand_pn: str | None) -> tuple[Decimal, list[st
 # ── Estándar de rosca ────────────────────────────────────────────────────────
 
 _THREAD_STD_PATTERNS: dict[str, frozenset[str]] = {
-    "bsp":    frozenset({"bsp", "bspp", "bspt", "g thread", "g-thread", "rp", "rc", "iso 228", "en iso 228"}),  # noqa: E501
-    "npt":    frozenset({"npt", "nptf", "ansi b1.20"}),
+    "bsp": frozenset(
+        {"bsp", "bspp", "bspt", "g thread", "g-thread", "rp", "rc", "iso 228", "en iso 228"}
+    ),
+    "npt": frozenset({"npt", "nptf", "ansi b1.20"}),
     "metric": frozenset({"metric", "din", "m10", "m12", "m14", "m16", "m20"}),
 }
 
@@ -396,15 +399,28 @@ def _thread_score(sku_thread: str | None, cand_thread: str | None) -> tuple[Deci
 # ── DN / Tamaño ───────────────────────────────────────────────────────────────
 
 _DN_INCH_RE = re.compile(r'(\d+(?:[/-]\d+)?)\s*["“”]')  # "  o comillas tipográficas
-_DN_INCH_WORD_RE = re.compile(r'(\d+(?:[/-]\d+)?)[- ]*(?:inch|in\b)', re.IGNORECASE)
-_DN_METRIC_RE = re.compile(r'\bDN\s*(\d{1,4})\b', re.IGNORECASE)
-_DN_INT_RE = re.compile(r'^\s*(\d{1,4})\s*$')
+_DN_INCH_WORD_RE = re.compile(r"(\d+(?:[/-]\d+)?)[- ]*(?:inch|in\b)", re.IGNORECASE)
+_DN_METRIC_RE = re.compile(r"\bDN\s*(\d{1,4})\b", re.IGNORECASE)
+_DN_INT_RE = re.compile(r"^\s*(\d{1,4})\s*$")
 
 # DN métrico → pulgadas canónicas (para comparar ambos formatos)
 _DN_TO_INCH: dict[int, str] = {
-    8: "1/4", 10: "3/8", 15: "1/2", 20: "3/4", 25: "1",
-    32: "1-1/4", 40: "1-1/2", 50: "2", 65: "2-1/2", 80: "3",
-    100: "4", 125: "5", 150: "6", 200: "8", 250: "10", 300: "12",
+    8: "1/4",
+    10: "3/8",
+    15: "1/2",
+    20: "3/4",
+    25: "1",
+    32: "1-1/4",
+    40: "1-1/2",
+    50: "2",
+    65: "2-1/2",
+    80: "3",
+    100: "4",
+    125: "5",
+    150: "6",
+    200: "8",
+    250: "10",
+    300: "12",
 }
 _INCH_TO_DN: dict[str, int] = {v: k for k, v in _DN_TO_INCH.items()}
 
@@ -462,25 +478,27 @@ def _dn_score(sku_dn: str | None, cand_dn: str | None) -> tuple[Decimal, list[st
 
 # ── Tipo de producto + mini qualifier ─────────────────────────────────────────
 
-_MINI_TOKENS: frozenset[str] = frozenset({"mini", "miniball", "mini-ball", "compact ball", "minibola"})  # noqa: E501
+_MINI_TOKENS: frozenset[str] = frozenset(
+    {"mini", "miniball", "mini-ball", "compact ball", "minibola"}
+)
 
 # Familia → palabras clave en título del candidato
 _FAMILY_TO_KEYWORDS: dict[str, frozenset[str]] = {
-    "ball_valve":      frozenset({"ball valve", "ball-valve", "kugelhahn", "válvula bola", "bola"}),
-    "valves_ball":     frozenset({"ball valve", "ball-valve", "válvula bola"}),
-    "gate_valve":      frozenset({"gate valve", "válvula compuerta", "schieber"}),
-    "globe_valve":     frozenset({"globe valve", "válvula globo"}),
-    "check_valve":     frozenset({"check valve", "non-return valve", "válvula retención", "clapet"}),  # noqa: E501
+    "ball_valve": frozenset({"ball valve", "ball-valve", "kugelhahn", "válvula bola", "bola"}),
+    "valves_ball": frozenset({"ball valve", "ball-valve", "válvula bola"}),
+    "gate_valve": frozenset({"gate valve", "válvula compuerta", "schieber"}),
+    "globe_valve": frozenset({"globe valve", "válvula globo"}),
+    "check_valve": frozenset({"check valve", "non-return valve", "válvula retención", "clapet"}),
     "butterfly_valve": frozenset({"butterfly valve", "válvula mariposa", "absperrklappen"}),
-    "strainer":        frozenset({"strainer", "y-strainer", "filtro y", "filter"}),
-    "pressure_gauge":  frozenset({"pressure gauge", "manometer", "manómetro", "pressure meter"}),
-    "HIDROSANITARIO":  frozenset({"ball valve", "ball-valve", "válvula bola"}),
-    "FILTROS":         frozenset({"strainer", "y-strainer"}),
-    "MANOMETROS":      frozenset({"pressure gauge", "manometer", "manómetro"}),
+    "strainer": frozenset({"strainer", "y-strainer", "filtro y", "filter"}),
+    "pressure_gauge": frozenset({"pressure gauge", "manometer", "manómetro", "pressure meter"}),
+    "HIDROSANITARIO": frozenset({"ball valve", "ball-valve", "válvula bola"}),
+    "FILTROS": frozenset({"strainer", "y-strainer"}),
+    "MANOMETROS": frozenset({"pressure gauge", "manometer", "manómetro"}),
 }
 
 _WAYS_RE = re.compile(
-    r'\b([23])\s*-?\s*(?:way|port|vías?|wege)\b|\b(?:two|three)\s*-?\s*way\b',
+    r"\b([23])\s*-?\s*(?:way|port|vías?|wege)\b|\b(?:two|three)\s*-?\s*way\b",
     re.IGNORECASE,
 )
 _WAYS_WORD: dict[str, int] = {"two": 2, "three": 3}
@@ -545,6 +563,7 @@ def _product_type_score(
 
 # ── Número de vías ────────────────────────────────────────────────────────────
 
+
 def _ways_score(
     sku_type_text: str | None,
     cand_title: str | None,
@@ -575,13 +594,30 @@ def _ways_score(
 
 # ── Extracción de maneta desde texto libre ────────────────────────────────────
 
-_HANDLE_COLORS: frozenset[str] = frozenset({
-    "red", "blue", "black", "yellow", "green", "orange", "white", "grey", "gray",
-})
+_HANDLE_COLORS: frozenset[str] = frozenset(
+    {
+        "red",
+        "blue",
+        "black",
+        "yellow",
+        "green",
+        "orange",
+        "white",
+        "grey",
+        "gray",
+    }
+)
 
-_HANDLE_TYPES: frozenset[str] = frozenset({
-    "butterfly", "lever", "t-bar", "wing", "ergonomic", "lockable",
-})
+_HANDLE_TYPES: frozenset[str] = frozenset(
+    {
+        "butterfly",
+        "lever",
+        "t-bar",
+        "wing",
+        "ergonomic",
+        "lockable",
+    }
+)
 
 
 def _extract_handle_color(text: str | None) -> str | None:
@@ -591,7 +627,7 @@ def _extract_handle_color(text: str | None) -> str | None:
     words = re.split(r"\W+", text.lower())
     for i, w in enumerate(words):
         if w == "handle":
-            window = words[max(0, i - 3): i + 4]
+            window = words[max(0, i - 3) : i + 4]
             for cw in window:
                 if cw in _HANDLE_COLORS:
                     return cw
@@ -632,7 +668,9 @@ def _handle_score(
 
     # Color — specs primero, fallback a texto
     sku_color = (sku_s.get("handle_color") or "").strip().lower() or _extract_handle_color(sku_text)
-    cand_color = (cand_specs.get("handle_color") or "").strip().lower() or _extract_handle_color(cand_text)  # noqa: E501
+    cand_color = (cand_specs.get("handle_color") or "").strip().lower() or _extract_handle_color(
+        cand_text
+    )
 
     # Tipo/material — specs primero, fallback a texto
     sku_type = (
@@ -669,18 +707,39 @@ def _handle_score(
 
 # ── Actuador ──────────────────────────────────────────────────────────────────
 
-_MANUAL_ACTUATORS: frozenset[str] = frozenset({
-    "manual", "lever", "handle", "free shaft", "handwheel", "manual lever",
-})
-_ELECTRIC_ACTUATORS: frozenset[str] = frozenset({
-    "electric", "motorized", "motor", "electrical", "electro",
-})
-_FLUID_ACTUATORS: frozenset[str] = frozenset({
-    "pneumatic", "hydraulic",
-})
-_GEAR_ACTUATORS: frozenset[str] = frozenset({
-    "gearbox", "gear", "worm gear", "worm",
-})
+_MANUAL_ACTUATORS: frozenset[str] = frozenset(
+    {
+        "manual",
+        "lever",
+        "handle",
+        "free shaft",
+        "handwheel",
+        "manual lever",
+    }
+)
+_ELECTRIC_ACTUATORS: frozenset[str] = frozenset(
+    {
+        "electric",
+        "motorized",
+        "motor",
+        "electrical",
+        "electro",
+    }
+)
+_FLUID_ACTUATORS: frozenset[str] = frozenset(
+    {
+        "pneumatic",
+        "hydraulic",
+    }
+)
+_GEAR_ACTUATORS: frozenset[str] = frozenset(
+    {
+        "gearbox",
+        "gear",
+        "worm gear",
+        "worm",
+    }
+)
 
 
 def _actuator_category(text: str | None) -> str | None:
@@ -726,9 +785,7 @@ def _norma_score(sku_norma: str | None, cand_norma: str | None) -> Decimal:
         return Decimal("0.4")
     if _eq_norm(sku_norma, cand_norma):
         return Decimal("1.0")
-    if _starts_or_contains(cand_norma, sku_norma) or _starts_or_contains(
-        sku_norma, cand_norma
-    ):
+    if _starts_or_contains(cand_norma, sku_norma) or _starts_or_contains(sku_norma, cand_norma):
         return Decimal("0.7")
     return Decimal("0.2")
 
@@ -779,10 +836,16 @@ def _delivery_score(delivery_text: str | None) -> Decimal:
 # ── Bore type (full bore / reduced bore) ─────────────────────────────────────
 
 _BORE_ALIASES: dict[str, str] = {
-    "full bore": "full_bore", "full_bore": "full_bore",
-    "full port": "full_bore", "full flow": "full_bore", "fb": "full_bore",
-    "reduced bore": "reduced_bore", "reduced_bore": "reduced_bore",
-    "standard bore": "reduced_bore", "rb": "reduced_bore", "sb": "reduced_bore",
+    "full bore": "full_bore",
+    "full_bore": "full_bore",
+    "full port": "full_bore",
+    "full flow": "full_bore",
+    "fb": "full_bore",
+    "reduced bore": "reduced_bore",
+    "reduced_bore": "reduced_bore",
+    "standard bore": "reduced_bore",
+    "rb": "reduced_bore",
+    "sb": "reduced_bore",
 }
 
 
@@ -804,13 +867,25 @@ def _bore_type_score(sku_bore: str | None, cand_bore: str | None) -> list[str]:
 # ── Seat / seal material ──────────────────────────────────────────────────────
 
 _SEAT_MAT_FAMILY: dict[str, str] = {
-    "ptfe": "ptfe", "rptfe": "ptfe", "teflon": "ptfe", "polytetrafluoroethylene": "ptfe",
+    "ptfe": "ptfe",
+    "rptfe": "ptfe",
+    "teflon": "ptfe",
+    "polytetrafluoroethylene": "ptfe",
     "epdm": "epdm",
-    "nbr": "nbr", "buna": "nbr", "buna-n": "nbr", "buna n": "nbr",
-    "fkm": "fkm", "fpm": "fkm", "viton": "fkm",
-    "metal": "metal", "stainless": "metal", "ss316": "metal", "brass": "metal",
+    "nbr": "nbr",
+    "buna": "nbr",
+    "buna-n": "nbr",
+    "buna n": "nbr",
+    "fkm": "fkm",
+    "fpm": "fkm",
+    "viton": "fkm",
+    "metal": "metal",
+    "stainless": "metal",
+    "ss316": "metal",
+    "brass": "metal",
     "carbon steel": "metal",
-    "silicone": "silicone", "vmq": "silicone",
+    "silicone": "silicone",
+    "vmq": "silicone",
 }
 
 
@@ -885,8 +960,11 @@ def _data_completeness_score(candidate: dict[str, Any]) -> Decimal:
         candidate.get("material") or specs.get("material") or specs.get("material_type"),
         candidate.get("pn") or specs.get("pn") or specs.get("maximum_pressure"),
         (
-            candidate.get("thread") or candidate.get("connection")
-            or specs.get("thread") or specs.get("thread_type") or specs.get("connection_type")
+            candidate.get("thread")
+            or candidate.get("connection")
+            or specs.get("thread")
+            or specs.get("thread_type")
+            or specs.get("connection_type")
         ),
         candidate.get("dn") or candidate.get("size") or specs.get("dn") or specs.get("size"),
         candidate.get("brand"),
@@ -926,12 +1004,11 @@ def compute_scoring(
     cand_material = candidate.get("material") or cand_specs.get("material")
     sku_components: list[dict[str, str]] = sku.get("product_materials") or []
     cand_components: dict[str, str] = {
-        k: str(v)
-        for k, v in (cand_specs.get("material_components") or {}).items()
-        if v
+        k: str(v) for k, v in (cand_specs.get("material_components") or {}).items() if v
     }
     mat_score = _material_score(
-        sku_material, cand_material,
+        sku_material,
+        cand_material,
         norm=material_normalizer,
         sku_components=sku_components or None,
         cand_components=cand_components or None,
@@ -947,16 +1024,20 @@ def compute_scoring(
     # Check top-level "size" too — _score_and_upsert may set it from thread_size
     # or title fallback without propagating it into cand_dict["specs"].
     cand_dn = (
-        candidate.get("dn") or candidate.get("size")
-        or cand_specs.get("dn") or cand_specs.get("size")
+        candidate.get("dn")
+        or candidate.get("size")
+        or cand_specs.get("dn")
+        or cand_specs.get("size")
     )
     dn_score, dn_notes = _dn_score(sku_dn, cand_dn)
 
     # ── Estándar de rosca ─────────────────────────────────────────────────────
     sku_thread = sku.get("thread") or sku.get("connection")
     cand_thread = (
-        candidate.get("thread") or candidate.get("connection")
-        or cand_specs.get("thread") or cand_specs.get("connection")
+        candidate.get("thread")
+        or candidate.get("connection")
+        or cand_specs.get("thread")
+        or cand_specs.get("connection")
     )
     thread_score, thread_notes = _thread_score(sku_thread, cand_thread)
 
@@ -970,17 +1051,36 @@ def compute_scoring(
 
     # ── Maneta (handle) — nota pool-relativa, sin peso propio ─────────────────
     # Textos del SKU: erp_name + product_type (contienen color/tipo de maneta)
-    _sku_handle_text = " ".join(filter(None, [
-        sku.get("erp_name"), sku.get("product_type"), sku.get("name_en"),
-    ])) or None
+    _sku_handle_text = (
+        " ".join(
+            filter(
+                None,
+                [
+                    sku.get("erp_name"),
+                    sku.get("product_type"),
+                    sku.get("name_en"),
+                ],
+            )
+        )
+        or None
+    )
     # Textos del candidato: título + description_text almacenado
-    _cand_handle_text = " ".join(filter(None, [
-        candidate.get("title"),
-        candidate.get("description_text"),
-        str(cand_specs.get("_description_text") or ""),
-    ])) or None
+    _cand_handle_text = (
+        " ".join(
+            filter(
+                None,
+                [
+                    candidate.get("title"),
+                    candidate.get("description_text"),
+                    str(cand_specs.get("_description_text") or ""),
+                ],
+            )
+        )
+        or None
+    )
     handle_notes = _handle_score(
-        sku.get("specs"), cand_specs,
+        sku.get("specs"),
+        cand_specs,
         sku_text=_sku_handle_text,
         cand_text=_cand_handle_text,
     )
@@ -992,7 +1092,9 @@ def compute_scoring(
 
     # ── Género de conexión — nota pool-relativa, sin peso propio ──────────────
     sku_conn_gender = (sku.get("specs") or {}).get("end_connection_gender")
-    cand_conn_gender = cand_specs.get("connection_gender") or cand_specs.get("end_connection_gender")  # noqa: E501
+    cand_conn_gender = cand_specs.get("connection_gender") or cand_specs.get(
+        "end_connection_gender"
+    )
     gender_notes = _connection_gender_score(sku_conn_gender, cand_conn_gender)
 
     # ── Bore type (full bore / reduced bore) — nota pool-relativa ────────────
@@ -1025,17 +1127,17 @@ def compute_scoring(
     completeness_s = _data_completeness_score(candidate)
 
     dim_scores: dict[str, Decimal] = {
-        "material":          mat_score,
-        "pn":                pn_score,
-        "dn":                dn_score,
-        "product_type":      pt_score,
-        "thread_standard":   thread_score,
-        "ways":              ways_score,
-        "norma":             norma_s,
-        "brand_tier":        brand_s,
-        "delivery":          delivery_s,
+        "material": mat_score,
+        "pn": pn_score,
+        "dn": dn_score,
+        "product_type": pt_score,
+        "thread_standard": thread_score,
+        "ways": ways_score,
+        "norma": norma_s,
+        "brand_tier": brand_s,
+        "delivery": delivery_s,
         "data_completeness": completeness_s,
-        "actuator":          actuator_score,
+        "actuator": actuator_score,
     }
 
     weighted = Decimal("0")
@@ -1051,9 +1153,17 @@ def compute_scoring(
 
     # Acumular todas las notas de los sub-scorers
     notes: list[str] = list(
-        pn_notes + dn_notes + thread_notes + pt_notes + ways_notes
-        + handle_notes + actuator_notes + gender_notes
-        + bore_notes + seat_notes + seal_notes
+        pn_notes
+        + dn_notes
+        + thread_notes
+        + pt_notes
+        + ways_notes
+        + handle_notes
+        + actuator_notes
+        + gender_notes
+        + bore_notes
+        + seat_notes
+        + seal_notes
     )
     if mat_score == Decimal("0.0") and (sku_material or cand_material):
         notes.append("material_mismatch")
@@ -1063,8 +1173,11 @@ def compute_scoring(
         # y mat_score nunca llega a 0.0. Detectamos incompatibilidad comparando
         # el material del body del SKU contra el material plano del candidato.
         _sku_body = next(
-            (r.get("material") for r in sku_components
-             if (r.get("component") or "").lower() == "body"),
+            (
+                r.get("material")
+                for r in sku_components
+                if (r.get("component") or "").lower() == "body"
+            ),
             sku_material,
         )
         if _sku_body and not material_normalizer.same_family(_sku_body, cand_material):

@@ -94,9 +94,7 @@ class _InMemoryMatchRepo:
         return None
 
     async def upsert_candidate(self, **kw: Any) -> _FakeMatchRow:
-        existing = await self.find_by_external(
-            kw["product_sku"], kw["channel"], kw["external_id"]
-        )
+        existing = await self.find_by_external(kw["product_sku"], kw["channel"], kw["external_id"])
         if existing:
             existing.title = kw["title"]
             existing.brand = kw.get("brand")
@@ -236,11 +234,7 @@ async def test_refresh_candidates_classifies_pegler_exact_match_as_peer() -> Non
     svc, _ = _make_service()
     rows = await svc.refresh_candidates("MTBR4001050")
     pegler_match = next(
-        (
-            r
-            for r in rows
-            if (r.brand or "").lower() == "pegler" and r.channel == "amazon_uae"
-        ),
+        (r for r in rows if (r.brand or "").lower() == "pegler" and r.channel == "amazon_uae"),
         None,
     )
     assert pegler_match is not None

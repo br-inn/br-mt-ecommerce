@@ -26,6 +26,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _FakeRole:
     def __init__(self, perms: list[str]) -> None:
         self.code = "tester"
@@ -63,8 +64,10 @@ def _build_app(user: _FakeUser) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call):
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -120,6 +123,7 @@ def _mock_report(total: int = 100, missing_name_en: int = 22) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 async def test_data_quality_returns_structure() -> None:
     """Mock DB con 100 SKUs, 22 sin traducción → response con estructura correcta."""

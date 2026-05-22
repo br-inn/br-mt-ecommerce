@@ -100,9 +100,7 @@ class _InMemoryMatchRepo:
         return None
 
     async def upsert_candidate(self, **kw: Any) -> _FakeMatchRow:
-        existing = await self.find_by_external(
-            kw["product_sku"], kw["channel"], kw["external_id"]
-        )
+        existing = await self.find_by_external(kw["product_sku"], kw["channel"], kw["external_id"])
         if existing:
             for f in (
                 "title",
@@ -347,9 +345,7 @@ async def test_list_matches_filters_by_sku_and_status() -> None:
     app = _build_app(svc, user)
     _populate_repo(repo, count=5)
     async with await _client(app) as ac:
-        resp = await ac.get(
-            "/api/v1/matches?sku=MTBR4001050&status=pending&channel=amazon_uae"
-        )
+        resp = await ac.get("/api/v1/matches?sku=MTBR4001050&status=pending&channel=amazon_uae")
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert all(c["channel"] == "amazon_uae" for c in body["items"])
