@@ -30,7 +30,7 @@ const messages = {
 };
 
 const preview: ImportPreview = {
-  id: "run-1",
+  run_id: "run-1",
   type: "pim",
   status: "preview_ready",
   filename: "PIM.xlsx",

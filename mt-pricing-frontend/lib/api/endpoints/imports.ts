@@ -61,6 +61,18 @@ export interface ImportProgress {
   rows_done: number;
 }
 
+export interface ReconciliationResult {
+  total_excel_rows: number;
+  inserted: number;
+  updated: number;
+  no_change: number;
+  error_rows: number;
+  locked_rows: number;
+  gap: number;
+  is_complete: boolean;
+  missing_skus: string[];
+}
+
 export interface ImportRun {
   run_id: string;
   type: "pim";
@@ -70,6 +82,7 @@ export interface ImportRun {
   summary: ImportSummary | null;
   progress: ImportProgress | null;
   error_message?: string | null;
+  reconciliation?: ReconciliationResult | null;
 }
 
 export interface ImportPreview extends ImportRun {

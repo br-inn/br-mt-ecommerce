@@ -1,7 +1,7 @@
 """Column mapping canónico ``PIM completo.xlsx`` → schema `products`.
 
 Fuente de verdad: ``_bmad-output/planning-artifacts/sprint0-pim-column-mapping.md``
-(Task 2). Verificado contra el archivo real (5085 rows × 17 cols, headers
+(Task 2). Verificado contra el archivo real (5085 rows x 17 cols, headers
 exactos coinciden con la spec).
 
 Dos mapeos:
@@ -29,9 +29,10 @@ Reglas defaults (sprint0 §4.4):
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,8 +65,8 @@ def _cast_int(v: Any) -> int | None:
     try:
         # Algunos llegan como float ("250.0") o como int ya.
         return int(float(str(v).strip()))
-    except (ValueError, TypeError):
-        raise ImportCastError(f"Valor no convertible a int: {v!r}")
+    except (ValueError, TypeError) as exc:
+        raise ImportCastError(f"Valor no convertible a int: {v!r}") from exc
 
 
 def _cast_decimal(v: Any) -> Decimal | None:
@@ -73,12 +74,12 @@ def _cast_decimal(v: Any) -> Decimal | None:
         return None
     try:
         return Decimal(str(v).strip())
-    except (InvalidOperation, ValueError):
-        raise ImportCastError(f"Valor no convertible a decimal: {v!r}")
+    except (InvalidOperation, ValueError) as exc:
+        raise ImportCastError(f"Valor no convertible a decimal: {v!r}") from exc
 
 
 def _cast_cm_to_mm(v: Any) -> Decimal | None:
-    """Multiplica × 10 para uniformidad mm (sprint0 §4.1)."""
+    """Multiplica x10 para uniformidad mm (sprint0 §4.1)."""
     d = _cast_decimal(v)
     if d is None:
         return None
@@ -207,7 +208,7 @@ EXCEL_COL_TO_FIELD: dict[str, ColumnSpec] = {
         jsonb_field="packaging",
         jsonb_key="box_high_mm",
         cast="cm_to_mm",
-        notes="cm → mm (×10) para uniformidad con dimensiones de producto.",
+        notes="cm to mm (x10) para uniformidad con dimensiones de producto.",
     ),
     "Ancho caja (cm) - AX": ColumnSpec(
         excel_header="Ancho caja (cm) - AX",
@@ -291,9 +292,7 @@ def map_row(
     }
 
     if len(excel_row) < len(headers):
-        errors.append(
-            f"Fila con {len(excel_row)} columnas; esperadas {len(headers)}."
-        )
+        errors.append(f"Fila con {len(excel_row)} columnas; esperadas {len(headers)}.")
         return payload, errors
 
     for idx, header in enumerate(headers):
@@ -353,8 +352,8 @@ def _cast_percent(v: Any) -> int | None:
         return None
     try:
         n = int(float(str(v).strip()))
-    except (ValueError, TypeError):
-        raise ImportCastError(f"Valor no convertible a porcentaje: {v!r}")
+    except (ValueError, TypeError) as exc:
+        raise ImportCastError(f"Valor no convertible a porcentaje: {v!r}") from exc
     if not (0 <= n <= 100):
         raise ImportCastError(f"Porcentaje fuera de rango [0,100]: {v!r}")
     return n
@@ -368,7 +367,7 @@ CASTERS["percent"] = _cast_percent
 def map_row_with_mapping(
     excel_row: tuple[Any, ...] | list[Any],
     headers: list[str],
-    mapping: "list[Any]",  # list[ColumnMappingItem] — import lazy para evitar ciclos
+    mapping: list[Any],  # list[ColumnMappingItem] — import lazy para evitar ciclos
 ) -> tuple[dict[str, Any], list[str]]:
     """Mapea una fila usando un mapping flexible (lista de ColumnMappingItem).
 
@@ -400,7 +399,7 @@ def map_row_with_mapping(
         raw = excel_row[idx]
         caster = CASTERS.get(item.transform, _cast_text)
         try:
-            casted = caster(raw)
+            casted = caster(raw)  # type: ignore[no-untyped-call]
         except ImportCastError as exc:
             errors.append(f"col {item.excel_col!r}: {exc}")
             continue
@@ -426,6 +425,12 @@ def map_row_with_mapping(
 
 
 __all__ = [
-    "ColumnSpec", "ImportCastError", "EXCEL_COL_TO_FIELD", "EXPECTED_HEADERS",
-    "ROW_DEFAULTS", "CASTERS", "map_row", "map_row_with_mapping",
+    "CASTERS",
+    "EXCEL_COL_TO_FIELD",
+    "EXPECTED_HEADERS",
+    "ROW_DEFAULTS",
+    "ColumnSpec",
+    "ImportCastError",
+    "map_row",
+    "map_row_with_mapping",
 ]

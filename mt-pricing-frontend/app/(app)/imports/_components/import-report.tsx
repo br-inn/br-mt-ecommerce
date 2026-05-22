@@ -7,6 +7,7 @@ import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ImportRun } from "@/lib/api/endpoints/imports";
+import { ReconciliationPanel } from "./reconciliation-panel";
 
 interface Props {
   run: ImportRun;
@@ -41,6 +42,10 @@ export function ImportReportPanel({ run, onReset }: Props) {
           </dl>
         ) : null}
 
+        {run.reconciliation ? (
+          <ReconciliationPanel reconciliation={run.reconciliation} />
+        ) : null}
+
         <div className="flex items-center justify-between gap-2">
           <Button variant="ghost" onClick={onReset} data-testid="import-reset">
             {t("newImport")}
@@ -50,7 +55,7 @@ export function ImportReportPanel({ run, onReset }: Props) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          run_id: <span className="font-mono">{run.id}</span>
+          run_id: <span className="font-mono">{run.run_id}</span>
           {" · "}
           {tCommon("close")}
         </p>

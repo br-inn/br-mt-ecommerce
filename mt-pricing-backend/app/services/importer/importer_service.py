@@ -24,7 +24,7 @@ import logging
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, BinaryIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.user import User
 from app.services.importer.applier import ApplyResult, apply_diffs_chunked
 from app.services.importer.differ import RowAction, RowDiff, compute_diff
+from app.services.importer.mapping_detector import detect_header_row
 from app.services.importer.parser import ParseResult, parse_xlsx_stream
 
 logger = logging.getLogger(__name__)
@@ -62,9 +63,7 @@ class ImportRunInvalidStateError(ImporterDomainError):
     def __init__(self, run_id: str, current: str, expected: str) -> None:
         super().__init__(
             code="import_run_invalid_state",
-            message=(
-                f"Run {run_id!r} en estado {current!r}; se esperaba {expected!r}."
-            ),
+            message=(f"Run {run_id!r} en estado {current!r}; se esperaba {expected!r}."),
             status_code=409,
         )
 
@@ -116,6 +115,8 @@ class ImportRunState:
     # Additive tracking: filas rechazadas (action=ERROR en el differ).
     # Poblado en preview() — no modifica la lógica de apply.
     rejected_rows: list[RejectedRow] = field(default_factory=list)
+    # Reconciliation data from the new pipeline (None if using legacy applier).
+    reconciliation: dict[str, Any] | None = None
 
 
 # Almacenamiento por proceso. En tests se aísla con :func:`reset_run_store`.
@@ -163,7 +164,7 @@ class ImporterService:
         filename: str,
         actor: User,
         type_: str = "pim",
-        custom_mapping: "list[Any] | None" = None,
+        custom_mapping: list[Any] | None = None,
     ) -> ImportRunState:
         """Sube + parsea + diffea. Devuelve un run en estado ``preview_ready``."""
         if len(file_bytes) > MAX_FILE_SIZE_BYTES:
@@ -173,7 +174,6 @@ class ImporterService:
         bio: BinaryIO = io.BytesIO(file_bytes)
         try:
             if custom_mapping is not None:
-                from app.services.importer.mapping_detector import detect_header_row
                 header_idx, _headers, _samples = detect_header_row(file_bytes)
                 bio.seek(0)
                 parse_result = parse_xlsx_stream(
@@ -183,7 +183,7 @@ class ImporterService:
                 )
             else:
                 parse_result = parse_xlsx_stream(bio)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ImporterDomainError(
                 code="import_parse_failed",
                 message=f"Error parseando archivo: {exc}",
@@ -214,7 +214,7 @@ class ImporterService:
             type_=type_,
             filename=filename,
             status="preview_ready",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             created_by=actor.email,
             file_bytes=file_bytes,
             parse_result=parse_result,
@@ -227,7 +227,9 @@ class ImporterService:
 
         logger.info(
             "Importer preview ready run_id=%s rows=%d summary=%s",
-            run_id, summary["total"], summary,
+            run_id,
+            summary["total"],
+            summary,
         )
         return state
 
@@ -244,9 +246,7 @@ class ImporterService:
         if state is None:
             raise ImportRunNotFoundError(run_id)
         if state.status != "preview_ready":
-            raise ImportRunInvalidStateError(
-                run_id, current=state.status, expected="preview_ready"
-            )
+            raise ImportRunInvalidStateError(run_id, current=state.status, expected="preview_ready")
 
         lock = _RUN_LOCKS.setdefault(run_id, asyncio.Lock())
         async with lock:
@@ -261,12 +261,34 @@ class ImporterService:
                     division_codes=division_codes,
                 )
                 state.apply_result = apply_result
-                state.status = "completed" if apply_result.failed_chunks == 0 else "completed_with_failures"
+                state.status = (
+                    "completed" if apply_result.failed_chunks == 0 else "completed_with_failures"
+                )
                 # Refresca summary con resultados reales del apply.
                 state.summary["applied_created"] = apply_result.created
                 state.summary["applied_updated"] = apply_result.updated
                 state.summary["applied_failed_chunks"] = apply_result.failed_chunks
-            except Exception as exc:  # noqa: BLE001
+                # Wire reconciliation from ImportOrchestrator result when available.
+                # The legacy applier (apply_diffs_chunked) does not produce this yet;
+                # state.reconciliation remains None in that path.
+                if (
+                    hasattr(apply_result, "reconciliation")
+                    and apply_result.reconciliation is not None
+                ):
+                    rec = apply_result.reconciliation
+                    state.reconciliation = {
+                        "total_excel_rows": rec.total_excel_rows,
+                        "inserted": rec.inserted,
+                        "updated": rec.updated,
+                        "no_change": rec.no_change,
+                        "error_rows": rec.error_rows,
+                        "locked_rows": rec.locked_rows,
+                        "accounted_total": rec.accounted_total,
+                        "gap": rec.gap,
+                        "is_complete": rec.is_complete,
+                        "missing_skus": rec.missing_skus,
+                    }
+            except Exception as exc:
                 logger.exception("Importer apply failed run_id=%s", run_id)
                 state.status = "failed"
                 state.error = f"{type(exc).__name__}: {exc!s}"
@@ -318,9 +340,7 @@ class ImporterService:
         if state is None:
             raise ImportRunNotFoundError(run_id)
         # Buckets de ejemplos para UI Pantalla 10 (Nuevos/Modificados/Errores/etc).
-        buckets: dict[str, list[dict[str, Any]]] = {
-            a.value: [] for a in RowAction
-        }
+        buckets: dict[str, list[dict[str, Any]]] = {a.value: [] for a in RowAction}
         for d in state.diffs:
             bucket = buckets[d.action.value]
             if len(bucket) < sample_per_bucket:
