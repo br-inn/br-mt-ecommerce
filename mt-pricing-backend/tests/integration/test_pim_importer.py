@@ -17,7 +17,6 @@ from __future__ import annotations
 import os
 from io import BytesIO
 from typing import Any
-from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -29,7 +28,7 @@ os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
 os.environ.setdefault("SUPABASE_ANON_KEY", "anon-test")
 os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "service-test")
 
-from app.db.models.import_run import ImportRun
+from app.db.models.import_run import ImportRun  # noqa: I001
 from app.db.models.product import Product
 from app.services.importer.column_mapper import EXPECTED_HEADERS
 from app.services.imports.pim_importer import PimImporter
@@ -265,7 +264,7 @@ async def test_pim_importer_inserts_5_rows(
     # packaging JSONB.
     assert p1.packaging.get("qty_per_box") == 12
     # cm→mm conversion.
-    assert p1.packaging.get("box_high_mm") == "100"  # 10 cm × 10 = 100 mm
+    assert p1.packaging.get("box_high_mm") == "100"  # 10 cm x 10 = 100 mm
 
 
 async def test_pim_importer_idempotent_on_rerun(
