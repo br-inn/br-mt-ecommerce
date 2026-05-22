@@ -6,7 +6,8 @@ Niveles:
 
 Convenciones:
 - `pytest-asyncio` en modo `auto` — async fixtures sin decorar.
-- `event_loop` session-scoped — testcontainers tarda ~2s en arrancar; reusar.
+- `asyncio_default_fixture_loop_scope = "session"` en pyproject.toml — loop
+  compartido por toda la sesión; testcontainers arranca sólo una vez.
 - DB session function-scoped, transaccional, rollback al final → tests aislados.
 - Celery configurado `task_always_eager=True` por defecto en tests para evitar
   necesidad de un worker real.
@@ -14,7 +15,6 @@ Convenciones:
 
 from __future__ import annotations
 
-import asyncio
 import os
 import pathlib
 import subprocess
@@ -37,18 +37,6 @@ if TYPE_CHECKING:
 os.environ.setdefault("ENV", "development")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("ENABLE_DOCS", "false")
-
-
-# =============================================================================
-# Event loop — session-scoped para que testcontainers no se reinicien
-# =============================================================================
-@pytest.fixture(scope="session")
-def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    loop = asyncio.new_event_loop()
-    try:
-        yield loop
-    finally:
-        loop.close()
 
 
 # =============================================================================

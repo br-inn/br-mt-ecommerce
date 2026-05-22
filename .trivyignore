@@ -1,0 +1,9 @@
+# Vulnerability suppressions for Trivy image scan.
+# Each entry must include justification and a review date.
+#
+# PYSEC-2026-161 — starlette < 1.0.1 HTTP response-splitting
+# Fix requires starlette >= 1.0.1, but prometheus-fastapi-instrumentator 7.1.0
+# (latest) pins starlette < 1.0.0. We cannot upgrade until that upstream
+# constraint is lifted. pip-audit is also advisory-only (continue-on-error).
+# Review: when prometheus-fastapi-instrumentator releases support for starlette 1.x.
+PYSEC-2026-161
