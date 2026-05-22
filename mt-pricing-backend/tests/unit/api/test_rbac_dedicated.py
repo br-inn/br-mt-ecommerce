@@ -19,9 +19,9 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
-import pytest
 from fastapi import FastAPI, HTTPException, status
 from httpx import ASGITransport, AsyncClient
+import pytest
 
 from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.routes.channels_mirror import (
@@ -129,26 +129,26 @@ def _wire_rbac_app(
     app.include_router(router, prefix="/api/v1")
 
     # Patch ProductRepository so refresh endpoint works without real DB.
-    import app.repositories.product as _product_repo_mod  # noqa: PLC0415
-    from unittest.mock import MagicMock as _MagicMock  # noqa: PLC0415
+    import app.repositories.product as _product_repo_mod
+    from unittest.mock import MagicMock as _MagicMock
 
     class _FakeProductRepo:
-        def __init__(self, _session: Any) -> None:  # noqa: ANN401
+        def __init__(self, _session: Any) -> None:
             pass
 
-        async def get_by_sku(self, sku: str) -> Any:  # noqa: ANN401
+        async def get_by_sku(self, sku: str) -> Any:
             return _MagicMock(sku=sku)  # non-None → SKU exists
 
     _product_repo_mod.ProductRepository = _FakeProductRepo  # type: ignore[assignment]
 
     # Patch Celery task so refresh endpoint doesn't need a broker.
-    import app.workers.tasks.comparator as _comparator_mod  # noqa: PLC0415
+    import app.workers.tasks.comparator as _comparator_mod
 
     _mock_task = _MagicMock()
     _mock_task.apply_async.return_value.id = "test-task-id"
     _comparator_mod.refresh_sku_task = _mock_task  # type: ignore[attr-defined]
 
-    async def _override_db() -> Any:  # noqa: ANN401
+    async def _override_db() -> Any:
         yield _MagicMock()
 
     async def _override_user() -> _FakeUser:

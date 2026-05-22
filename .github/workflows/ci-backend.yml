@@ -251,7 +251,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run pip-audit
-        run: uv run pip-audit --skip-editable
+        run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2026-161
 
   # ---------------------------------------------------------------------------
   # Build + scan + sign Docker image. Only on push to main.

@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002, RUF003
 """Scoring del matching pipeline foundation.
 
 Implementa lo que Sprint 3 necesita del scorer:
@@ -356,7 +357,7 @@ def _pn_score(sku_pn: str | None, cand_pn: str | None) -> tuple[Decimal, list[st
 # ── Estándar de rosca ────────────────────────────────────────────────────────
 
 _THREAD_STD_PATTERNS: dict[str, frozenset[str]] = {
-    "bsp":    frozenset({"bsp", "bspp", "bspt", "g thread", "g-thread", "rp", "rc", "iso 228", "en iso 228"}),
+    "bsp":    frozenset({"bsp", "bspp", "bspt", "g thread", "g-thread", "rp", "rc", "iso 228", "en iso 228"}),  # noqa: E501
     "npt":    frozenset({"npt", "nptf", "ansi b1.20"}),
     "metric": frozenset({"metric", "din", "m10", "m12", "m14", "m16", "m20"}),
 }
@@ -462,7 +463,7 @@ def _dn_score(sku_dn: str | None, cand_dn: str | None) -> tuple[Decimal, list[st
 
 # ── Tipo de producto + mini qualifier ─────────────────────────────────────────
 
-_MINI_TOKENS: frozenset[str] = frozenset({"mini", "miniball", "mini-ball", "compact ball", "minibola"})
+_MINI_TOKENS: frozenset[str] = frozenset({"mini", "miniball", "mini-ball", "compact ball", "minibola"})  # noqa: E501
 
 # Familia → palabras clave en título del candidato
 _FAMILY_TO_KEYWORDS: dict[str, frozenset[str]] = {
@@ -470,7 +471,7 @@ _FAMILY_TO_KEYWORDS: dict[str, frozenset[str]] = {
     "valves_ball":     frozenset({"ball valve", "ball-valve", "válvula bola"}),
     "gate_valve":      frozenset({"gate valve", "válvula compuerta", "schieber"}),
     "globe_valve":     frozenset({"globe valve", "válvula globo"}),
-    "check_valve":     frozenset({"check valve", "non-return valve", "válvula retención", "clapet"}),
+    "check_valve":     frozenset({"check valve", "non-return valve", "válvula retención", "clapet"}),  # noqa: E501
     "butterfly_valve": frozenset({"butterfly valve", "válvula mariposa", "absperrklappen"}),
     "strainer":        frozenset({"strainer", "y-strainer", "filtro y", "filter"}),
     "pressure_gauge":  frozenset({"pressure gauge", "manometer", "manómetro", "pressure meter"}),
@@ -510,7 +511,7 @@ def _product_type_score(
     sku_family: str | None,
     sku_type_text: str | None,
     cand_title: str | None,
-    cand_specs: dict,
+    cand_specs: dict[str, Any],
 ) -> tuple[Decimal, list[str]]:
     """Score de tipo de producto y mini qualifier. Retorna (score, notes)."""
     notes: list[str] = []
@@ -548,7 +549,7 @@ def _product_type_score(
 def _ways_score(
     sku_type_text: str | None,
     cand_title: str | None,
-    cand_specs: dict,
+    cand_specs: dict[str, Any],
 ) -> tuple[Decimal, list[str]]:
     """Score de vías (2-way vs 3-way). Retorna (score, notes)."""
     notes: list[str] = []
@@ -614,8 +615,8 @@ def _extract_handle_type(text: str | None) -> str | None:
 
 
 def _handle_score(
-    sku_specs: dict | None,
-    cand_specs: dict,
+    sku_specs: dict[str, Any] | None,
+    cand_specs: dict[str, Any],
     *,
     sku_text: str | None = None,
     cand_text: str | None = None,
@@ -632,7 +633,7 @@ def _handle_score(
 
     # Color — specs primero, fallback a texto
     sku_color = (sku_s.get("handle_color") or "").strip().lower() or _extract_handle_color(sku_text)
-    cand_color = (cand_specs.get("handle_color") or "").strip().lower() or _extract_handle_color(cand_text)
+    cand_color = (cand_specs.get("handle_color") or "").strip().lower() or _extract_handle_color(cand_text)  # noqa: E501
 
     # Tipo/material — specs primero, fallback a texto
     sku_type = (
@@ -992,7 +993,7 @@ def compute_scoring(
 
     # ── Género de conexión — nota pool-relativa, sin peso propio ──────────────
     sku_conn_gender = (sku.get("specs") or {}).get("end_connection_gender")
-    cand_conn_gender = cand_specs.get("connection_gender") or cand_specs.get("end_connection_gender")
+    cand_conn_gender = cand_specs.get("connection_gender") or cand_specs.get("end_connection_gender")  # noqa: E501
     gender_notes = _connection_gender_score(sku_conn_gender, cand_conn_gender)
 
     # ── Bore type (full bore / reduced bore) — nota pool-relativa ────────────

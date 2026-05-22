@@ -23,11 +23,11 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
-import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+import pytest
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_current_user, get_db_session
 from app.api.routes.products import get_product_service, router as products_router
 from app.services.products.product_service import ProductService
 
@@ -141,7 +141,7 @@ def _build_app(user: _FakeUser, product_svc: ProductService) -> FastAPI:
     fake_session = MagicMock()
     # session.execute → AsyncMock devolviendo Result vacío con .all() y
     # .scalar_one_or_none() apropiados.
-    async def _execute(*_a: Any, **_k: Any) -> Any:  # noqa: ANN401
+    async def _execute(*_a: Any, **_k: Any) -> Any:
         result = MagicMock()
         result.all.return_value = []
         result.scalar_one_or_none.return_value = None
@@ -167,7 +167,7 @@ def _build_app(user: _FakeUser, product_svc: ProductService) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
                 app.dependency_overrides[call] = _allow
 

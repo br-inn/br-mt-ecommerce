@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.matching.adapter_registry import get_fetcher
-from app.services.matching.adapters.noon_uae_stub import NoonUaeStubFetcher
 from app.services.channel_mirror.adapter_registry import get_channel_adapter
 from app.services.channel_mirror.adapters.amazon_sp_api_stub import AmazonSPApiStub
 from app.services.channel_mirror.adapters.noon_api_stub import NoonApiStub
+from app.services.matching.adapter_registry import get_fetcher
 
 pytestmark = pytest.mark.unit
 

@@ -14,9 +14,9 @@ from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
-import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+import pytest
 
 from app.api.deps import get_current_user, get_db_session
 from app.api.routes.graphrag import (
@@ -102,7 +102,7 @@ def _build_app(
             call = dependency.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow
@@ -111,7 +111,7 @@ def _build_app(
     import app.api.routes.graphrag as graphrag_route_mod
 
     class _FakeCdcRepo:
-        def __init__(self, _session):  # noqa: ANN001
+        def __init__(self, _session):
             pass
 
         async def count_by_status(self) -> dict[str, int]:

@@ -1,8 +1,8 @@
 from app.schemas.ficha_enrich import (
     ExtractedScalars,
     ExtractedSpecs,
-    FichaExtractionResult,
     FichaEnrichApplyRequest,
+    FichaExtractionResult,
 )
 
 

@@ -32,9 +32,9 @@ from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
-import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+import pytest
 
 from app.api.deps import get_current_user, get_db_session
 from app.api.routes.matches import get_match_service, router as matches_router
@@ -227,7 +227,7 @@ def _populate_repo(
     *,
     with_scoring: bool = False,
 ) -> None:
-    """Adds fake candidates directly to the in-memory repo (replaces old refresh-based pre-population)."""
+    """Adds fake candidates directly to the in-memory repo."""
     for i in range(count):
         specs: dict[str, Any] = {}
         if with_scoring:
@@ -262,10 +262,10 @@ def _build_app(
 
     # Patch ProductRepository so refresh endpoint can look up SKUs without real DB.
     _prods = products if products is not None else dict(_DEFAULT_PRODUCTS)
-    import app.repositories.product as _product_repo_mod  # noqa: PLC0415
+    import app.repositories.product as _product_repo_mod
 
     class _FakeProductRepo:
-        def __init__(self, _session: Any) -> None:  # noqa: ANN401
+        def __init__(self, _session: Any) -> None:
             pass
 
         async def get_by_sku(self, sku: str) -> _FakeProduct | None:
@@ -274,13 +274,13 @@ def _build_app(
     _product_repo_mod.ProductRepository = _FakeProductRepo  # type: ignore[assignment]
 
     # Patch Celery task so refresh endpoint doesn't need a broker.
-    import app.workers.tasks.comparator as _comparator_mod  # noqa: PLC0415
+    import app.workers.tasks.comparator as _comparator_mod
 
     _mock_task = MagicMock()
     _mock_task.apply_async.return_value.id = "test-task-id"
     _comparator_mod.refresh_sku_task = _mock_task  # type: ignore[attr-defined]
 
-    async def _override_db() -> Any:  # noqa: ANN401
+    async def _override_db() -> Any:
         yield MagicMock()  # session not actually used (ProductRepository is patched above)
 
     async def _override_user() -> _FakeUser:
@@ -297,7 +297,7 @@ def _build_app(
             call = dependency.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call: Any = call) -> _FakeUser:  # noqa: ARG001,ANN401
+                async def _allow(_call: Any = call) -> _FakeUser:
                     return user
 
                 app.dependency_overrides[call] = _allow
@@ -315,7 +315,7 @@ async def _client(app: FastAPI) -> AsyncClient:
 # Tests
 # ---------------------------------------------------------------------------
 async def test_refresh_returns_202_for_canned_sku() -> None:
-    svc, repo = _make_service_for_router()
+    svc, _ = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
     async with await _client(app) as ac:
