@@ -26,6 +26,8 @@ name: release-and-deploy
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -70,8 +72,10 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log in to GHCR
@@ -84,7 +88,8 @@ jobs:
       - name: Check if image already exists
         id: check
         run: |
-          if docker manifest inspect $IMAGE:${{ steps.tag.outputs.tag }} >/dev/null 2>&1; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && \
+             docker manifest inspect $IMAGE:${{ steps.tag.outputs.tag }} >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "✓ $IMAGE:${{ steps.tag.outputs.tag }} ya existe en GHCR — build saltado"
           else
@@ -139,8 +144,10 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log in to GHCR
@@ -153,7 +160,8 @@ jobs:
       - name: Check if image already exists
         id: check
         run: |
-          if docker manifest inspect $IMAGE:${{ steps.tag.outputs.tag }} >/dev/null 2>&1; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && \
+             docker manifest inspect $IMAGE:${{ steps.tag.outputs.tag }} >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "✓ $IMAGE:${{ steps.tag.outputs.tag }} ya existe en GHCR — build saltado"
           else
