@@ -57,6 +57,7 @@ class Scheme(StrEnum):
 class TranslationStatus(StrEnum):
     PENDING = "pending"
     DRAFT = "draft"
+    AI_GENERATED = "ai_generated"
     APPROVED = "approved"
 
 
