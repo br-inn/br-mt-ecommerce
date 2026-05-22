@@ -90,7 +90,7 @@ def test_suggest_mapping_parses_llm_response():
 
 
 def test_suggest_mapping_falls_back_on_invalid_json():
-    """Si el LLM devuelve JSON inválido, retorna mapeo vacío sin lanzar."""
+    """Si el LLM devuelve JSON inválido, retorna _skip fallback por cada columna."""
     mock_message = MagicMock()
     mock_message.content = [MagicMock(text="esto no es json")]
 
@@ -103,7 +103,13 @@ def test_suggest_mapping_falls_back_on_invalid_json():
             sample_rows=[["1010", "Valvulas"]],
         )
 
-    assert result == []
+    # Fallback returns one _skip entry per header (confidence 0) so the UI
+    # always has a mapping list to display and can request manual review.
+    assert len(result) == 2
+    assert all(r.target_field == "_skip" for r in result)
+    assert all(r.confidence == 0.0 for r in result)
+    assert result[0].excel_col == "SKU"
+    assert result[1].excel_col == "Familia"
 
 
 def test_suggest_mapping_strips_markdown_fence():

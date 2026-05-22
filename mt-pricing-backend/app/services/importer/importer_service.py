@@ -116,6 +116,8 @@ class ImportRunState:
     # Additive tracking: filas rechazadas (action=ERROR en el differ).
     # Poblado en preview() — no modifica la lógica de apply.
     rejected_rows: list[RejectedRow] = field(default_factory=list)
+    # Reconciliation data from the new pipeline (None if using legacy applier).
+    reconciliation: dict | None = None
 
 
 # Almacenamiento por proceso. En tests se aísla con :func:`reset_run_store`.
@@ -266,6 +268,23 @@ class ImporterService:
                 state.summary["applied_created"] = apply_result.created
                 state.summary["applied_updated"] = apply_result.updated
                 state.summary["applied_failed_chunks"] = apply_result.failed_chunks
+                # Wire reconciliation from ImportOrchestrator result when available.
+                # The legacy applier (apply_diffs_chunked) does not produce this yet;
+                # state.reconciliation remains None in that path.
+                if hasattr(apply_result, "reconciliation") and apply_result.reconciliation is not None:
+                    rec = apply_result.reconciliation
+                    state.reconciliation = {
+                        "total_excel_rows": rec.total_excel_rows,
+                        "inserted": rec.inserted,
+                        "updated": rec.updated,
+                        "no_change": rec.no_change,
+                        "error_rows": rec.error_rows,
+                        "locked_rows": rec.locked_rows,
+                        "accounted_total": rec.accounted_total,
+                        "gap": rec.gap,
+                        "is_complete": rec.is_complete,
+                        "missing_skus": rec.missing_skus,
+                    }
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Importer apply failed run_id=%s", run_id)
                 state.status = "failed"

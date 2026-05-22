@@ -23,10 +23,11 @@ AVAILABLE_TRANSFORMS: tuple[str, ...] = (
 
 # Campos target disponibles (escalares directos en products).
 SCALAR_FIELDS: frozenset[str] = frozenset({
-    "sku", "family", "subfamily", "erp_name", "intrastat_code", "hs_code",
+    "sku", "family", "subfamily", "type", "erp_name", "intrastat_code", "hs_code",
     "connection", "brand", "weight", "bore_mm", "pressure_max_bar",
     "temp_min_c", "temp_max_c", "series", "material", "dn", "pn",
-    "size", "revision",
+    "size", "revision", "external_url", "gtin", "dimensional_standard",
+    "country_of_origin",
 })
 
 # Prefijos JSONB válidos (el sufijo es la clave dentro del bucket).
@@ -126,19 +127,26 @@ _LLM_MODEL = "claude-sonnet-4-6"
 
 _AVAILABLE_FIELDS_DOC = """
 Scalar fields (products table):
-  sku (required), family, erp_name, intrastat_code, hs_code, connection,
-  brand, weight, bore_mm, pressure_max_bar, temp_min_c, temp_max_c,
-  series, material, dn, pn, size, revision
+  sku (required), family, subfamily, type, erp_name, intrastat_code, hs_code,
+  connection, brand, weight, bore_mm, pressure_max_bar, temp_min_c, temp_max_c,
+  series, material, dn, pn, size, revision, external_url, gtin,
+  dimensional_standard, country_of_origin
 
 JSONB sub-fields (dot notation):
   dimensions.high_mm, dimensions.wide_mm, dimensions.deep_mm
   packaging.qty_per_box, packaging.box_high_mm, packaging.box_wide_mm,
   packaging.box_deep_mm, packaging.moq_inner_box, packaging.x_pallet
-  specs.name_en, specs.name_es, specs.name_fr, specs.name_de, specs.name_it, specs.name_pt
-  specs.<any_key>   ← use for EANs, names, flags, percentages, etc.
+  specs.<any_key>   ← use for EANs, booleans, flags not covered by scalars
+
+Translations (writes to product_translations.name for that lang):
+  translations.en   translations.es   translations.fr
+  translations.de   translations.it   translations.pt   translations.ar
+
+Multi-value comma-separated (M:N):
+  certifications    ← "CE, ISO 9001, WRAS" is split + each resolved to vocab
 
 Special:
-  _skip   ← ignore this column
+  _skip             ← ignore this column entirely
 
 Available transforms:
   text        plain text / string
@@ -179,7 +187,11 @@ def suggest_mapping(
         f"Use the actual sample values to infer the correct field and transform. "
         f"For example: a column with values like 'DN25', 'DN40' maps to 'dn' with "
         f"transform 'text'; a column with values in cm (e.g. 12.5) that represents "
-        f"a physical dimension maps to dimensions.* with transform 'cm_to_mm'.\n\n"
+        f"a physical dimension maps to dimensions.* with transform 'cm_to_mm'.\n"
+        f"For multi-language name columns (e.g. 'Nombre ES', 'Name EN', 'Nome IT'), "
+        f"use translations.<lang> (translations.es, translations.en, translations.it, etc.).\n"
+        f"For certification columns (e.g. 'Normas', 'Certifications', 'CE Mark', 'Homologaciones'), "
+        f"use 'certifications'.\n\n"
         f"{_AVAILABLE_FIELDS_DOC}\n\n"
         f"Column headers with sample values (up to 3 rows):\n{samples_text}\n\n"
         f"Return a JSON array — no markdown, no explanation, just JSON. "
