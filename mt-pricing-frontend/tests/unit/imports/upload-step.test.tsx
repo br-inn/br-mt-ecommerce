@@ -42,7 +42,7 @@ const messages = {
 };
 
 const samplePreview: ImportPreview = {
-  id: "run-1",
+  run_id: "run-1",
   type: "pim",
   status: "preview_ready",
   filename: "PIM.xlsx",
@@ -60,14 +60,14 @@ const samplePreview: ImportPreview = {
   rows: [],
 };
 
-function renderStep(onUploaded = vi.fn()) {
+function renderStep(onAnalyzed = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return {
-    onUploaded,
+    onAnalyzed,
     ...render(
       <QueryClientProvider client={client}>
         <NextIntlClientProvider locale="es" messages={messages} timeZone="UTC">
-          <UploadStep onUploaded={onUploaded} />
+          <UploadStep onAnalyzed={onAnalyzed} />
         </NextIntlClientProvider>
       </QueryClientProvider>,
     ),
@@ -79,9 +79,9 @@ describe("UploadStep (US-1A-06-01 frontend)", () => {
     vi.restoreAllMocks();
   });
 
-  it("sube archivo válido y llama onUploaded con el preview", async () => {
+  it("sube archivo válido y llama onAnalyzed con el preview", async () => {
     const spy = vi.spyOn(importsApi, "preview").mockResolvedValue(samplePreview);
-    const { onUploaded } = renderStep();
+    const { onAnalyzed } = renderStep();
     const file = new File(["xls-bytes"], "PIM.xlsx", {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
@@ -97,7 +97,7 @@ describe("UploadStep (US-1A-06-01 frontend)", () => {
 
     await waitFor(() => expect(spy).toHaveBeenCalled());
     await waitFor(() =>
-      expect(onUploaded).toHaveBeenCalledWith(samplePreview),
+      expect(onAnalyzed).toHaveBeenCalledWith(samplePreview),
     );
   });
 
