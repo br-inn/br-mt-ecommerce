@@ -46,7 +46,6 @@ jobs:
           filters: |
             backend:
               - "mt-pricing-backend/**"
-              - ".github/workflows/ci-backend.yml"
 
   # ---------------------------------------------------------------------------
   # Lint + format check (ruff)
@@ -200,6 +199,11 @@ jobs:
 
       - name: Install deps
         run: uv sync --frozen
+
+      - name: Create auth schema stub (Supabase shim for bare PG)
+        run: |
+          PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_test \
+            -c "CREATE SCHEMA IF NOT EXISTS auth; CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS \$\$ SELECT NULL::uuid \$\$;"
 
       - name: Run pytest with coverage
         run: |

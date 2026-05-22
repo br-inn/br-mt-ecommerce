@@ -14,11 +14,9 @@ on:
     branches: [main]
     paths:
       - "mt-pricing-backend/**"
-      - ".github/workflows/ci-backend-full.yml"
   pull_request:
     paths:
       - "mt-pricing-backend/**"
-      - ".github/workflows/ci-backend-full.yml"
 
 concurrency:
   group: ci-backend-full-${{ github.ref }}
