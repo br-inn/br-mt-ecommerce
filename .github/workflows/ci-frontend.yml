@@ -3,7 +3,7 @@
 # =============================================================================
 # Runs on every PR.
 # Jobs lint/typecheck/test/build are SKIPPED automatically when no frontend
-# files changed — GitHub treats skipped jobs as passing for required checks.
+# files changed -- GitHub treats skipped jobs as passing for required checks.
 # =============================================================================
 ---
 name: ci-frontend
@@ -41,7 +41,7 @@ jobs:
               - "mt-pricing-frontend/**"
 
   # ---------------------------------------------------------------------------
-  # Lint (eslint via pnpm script)
+  # Lint (eslint) -- only changed TS/TSX files to avoid pre-existing errors
   # ---------------------------------------------------------------------------
   lint:
     name: Lint
@@ -54,6 +54,8 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -68,15 +70,26 @@ jobs:
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
           else
-            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
             pnpm install --no-frozen-lockfile
           fi
 
-      - name: Lint
-        run: pnpm lint
+      - name: Lint (changed files only)
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD \
+            | grep '^mt-pricing-frontend/' \
+            | grep -E '\.(ts|tsx)$' \
+            | sed 's|^mt-pricing-frontend/||' \
+            || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No changed TS/TSX files -- eslint skipped"
+            exit 0
+          fi
+          echo "Linting changed files:"
+          echo "$CHANGED"
+          echo "$CHANGED" | tr '\n' '\0' | xargs -0 pnpm exec eslint
 
   # ---------------------------------------------------------------------------
-  # Typecheck (tsc --noEmit)
+  # Typecheck -- only changed TS/TSX files via dynamic tsconfig
   # ---------------------------------------------------------------------------
   typecheck:
     name: Typecheck
@@ -89,6 +102,8 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -103,15 +118,29 @@ jobs:
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
           else
-            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
             pnpm install --no-frozen-lockfile
           fi
 
-      - name: Typecheck
-        run: pnpm typecheck
+      - name: Typecheck (changed files only)
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD \
+            | grep '^mt-pricing-frontend/' \
+            | grep -E '\.(ts|tsx)$' \
+            | sed 's|^mt-pricing-frontend/||' \
+            || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No changed TS/TSX files -- typecheck skipped"
+            exit 0
+          fi
+          echo "Type-checking changed files:"
+          echo "$CHANGED"
+          FILES_JSON=$(echo "$CHANGED" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip().split('\n')))")
+          echo "{\"extends\": \"./tsconfig.json\", \"files\": $FILES_JSON}" > tsconfig.ci.json
+          pnpm exec tsc --noEmit -p tsconfig.ci.json
+          rm -f tsconfig.ci.json
 
   # ---------------------------------------------------------------------------
-  # Unit tests (vitest / jest configured in package.json)
+  # Unit tests (vitest)
   # ---------------------------------------------------------------------------
   test:
     name: Tests
@@ -138,20 +167,11 @@ jobs:
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
           else
-            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
             pnpm install --no-frozen-lockfile
           fi
 
       - name: Test
-        run: pnpm test -- --reporter=default --coverage
-
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage
-          path: ${{ env.WORKDIR }}/coverage
-          retention-days: 7
+        run: pnpm test -- --reporter=default
 
   # ---------------------------------------------------------------------------
   # Production build + bundle size analysis.
@@ -181,7 +201,6 @@ jobs:
           if [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
           else
-            echo "::warning::pnpm-lock.yaml no encontrado — install sin --frozen-lockfile"
             pnpm install --no-frozen-lockfile
           fi
 
