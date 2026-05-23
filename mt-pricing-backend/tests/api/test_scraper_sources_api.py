@@ -190,8 +190,7 @@ async def client_rw(postgres_container: str) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.mark.api
-@pytest.mark.asyncio
-async def test_create_and_list_source(client_rw: AsyncClient) -> None:
+async deftest_create_and_list_source(client_rw: AsyncClient) -> None:
     resp = await client_rw.post(
         "/api/v1/scraper-sources",
         json={
@@ -212,8 +211,7 @@ async def test_create_and_list_source(client_rw: AsyncClient) -> None:
 
 
 @pytest.mark.api
-@pytest.mark.asyncio
-async def test_add_recipe_to_source(client_rw: AsyncClient) -> None:
+async deftest_add_recipe_to_source(client_rw: AsyncClient) -> None:
     src = await client_rw.post(
         "/api/v1/scraper-sources",
         json={
@@ -241,8 +239,7 @@ async def test_add_recipe_to_source(client_rw: AsyncClient) -> None:
 
 
 @pytest.mark.api
-@pytest.mark.asyncio
-async def test_patch_source_updates_fields(client_rw: AsyncClient) -> None:
+async deftest_patch_source_updates_fields(client_rw: AsyncClient) -> None:
     r = await client_rw.post(
         "/api/v1/scraper-sources",
         json={
@@ -267,8 +264,7 @@ async def test_patch_source_updates_fields(client_rw: AsyncClient) -> None:
 
 
 @pytest.mark.api
-@pytest.mark.asyncio
-async def test_list_recipes_empty_then_populated(client_rw: AsyncClient) -> None:
+async deftest_list_recipes_empty_then_populated(client_rw: AsyncClient) -> None:
     r = await client_rw.post(
         "/api/v1/scraper-sources",
         json={
