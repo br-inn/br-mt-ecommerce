@@ -455,6 +455,9 @@ def _normalize_dn(text: str | None) -> str | None:
     m = _DN_INT_RE.match(t)
     if m:
         dn_int = int(m.group(1))
+        # Enteros como 2, 3, 4 son pulgadas canónicas; 15, 50 son valores DN.
+        if str(dn_int) in _INCH_TO_DN:
+            return str(dn_int)
         return _DN_TO_INCH.get(dn_int, f"dn{dn_int}")
 
     return t.lower()

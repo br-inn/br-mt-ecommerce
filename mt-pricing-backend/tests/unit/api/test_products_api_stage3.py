@@ -116,6 +116,7 @@ def _fake_product_orm(
     p.video_url = None
     p.external_url = None
     p.model_id = None
+    p.model = None
     p.gtin = None
     # Stage 3
     p.series_id = series_id

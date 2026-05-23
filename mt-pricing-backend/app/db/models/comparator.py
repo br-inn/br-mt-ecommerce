@@ -341,14 +341,14 @@ class ProductEquivalence(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    product_id_a: Mapped[UUID] = mapped_column(
-        UUID_PG,
-        ForeignKey("products.id", ondelete="CASCADE"),
+    product_id_a: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
         nullable=False,
     )
-    product_id_b: Mapped[UUID] = mapped_column(
-        UUID_PG,
-        ForeignKey("products.id", ondelete="CASCADE"),
+    product_id_b: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
         nullable=False,
     )
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.8)
@@ -364,6 +364,11 @@ class ProductEquivalence(Base):
         UniqueConstraint("product_id_a", "product_id_b", name="uq_product_equivalences_pair"),
         Index("ix_product_equivalences_product_id_a", "product_id_a"),
         Index("ix_product_equivalences_product_id_b", "product_id_b"),
+        Index(
+            "ix_product_equivalences_synced",
+            "synced_to_kg",
+            postgresql_where=text("synced_to_kg = false"),
+        ),
     )
 
 

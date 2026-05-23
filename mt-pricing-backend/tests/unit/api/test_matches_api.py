@@ -29,7 +29,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -211,7 +211,7 @@ def _make_service_for_router(
     *, products: dict[str, _FakeProduct] | None = None
 ) -> tuple[MatchService, _InMemoryMatchRepo]:
     products = products if products is not None else dict(_DEFAULT_PRODUCTS)
-    fake_session = MagicMock()
+    fake_session = AsyncMock()
     svc = MatchService(fake_session)
     repo = _InMemoryMatchRepo()
     svc._matches_repo = repo  # type: ignore[assignment]
