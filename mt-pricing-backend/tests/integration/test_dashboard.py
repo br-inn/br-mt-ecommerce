@@ -304,7 +304,9 @@ async def test_dashboard_translations_coverage_pct(
     uid, email = authed_user
 
     for sku in ["MT-A-1", "MT-A-2", "MT-A-3", "MT-A-4"]:
-        await make_product(sku, family="adapters", lifecycle_status="active", data_quality="partial")
+        await make_product(
+            sku, family="adapters", lifecycle_status="active", data_quality="partial"
+        )
 
     # 2 traducciones ES approved + 1 ES draft (no cuenta).
     db_session.add_all(
