@@ -123,6 +123,8 @@ class ScraperSourceRepository:
         if source is None:
             return None
         for key, value in kwargs.items():
+            if not hasattr(ScraperSource, key):
+                raise ValueError(f"ScraperSource has no mapped attribute '{key}'")
             if value is not None:
                 setattr(source, key, value)
         await self._session.flush()
