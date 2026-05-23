@@ -75,7 +75,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   };
 }
 
-const BASE = env.NEXT_PUBLIC_API_URL ?? "";
+const BASE = env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
 export async function fetchPriceIntelligenceDashboard(params: {
   brandId?: string;

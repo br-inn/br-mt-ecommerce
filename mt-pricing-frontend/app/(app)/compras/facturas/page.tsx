@@ -52,7 +52,7 @@ export default function VendorInvoicesPage() {
   const { data: invoices, isLoading, isError } = useQuery({
     queryKey: ["vendor-invoices", statusFilter],
     queryFn: () =>
-      vendorInvoicesApi.list({ status: (statusFilter || undefined) as VendorInvoiceStatus | undefined }),
+      vendorInvoicesApi.list({ ...(statusFilter ? { status: statusFilter as VendorInvoiceStatus } : {}) }),
   });
 
   const matchMutation = useMutation({

@@ -83,7 +83,7 @@ function PositionsTab() {
     queryKey: ["inventory-positions", schemeFilter],
     queryFn: () =>
       inventoryApi.listPositions({
-        scheme_code: schemeFilter === "__all__" ? undefined : schemeFilter,
+        ...(schemeFilter !== "__all__" ? { scheme_code: schemeFilter } : {}),
       }),
     staleTime: 30_000,
   });

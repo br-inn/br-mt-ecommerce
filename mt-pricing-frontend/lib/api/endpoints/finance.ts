@@ -4,7 +4,16 @@
  * Cubre todos los endpoints de /api/v1/finance
  */
 
-import { apiClient } from "@/lib/api/client";
+import { authedFetch } from "@/lib/api/client";
+
+function qs(params: Record<string, unknown> | undefined): string {
+  if (!params) return "";
+  const pairs = Object.entries(params).filter(([, v]) => v !== undefined && v !== null);
+  if (pairs.length === 0) return "";
+  return "?" + pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join("&");
+}
+
+const BASE = "/api/v1/finance";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -279,31 +288,31 @@ export interface FxRevalResult {
 export const financeApi = {
   // GL Accounts
   listAccounts: (params?: { account_type?: string; blocked?: boolean }) =>
-    apiClient.get<GlAccount[]>("/finance/accounts", { params }),
+    authedFetch<GlAccount[]>(`${BASE}/accounts${qs(params as Record<string, unknown>)}`),
 
   createAccount: (data: Partial<GlAccount>) =>
-    apiClient.post<GlAccount>("/finance/accounts", data),
+    authedFetch<GlAccount>(`${BASE}/accounts`, { method: "POST", body: JSON.stringify(data) }),
 
   updateAccount: (id: string, data: Partial<GlAccount>) =>
-    apiClient.patch<GlAccount>(`/finance/accounts/${id}`, data),
+    authedFetch<GlAccount>(`${BASE}/accounts/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
 
   // Posting Periods
   listPostingPeriods: (params?: { fiscal_year?: number; status?: string }) =>
-    apiClient.get<PostingPeriod[]>("/finance/posting-periods", { params }),
+    authedFetch<PostingPeriod[]>(`${BASE}/posting-periods${qs(params as Record<string, unknown>)}`),
 
   createPostingPeriod: (data: Partial<PostingPeriod>) =>
-    apiClient.post<PostingPeriod>("/finance/posting-periods", data),
+    authedFetch<PostingPeriod>(`${BASE}/posting-periods`, { method: "POST", body: JSON.stringify(data) }),
 
   closePeriod: (id: string) =>
-    apiClient.post<PostingPeriod>(`/finance/posting-periods/${id}/close`),
+    authedFetch<PostingPeriod>(`${BASE}/posting-periods/${id}/close`, { method: "POST" }),
 
   // Cost Centers
   listCostCenters: () =>
-    apiClient.get<CostCenter[]>("/finance/cost-centers"),
+    authedFetch<CostCenter[]>(`${BASE}/cost-centers`),
 
   // Profit Centers
   listProfitCenters: () =>
-    apiClient.get<ProfitCenter[]>("/finance/profit-centers"),
+    authedFetch<ProfitCenter[]>(`${BASE}/profit-centers`),
 
   // Financial Entries
   listEntries: (params?: {
@@ -313,23 +322,23 @@ export const financeApi = {
     source_module?: string;
     limit?: number;
     offset?: number;
-  }) => apiClient.get<FinancialEntry[]>("/finance/entries", { params }),
+  }) => authedFetch<FinancialEntry[]>(`${BASE}/entries${qs(params as Record<string, unknown>)}`),
 
   createEntry: (data: FinancialEntryCreate) =>
-    apiClient.post<FinancialEntry>("/finance/entries", data),
+    authedFetch<FinancialEntry>(`${BASE}/entries`, { method: "POST", body: JSON.stringify(data) }),
 
   reverseEntry: (id: string) =>
-    apiClient.post<FinancialEntry>(`/finance/entries/${id}/reverse`),
+    authedFetch<FinancialEntry>(`${BASE}/entries/${id}/reverse`, { method: "POST" }),
 
   reviewEntry: (id: string) =>
-    apiClient.post(`/finance/entries/${id}/review`),
+    authedFetch<void>(`${BASE}/entries/${id}/review`, { method: "POST" }),
 
   approveEntry: (id: string) =>
-    apiClient.post(`/finance/entries/${id}/approve`),
+    authedFetch<void>(`${BASE}/entries/${id}/approve`, { method: "POST" }),
 
   // AP Aging
   getApAging: (params?: { as_of_date?: string; vendor_id?: string }) =>
-    apiClient.get<ApAgingOut>("/finance/ap-aging", { params }),
+    authedFetch<ApAgingOut>(`${BASE}/ap-aging${qs(params as Record<string, unknown>)}`),
 
   // Payment Runs
   createPaymentRun: (data: {
@@ -338,62 +347,62 @@ export const financeApi = {
     currency?: string;
     vendor_ids?: string[];
     cutoff_date?: string;
-  }) => apiClient.post<PaymentRun>("/finance/payment-runs", data),
+  }) => authedFetch<PaymentRun>(`${BASE}/payment-runs`, { method: "POST", body: JSON.stringify(data) }),
 
   approvePaymentRun: (id: string) =>
-    apiClient.post<PaymentRun>(`/finance/payment-runs/${id}/approve`),
+    authedFetch<PaymentRun>(`${BASE}/payment-runs/${id}/approve`, { method: "POST" }),
 
   executePaymentRun: (id: string) =>
-    apiClient.post<PaymentRun>(`/finance/payment-runs/${id}/execute`),
+    authedFetch<PaymentRun>(`${BASE}/payment-runs/${id}/execute`, { method: "POST" }),
 
   // Standard Costs
   listStandardCosts: (params?: { sku?: string; fiscal_year?: number }) =>
-    apiClient.get<StandardCost[]>("/finance/standard-costs", { params }),
+    authedFetch<StandardCost[]>(`${BASE}/standard-costs${qs(params as Record<string, unknown>)}`),
 
   createStandardCost: (data: Partial<StandardCost>) =>
-    apiClient.post<StandardCost>("/finance/standard-costs", data),
+    authedFetch<StandardCost>(`${BASE}/standard-costs`, { method: "POST", body: JSON.stringify(data) }),
 
   // P&L
   getPl: (params: { fiscal_year: number; period_from?: number; period_to?: number }) =>
-    apiClient.get<PlSummaryOut>("/finance/pl", { params }),
+    authedFetch<PlSummaryOut>(`${BASE}/pl${qs(params as Record<string, unknown>)}`),
 
   // Balance Sheet
   getBalanceSheet: (params: { fiscal_year: number; as_of_period?: number }) =>
-    apiClient.get<BalanceSheetOut>("/finance/balance-sheet", { params }),
+    authedFetch<BalanceSheetOut>(`${BASE}/balance-sheet${qs(params as Record<string, unknown>)}`),
 
   // Trial Balance
   getTrialBalance: (params: { fiscal_year: number; period: number }) =>
-    apiClient.get<TrialBalanceOut>("/finance/trial-balance", { params }),
+    authedFetch<TrialBalanceOut>(`${BASE}/trial-balance${qs(params as Record<string, unknown>)}`),
 
   // Period Close
   startPeriodClose: (fiscal_year: number, period_num: number) =>
-    apiClient.post<PeriodCloseChecklist>(`/finance/period-close/${fiscal_year}/${period_num}`),
+    authedFetch<PeriodCloseChecklist>(`${BASE}/period-close/${fiscal_year}/${period_num}`, { method: "POST" }),
 
   updateChecklistItem: (id: string, data: { item_index: number; completed: boolean; item_name?: string }) =>
-    apiClient.patch<PeriodCloseChecklist>(`/finance/period-close/${id}/item`, data),
+    authedFetch<PeriodCloseChecklist>(`${BASE}/period-close/${id}/item`, { method: "PATCH", body: JSON.stringify(data) }),
 
   closePeriodChecklist: (id: string) =>
-    apiClient.post<PeriodCloseChecklist>(`/finance/period-close/${id}/close`),
+    authedFetch<PeriodCloseChecklist>(`${BASE}/period-close/${id}/close`, { method: "POST" }),
 
   // UAE CIT
   calculateCit: (fiscal_year: number) =>
-    apiClient.post<CitProvisionResult>(`/finance/cit-provision/${fiscal_year}`),
+    authedFetch<CitProvisionResult>(`${BASE}/cit-provision/${fiscal_year}`, { method: "POST" }),
 
   // FX Revaluation
   runFxRevaluation: (fiscal_year: number, period: number) =>
-    apiClient.post<FxRevalResult>(`/finance/fx-revaluation/${fiscal_year}/${period}`),
+    authedFetch<FxRevalResult>(`${BASE}/fx-revaluation/${fiscal_year}/${period}`, { method: "POST" }),
 
   // Budgets
   listBudgets: (params?: { fiscal_year?: number; period_num?: number }) =>
-    apiClient.get<Budget[]>("/finance/budgets", { params }),
+    authedFetch<Budget[]>(`${BASE}/budgets${qs(params as Record<string, unknown>)}`),
 
   createBudget: (data: Partial<Budget>) =>
-    apiClient.post<Budget>("/finance/budgets", data),
+    authedFetch<Budget>(`${BASE}/budgets`, { method: "POST", body: JSON.stringify(data) }),
 
   getBudgetVsActual: (params: { fiscal_year: number; period: number }) =>
-    apiClient.get<BudgetVsActualOut>("/finance/budget-vs-actual", { params }),
+    authedFetch<BudgetVsActualOut>(`${BASE}/budget-vs-actual${qs(params as Record<string, unknown>)}`),
 
   // CO-PA
   getCopa: (params: { fiscal_year: number; profit_center?: string }) =>
-    apiClient.get<CopaOut>("/finance/copa", { params }),
+    authedFetch<CopaOut>(`${BASE}/copa${qs(params as Record<string, unknown>)}`),
 };

@@ -285,7 +285,7 @@ export default function PurchaseOrderDetailPage() {
           if (!v) setGrPreLineId(undefined);
         }}
         preselectedPoId={id}
-        preselectedPoLineId={grPreLineId}
+        {...(grPreLineId !== undefined ? { preselectedPoLineId: grPreLineId } : {})}
         onCreated={() => {
           queryClient.invalidateQueries({ queryKey: ["purchase-order", id] });
           queryClient.invalidateQueries({ queryKey: ["goods-receipts"] });

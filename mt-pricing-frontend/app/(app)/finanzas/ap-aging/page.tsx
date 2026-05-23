@@ -17,7 +17,7 @@ function fmt(val: string | number) {
 }
 
 export default function ApAgingPage() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toISOString().split("T")[0]!;
 
   const { data, isLoading } = useQuery({
     queryKey: ["finance", "ap-aging", today],
@@ -33,8 +33,8 @@ export default function ApAgingPage() {
     );
   }
 
-  const buckets = data?.buckets ?? [];
-  const totalAll = buckets.reduce((s, b) => s + Number(b.total), 0);
+  const buckets: ApAgingBucket[] = data?.buckets ?? [];
+  const totalAll = buckets.reduce((s: number, b: ApAgingBucket) => s + Number(b.total), 0);
 
   return (
     <div className="p-6 space-y-6">

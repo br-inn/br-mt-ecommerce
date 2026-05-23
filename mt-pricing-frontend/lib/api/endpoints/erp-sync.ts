@@ -53,7 +53,7 @@ export async function listErpEventos(params?: {
   cursor?: string;
 }): Promise<ERPSyncEventsPage> {
   const headers = await getAuthHeaders();
-  const url = new URL(`${env.NEXT_PUBLIC_API_URL}/api/v1/admin/erp-eventos`);
+  const url = new URL(`${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/admin/erp-eventos`);
 
   if (params?.status) url.searchParams.set("status", params.status);
   if (params?.limit) url.searchParams.set("limit", String(params.limit));
@@ -73,7 +73,7 @@ export async function listErpEventos(params?: {
 export async function retryErpEvento(eventId: string): Promise<ERPSyncEvent> {
   const headers = await getAuthHeaders();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/admin/erp-eventos/${eventId}/retry`,
+    `${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/admin/erp-eventos/${eventId}/retry`,
     {
       method: "PATCH",
       headers,

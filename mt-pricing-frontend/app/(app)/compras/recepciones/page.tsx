@@ -142,8 +142,8 @@ export default function GoodsReceiptsPage() {
     queryKey: ["goods-receipts", activeTab, cursor],
     queryFn: () =>
       goodsReceiptsApi.list({
-        status: statusFilter,
-        cursor,
+        ...(statusFilter !== undefined ? { status: statusFilter } : {}),
+        ...(cursor !== undefined ? { cursor } : {}),
         limit: 50,
       }),
     staleTime: 10_000,

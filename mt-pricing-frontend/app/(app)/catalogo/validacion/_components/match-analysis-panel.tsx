@@ -203,7 +203,7 @@ export function MatchAnalysisPanel({ enhanced }: { enhanced: Enhanced }) {
               <SectionHeader icon={<Truck className="size-3" />} label="Precio vs. stock UAE" />
               <div className="flex flex-wrap items-center gap-2">
                 {(() => {
-                  const d = DELIVERY_LABELS[delivery.category] ?? DELIVERY_LABELS.unknown;
+                  const d = (DELIVERY_LABELS[delivery.category] ?? DELIVERY_LABELS["unknown"])!;
                   return (
                     <span
                       className="rounded-[4px] border px-1.5 py-0.5 text-[10px] font-medium"

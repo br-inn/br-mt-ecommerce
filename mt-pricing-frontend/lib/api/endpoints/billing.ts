@@ -109,7 +109,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   };
 }
 
-const BASE = `${env.NEXT_PUBLIC_API_URL ?? ""}/api/v1/billing`;
+const BASE = `${env.NEXT_PUBLIC_BACKEND_URL ?? ""}/api/v1/billing`;
 
 async function get<T>(path: string): Promise<T> {
   const headers = await getAuthHeaders();
@@ -123,7 +123,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) throw new Error(`POST ${path} → ${res.status}`);
   return res.json() as Promise<T>;
