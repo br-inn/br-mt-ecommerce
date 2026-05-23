@@ -174,7 +174,6 @@ function CircuitBadge({ state }: { state: DomainHealth["circuit_state"] }) {
 export function ScraperHealthClient() {
   const t = useTranslations("admin.scraperHealth");
   const { can } = usePermissions();
-  const qc = useQueryClient();
 
   const { data: healthData, isLoading: healthLoading, refetch } = useScraperHealth();
   const { data: proxiesData, isLoading: proxiesLoading } = useProxies();
