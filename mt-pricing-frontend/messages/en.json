@@ -1368,6 +1368,82 @@
         "proxyUrlHint": "Format: http://user:password@host:port",
         "actions": "Actions"
       }
+    },
+    "scraperSources": {
+      "title": "Scraper Sources",
+      "description": "Manage generic configurable scraper sources and their extraction recipes.",
+      "noPermission": "You do not have permission to view this section.",
+      "newSource": "New Source",
+      "selectSource": "Select a source to view its details.",
+      "status": {
+        "draft": "Draft",
+        "testing": "Testing",
+        "active": "Active",
+        "disabled": "Disabled",
+        "degraded": "Degraded"
+      },
+      "tabs": {
+        "info": "Info",
+        "recipe": "Recipe",
+        "validation": "Validation"
+      },
+      "info": {
+        "edit": "Edit",
+        "editTitle": "Edit Source",
+        "createTitle": "New Source",
+        "name": "Name",
+        "slug": "Slug",
+        "slugHint": "Lowercase letters, numbers and hyphens only.",
+        "baseUrl": "Base URL",
+        "fetchMode": "Fetch mode",
+        "destinationProfile": "Destination",
+        "descriptionLabel": "Description",
+        "save": "Save",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "createSuccess": "Source created.",
+        "updateSuccess": "Source updated.",
+        "errorDuplicateSlug": "That slug is already in use.",
+        "errorGeneric": "Something went wrong."
+      },
+      "recipe": {
+        "active": "Active recipe",
+        "noRecipe": "No recipe yet.",
+        "newVersion": "New version",
+        "newVersionTitle": "New recipe version",
+        "recipeJson": "Recipe JSON",
+        "recipeJsonHint": "Must be valid JSON following the recipe schema.",
+        "save": "Save",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "saveSuccess": "Recipe saved.",
+        "errorInvalidJson": "Invalid JSON — fix before saving.",
+        "errorGeneric": "Something went wrong.",
+        "history": "Previous versions",
+        "version": "v{version}",
+        "validationStatus": {
+          "unvalidated": "Unvalidated",
+          "passing": "Passing",
+          "failing": "Failing"
+        }
+      },
+      "validation": {
+        "testUrl": "Test URL",
+        "testUrlPlaceholder": "https://example.com/page-to-scrape",
+        "recipe": "Recipe to test",
+        "run": "Test",
+        "running": "Testing…",
+        "activate": "Activate this recipe",
+        "activating": "Activating…",
+        "activateSuccess": "Recipe activated. Source is now active.",
+        "activateBlocked": "Recipe must be passing to activate.",
+        "results": "Results",
+        "fieldName": "Field",
+        "fieldResult": "Result",
+        "fieldValue": "Extracted value",
+        "pass": "Pass",
+        "errorGeneric": "Something went wrong."
+      }
     }
   },
   "costsDashboard": {

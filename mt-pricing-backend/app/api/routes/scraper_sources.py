@@ -20,6 +20,7 @@ from app.schemas.scraper_sources import (
     RecipeSubmit,
     ScraperSourceCreate,
     ScraperSourceRead,
+    ScraperSourceUpdate,
     ValidateRequest,
     ValidateResponse,
 )
@@ -121,6 +122,42 @@ async def get_source(
     source = await repo.get(source_id)
     if source is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="source not found")
+    return ScraperSourceRead.model_validate(source)
+
+
+@router.get(
+    "/{source_id}/recipes",
+    response_model=list[RecipeRead],
+    operation_id="listScraperSourceRecipes",
+)
+async def list_source_recipes(
+    source_id: UUID,
+    _user: Annotated[User, Depends(require_permissions("products:read"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[RecipeRead]:
+    repo = ScraperSourceRepository(session)
+    if await repo.get(source_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="source not found")
+    return [RecipeRead.model_validate(r) for r in await repo.list_recipes(source_id)]
+
+
+@router.patch(
+    "/{source_id}",
+    response_model=ScraperSourceRead,
+    operation_id="updateScraperSource",
+)
+async def update_source(
+    source_id: UUID,
+    body: ScraperSourceUpdate,
+    _user: Annotated[User, Depends(require_permissions("products:write"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ScraperSourceRead:
+    repo = ScraperSourceRepository(session)
+    source = await repo.update(source_id, **body.model_dump(exclude_none=True))
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="source not found")
+    await session.commit()
+    await session.refresh(source)
     return ScraperSourceRead.model_validate(source)
 
 

@@ -1323,6 +1323,82 @@
         "updated": "Marca actualizada correctamente",
         "updateFailed": "Error al actualizar la marca"
       }
+    },
+    "scraperSources": {
+      "title": "Scraper Sources",
+      "description": "Gestiona fuentes de scraping genéricas y sus recetas de extracción.",
+      "noPermission": "No tienes permisos para ver esta sección.",
+      "newSource": "Nueva Source",
+      "selectSource": "Selecciona una source para ver su detalle.",
+      "status": {
+        "draft": "Borrador",
+        "testing": "Pruebas",
+        "active": "Activa",
+        "disabled": "Deshabilitada",
+        "degraded": "Degradada"
+      },
+      "tabs": {
+        "info": "Info",
+        "recipe": "Recipe",
+        "validation": "Validación"
+      },
+      "info": {
+        "edit": "Editar",
+        "editTitle": "Editar Source",
+        "createTitle": "Nueva Source",
+        "name": "Nombre",
+        "slug": "Slug",
+        "slugHint": "Solo letras minúsculas, números y guiones.",
+        "baseUrl": "URL base",
+        "fetchMode": "Modo de fetch",
+        "destinationProfile": "Destino",
+        "descriptionLabel": "Descripción",
+        "save": "Guardar",
+        "saving": "Guardando…",
+        "cancel": "Cancelar",
+        "createSuccess": "Source creada.",
+        "updateSuccess": "Source actualizada.",
+        "errorDuplicateSlug": "Ese slug ya está en uso.",
+        "errorGeneric": "Algo salió mal."
+      },
+      "recipe": {
+        "active": "Recipe activa",
+        "noRecipe": "Sin recipe todavía.",
+        "newVersion": "Nueva versión",
+        "newVersionTitle": "Nueva versión de recipe",
+        "recipeJson": "JSON de la recipe",
+        "recipeJsonHint": "Debe ser JSON válido siguiendo el schema de recipe.",
+        "save": "Guardar",
+        "saving": "Guardando…",
+        "cancel": "Cancelar",
+        "saveSuccess": "Recipe guardada.",
+        "errorInvalidJson": "JSON inválido — corrige antes de guardar.",
+        "errorGeneric": "Algo salió mal.",
+        "history": "Versiones anteriores",
+        "version": "v{version}",
+        "validationStatus": {
+          "unvalidated": "Sin validar",
+          "passing": "Aprobada",
+          "failing": "Fallida"
+        }
+      },
+      "validation": {
+        "testUrl": "URL de prueba",
+        "testUrlPlaceholder": "https://ejemplo.com/pagina-a-scrapear",
+        "recipe": "Recipe a probar",
+        "run": "Probar",
+        "running": "Probando…",
+        "activate": "Activar esta recipe",
+        "activating": "Activando…",
+        "activateSuccess": "Recipe activada. La source está ahora activa.",
+        "activateBlocked": "La recipe debe estar aprobada para activarse.",
+        "results": "Resultados",
+        "fieldName": "Campo",
+        "fieldResult": "Resultado",
+        "fieldValue": "Valor extraído",
+        "pass": "OK",
+        "errorGeneric": "Algo salió mal."
+      }
     }
   },
   "costsDashboard": {

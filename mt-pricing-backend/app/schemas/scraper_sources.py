@@ -90,6 +90,15 @@ class ScraperSourceRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ScraperSourceUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    base_url: str | None = Field(default=None, min_length=1)
+    description: str | None = None
+    destination_profile: Literal["competitor_price", "product_data"] | None = None
+    fetch_mode: Literal["static", "headless", "stealth"] | None = None
+    status: Literal["draft", "testing", "active", "disabled"] | None = None
+
+
 class RecipeSubmit(BaseModel):
     """Receta enviada por el cliente — se valida contra el schema Recipe."""
 
@@ -104,6 +113,7 @@ class RecipeRead(BaseModel):
     validation_status: str
     has_unapproved_snippet: bool
     recipe: dict[str, Any]
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
