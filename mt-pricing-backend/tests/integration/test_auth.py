@@ -174,34 +174,15 @@ async def test_logout_calls_supabase_admin_sign_out(
 async def test_assign_role_then_get_me_returns_permissions(
     client: AsyncClient,
     db_session: AsyncSession,
+    make_permission,
+    make_role,
 ) -> None:
     """Tras assign_role, /me devuelve permisos efectivos del rol."""
-    from sqlalchemy import select
+    from app.db.models.user import User
 
-    from app.db.models.user import Permission, Role, RolePermission, User
-
-    # Las migraciones ya seedean "products:read" y rol "comercial"; los reutilizamos.
-    perm = (
-        await db_session.execute(select(Permission).where(Permission.code == "products:read"))
-    ).scalar_one_or_none()
-    if perm is None:
-        perm = Permission(code="products:read", description="Read products")
-        db_session.add(perm)
-        await db_session.flush()
-    role = (
-        await db_session.execute(select(Role).where(Role.code == "comercial"))
-    ).scalar_one_or_none()
-    if role is None:
-        role = Role(
-            code="comercial",
-            name="Comercial",
-            description="Sales role",
-            permissions_snapshot=["products:read"],
-        )
-        db_session.add(role)
-        await db_session.flush()
-        db_session.add(RolePermission(role_id=role.id, permission_id=perm.id))
-        await db_session.flush()
+    # Reutiliza datos seeded por migraciones; make_permission/make_role son SELECT-first.
+    await make_permission("products:read")
+    role = await make_role("comercial")
 
     # User con role asignado directamente.
     user_id = uuid4()
