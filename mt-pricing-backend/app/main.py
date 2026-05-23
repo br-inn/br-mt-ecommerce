@@ -20,7 +20,7 @@ from app.core.middleware import CacheControlMiddleware, RequestContextMiddleware
 from app.core.redis import close_redis
 from app.core.sentry import configure_sentry
 from app.db import dispose_engine
-from app.db.session import get_sessionmaker
+from app.db.engine import get_sessionmaker
 from app.repositories.feature_flags import FeatureFlagRepository
 from app.services.feature_flags.flag_service import (
     FlagService,
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async_session = get_sessionmaker()
         async with async_session() as session:
             flag_repo = FeatureFlagRepository(session)
-            flag_svc = FlagService(flag_repo=flag_repo, redis=redis_client)
+            flag_svc = FlagService(flag_repo=flag_repo, redis=redis_client)  # type: ignore[arg-type]
             set_default_service(flag_svc)
             snapshot = await flag_svc.get_all()
             warmup_local_cache(snapshot)
@@ -64,9 +64,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     if _settings.ENABLE_CROSS_ENCODER_RERANKER:
         try:
-            from app.services.matching.cross_encoder_reranker import CrossEncoderReranker
+            from app.services.matching.cross_encoder_reranker import _get_model
 
-            CrossEncoderReranker()  # triggers model load
+            _get_model()  # triggers model load
             _lifespan_logger.info("Cross-encoder reranker warmed up")
         except Exception as _e:
             _lifespan_logger.warning("Cross-encoder warmup failed: %s", _e)
