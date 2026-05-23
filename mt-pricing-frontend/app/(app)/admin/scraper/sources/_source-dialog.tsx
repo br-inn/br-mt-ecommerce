@@ -87,13 +87,14 @@ export function SourceDialog({ mode, source, open, onClose, onSuccess }: Props) 
   }, [open, source, form]);
 
   const onSubmit = async (values: FormValues) => {
+    const payload = { ...values, description: values.description ?? null };
     try {
       let result: ScraperSourceRead;
       if (mode === "create") {
-        result = await create.mutateAsync(values);
+        result = await create.mutateAsync(payload);
         toast.success(t("createSuccess"));
       } else {
-        result = await update.mutateAsync({ id: source!.id, data: values });
+        result = await update.mutateAsync({ id: source!.id, data: payload });
         toast.success(t("updateSuccess"));
       }
       onSuccess?.(result);
