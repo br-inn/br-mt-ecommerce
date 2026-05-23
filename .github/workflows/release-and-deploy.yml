@@ -2,9 +2,17 @@
 # Release + Deploy — build images en CI, deploy SSH a AWS EC2
 # =============================================================================
 # Trigger:
-#   - push de tag v* → build ambas imágenes + deploy con tag "latest"
+#   - workflow_run: ci-backend + ci-frontend-full completan en main → deploy automático
+#     (SOLO si ambas concluyeron con 'success'; si alguna falla, se aborta con if:)
+#   - push de tag v* → build ambas imágenes + deploy
 #   - workflow_dispatch con tag específico → si la imagen ya existe, salta
 #     el build y despliega ese tag (útil para rollback)
+#
+# Gating: Los jobs build-* y deploy llevan un `if:` que aborta si el trigger
+#   fue workflow_run y la conclusión no fue 'success'. Esto impide desplegar
+#   código roto incluso si el otro workflow del par ya terminó en verde.
+#   Nota: cuando ambos CIs terminan, el workflow corre dos veces; la segunda
+#   es idempotente (mismas imágenes, mismo deploy).
 #
 # Jobs:
 #   build-backend  ┐ paralelo
@@ -25,9 +33,11 @@
 name: release-and-deploy
 
 on:
+  workflow_run:
+    workflows: ["ci-backend", "ci-frontend-full"]
+    types: [completed]
+    branches: [main]
   push:
-    branches:
-      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -53,6 +63,7 @@ concurrency:
 jobs:
   build-backend:
     name: Build & push backend
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -127,6 +138,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-frontend:
     name: Build & push frontend
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
