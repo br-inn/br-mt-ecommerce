@@ -42,7 +42,7 @@ JSONB_ARRAY_DEFAULT = text("'[]'::jsonb")
 try:  # pragma: no cover — depende de que `pgvector` esté instalada
     from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
 
-    Vector1024: type[TypeEngine[Any]] = Vector(1024)  # type: ignore[assignment]
+    Vector1024: type[TypeEngine[Any]] = Vector(1024)
     HAS_PGVECTOR = True
 except ImportError:  # pragma: no cover
     # Fallback: ARRAY(Float) — funcionalmente equivalente para CRUD pero sin
