@@ -110,6 +110,24 @@ class ScraperSourceRepository:
         recipe.is_live = True
         await self._session.flush()
 
+    async def list_recipes(self, source_id: UUID) -> list[ScraperSourceRecipe]:
+        result = await self._session.execute(
+            select(ScraperSourceRecipe)
+            .where(ScraperSourceRecipe.source_id == source_id)
+            .order_by(ScraperSourceRecipe.version.desc())
+        )
+        return list(result.scalars().all())
+
+    async def update(self, source_id: UUID, **kwargs: Any) -> ScraperSource | None:
+        source = await self._session.get(ScraperSource, source_id)
+        if source is None:
+            return None
+        for key, value in kwargs.items():
+            if value is not None:
+                setattr(source, key, value)
+        await self._session.flush()
+        return source
+
     async def record_test_run(
         self,
         *,
