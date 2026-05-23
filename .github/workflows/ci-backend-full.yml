@@ -42,7 +42,7 @@ jobs:
       run:
         working-directory: ${{ env.WORKDIR }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install uv
@@ -96,7 +96,7 @@ jobs:
       ENV: development
       LOG_LEVEL: WARNING
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -154,7 +154,7 @@ jobs:
       SUPABASE_ANON_KEY: anon-test-key
       SUPABASE_SERVICE_ROLE_KEY: service-role-test-key
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -205,7 +205,7 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://postgres:testpassword@localhost:5432/mt_pricing_alembic
       ALEMBIC_DATABASE_URL: postgresql+psycopg://postgres:testpassword@localhost:5432/mt_pricing_alembic
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
