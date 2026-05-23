@@ -21,7 +21,8 @@ WORKDIR /build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir uv
+    && pip install --no-cache-dir uv \
+    && pip install --no-cache-dir "wheel>=0.46.2" "setuptools>=78.1.1"
 
 COPY pyproject.toml uv.lock* README.md ./
 # uv pip install ignora [tool.uv.sources], así que torch resuelve desde PyPI (CUDA).
