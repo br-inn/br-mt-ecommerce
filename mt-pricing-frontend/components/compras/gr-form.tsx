@@ -79,6 +79,7 @@ export function GRForm({
   // --- Reset when opened/closed ---
   React.useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPoId(preselectedPoId ?? "");
       setSelectedLineId(preselectedPoLineId ?? "");
       setQty("");
@@ -212,7 +213,7 @@ export function GRForm({
             <div className="space-y-1.5">
               <Label htmlFor="po-select">Purchase Order</Label>
               <Select
-                value={selectedPoId || undefined}
+                {...(selectedPoId ? { value: selectedPoId } : {})}
                 onValueChange={(v) => {
                   setSelectedPoId(v);
                   setSelectedLineId("");
@@ -239,7 +240,7 @@ export function GRForm({
           {(selectedPoId || preselectedPoId) && !preselectedPoLineId && (
             <div className="space-y-1.5">
               <Label htmlFor="line-select">Línea</Label>
-              <Select value={selectedLineId || undefined} onValueChange={setSelectedLineId}>
+              <Select {...(selectedLineId ? { value: selectedLineId } : {})} onValueChange={setSelectedLineId}>
                 <SelectTrigger id="line-select">
                   <SelectValue placeholder="Selecciona una línea..." />
                 </SelectTrigger>

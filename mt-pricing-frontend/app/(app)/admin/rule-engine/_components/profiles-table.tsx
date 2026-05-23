@@ -47,7 +47,7 @@ function Weights({ weights }: { weights: Record<string, number> }) {
   if (sorted.length === 0)
     return <span className="text-muted-foreground text-xs">sin configurar</span>
 
-  const maxVal = sorted[0][1]
+  const maxVal = sorted[0]![1]
   const top = sorted.slice(0, 5)
   const rest = sorted.length - top.length
 

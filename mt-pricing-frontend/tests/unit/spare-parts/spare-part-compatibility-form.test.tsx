@@ -46,7 +46,7 @@ describe("SparePartCompatibilityForm (Fase 5)", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /añadir enlace/i }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    const payload = onSubmit.mock.calls[0][0];
+    const payload = onSubmit.mock.calls[0]![0];
     expect(payload.compatible_with_sku).toBe("SKU-B");
     expect(payload.owner_type).toBe("product");
     expect(payload.dn_min).toBeUndefined();
@@ -64,7 +64,7 @@ describe("SparePartCompatibilityForm (Fase 5)", () => {
     fireEvent.change(screen.getByLabelText("DN max"), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: /añadir enlace/i }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    const payload = onSubmit.mock.calls[0][0];
+    const payload = onSubmit.mock.calls[0]![0];
     expect(payload.owner_type).toBe("series");
     expect(payload.dn_min).toBe(20);
     expect(payload.dn_max).toBe(100);

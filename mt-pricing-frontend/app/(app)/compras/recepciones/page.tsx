@@ -142,14 +142,14 @@ export default function GoodsReceiptsPage() {
     queryKey: ["goods-receipts", activeTab, cursor],
     queryFn: () =>
       goodsReceiptsApi.list({
-        status: statusFilter,
-        cursor,
+        ...(statusFilter !== undefined ? { status: statusFilter } : {}),
+        ...(cursor !== undefined ? { cursor } : {}),
         limit: 50,
       }),
     staleTime: 10_000,
   });
 
-  const { mutate: retryGR, isPending: retrying } = useMutation({
+  const { mutate: retryGR } = useMutation({
     mutationFn: (id: string) => goodsReceiptsApi.retry(id),
     onSuccess: (gr) => {
       toast.success(`GR ${truncateId(gr.id)} re-encolado`);

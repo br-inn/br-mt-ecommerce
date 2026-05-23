@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -92,7 +92,7 @@ export function FxRateForm({ availableCodes, triggerLabel }: Props) {
   }, []);
 
   const form = useForm<Values>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<Values>,
     defaultValues: {
       from_currency: availableCodes[0] ?? "EUR",
       to_currency: availableCodes[1] ?? "AED",

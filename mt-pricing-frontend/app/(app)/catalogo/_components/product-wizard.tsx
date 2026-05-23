@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useForm, type Path, type UseFormReturn } from "react-hook-form";
+import { useForm, type Path, type UseFormReturn, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -291,7 +291,7 @@ export function ProductWizard(props: Props) {
   );
 
   const form = useForm<WizardForm>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<WizardForm>,
     defaultValues: {
       sku: "",
       name_en: "",
