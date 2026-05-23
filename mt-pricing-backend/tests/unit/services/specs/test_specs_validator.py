@@ -322,6 +322,8 @@ async def test_product_service_accepts_valid_specs(validator: SpecsValidator) ->
         "family": "valve",
         "subfamily": "ball",
         "specs": VALID_VALVE_BALL,
+        "brand_id": uuid4(),
+        "family_id": uuid4(),
     }
 
     # Should NOT raise SpecsValidationError
@@ -358,6 +360,8 @@ async def test_product_service_no_validator_skips_validation() -> None:
         "name_en": "Valve",
         "family": "valve",
         "specs": {"garbage": True},
+        "brand_id": uuid4(),
+        "family_id": uuid4(),
     }
     await service.create_product(data, mock_actor)
     mock_products_repo.create.assert_called_once()

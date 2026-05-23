@@ -57,15 +57,16 @@ function ConditionForm({
 
   React.useEffect(() => {
     if (initial) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         vendor_id: initial.vendor_id,
         product_sku: initial.product_sku,
         price: initial.price,
         uom: initial.uom,
         moq: initial.moq,
-        lead_time_days: initial.lead_time_days ?? undefined,
+        lead_time_days: initial.lead_time_days ?? null,
         valid_from: initial.valid_from,
-        valid_to: initial.valid_to ?? undefined,
+        valid_to: initial.valid_to ?? null,
         currency: initial.currency,
         is_active: initial.is_active,
       });
@@ -81,12 +82,12 @@ function ConditionForm({
       if (initial?.id) {
         const update: VendorConditionUpdatePayload = {
           price: form.price,
-          uom: form.uom,
-          moq: form.moq,
+          ...(form.uom !== undefined && { uom: form.uom }),
+          ...(form.moq !== undefined && { moq: form.moq }),
           lead_time_days: form.lead_time_days ?? null,
           valid_to: form.valid_to ?? null,
-          currency: form.currency,
-          is_active: form.is_active,
+          ...(form.currency !== undefined && { currency: form.currency }),
+          ...(form.is_active !== undefined && { is_active: form.is_active }),
         };
         return procurementApi.updateVendorCondition(initial.id, update);
       }
@@ -224,7 +225,7 @@ export default function CondicionesProveedorPage() {
     queryKey: ["vendor-conditions", filterVendor],
     queryFn: () =>
       procurementApi.listVendorConditions({
-        vendor_id: filterVendor || undefined,
+        ...(filterVendor && { vendor_id: filterVendor }),
         active_only: false,
       }),
   });

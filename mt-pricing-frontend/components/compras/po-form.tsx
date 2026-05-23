@@ -122,7 +122,7 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
         scheme_code: l.scheme_code,
         qty_ordered: l.qty_ordered,
         unit_price: l.unit_price,
-        landed_cost_breakdown: l.landed_cost_breakdown,
+        ...(l.landed_cost_breakdown !== undefined ? { landed_cost_breakdown: l.landed_cost_breakdown } : {}),
       })),
     });
   }
@@ -170,7 +170,7 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
 
             <div className="space-y-1.5">
               <Label>Proveedor</Label>
-              <Select value={supplierCode || undefined} onValueChange={setSupplierCode}>
+              <Select {...(supplierCode ? { value: supplierCode } : {})} onValueChange={setSupplierCode}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar proveedor" />
                 </SelectTrigger>
@@ -241,7 +241,7 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
               </Button>
             </div>
 
-            {lines.map((line, idx) => (
+            {lines.map((line, _idx) => (
               <div key={line._key} className="rounded-md border p-3 space-y-3">
                 <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-end">
                   <div className="space-y-1">

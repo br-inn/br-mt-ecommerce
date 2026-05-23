@@ -7,9 +7,8 @@ const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
-  // UAT: ignorar errores TS/ESLint en build — quitar antes de producción
+  // UAT: ignorar errores TS en build — quitar antes de producción
   typescript: { ignoreBuildErrors: true },
-  eslint: { ignoreDuringBuilds: true },
   // Permite que el dev server acepte requests/WS HMR desde Caddy (localhost:8081)
   // y desde el host docker `caddy` interno. Sin esto, el HMR WebSocket falla con 502.
   allowedDevOrigins: [

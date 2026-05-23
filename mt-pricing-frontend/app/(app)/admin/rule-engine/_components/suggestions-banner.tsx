@@ -31,7 +31,7 @@ export function SuggestionsBanner({
 
   if (suggestions.length === 0) return null
 
-  const s = suggestions[0]
+  const s = suggestions[0]!
 
   const handleAction = async (action: "apply" | "dismiss") => {
     setLoading(action)

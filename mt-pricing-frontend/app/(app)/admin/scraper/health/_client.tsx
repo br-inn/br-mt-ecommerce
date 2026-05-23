@@ -173,8 +173,7 @@ function CircuitBadge({ state }: { state: DomainHealth["circuit_state"] }) {
 
 export function ScraperHealthClient() {
   const t = useTranslations("admin.scraperHealth");
-  const { canWrite } = usePermissions("admin:read");
-  const qc = useQueryClient();
+  const { can } = usePermissions();
 
   const { data: healthData, isLoading: healthLoading, refetch } = useScraperHealth();
   const { data: proxiesData, isLoading: proxiesLoading } = useProxies();
@@ -279,7 +278,7 @@ export function ScraperHealthClient() {
                   <TableHead className="text-right">{t("domains.failures")}</TableHead>
                   <TableHead className="text-right">{t("domains.requests24h")}</TableHead>
                   <TableHead className="text-right">{t("domains.errorRate")}</TableHead>
-                  {canWrite && <TableHead className="text-right">{t("domains.actions")}</TableHead>}
+                  {can("admin:write") && <TableHead className="text-right">{t("domains.actions")}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -314,7 +313,7 @@ export function ScraperHealthClient() {
                         {(domain.error_rate * 100).toFixed(1)}%
                       </span>
                     </TableCell>
-                    {canWrite && (
+                    {can("admin:write") && (
                       <TableCell className="text-right">
                         {domain.circuit_state !== "closed" && (
                           <Button
@@ -341,7 +340,7 @@ export function ScraperHealthClient() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">{t("proxies.title")}</h2>
-          {canWrite && (
+          {can("admin:write") && (
             <Button
               size="sm"
               onClick={() => setAddDialogOpen(true)}
@@ -368,7 +367,7 @@ export function ScraperHealthClient() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("proxies.proxyUrl")}</TableHead>
-                  {canWrite && <TableHead className="text-right">{t("proxies.actions")}</TableHead>}
+                  {can("admin:write") && <TableHead className="text-right">{t("proxies.actions")}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -377,7 +376,7 @@ export function ScraperHealthClient() {
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {item.proxy.replace(/:\/\/[^@]+@/, "://***@")}
                     </TableCell>
-                    {canWrite && (
+                    {can("admin:write") && (
                       <TableCell className="text-right">
                         <Button
                           size="sm"

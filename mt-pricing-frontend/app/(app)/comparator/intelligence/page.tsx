@@ -115,7 +115,7 @@ export default function PriceIntelligencePage() {
   }, [rangeDays]);
 
   const { data: dashboard, isLoading: dashLoading, error: dashError } = usePriceIntelligenceDashboard({
-    marketplace: marketplace || undefined,
+    ...(marketplace ? { marketplace } : {}),
     dateFrom,
   });
 
