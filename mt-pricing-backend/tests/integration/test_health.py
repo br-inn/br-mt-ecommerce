@@ -162,7 +162,9 @@ async def test_deep_db_with_token_header_works(
     from app.core.config import settings
 
     monkeypatch.setattr(
-        settings, "HEALTH_TOKEN", SecretStr("super-secret-token"),
+        settings,
+        "HEALTH_TOKEN",
+        SecretStr("super-secret-token"),
     )
     resp = await async_client.get(
         "/health/db",

@@ -19,7 +19,12 @@ from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import _user_permission_codes, get_current_user, get_db_session, require_permissions
+from app.api.deps import (
+    _user_permission_codes,
+    get_current_user,
+    get_db_session,
+    require_permissions,
+)
 from app.db.models.channels import Channel, ChannelStateHistory
 from app.db.models.user import User
 from app.schemas.channels import (

@@ -175,9 +175,7 @@ class CostRepository(BaseRepository[Cost]):
             rows = rows[:limit]
         return rows, next_cursor, total
 
-    async def list_for_sku(
-        self, product_sku: str, *, only_active: bool = False
-    ) -> Sequence[Cost]:
+    async def list_for_sku(self, product_sku: str, *, only_active: bool = False) -> Sequence[Cost]:
         """Devuelve todos los costos para un SKU (orden: scheme + effective_at desc)."""
         stmt = select(Cost).where(Cost.sku == product_sku)
         if only_active:
@@ -280,15 +278,12 @@ class PriceRepository(BaseRepository[Price]):
         Devuelve el número de filas afectadas.
         """
         now = datetime.now(tz=timezone.utc)
-        stmt = (
-            select(Price)
-            .where(
-                Price.product_sku == product_sku,
-                Price.channel_id == channel_id,
-                Price.scheme_code == scheme_code,
-                Price.valid_to.is_(None),
-                Price.id != new_price_id,
-            )
+        stmt = select(Price).where(
+            Price.product_sku == product_sku,
+            Price.channel_id == channel_id,
+            Price.scheme_code == scheme_code,
+            Price.valid_to.is_(None),
+            Price.id != new_price_id,
         )
         result = await self.session.execute(stmt)
         affected = list(result.scalars().all())
@@ -360,11 +355,7 @@ class ExceptionRuleRepository(BaseRepository[ExceptionRule]):
 
     async def list_history(self, *, limit: int = 50) -> Sequence[ExceptionRule]:
         """Todas las reglas (activas e inactivas) ordenadas por created_at desc."""
-        stmt = (
-            select(ExceptionRule)
-            .order_by(desc(ExceptionRule.created_at))
-            .limit(limit)
-        )
+        stmt = select(ExceptionRule).order_by(desc(ExceptionRule.created_at)).limit(limit)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -397,11 +388,7 @@ class CurrencyRepository(BaseRepository[Currency]):
     soft_delete_field = None
 
     async def list_active(self) -> Sequence[Currency]:
-        stmt = (
-            select(Currency)
-            .where(Currency.active.is_(True))
-            .order_by(Currency.code.asc())
-        )
+        stmt = select(Currency).where(Currency.active.is_(True)).order_by(Currency.code.asc())
         result = await self.session.execute(stmt)
         return result.scalars().all()
 

@@ -46,34 +46,119 @@ depends_on: str | Sequence[str] | None = None
 #                          is_filterable, is_seo_relevant, description_en)
 # ---------------------------------------------------------------------------
 _NUMERIC_ATTRS: list[tuple[str, str, str, str | None, str, bool, bool, str | None]] = [
-    ("temp_min", "Minimum temperature", "number", "C", "product", True, True,
-     "Nominal minimum service temperature."),
-    ("temp_max", "Maximum temperature", "number", "C", "product", True, True,
-     "Nominal maximum service temperature."),
-    ("pressure_max", "Maximum pressure", "number", "bar", "both", True, True,
-     "Maximum service pressure at reference temperature."),
-    ("dn_nominal", "Nominal diameter (DN)", "integer", "mm", "variant", True, True,
-     "Nominal diameter according to ISO 6708."),
-    ("weight", "Weight", "number", "kg", "variant", False, False,
-     "Product or variant weight; coexists with products.weight scalar."),
-    ("pkg_width", "Package width", "number", "mm", "variant", False, False,
-     "Outer package width."),
-    ("pkg_height", "Package height", "number", "mm", "variant", False, False,
-     "Outer package height."),
-    ("pkg_depth", "Package depth", "number", "mm", "variant", False, False,
-     "Outer package depth."),
-    ("dim_L", "Dimension L (length)", "number", "mm", "variant", False, False,
-     "Face-to-face / overall length."),
-    ("dim_H", "Dimension H (height)", "number", "mm", "variant", False, False,
-     "Overall height (centerline to top)."),
-    ("dim_W", "Dimension W (width)", "number", "mm", "variant", False, False,
-     "Overall width."),
-    ("dim_H1", "Dimension H1 (auxiliary height)", "number", "mm", "variant", False, False,
-     "Auxiliary height — e.g. from centerline to handle base."),
-    ("torque", "Operating torque", "number", "Nm", "variant", False, False,
-     "Maximum operating torque under nominal conditions."),
-    ("kv", "Flow coefficient Kv", "number", None, "variant", False, False,
-     "Flow coefficient Kv in m3/h at 1 bar differential."),
+    (
+        "temp_min",
+        "Minimum temperature",
+        "number",
+        "C",
+        "product",
+        True,
+        True,
+        "Nominal minimum service temperature.",
+    ),
+    (
+        "temp_max",
+        "Maximum temperature",
+        "number",
+        "C",
+        "product",
+        True,
+        True,
+        "Nominal maximum service temperature.",
+    ),
+    (
+        "pressure_max",
+        "Maximum pressure",
+        "number",
+        "bar",
+        "both",
+        True,
+        True,
+        "Maximum service pressure at reference temperature.",
+    ),
+    (
+        "dn_nominal",
+        "Nominal diameter (DN)",
+        "integer",
+        "mm",
+        "variant",
+        True,
+        True,
+        "Nominal diameter according to ISO 6708.",
+    ),
+    (
+        "weight",
+        "Weight",
+        "number",
+        "kg",
+        "variant",
+        False,
+        False,
+        "Product or variant weight; coexists with products.weight scalar.",
+    ),
+    ("pkg_width", "Package width", "number", "mm", "variant", False, False, "Outer package width."),
+    (
+        "pkg_height",
+        "Package height",
+        "number",
+        "mm",
+        "variant",
+        False,
+        False,
+        "Outer package height.",
+    ),
+    ("pkg_depth", "Package depth", "number", "mm", "variant", False, False, "Outer package depth."),
+    (
+        "dim_L",
+        "Dimension L (length)",
+        "number",
+        "mm",
+        "variant",
+        False,
+        False,
+        "Face-to-face / overall length.",
+    ),
+    (
+        "dim_H",
+        "Dimension H (height)",
+        "number",
+        "mm",
+        "variant",
+        False,
+        False,
+        "Overall height (centerline to top).",
+    ),
+    ("dim_W", "Dimension W (width)", "number", "mm", "variant", False, False, "Overall width."),
+    (
+        "dim_H1",
+        "Dimension H1 (auxiliary height)",
+        "number",
+        "mm",
+        "variant",
+        False,
+        False,
+        "Auxiliary height — e.g. from centerline to handle base.",
+    ),
+    (
+        "torque",
+        "Operating torque",
+        "number",
+        "Nm",
+        "variant",
+        False,
+        False,
+        "Maximum operating torque under nominal conditions.",
+    ),
+    (
+        "kv",
+        "Flow coefficient Kv",
+        "number",
+        None,
+        "variant",
+        False,
+        False,
+        "Flow coefficient Kv in m3/h at 1 bar differential.",
+    ),
 ]
 # Note: the list above has 14 items not 12. The spec mentions 12 numeric, but
 # weight is "Note: already in products.weight, but allow override via EAV"
@@ -82,18 +167,47 @@ _NUMERIC_ATTRS: list[tuple[str, str, str, str | None, str, bool, bool, str | Non
 
 _ENUM_ATTRS: list[tuple[str, str, str, bool, bool, str | None]] = [
     # (code, label_en, scope, is_filterable, is_seo_relevant, description_en)
-    ("manufacturing_method", "Manufacturing method", "product", True, True,
-     "Primary manufacturing process used to produce the body."),
-    ("material_body", "Body material", "product", True, True,
-     "Material grade of the main body."),
-    ("material_seal", "Seal material", "product", True, True,
-     "Material of the primary sealing element."),
-    ("actuation_type", "Actuation type", "product", True, True,
-     "How the device is actuated (manual, motorized, pneumatic…)."),
-    ("iso5211_flange", "ISO 5211 mounting flange", "product", True, True,
-     "Standard mounting flange code per ISO 5211."),
-    ("connection_type", "Connection type", "product", True, True,
-     "End connection type (thread, flange, weld…)."),
+    (
+        "manufacturing_method",
+        "Manufacturing method",
+        "product",
+        True,
+        True,
+        "Primary manufacturing process used to produce the body.",
+    ),
+    ("material_body", "Body material", "product", True, True, "Material grade of the main body."),
+    (
+        "material_seal",
+        "Seal material",
+        "product",
+        True,
+        True,
+        "Material of the primary sealing element.",
+    ),
+    (
+        "actuation_type",
+        "Actuation type",
+        "product",
+        True,
+        True,
+        "How the device is actuated (manual, motorized, pneumatic…).",
+    ),
+    (
+        "iso5211_flange",
+        "ISO 5211 mounting flange",
+        "product",
+        True,
+        True,
+        "Standard mounting flange code per ISO 5211.",
+    ),
+    (
+        "connection_type",
+        "Connection type",
+        "product",
+        True,
+        True,
+        "End connection type (thread, flange, weld…).",
+    ),
 ]
 
 
@@ -177,8 +291,8 @@ def upgrade() -> None:
                 {_quote(dtype)},
                 {_quote(unit)},
                 {_quote(scope)},
-                {'true' if is_filt else 'false'},
-                {'true' if is_seo else 'false'},
+                {"true" if is_filt else "false"},
+                {"true" if is_seo else "false"},
                 {_quote(desc)}
             )
             ON CONFLICT (code) DO NOTHING;
@@ -200,8 +314,8 @@ def upgrade() -> None:
                 'enum',
                 NULL,
                 {_quote(scope)},
-                {'true' if is_filt else 'false'},
-                {'true' if is_seo else 'false'},
+                {"true" if is_filt else "false"},
+                {"true" if is_seo else "false"},
                 {_quote(desc)}
             )
             ON CONFLICT (code) DO NOTHING;
@@ -238,11 +352,6 @@ def downgrade() -> None:
             """
         )
     # Remove definitions.
-    all_codes = (
-        [a[0] for a in _NUMERIC_ATTRS]
-        + [e[0] for e in _ENUM_ATTRS]
-    )
+    all_codes = [a[0] for a in _NUMERIC_ATTRS] + [e[0] for e in _ENUM_ATTRS]
     quoted = ",".join(_quote(c) for c in all_codes)
-    op.execute(
-        f"DELETE FROM attribute_definitions WHERE code IN ({quoted});"
-    )
+    op.execute(f"DELETE FROM attribute_definitions WHERE code IN ({quoted});")

@@ -5,6 +5,7 @@ model_dimension_rows: per-DN dimensions as JSONB (schema varies by family).
 model_flow_data: Kv/Cv + mesh per DN (strainers/filters only).
 model_tech_tables: per-model P/T curves, materials matrix, etc.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -37,6 +38,7 @@ class ProductModel(UuidPkMixin, Base):
     Ejemplo: code='4295', variant_of_id→ProductModel(code='40972') para
     la variante azul del mismo modelo rojo.
     """
+
     __tablename__ = "product_models"
 
     series_id: Mapped[UUID | None] = mapped_column(
@@ -45,13 +47,12 @@ class ProductModel(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     color_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
     connection_type: Mapped[str | None] = mapped_column(
-        String(32), nullable=True,
-        comment="thread_bsp | thread_bspt | thread_npt | flange_en | flange_ansi"
+        String(32),
+        nullable=True,
+        comment="thread_bsp | thread_bspt | thread_npt | flange_en | flange_ansi",
     )
     thread_standard: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     variant_of_id: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         ForeignKey("product_models.id", ondelete="SET NULL"),
@@ -90,6 +91,7 @@ class ModelDimensionRow(UuidPkMixin, Base):
     Schema fitting:    {"A_mm": 24, "C_mm": 15, "K_mm": 28, "D_mm": 12}
     Schema strainer:   {"L_mm": 130, "H_mm": 145, "ØD_mm": 95, "ØK_mm": 65}
     """
+
     __tablename__ = "model_dimension_rows"
 
     model_id: Mapped[UUID] = mapped_column(
@@ -97,15 +99,12 @@ class ModelDimensionRow(UuidPkMixin, Base):
     )
     dn_mm: Mapped[int] = mapped_column(Integer, nullable=False)
     dn_secondary_mm: Mapped[int | None] = mapped_column(
-        Integer, nullable=True,
-        comment="Solo para reductores (ej. reducción 1/2 x 3/8): DN salida"
+        Integer, nullable=True, comment="Solo para reductores (ej. reducción 1/2 x 3/8): DN salida"
     )
     dimensions: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    source: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'manual'")
-    )
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'manual'"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -121,6 +120,7 @@ class ModelDimensionRow(UuidPkMixin, Base):
 
 class ModelFlowData(UuidPkMixin, Base):
     """Coeficientes de flujo Kv/Cv + malla por DN (filtros/coladores)."""
+
     __tablename__ = "model_flow_data"
 
     model_id: Mapped[UUID] = mapped_column(
@@ -130,8 +130,7 @@ class ModelFlowData(UuidPkMixin, Base):
     kv: Mapped[float | None] = mapped_column(Numeric(10, 3), nullable=True)
     cv: Mapped[float | None] = mapped_column(Numeric(10, 3), nullable=True)
     mesh_mm: Mapped[float | None] = mapped_column(
-        Numeric(6, 2), nullable=True,
-        comment="Tamaño de malla en mm (ej. 1.8, 1.0)"
+        Numeric(6, 2), nullable=True, comment="Tamaño de malla en mm (ej. 1.8, 1.0)"
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
@@ -152,6 +151,7 @@ class ModelTechTable(UuidPkMixin, Base):
     Para curvas P/T con múltiples materiales de junta: una fila por material.
     data schema para pt_curve: [{"temperature_c": 20, "pressure_max_bar": 16}, ...]
     """
+
     __tablename__ = "model_tech_tables"
 
     model_id: Mapped[UUID] = mapped_column(
@@ -159,15 +159,12 @@ class ModelTechTable(UuidPkMixin, Base):
     )
     kind: Mapped[str] = mapped_column(Text, nullable=False)
     gasket_material: Mapped[str | None] = mapped_column(
-        Text, nullable=True,
-        comment="Solo para kind=pt_curve con múltiples juntas: EPDM | PTFE | GRAFITO"
+        Text,
+        nullable=True,
+        comment="Solo para kind=pt_curve con múltiples juntas: EPDM | PTFE | GRAFITO",
     )
-    schema_version: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'v1'")
-    )
-    source: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'manual'")
-    )
+    schema_version: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'v1'"))
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'manual'"))
     data: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )

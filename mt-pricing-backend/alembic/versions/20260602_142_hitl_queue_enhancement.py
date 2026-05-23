@@ -10,6 +10,7 @@ Cambios en ``hitl_queue``:
 - ``is_first_appearance BOOLEAN NOT NULL DEFAULT false`` — true si el SKU nunca antes
   había aparecido en match_candidates.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa

@@ -69,9 +69,7 @@ class ForceLogoutPublisher:
             # path normal.
             client.table(self.TABLE).insert(payload).execute()
         except Exception:  # noqa: BLE001
-            logger.exception(
-                "ForceLogoutPublisher fallo al insertar evento user_id=%s", user_id
-            )
+            logger.exception("ForceLogoutPublisher fallo al insertar evento user_id=%s", user_id)
             return False
         logger.info(
             "force_logout_event.published",

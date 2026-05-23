@@ -60,9 +60,7 @@ class CompatibilityDuplicateError(CompatibilityDomainError):
     def __init__(self, product_sku: str, compatible_with_sku: str, kind: str) -> None:
         super().__init__(
             code="compatibility_duplicate",
-            message=(
-                f"Ya existe un enlace ({product_sku} → {kind} → {compatible_with_sku})."
-            ),
+            message=(f"Ya existe un enlace ({product_sku} → {kind} → {compatible_with_sku})."),
             status_code=409,
         )
 
@@ -71,9 +69,7 @@ class CompatibilityNotFoundError(CompatibilityDomainError):
     def __init__(self, product_sku: str, compatible_with_sku: str, kind: str) -> None:
         super().__init__(
             code="compatibility_not_found",
-            message=(
-                f"Enlace ({product_sku} → {kind} → {compatible_with_sku}) no encontrado."
-            ),
+            message=(f"Enlace ({product_sku} → {kind} → {compatible_with_sku}) no encontrado."),
             status_code=404,
         )
 
@@ -251,9 +247,7 @@ class CompatibilityService:
                 )
 
         try:
-            created = await self._repo.replace_all_for_product(
-                sku, links, created_by=actor_id
-            )
+            created = await self._repo.replace_all_for_product(sku, links, created_by=actor_id)
         except IntegrityError as exc:
             raise CompatibilityDomainError(
                 code="compatibility_replace_conflict",
@@ -296,9 +290,7 @@ class CompatibilityService:
             )
         if owner_type == "product":
             await self._assert_sku_exists(owner_id)
-        return await self._repo.list_for_owner(
-            owner_type, owner_id, kind=kind, dn=dn
-        )
+        return await self._repo.list_for_owner(owner_type, owner_id, kind=kind, dn=dn)
 
     async def list_spare_parts_for_series(
         self,
@@ -310,6 +302,4 @@ class CompatibilityService:
 
         Shortcut sobre ``list_for_owner(owner_type='series', kind='spare_part')``.
         """
-        return await self._repo.list_for_owner(
-            "series", series_id, kind="spare_part", dn=dn
-        )
+        return await self._repo.list_for_owner("series", series_id, kind="spare_part", dn=dn)

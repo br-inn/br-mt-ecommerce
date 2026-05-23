@@ -128,18 +128,30 @@ async def test_export_service_returns_csv_bytes():
     total_scalars = MagicMock()
     total_scalars.scalars.return_value.all.return_value = [approved_price, auto_price]
 
-    session.execute = AsyncMock(
-        side_effect=[channel_scalars, fn_result, total_scalars]
-    )
+    session.execute = AsyncMock(side_effect=[channel_scalars, fn_result, total_scalars])
     session.add = MagicMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
 
     # Mock adapter
-    expected_csv = _make_csv_bytes([
-        {"sku": "MTV-1001", "price_aed": "147.75", "status": "approved", "fx_rate": "", "approved_at": ""},
-        {"sku": "MTV-1002", "price_aed": "147.75", "status": "auto_approved", "fx_rate": "", "approved_at": ""},
-    ])
+    expected_csv = _make_csv_bytes(
+        [
+            {
+                "sku": "MTV-1001",
+                "price_aed": "147.75",
+                "status": "approved",
+                "fx_rate": "",
+                "approved_at": "",
+            },
+            {
+                "sku": "MTV-1002",
+                "price_aed": "147.75",
+                "status": "auto_approved",
+                "fx_rate": "",
+                "approved_at": "",
+            },
+        ]
+    )
     result = _make_export_result(rows_exported=2)
 
     adapter = MagicMock()
@@ -206,9 +218,17 @@ async def test_export_service_filters_non_approved():
     session.refresh = AsyncMock()
 
     # adapter retorna 1 fila exportada
-    expected_csv = _make_csv_bytes([
-        {"sku": "MTV-2001", "price_aed": "147.75", "status": "approved", "fx_rate": "", "approved_at": ""},
-    ])
+    expected_csv = _make_csv_bytes(
+        [
+            {
+                "sku": "MTV-2001",
+                "price_aed": "147.75",
+                "status": "approved",
+                "fx_rate": "",
+                "approved_at": "",
+            },
+        ]
+    )
     result = _make_export_result(rows_exported=1, rows_blocked=0)
 
     adapter = MagicMock()
@@ -327,10 +347,24 @@ async def test_export_only_approved_prices():
     adapter.validate_payload.return_value = []
     adapter.export_csv = AsyncMock(
         return_value=(
-            _make_csv_bytes([
-                {"sku": "MTV-3002", "price_aed": "147.75", "status": "approved", "fx_rate": "", "approved_at": ""},
-                {"sku": "MTV-3003", "price_aed": "200.00", "status": "auto_approved", "fx_rate": "", "approved_at": ""},
-            ]),
+            _make_csv_bytes(
+                [
+                    {
+                        "sku": "MTV-3002",
+                        "price_aed": "147.75",
+                        "status": "approved",
+                        "fx_rate": "",
+                        "approved_at": "",
+                    },
+                    {
+                        "sku": "MTV-3003",
+                        "price_aed": "200.00",
+                        "status": "auto_approved",
+                        "fx_rate": "",
+                        "approved_at": "",
+                    },
+                ]
+            ),
             export_result,
         )
     )
@@ -394,9 +428,17 @@ async def test_export_pilot_channel_succeeds():
     adapter.validate_payload.return_value = []
     adapter.export_csv = AsyncMock(
         return_value=(
-            _make_csv_bytes([
-                {"sku": "MTV-4001", "price_aed": "99.00", "status": "approved", "fx_rate": "", "approved_at": ""},
-            ]),
+            _make_csv_bytes(
+                [
+                    {
+                        "sku": "MTV-4001",
+                        "price_aed": "99.00",
+                        "status": "approved",
+                        "fx_rate": "",
+                        "approved_at": "",
+                    },
+                ]
+            ),
             export_result,
         )
     )

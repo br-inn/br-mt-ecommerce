@@ -138,7 +138,9 @@ async def _apply_one(
         )
         if division_codes and diff.sku:
             await assign_divisions(
-                session, diff.sku, division_codes,
+                session,
+                diff.sku,
+                division_codes,
                 code_id_cache=division_code_cache,
             )
         return "created"
@@ -164,7 +166,9 @@ async def _apply_one(
         )
         if division_codes and diff.sku:
             await assign_divisions(
-                session, diff.sku, division_codes,
+                session,
+                diff.sku,
+                division_codes,
                 code_id_cache=division_code_cache,
             )
         return "updated"
@@ -215,7 +219,11 @@ async def apply_diffs_chunked(
                 for d in chunk:
                     try:
                         action = await _apply_one(
-                            session, repo, audit, d, actor,
+                            session,
+                            repo,
+                            audit,
+                            d,
+                            actor,
                             run_id=run_id,
                             division_codes=effective_div_codes,
                             division_code_cache=div_code_cache,
@@ -223,7 +231,8 @@ async def apply_diffs_chunked(
                     except Exception:  # noqa: BLE001 — fila individual no debe matar chunk si controlable
                         logger.exception(
                             "Importer apply: row %s sku=%s failed",
-                            d.row_index, d.sku,
+                            d.row_index,
+                            d.sku,
                         )
                         chunk_res.errors += 1
                         # Re-raise para hacer rollback del chunk completo (el

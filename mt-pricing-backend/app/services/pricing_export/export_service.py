@@ -127,13 +127,15 @@ class ExportService:
         fx_as_of: datetime | None = None
 
         for row in fn_rows:
-            approved_rows.append({
-                "sku": row.sku,
-                "price_aed": str(row.amount),
-                "status": "approved",  # solo approved/auto_approved salen de la función
-                "fx_rate": "",  # resolved in adapter / future sprint
-                "approved_at": "",
-            })
+            approved_rows.append(
+                {
+                    "sku": row.sku,
+                    "price_aed": str(row.amount),
+                    "status": "approved",  # solo approved/auto_approved salen de la función
+                    "fx_rate": "",  # resolved in adapter / future sprint
+                    "approved_at": "",
+                }
+            )
             if row.fx_at is not None:
                 if fx_as_of is None or row.fx_at > fx_as_of:
                     fx_as_of = row.fx_at
@@ -152,16 +154,13 @@ class ExportService:
 
         errors = adapter.validate_payload(payload)
         if errors:
-            raise ValueError(
-                f"Payload inválido para canal '{channel_code}': {errors!r}"
-            )
+            raise ValueError(f"Payload inválido para canal '{channel_code}': {errors!r}")
 
         # ------------------------------------------------------------------
         # 4. Shadow publish o CSV normal según feature flag
         # ------------------------------------------------------------------
-        use_shadow = (
-            channel_code == "AMAZON_UAE"
-            and await is_shadow_publish_amazon_enabled(self.session)
+        use_shadow = channel_code == "AMAZON_UAE" and await is_shadow_publish_amazon_enabled(
+            self.session
         )
 
         if use_shadow:

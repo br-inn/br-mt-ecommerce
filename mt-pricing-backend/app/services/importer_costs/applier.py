@@ -87,9 +87,7 @@ class CostsApplier:
         *,
         run_id: str,
     ) -> ApplyCostsResult:
-        return await apply_cost_diffs(
-            diffs, actor, cost_service=self.cost_service, run_id=run_id
-        )
+        return await apply_cost_diffs(diffs, actor, cost_service=self.cost_service, run_id=run_id)
 
 
 async def apply_cost_diffs(
@@ -142,7 +140,9 @@ async def apply_cost_diffs(
             )
             logger.warning(
                 "Costs apply: fx_missing row=%s sku=%s scheme=%s",
-                d.row_index, d.sku, d.scheme_code,
+                d.row_index,
+                d.sku,
+                d.scheme_code,
             )
             continue
         except Exception as exc:  # noqa: BLE001 — fallo individual no rompe batch
@@ -155,9 +155,7 @@ async def apply_cost_diffs(
                     "message": str(exc),
                 }
             )
-            logger.exception(
-                "Costs apply: row %s sku=%s failed", d.row_index, d.sku
-            )
+            logger.exception("Costs apply: row %s sku=%s failed", d.row_index, d.sku)
             continue
 
         if d.action == CostRowAction.CREATE:

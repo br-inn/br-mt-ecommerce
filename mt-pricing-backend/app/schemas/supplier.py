@@ -42,9 +42,7 @@ class SupplierBase(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     contact_email: EmailStr | None = Field(default=None)
     contact_phone: str | None = Field(default=None, max_length=64)
-    contract_currency: str = Field(
-        min_length=3, max_length=3, pattern=CURRENCY_CODE_REGEX
-    )
+    contract_currency: str = Field(min_length=3, max_length=3, pattern=CURRENCY_CODE_REGEX)
     lead_time_days: int | None = Field(default=None, ge=0, le=3650)
     payment_terms: str | None = Field(default=None, max_length=256)
     notes: str | None = Field(default=None, max_length=4096)
@@ -78,9 +76,7 @@ class SupplierUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     contact_email: EmailStr | None = Field(default=None)
     contact_phone: str | None = Field(default=None, max_length=64)
-    contract_currency: str = Field(
-        min_length=3, max_length=3, pattern=CURRENCY_CODE_REGEX
-    )
+    contract_currency: str = Field(min_length=3, max_length=3, pattern=CURRENCY_CODE_REGEX)
     lead_time_days: int | None = Field(default=None, ge=0, le=3650)
     payment_terms: str | None = Field(default=None, max_length=256)
     notes: str | None = Field(default=None, max_length=4096)

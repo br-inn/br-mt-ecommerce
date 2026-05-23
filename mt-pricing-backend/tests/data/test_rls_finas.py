@@ -174,8 +174,7 @@ async def test_comercial_cannot_insert_price_with_status_approved(
         await _reset_role(db_session)
 
     assert raised, (
-        "comercial NO debe poder INSERT prices con status='approved' "
-        "(RLS o trigger initial_status)"
+        "comercial NO debe poder INSERT prices con status='approved' (RLS o trigger initial_status)"
     )
 
 
@@ -268,9 +267,7 @@ async def test_comercial_select_audit_events_returns_empty(
     await _as_role(db_session, "comercial")
     try:
         res = await db_session.execute(
-            text(
-                "SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDIT'"
-            )
+            text("SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDIT'")
         )
         count = res.scalar()
     finally:
@@ -304,9 +301,7 @@ async def test_auditor_can_select_audit_events(
     await _as_role(db_session, "auditor")
     try:
         res = await db_session.execute(
-            text(
-                "SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDITOR'"
-            )
+            text("SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDITOR'")
         )
         count = res.scalar()
     finally:

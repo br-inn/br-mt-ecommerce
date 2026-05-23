@@ -1,6 +1,12 @@
 """Unit tests for ProductModel ORM — pure Python (no DB)."""
+
 import uuid
-from app.db.models.product_models import ProductModel, ModelDimensionRow, ModelFlowData, ModelTechTable
+from app.db.models.product_models import (
+    ProductModel,
+    ModelDimensionRow,
+    ModelFlowData,
+    ModelTechTable,
+)
 
 
 def test_product_model_instantiation():

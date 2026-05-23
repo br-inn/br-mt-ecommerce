@@ -143,10 +143,7 @@ class ImageService:
         # `{"signed_url": ..., "token": ..., "path": ...}` (snake) o
         # `{"signedURL": ..., "token": ...}` (camel). Normalizamos.
         upload_url = (
-            signed.get("signed_url")
-            or signed.get("signedURL")
-            or signed.get("signedUrl")
-            or ""
+            signed.get("signed_url") or signed.get("signedURL") or signed.get("signedUrl") or ""
         )
         token = signed.get("token", "")
         return {

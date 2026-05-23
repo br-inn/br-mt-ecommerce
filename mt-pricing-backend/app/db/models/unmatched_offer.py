@@ -56,9 +56,7 @@ class UnmatchedOffer(UuidPkMixin, TimestampMixin, Base):
     # Populated by background embedding job; NULL until then.
     embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
 
-    match_attempts: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    match_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     matched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     scraped_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

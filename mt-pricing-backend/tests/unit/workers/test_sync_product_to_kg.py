@@ -6,6 +6,7 @@ Estrategia:
   que llama `merge_node` en upsert y `delete_subgraph` en delete.
 - Probamos la task completa con `.apply()` en modo eager (sin broker).
 """
+
 from __future__ import annotations
 
 import asyncio

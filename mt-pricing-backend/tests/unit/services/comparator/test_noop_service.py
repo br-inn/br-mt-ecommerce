@@ -45,9 +45,7 @@ async def test_confirm_match_is_noop_and_warns(
     assert result is None
     assert any(DISABLED_WARNING in r.message for r in caplog.records)
     # Verifica que el extra propaga la op
-    confirm_records = [
-        r for r in caplog.records if getattr(r, "op", None) == "confirm_match"
-    ]
+    confirm_records = [r for r in caplog.records if getattr(r, "op", None) == "confirm_match"]
     assert confirm_records, "no se loggeó WARNING con op=confirm_match"
 
 
@@ -61,9 +59,7 @@ async def test_reject_match_is_noop_and_warns(
         decided_by=uuid4(),
     )
     assert result is None
-    reject_records = [
-        r for r in caplog.records if getattr(r, "op", None) == "reject_match"
-    ]
+    reject_records = [r for r in caplog.records if getattr(r, "op", None) == "reject_match"]
     assert reject_records
 
 

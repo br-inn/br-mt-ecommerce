@@ -243,9 +243,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("false"),
         ),
-        sa.Column(
-            "version", sa.Integer(), nullable=False, server_default=sa.text("1")
-        ),
+        sa.Column("version", sa.Integer(), nullable=False, server_default=sa.text("1")),
         # Audit + Timestamps
         sa.Column(
             "created_by",
@@ -271,9 +269,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.CheckConstraint(
-            "status IN ('active','superseded')", name="ck_costs_status"
-        ),
+        sa.CheckConstraint("status IN ('active','superseded')", name="ck_costs_status"),
         sa.CheckConstraint("version >= 1", name="ck_costs_version_pos"),
         sa.CheckConstraint(
             "scheme_landed_aed IS NULL OR scheme_landed_aed >= 0",

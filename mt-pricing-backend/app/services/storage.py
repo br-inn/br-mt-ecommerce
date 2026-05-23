@@ -82,9 +82,7 @@ def build_product_image_path(
         ValueError: role inválido o thumbnail sin size.
     """
     if role not in _VALID_ROLES:
-        raise ValueError(
-            f"role inválido: {role!r}. Válidos: {sorted(_VALID_ROLES)}"
-        )
+        raise ValueError(f"role inválido: {role!r}. Válidos: {sorted(_VALID_ROLES)}")
 
     if role == "thumbnail":
         if thumbnail_size not in (256, 512, 1024):
@@ -149,9 +147,7 @@ def create_signed_url(
     # supabase-py v2 retorna dict con clave 'signedURL' (camelCase) o 'signed_url'.
     signed = response.get("signedURL") or response.get("signed_url") or response.get("signedUrl")
     if not signed:
-        raise RuntimeError(
-            f"Supabase no retornó signed URL para {storage_path!r}: {response!r}"
-        )
+        raise RuntimeError(f"Supabase no retornó signed URL para {storage_path!r}: {response!r}")
 
     return {
         "signed_url": signed,

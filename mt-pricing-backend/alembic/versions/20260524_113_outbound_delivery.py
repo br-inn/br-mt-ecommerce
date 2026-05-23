@@ -43,9 +43,16 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("'pending_pick'"),
         ),
-        sa.Column("partial_delivery_allowed", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+        sa.Column(
+            "partial_delivery_allowed", sa.Boolean(), nullable=False, server_default=sa.text("true")
+        ),
         sa.Column("shipped_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id", name="pk_outbound_deliveries"),
         sa.UniqueConstraint("delivery_number", name="uq_delivery_number"),
         sa.CheckConstraint(

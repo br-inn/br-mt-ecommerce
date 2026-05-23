@@ -1,4 +1,5 @@
 """Validar/descartar deben escribir golden_labels + label + human_outcome."""
+
 from __future__ import annotations
 
 import decimal

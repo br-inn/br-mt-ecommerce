@@ -72,9 +72,7 @@ class ChannelListing(UuidPkMixin, TimestampMixin, Base):
         index=True,
     )
     channel_code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    external_id: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("''")
-    )
+    external_id: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
 
     buybox_state: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'none'")
@@ -104,17 +102,13 @@ class ChannelListing(UuidPkMixin, TimestampMixin, Base):
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
 
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (
         UniqueConstraint(
             "channel_code", "external_id", name="uq_channel_listings_channel_external"
         ),
-        UniqueConstraint(
-            "channel_code", "product_sku", name="uq_channel_listings_channel_sku"
-        ),
+        UniqueConstraint("channel_code", "product_sku", name="uq_channel_listings_channel_sku"),
         CheckConstraint(
             f"buybox_state IN {_values_csv(BUYBOX_STATES)}",
             name="ck_channel_listings_buybox_state",

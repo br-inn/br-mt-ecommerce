@@ -234,15 +234,9 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS idx_product_assets_status")
     op.drop_index("idx_product_assets_sku_kind", table_name="product_assets")
 
-    op.execute(
-        "ALTER TABLE product_assets DROP CONSTRAINT IF EXISTS uq_assets_bucket_path"
-    )
-    op.execute(
-        "ALTER TABLE product_assets DROP CONSTRAINT IF EXISTS ck_assets_kind"
-    )
-    op.execute(
-        "ALTER TABLE product_assets DROP CONSTRAINT IF EXISTS ck_assets_status"
-    )
+    op.execute("ALTER TABLE product_assets DROP CONSTRAINT IF EXISTS uq_assets_bucket_path")
+    op.execute("ALTER TABLE product_assets DROP CONSTRAINT IF EXISTS ck_assets_kind")
+    op.execute("ALTER TABLE product_assets DROP CONSTRAINT IF EXISTS ck_assets_status")
 
     # Re-add image_status column.
     op.add_column(
@@ -273,8 +267,7 @@ def downgrade() -> None:
     )
 
     # Restore role as NOT NULL (best-effort, may fail if NULLs exist).
-    op.alter_column("product_assets", "role", nullable=False,
-                    server_default=sa.text("'main'"))
+    op.alter_column("product_assets", "role", nullable=False, server_default=sa.text("'main'"))
 
     # Re-add old check constraints.
     op.execute(

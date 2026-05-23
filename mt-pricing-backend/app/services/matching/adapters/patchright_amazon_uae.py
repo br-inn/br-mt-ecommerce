@@ -60,6 +60,7 @@ _USER_AGENT = (
     "Chrome/124.0.0.0 Safari/537.36"
 )
 
+
 class PatchrightAmazonUaeFetcher:
     """Tier 2 live fetcher for Amazon UAE using patchright headless Chromium.
 
@@ -74,16 +75,10 @@ class PatchrightAmazonUaeFetcher:
     channel = "amazon_uae"
 
     def __init__(self) -> None:
-        self._browser_channel: str = os.environ.get(
-            "SCRAPER_BROWSER_CHANNEL", _DEFAULT_CHANNEL
-        )
+        self._browser_channel: str = os.environ.get("SCRAPER_BROWSER_CHANNEL", _DEFAULT_CHANNEL)
         self._proxy_url: str | None = os.environ.get("SCRAPER_PROXY_URL") or None
-        self._headless: bool = (
-            os.environ.get("SCRAPER_HEADLESS", "true").strip().lower() != "false"
-        )
-        self._timeout_ms: int = int(
-            os.environ.get("SCRAPER_TIMEOUT", _DEFAULT_TIMEOUT_MS)
-        )
+        self._headless: bool = os.environ.get("SCRAPER_HEADLESS", "true").strip().lower() != "false"
+        self._timeout_ms: int = int(os.environ.get("SCRAPER_TIMEOUT", _DEFAULT_TIMEOUT_MS))
 
     # ------------------------------------------------------------------
     # FetcherPort interface
@@ -162,9 +157,7 @@ class PatchrightAmazonUaeFetcher:
                 pdp_specs = await self._fetch_pdp_with(context, asin)
 
                 price_raw = item.get("price_aed")
-                price_aed: Decimal | None = (
-                    price_raw if isinstance(price_raw, Decimal) else None
-                )
+                price_aed: Decimal | None = price_raw if isinstance(price_raw, Decimal) else None
 
                 # delivery_text may be extracted from the rendered PDP (section 4d).
                 delivery_text_pdp = str(pdp_specs.get("delivery_text") or "") or None
@@ -251,9 +244,7 @@ class PatchrightAmazonUaeFetcher:
             final_url = page.url
 
             if status == 403:
-                raise ScraperBlockedError(
-                    f"patchright: Amazon returned 403 (url={final_url})"
-                )
+                raise ScraperBlockedError(f"patchright: Amazon returned 403 (url={final_url})")
 
             html: str = await page.content()
         finally:
@@ -267,9 +258,7 @@ class PatchrightAmazonUaeFetcher:
         if status == 403:
             raise ScraperBlockedError(f"patchright: Amazon returned 403 (url={url})")
         if _CAPTCHA_PATH in url:
-            raise ScraperBlockedError(
-                f"patchright: Amazon redirected to CAPTCHA (url={url})"
-            )
+            raise ScraperBlockedError(f"patchright: Amazon redirected to CAPTCHA (url={url})")
 
 
 __all__ = ["PatchrightAmazonUaeFetcher"]

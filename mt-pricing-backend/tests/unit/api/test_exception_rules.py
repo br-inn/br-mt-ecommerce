@@ -32,6 +32,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _FakeRole:
     def __init__(self, code: str, perms: list[str]) -> None:
         self.code = code
@@ -144,6 +145,7 @@ class _FakeAuditRepo:
 # App factory — overrides deps + monkeypatches repo constructors
 # ---------------------------------------------------------------------------
 
+
 def _make_app(
     user: _FakeUser,
     repo: _FakeRepo,
@@ -168,11 +170,13 @@ def _make_app(
             missing = set(required) - snapshot
             if missing:
                 from fastapi import HTTPException
+
                 raise HTTPException(
                     status_code=403,
                     detail={"code": "permission_denied", "missing": sorted(missing)},
                 )
             return user
+
         return _check
 
     app.dependency_overrides[require_permissions] = _perms_factory  # type: ignore[assignment]

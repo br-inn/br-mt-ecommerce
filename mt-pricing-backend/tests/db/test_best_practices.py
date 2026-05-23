@@ -2,6 +2,7 @@
 
 Usa testcontainers + alembic upgrade head (patrón de tests/db/test_rls_finas.py).
 """
+
 from __future__ import annotations
 
 import os
@@ -118,11 +119,8 @@ async def test_fts_trgm_index_on_translations(db_session):
 @pytest.mark.asyncio
 async def test_idle_in_transaction_timeout_configured(db_session):
     """El timeout de transacciones idle debe estar configurado en la sesión."""
-    result = await db_session.execute(
-        text("SHOW idle_in_transaction_session_timeout")
-    )
+    result = await db_session.execute(text("SHOW idle_in_transaction_session_timeout"))
     val = result.scalar()
     assert val != "0", (
-        f"idle_in_transaction_session_timeout es '0' (deshabilitado). "
-        f"Valor actual: {val!r}"
+        f"idle_in_transaction_session_timeout es '0' (deshabilitado). Valor actual: {val!r}"
     )

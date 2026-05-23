@@ -5,9 +5,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from app.services.matching.rule_engine_cache import RuleEngineCache
 
+
 @pytest.fixture
 def mock_session():
     return AsyncMock()
+
 
 @pytest.mark.asyncio
 async def test_get_profile_returns_db_weights(mock_session):
@@ -25,6 +27,7 @@ async def test_get_profile_returns_db_weights(mock_session):
     assert result is not None
     assert result.weights["material"] == 0.17
 
+
 @pytest.mark.asyncio
 async def test_cache_expired_triggers_reload(mock_session):
     """Cache expirado llama a reload."""
@@ -35,6 +38,7 @@ async def test_cache_expired_triggers_reload(mock_session):
     with pytest.raises(Exception):
         # Sin session real, espera fallo de DB — lo que prueba que intentó recargar
         await cache.ensure_loaded(mock_session)
+
 
 @pytest.mark.asyncio
 async def test_get_config_value_returns_default_on_miss(mock_session):

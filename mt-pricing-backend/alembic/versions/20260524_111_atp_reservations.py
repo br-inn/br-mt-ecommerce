@@ -30,9 +30,15 @@ def upgrade() -> None:
             sa.ForeignKey("products.sku", ondelete="CASCADE"),
             nullable=True,
         ),
-        sa.Column("include_safety_stock", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("include_planned_receipts", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("include_qa_stock", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "include_safety_stock", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+        sa.Column(
+            "include_planned_receipts", sa.Boolean(), nullable=False, server_default=sa.text("true")
+        ),
+        sa.Column(
+            "include_qa_stock", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
         sa.Column("horizon_days", sa.Integer(), nullable=False, server_default=sa.text("30")),
         sa.PrimaryKeyConstraint("id", name="pk_atp_checking_rules"),
     )
@@ -63,7 +69,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("qty", sa.Numeric(18, 4), nullable=False),
-        sa.Column("reserved_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "reserved_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "status",

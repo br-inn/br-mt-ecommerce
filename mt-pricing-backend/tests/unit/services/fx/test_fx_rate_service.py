@@ -128,9 +128,7 @@ def _build_service(
     rate_row: FXRate | None = None,
     flush_raises: Exception | None = None,
 ) -> tuple[FXRateService, list[dict]]:
-    session = _make_session(
-        currencies=currencies, rate_row=rate_row, flush_raises=flush_raises
-    )
+    session = _make_session(currencies=currencies, rate_row=rate_row, flush_raises=flush_raises)
     svc = FXRateService(session)
     audit_calls: list[dict] = []
 
@@ -245,9 +243,7 @@ async def test_create_rate_identity_forces_rate_one() -> None:
 
 
 async def test_create_rate_allow_retroactive_requires_reason() -> None:
-    svc, _ = _build_service(
-        currencies={"EUR": _FakeCurrency("EUR"), "AED": _FakeCurrency("AED")}
-    )
+    svc, _ = _build_service(currencies={"EUR": _FakeCurrency("EUR"), "AED": _FakeCurrency("AED")})
     with pytest.raises(FXRateDomainError) as ei:
         await svc.create_rate(
             from_code="EUR",

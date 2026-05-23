@@ -99,8 +99,7 @@ class ComparatorServiceFactory:
 
         # Valor desconocido — fallback seguro + warning
         logger.warning(
-            "comparator.factory: COMPARATOR_ADAPTER=%r desconocido; "
-            "usando rag_only como fallback",
+            "comparator.factory: COMPARATOR_ADAPTER=%r desconocido; usando rag_only como fallback",
             adapter_name,
         )
         return RagOnlyComparatorAdapter()
@@ -170,4 +169,9 @@ class VlmJudgeFactory:
             return ""
 
 
-__all__ = ["FLAG_COMPARATOR_ENABLED", "FLAG_VLM_JUDGE_ENABLED", "ComparatorServiceFactory", "VlmJudgeFactory"]
+__all__ = [
+    "FLAG_COMPARATOR_ENABLED",
+    "FLAG_VLM_JUDGE_ENABLED",
+    "ComparatorServiceFactory",
+    "VlmJudgeFactory",
+]

@@ -75,9 +75,7 @@ class _FakeListingsRepo:
     def __init__(self) -> None:
         self.store: dict[tuple[str, str], _FakeListing] = {}
 
-    async def get_by_channel_sku(
-        self, channel_code: str, sku: str
-    ) -> _FakeListing | None:
+    async def get_by_channel_sku(self, channel_code: str, sku: str) -> _FakeListing | None:
         return self.store.get((channel_code, sku))
 
     async def upsert(self, **kwargs: Any) -> _FakeListing:
@@ -211,9 +209,7 @@ async def app_client() -> AsyncIterator[tuple[AsyncClient, dict[str, Any]]]:
     class _FakeAdapter:
         channel_code = "amazon_uae"
 
-        async def pull_listing(
-            self, sku: str, external_id: str | None = None
-        ) -> LiveListing:
+        async def pull_listing(self, sku: str, external_id: str | None = None) -> LiveListing:
             from datetime import datetime, timezone
 
             if sku == "MTV-1004":
@@ -290,11 +286,14 @@ async def app_client() -> AsyncIterator[tuple[AsyncClient, dict[str, Any]]]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         try:
-            yield client, {
-                "listings": listings_repo,
-                "events": events_repo,
-                "canonical": canonical_db,
-            }
+            yield (
+                client,
+                {
+                    "listings": listings_repo,
+                    "events": events_repo,
+                    "canonical": canonical_db,
+                },
+            )
         finally:
             routes_mod.ChannelListingRepository = original_listings_cls  # type: ignore[assignment]
             routes_mod.ChannelSyncEventRepository = original_events_cls  # type: ignore[assignment]
@@ -383,9 +382,7 @@ async def test_publish_endpoint_404_without_listing(
     app_client: tuple[AsyncClient, dict[str, Any]],
 ) -> None:
     client, _ = app_client
-    resp = await client.post(
-        "/api/v1/channels/amazon_uae/MTV-1004/publish", json={}
-    )
+    resp = await client.post("/api/v1/channels/amazon_uae/MTV-1004/publish", json={})
     assert resp.status_code == 404
 
 
@@ -394,9 +391,7 @@ async def test_sync_log_endpoint_returns_recent_events(
 ) -> None:
     client, _ = app_client
     await client.post("/api/v1/channels/amazon_uae/MTV-1004/sync")
-    await client.post(
-        "/api/v1/channels/amazon_uae/MTV-1004/publish", json={}
-    )
+    await client.post("/api/v1/channels/amazon_uae/MTV-1004/publish", json={})
     resp = await client.get("/api/v1/channels/amazon_uae/sync-log?limit=10")
     assert resp.status_code == 200, resp.text
     rows = resp.json()

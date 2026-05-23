@@ -29,12 +29,12 @@ logger = logging.getLogger(__name__)
 # Máquina de estados válida
 # ---------------------------------------------------------------------------
 VALID_TRANSITIONS: dict[str, set[str]] = {
-    "inactive":    {"pre_launch"},
-    "pre_launch":  {"pilot", "inactive"},
-    "pilot":       {"live", "pre_launch"},
-    "live":        {"paused", "deprecated"},
-    "paused":      {"live", "deprecated"},
-    "deprecated":  set(),  # estado terminal
+    "inactive": {"pre_launch"},
+    "pre_launch": {"pilot", "inactive"},
+    "pilot": {"live", "pre_launch"},
+    "live": {"paused", "deprecated"},
+    "paused": {"live", "deprecated"},
+    "deprecated": set(),  # estado terminal
 }
 
 # Roles a notificar en eventos de pause/resume
@@ -53,9 +53,7 @@ class MissingApprovedPricesError(ValueError):
 
     def __init__(self, missing: list[str]) -> None:
         self.missing_skus = missing
-        super().__init__(
-            f"SKUs sin precio aprobado para piloto: {', '.join(missing)}"
-        )
+        super().__init__(f"SKUs sin precio aprobado para piloto: {', '.join(missing)}")
 
 
 class ChannelTransitionService:

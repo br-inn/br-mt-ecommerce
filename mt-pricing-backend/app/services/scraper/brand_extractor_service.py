@@ -8,6 +8,7 @@ Flujo:
   Bootstrap: fetch 3-5 ASINs → raw_pairs → Claude → JSON mapping → DB
   Monitoring: DB → JSON mapping → apply(raw_pairs) → specs canónico
 """
+
 from __future__ import annotations
 
 import json
@@ -175,9 +176,7 @@ class BrandExtractorService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_mapping(
-        self, brand_id: UUID, marketplace: str
-    ) -> dict[str, Any] | None:
+    async def get_mapping(self, brand_id: UUID, marketplace: str) -> dict[str, Any] | None:
         """Load cached attribute_map for brand × marketplace. Returns None if not found."""
         from app.db.models.comparator import BrandExtractor
 
@@ -260,11 +259,11 @@ class BrandExtractorService:
         """Generate mapping via Claude and persist. Returns the generated attribute_map."""
         logger.info(
             "Generating brand extractor for %s/%s (%d samples)",
-            brand_name, marketplace, len(sample_raw_pairs),
+            brand_name,
+            marketplace,
+            len(sample_raw_pairs),
         )
-        attribute_map = await generate_mapping_via_claude(
-            brand_name, marketplace, sample_raw_pairs
-        )
+        attribute_map = await generate_mapping_via_claude(brand_name, marketplace, sample_raw_pairs)
         if attribute_map:
             await self.save_mapping(
                 brand_id=brand_id,
@@ -275,7 +274,9 @@ class BrandExtractorService:
             )
             logger.info(
                 "Brand extractor saved for %s/%s: %d mappings",
-                brand_name, marketplace, len(attribute_map),
+                brand_name,
+                marketplace,
+                len(attribute_map),
             )
         else:
             logger.warning("Empty mapping generated for %s/%s", brand_name, marketplace)

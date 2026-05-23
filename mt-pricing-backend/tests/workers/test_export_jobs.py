@@ -22,6 +22,7 @@ from sqlalchemy import create_engine, text
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def _migrated_db(postgres_container: str) -> str:
     """Aplica alembic upgrade head y devuelve la URL sync."""
@@ -43,8 +44,15 @@ def sync_engine(_migrated_db: str):
     engine.dispose()
 
 
-def _insert_manifest(conn, channel_code: str, scheme_code: str, status: str,
-                     rows_exported: int, file_ref: str, offset_seconds: int = 0) -> str:
+def _insert_manifest(
+    conn,
+    channel_code: str,
+    scheme_code: str,
+    status: str,
+    rows_exported: int,
+    file_ref: str,
+    offset_seconds: int = 0,
+) -> str:
     """Inserta una fila en exports_manifest y devuelve su id."""
     manifest_id = str(uuid.uuid4())
     created_at = datetime.now(tz=timezone.utc) - timedelta(seconds=offset_seconds)
@@ -75,8 +83,7 @@ def _insert_manifest(conn, channel_code: str, scheme_code: str, status: str,
 def _count_last_good(conn, channel_code: str, scheme_code: str) -> int:
     row = conn.execute(
         text(
-            "SELECT COUNT(*) FROM last_good_exports "
-            "WHERE channel_code = :ch AND scheme_code = :sc"
+            "SELECT COUNT(*) FROM last_good_exports WHERE channel_code = :ch AND scheme_code = :sc"
         ),
         {"ch": channel_code, "sc": scheme_code},
     ).scalar()
@@ -84,13 +91,14 @@ def _count_last_good(conn, channel_code: str, scheme_code: str) -> int:
 
 
 def _fetch_last_good(conn, channel_code: str, scheme_code: str) -> dict | None:
-    row = conn.execute(
-        text(
-            "SELECT * FROM last_good_exports "
-            "WHERE channel_code = :ch AND scheme_code = :sc"
-        ),
-        {"ch": channel_code, "sc": scheme_code},
-    ).mappings().one_or_none()
+    row = (
+        conn.execute(
+            text("SELECT * FROM last_good_exports WHERE channel_code = :ch AND scheme_code = :sc"),
+            {"ch": channel_code, "sc": scheme_code},
+        )
+        .mappings()
+        .one_or_none()
+    )
     return dict(row) if row else None
 
 
@@ -98,10 +106,9 @@ def _fetch_last_good(conn, channel_code: str, scheme_code: str) -> dict | None:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
-def test_capture_creates_last_good(
-    sync_engine, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_capture_creates_last_good(sync_engine, monkeypatch: pytest.MonkeyPatch) -> None:
     """2 exports completed para el mismo canal/scheme → captura el más reciente."""
     from app.workers import export_jobs
 
@@ -118,7 +125,9 @@ def test_capture_creates_last_good(
         # Más antiguo (offset 120s)
         _insert_manifest(conn, channel, scheme, "completed", 50, "file_old.csv", offset_seconds=120)
         # Más reciente (offset 0s)
-        newer_id = _insert_manifest(conn, channel, scheme, "completed", 80, "file_new.csv", offset_seconds=0)
+        newer_id = _insert_manifest(
+            conn, channel, scheme, "completed", 80, "file_new.csv", offset_seconds=0
+        )
 
     result = export_jobs._run_capture(str(sync_engine.url))
 
@@ -134,9 +143,7 @@ def test_capture_creates_last_good(
 
 
 @pytest.mark.integration
-def test_capture_skips_failed(
-    sync_engine, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_capture_skips_failed(sync_engine, monkeypatch: pytest.MonkeyPatch) -> None:
     """Exports con status failed o pending NO deben aparecer en last_good_exports."""
     from app.workers import export_jobs
 
@@ -162,9 +169,7 @@ def test_capture_skips_failed(
 
 
 @pytest.mark.integration
-def test_capture_upserts_on_rerun(
-    sync_engine, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_capture_upserts_on_rerun(sync_engine, monkeypatch: pytest.MonkeyPatch) -> None:
     """Segunda ejecución actualiza la fila existente en lugar de duplicar."""
     from app.workers import export_jobs
 
@@ -178,13 +183,17 @@ def test_capture_upserts_on_rerun(
     scheme = "B2C"
 
     with sync_engine.begin() as conn:
-        first_id = _insert_manifest(conn, channel, scheme, "completed", 30, "first.csv", offset_seconds=200)
+        first_id = _insert_manifest(
+            conn, channel, scheme, "completed", 30, "first.csv", offset_seconds=200
+        )
 
     # Primera ejecución
     export_jobs._run_capture(str(sync_engine.url))
 
     with sync_engine.begin() as conn:
-        second_id = _insert_manifest(conn, channel, scheme, "completed", 99, "second.csv", offset_seconds=0)
+        second_id = _insert_manifest(
+            conn, channel, scheme, "completed", 99, "second.csv", offset_seconds=0
+        )
 
     # Segunda ejecución
     export_jobs._run_capture(str(sync_engine.url))

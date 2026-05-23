@@ -70,9 +70,7 @@ registry_router = APIRouter(prefix="/taxonomies", tags=["taxonomies"])
 products_taxonomies_router = APIRouter(tags=["taxonomies:product-links"])
 
 # Admin — mutaciones del registry
-admin_registry_router = APIRouter(
-    prefix="/admin/taxonomies", tags=["admin:taxonomy-registry"]
-)
+admin_registry_router = APIRouter(prefix="/admin/taxonomies", tags=["admin:taxonomy-registry"])
 admin_products_taxonomies_router = APIRouter(
     prefix="/admin/products", tags=["admin:taxonomy-registry"]
 )
@@ -317,9 +315,7 @@ async def update_type(
     try:
         instance = await repo.update(type_slug, **fields)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     if instance is None:
         raise _http_not_found("TaxonomyType", type_slug)
     return TaxonomyTypeRead.model_validate(instance)
@@ -339,9 +335,7 @@ async def delete_type(
     try:
         ok = await repo.soft_delete(type_slug)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     if not ok:
         raise _http_not_found("TaxonomyType", type_slug)
 
@@ -522,13 +516,9 @@ async def unlink_product_from_node(
     role: Annotated[str, Query()] = "belongs_to",
 ):
     repo = ProductTaxonomyLinkRepository(session)
-    ok = await repo.unlink(
-        product_sku=sku, node_id=node_id, role=role, soft=True
-    )
+    ok = await repo.unlink(product_sku=sku, node_id=node_id, role=role, soft=True)
     if not ok:
-        raise _http_not_found(
-            "ProductTaxonomyLink", f"{sku}/{node_id}/{role}"
-        )
+        raise _http_not_found("ProductTaxonomyLink", f"{sku}/{node_id}/{role}")
 
 
 # ---------------------------------------------------------------------------

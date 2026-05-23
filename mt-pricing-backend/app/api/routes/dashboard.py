@@ -78,9 +78,7 @@ async def get_dashboard_stats(
     # 1. Catálogo
     # ----------------------------------------------------------------------
     products_total = await session.scalar(
-        select(func.count())
-        .select_from(Product)
-        .where(Product.deleted_at.is_(None))
+        select(func.count()).select_from(Product).where(Product.deleted_at.is_(None))
     )
     products_active = await session.scalar(
         select(func.count())
@@ -170,9 +168,7 @@ async def get_dashboard_stats(
     # 4. Auditoría — eventos 24h + tail de los 10 más recientes.
     # ----------------------------------------------------------------------
     audit_24h = await session.scalar(
-        select(func.count())
-        .select_from(AuditEvent)
-        .where(AuditEvent.event_at >= since_24h)
+        select(func.count()).select_from(AuditEvent).where(AuditEvent.event_at >= since_24h)
     )
     recent_audit_rows = await session.execute(
         select(AuditEvent).order_by(AuditEvent.event_at.desc()).limit(10)
@@ -197,14 +193,10 @@ async def get_dashboard_stats(
     # 5. Jobs / Scheduler
     # ----------------------------------------------------------------------
     jobs_enabled = await session.scalar(
-        select(func.count())
-        .select_from(JobDefinition)
-        .where(JobDefinition.enabled.is_(True))
+        select(func.count()).select_from(JobDefinition).where(JobDefinition.enabled.is_(True))
     )
     job_runs_24h = await session.scalar(
-        select(func.count())
-        .select_from(JobRun)
-        .where(JobRun.started_at >= since_24h)
+        select(func.count()).select_from(JobRun).where(JobRun.started_at >= since_24h)
     )
     job_failures_24h = await session.scalar(
         select(func.count())

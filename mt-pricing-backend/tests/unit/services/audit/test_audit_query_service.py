@@ -252,9 +252,7 @@ async def test_filters_actions_in() -> None:
     ]
     session = _StubAsyncSession(rows)
     svc = AuditQueryService(session)  # type: ignore[arg-type]
-    result = await svc.query(
-        AuditQueryFilters(actions=("price.proposed", "price.approved"))
-    )
+    result = await svc.query(AuditQueryFilters(actions=("price.proposed", "price.approved")))
     assert len(result.items) == 2
 
 

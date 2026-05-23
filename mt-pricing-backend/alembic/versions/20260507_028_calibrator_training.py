@@ -88,20 +88,12 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
         sa.Column("notes", sa.Text, nullable=True),
-        sa.CheckConstraint(
-            "label IN (0, 1)", name="ck_golden_labels_label_binary"
-        ),
-        sa.CheckConstraint(
-            "score >= 0 AND score <= 1", name="ck_golden_labels_score_range"
-        ),
-        sa.UniqueConstraint(
-            "sku", "candidate_id", name="uq_golden_labels_sku_candidate"
-        ),
+        sa.CheckConstraint("label IN (0, 1)", name="ck_golden_labels_label_binary"),
+        sa.CheckConstraint("score >= 0 AND score <= 1", name="ck_golden_labels_score_range"),
+        sa.UniqueConstraint("sku", "candidate_id", name="uq_golden_labels_sku_candidate"),
     )
     op.create_index("idx_golden_labels_sku", "golden_labels", ["sku"])
-    op.create_index(
-        "idx_golden_labels_judged_at", "golden_labels", ["judged_at"]
-    )
+    op.create_index("idx_golden_labels_judged_at", "golden_labels", ["judged_at"])
 
     # ----- Tabla calibrator_versions ----------------------------------------
     op.create_table(

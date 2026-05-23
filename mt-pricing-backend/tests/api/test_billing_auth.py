@@ -4,6 +4,7 @@ Hallazgo: billing.py usa get_current_user (autenticación JWT únicamente).
 Cualquier usuario autenticado — incluyendo comercial — puede listar y crear
 facturas. Los tests fallan hasta que se añada require_role al router.
 """
+
 from __future__ import annotations
 
 import os
@@ -47,9 +48,7 @@ async def _seed_user(session: AsyncSession, role_code: str) -> tuple[UUID, str]:
     """Crea un usuario con el rol dado. Devuelve (uuid, email)."""
     from app.db.models.user import Role, User
 
-    role = (
-        await session.execute(select(Role).where(Role.code == role_code))
-    ).scalar_one_or_none()
+    role = (await session.execute(select(Role).where(Role.code == role_code))).scalar_one_or_none()
     if role is None:
         role = Role(code=role_code, name=role_code, permissions_snapshot=[])
         session.add(role)

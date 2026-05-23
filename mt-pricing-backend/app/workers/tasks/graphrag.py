@@ -252,9 +252,7 @@ async def _run_kg_integrity_check() -> dict[str, Any]:
                 with driver.session(database=database) as s:
                     nc = s.run("MATCH (n) RETURN count(n) AS cnt").single()["cnt"]
                     ec = s.run("MATCH ()-[r]->() RETURN count(r) AS cnt").single()["cnt"]
-                    on = s.run(
-                        "MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt"
-                    ).single()["cnt"]
+                    on = s.run("MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt").single()["cnt"]
                     return nc, ec, on
 
             node_count, edge_count, orphan_nodes = await asyncio.to_thread(_query)

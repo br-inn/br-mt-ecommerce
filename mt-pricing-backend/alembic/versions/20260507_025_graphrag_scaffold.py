@@ -160,9 +160,7 @@ def upgrade() -> None:
         """
     )
 
-    op.execute(
-        "DROP TRIGGER IF EXISTS trg_cdc_emit_product ON products"
-    )
+    op.execute("DROP TRIGGER IF EXISTS trg_cdc_emit_product ON products")
     op.execute(
         """
         CREATE TRIGGER trg_cdc_emit_product
@@ -209,9 +207,7 @@ def downgrade() -> None:
         );
         """
     )
-    op.execute(
-        "DELETE FROM permissions WHERE code = 'graphrag:admin'"
-    )
+    op.execute("DELETE FROM permissions WHERE code = 'graphrag:admin'")
 
     op.execute("DROP TRIGGER IF EXISTS trg_cdc_emit_product ON products")
     op.execute("DROP FUNCTION IF EXISTS cdc_emit_product()")

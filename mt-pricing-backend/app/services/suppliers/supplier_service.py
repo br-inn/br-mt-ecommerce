@@ -89,11 +89,7 @@ def _snapshot(s: Supplier) -> dict[str, Any]:
 
 
 def _diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
-    return {
-        k: {"from": before.get(k), "to": after[k]}
-        for k in after
-        if before.get(k) != after[k]
-    }
+    return {k: {"from": before.get(k), "to": after[k]} for k in after if before.get(k) != after[k]}
 
 
 class SupplierService:
@@ -154,9 +150,7 @@ class SupplierService:
         )
         return sup
 
-    async def replace_supplier(
-        self, code: str, data: dict[str, Any], actor: User
-    ) -> Supplier:
+    async def replace_supplier(self, code: str, data: dict[str, Any], actor: User) -> Supplier:
         sup = await self.suppliers.get_by_code(code)
         if sup is None:
             raise SupplierNotFoundError(code)
@@ -187,9 +181,7 @@ class SupplierService:
         )
         return sup
 
-    async def patch_supplier(
-        self, code: str, data: dict[str, Any], actor: User
-    ) -> Supplier:
+    async def patch_supplier(self, code: str, data: dict[str, Any], actor: User) -> Supplier:
         sup = await self.suppliers.get_by_code(code)
         if sup is None:
             raise SupplierNotFoundError(code)

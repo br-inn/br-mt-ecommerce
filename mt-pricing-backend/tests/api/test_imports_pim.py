@@ -71,9 +71,7 @@ async def _seed_ti(session: AsyncSession) -> tuple[UUID, str]:
             perm_ids.append(p.id)
         else:
             perm_ids.append(existing.id)
-    role = (
-        await session.execute(select(Role).where(Role.code == "ti_imp"))
-    ).scalar_one_or_none()
+    role = (await session.execute(select(Role).where(Role.code == "ti_imp"))).scalar_one_or_none()
     if role is None:
         role = Role(code="ti_imp", name="ti_imp", permissions_snapshot=perms_codes)
         session.add(role)
@@ -83,9 +81,7 @@ async def _seed_ti(session: AsyncSession) -> tuple[UUID, str]:
         await session.flush()
     uid = uuid4()
     email = f"ti-{uid.hex[:6]}@mt.ae"
-    user = User(
-        id=uid, email=email, full_name="TI", locale="es", is_active=True, role_id=role.id
-    )
+    user = User(id=uid, email=email, full_name="TI", locale="es", is_active=True, role_id=role.id)
     session.add(user)
     await session.flush()
     return uid, email
@@ -123,23 +119,23 @@ def _build_minimal_xlsx(rows: int = 3) -> bytes:
     for i in range(rows):
         ws.append(
             [
-                f"TST-{i:04d}",                      # Referencia de variante
-                "73071910",                          # Cod.Intrastat
-                f"test product {i}",                 # Nombre ERP
-                f"843531910000{i}",                  # INDIVIDUAL EAN (13)
-                f"0.{i+1}",                          # weight unit
-                f"0.{i+1}",                          # net weight unit
-                f"{i+1}.0",                          # High mm
-                f"{i+1}.0",                          # Wide mm
-                f"{i+1}.0",                          # Deep mm
-                f"284353191000{i}0",                 # EAN CODE BOX (14)
-                "100",                               # qty x box
-                "10",                                # Alto caja cm
-                "20",                                # Ancho caja cm
-                "30",                                # Largo caja cm
-                f"184353191000{i}0",                 # EAN CODE INNER BOX
-                "5",                                 # MOQ INNER BOX
-                "1000",                              # X PALLET
+                f"TST-{i:04d}",  # Referencia de variante
+                "73071910",  # Cod.Intrastat
+                f"test product {i}",  # Nombre ERP
+                f"843531910000{i}",  # INDIVIDUAL EAN (13)
+                f"0.{i + 1}",  # weight unit
+                f"0.{i + 1}",  # net weight unit
+                f"{i + 1}.0",  # High mm
+                f"{i + 1}.0",  # Wide mm
+                f"{i + 1}.0",  # Deep mm
+                f"284353191000{i}0",  # EAN CODE BOX (14)
+                "100",  # qty x box
+                "10",  # Alto caja cm
+                "20",  # Ancho caja cm
+                "30",  # Largo caja cm
+                f"184353191000{i}0",  # EAN CODE INNER BOX
+                "5",  # MOQ INNER BOX
+                "1000",  # X PALLET
             ]
         )
     bio = io.BytesIO()
@@ -252,17 +248,23 @@ async def test_apply_respects_manual_locked_fields(
     ws.append(list(EXPECTED_HEADERS))
     ws.append(
         [
-            sku,                       # Referencia de variante
-            "73071910",                # Cod.Intrastat
-            "import overwrite name",   # Nombre ERP
+            sku,  # Referencia de variante
+            "73071910",  # Cod.Intrastat
+            "import overwrite name",  # Nombre ERP
             "8435319100099",
             "0.1",
             "0.1",
-            "1.0", "1.0", "1.0",
+            "1.0",
+            "1.0",
+            "1.0",
             "28435319100992",
-            "100", "10", "20", "30",
+            "100",
+            "10",
+            "20",
+            "30",
             "18435319100995",
-            "5", "1000",
+            "5",
+            "1000",
         ]
     )
     bio = io.BytesIO()
@@ -277,6 +279,7 @@ async def test_apply_respects_manual_locked_fields(
 
     # Verifica DB: dn sigue siendo 'DN15' (no sobreescrito).
     from sqlalchemy import select as _sel
+
     res = await db_session.execute(_sel(Product).where(Product.sku == sku))
     prod = res.scalar_one()
     assert prod.dn == "DN15"
@@ -284,9 +287,7 @@ async def test_apply_respects_manual_locked_fields(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_apply_emits_audit_events(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_apply_emits_audit_events(client: AsyncClient, db_session: AsyncSession) -> None:
     from app.db.models.audit import AuditEvent
     from app.services.importer.importer_service import reset_run_store
 
@@ -304,10 +305,10 @@ async def test_apply_emits_audit_events(
 
     # 4 audit events de creación (uno por row) + ≥1 audit por chunk summary.
     res = await db_session.execute(
-        select(func.count()).select_from(AuditEvent).where(
-            AuditEvent.action.in_(
-                ["product.imported.created", "product.import.chunk_completed"]
-            )
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(
+            AuditEvent.action.in_(["product.imported.created", "product.import.chunk_completed"])
         )
     )
     assert (res.scalar_one() or 0) >= 5  # 4 rows + 1 chunk summary
@@ -315,9 +316,7 @@ async def test_apply_emits_audit_events(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_status_returns_current(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_get_status_returns_current(client: AsyncClient, db_session: AsyncSession) -> None:
     from app.services.importer.importer_service import reset_run_store
 
     reset_run_store()
@@ -335,9 +334,7 @@ async def test_get_status_returns_current(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_report_csv_format(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_report_csv_format(client: AsyncClient, db_session: AsyncSession) -> None:
     from app.services.importer.importer_service import reset_run_store
 
     reset_run_store()
@@ -348,9 +345,7 @@ async def test_report_csv_format(
     files = {"file": ("r.xlsx", file_bytes, "application/octet-stream")}
     rp = await client.post("/api/v1/imports/preview", files=files, headers=headers)
     run_id = rp.json()["run_id"]
-    rr = await client.get(
-        f"/api/v1/imports/{run_id}/report?format=csv", headers=headers
-    )
+    rr = await client.get(f"/api/v1/imports/{run_id}/report?format=csv", headers=headers)
     assert rr.status_code == 200
     assert rr.headers["content-type"].startswith("text/csv")
     text = rr.text
@@ -379,12 +374,8 @@ async def test_preview_invalid_header_returns_422(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-@pytest.mark.skipif(
-    not os.path.exists(PIM_REAL_PATH), reason="PIM real no disponible"
-)
-async def test_preview_real_pim_full(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+@pytest.mark.skipif(not os.path.exists(PIM_REAL_PATH), reason="PIM real no disponible")
+async def test_preview_real_pim_full(client: AsyncClient, db_session: AsyncSession) -> None:
     """Smoke test sobre el PIM real (5085 rows). Solo preview, sin apply."""
     from app.services.importer.importer_service import reset_run_store
 

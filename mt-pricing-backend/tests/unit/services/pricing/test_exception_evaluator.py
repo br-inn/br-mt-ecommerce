@@ -253,8 +253,8 @@ def test_no_exception_fires_returns_auto_approved_default() -> None:
 def test_margin_delta_exceeded_triggers_pending_review() -> None:
     """Delta de margen > margin_threshold_pct → pending_review / margin_delta_exceeded."""
     rule = make_exception_rule(margin_threshold_pct=Decimal("5.0"))  # 5% max delta
-    new_price = make_pricing_result(margin_pct=Decimal("0.30"))   # 30%
-    prev_price = make_prev_price(margin_pct=Decimal("0.20"))       # 20% → delta = 10% > 5%
+    new_price = make_pricing_result(margin_pct=Decimal("0.30"))  # 30%
+    prev_price = make_prev_price(margin_pct=Decimal("0.20"))  # 20% → delta = 10% > 5%
 
     status, reasons = ExceptionEvaluator.evaluate(
         new_price=new_price,
@@ -294,9 +294,7 @@ def test_critical_alert_triggers_pending_review() -> None:
 
 def test_warning_alert_does_not_trigger_pending_review() -> None:
     """Alerta severity=warning (no critical) no dispara pending_review."""
-    new_price = make_pricing_result(
-        alerts=[{"severity": "warning", "message": "margen ajustado"}]
-    )
+    new_price = make_pricing_result(alerts=[{"severity": "warning", "message": "margen ajustado"}])
 
     status, reasons = ExceptionEvaluator.evaluate(
         new_price=new_price,

@@ -145,9 +145,7 @@ class FlagService:
     ) -> bool:
         """Persiste flag y purga cache. Devuelve el valor seteado."""
         if key not in KNOWN_FLAGS:
-            raise ValueError(
-                f"Flag desconocido: {key!r}. Permitidos: {KNOWN_FLAGS}"
-            )
+            raise ValueError(f"Flag desconocido: {key!r}. Permitidos: {KNOWN_FLAGS}")
         await self.flag_repo.upsert(key=key, value=value, updated_by=updated_by)  # type: ignore[attr-defined]
         await self._cache_invalidate(key)
         logger.info(

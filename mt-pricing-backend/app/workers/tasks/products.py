@@ -111,8 +111,7 @@ async def _run_async(
             .select_from(Product)
             .outerjoin(
                 ProductTranslation,
-                (ProductTranslation.sku == Product.sku)
-                & (ProductTranslation.lang == "en"),
+                (ProductTranslation.sku == Product.sku) & (ProductTranslation.lang == "en"),
             )
             .where(Product.deleted_at.is_(None))
         )

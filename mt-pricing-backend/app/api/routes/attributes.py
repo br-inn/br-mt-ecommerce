@@ -211,9 +211,7 @@ async def admin_patch_attribute(
     service: AttributeService = Depends(get_attribute_service),
 ) -> AttributeDefinitionResponse:
     try:
-        row = await service.patch_definition(
-            attr_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_definition(attr_id, data.model_dump(exclude_unset=True))
     except AttributeDomainError as e:
         _raise_domain(e)
     return AttributeDefinitionResponse.model_validate(row)
@@ -274,9 +272,7 @@ async def admin_patch_option(
     service: AttributeService = Depends(get_attribute_service),
 ) -> AttributeOptionResponse:
     try:
-        row = await service.patch_option(
-            option_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_option(option_id, data.model_dump(exclude_unset=True))
     except AttributeDomainError as e:
         _raise_domain(e)
     return AttributeOptionResponse.model_validate(row)

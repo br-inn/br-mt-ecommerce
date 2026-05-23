@@ -58,7 +58,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DELETE FROM job_definitions "
-        "WHERE code LIKE 'worker_heartbeat__%';"
-    )
+    op.execute("DELETE FROM job_definitions WHERE code LIKE 'worker_heartbeat__%';")

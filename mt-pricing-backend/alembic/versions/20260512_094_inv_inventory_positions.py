@@ -73,9 +73,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.UniqueConstraint(
-            "sku", "supplier_code", "scheme_code", name="uq_inventory_positions"
-        ),
+        sa.UniqueConstraint("sku", "supplier_code", "scheme_code", name="uq_inventory_positions"),
     )
 
     op.create_index("idx_inv_pos_sku", "inventory_positions", ["sku"])

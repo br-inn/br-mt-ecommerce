@@ -70,7 +70,12 @@ def upgrade() -> None:
         ),
         sa.Column("deadline", sa.Date(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.Column(
             "created_by",
             sa.UUID(),

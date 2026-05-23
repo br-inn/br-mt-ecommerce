@@ -106,9 +106,7 @@ class AmazonUaeStubFetcher:
     def channel(self) -> str:
         return CHANNEL
 
-    async def fetch(
-        self, query: Query, *, sku: str | None = None
-    ) -> list[CandidateRaw]:
+    async def fetch(self, query: Query, *, sku: str | None = None) -> list[CandidateRaw]:
         """Devuelve 5 candidatos canned para el SKU.
 
         El argumento ``query`` se ignora intencionalmente (stub) — el contrato
@@ -126,9 +124,7 @@ class AmazonUaeStubFetcher:
                     external_id=str(c["external_id"]),
                     title=str(c["title"]),
                     brand=c.get("brand"),
-                    price_aed=(
-                        Decimal(str(c["price_aed"])) if c.get("price_aed") else None
-                    ),
+                    price_aed=(Decimal(str(c["price_aed"])) if c.get("price_aed") else None),
                     delivery_text=c.get("delivery_text"),
                     specs=dict(c.get("specs") or {}),
                     raw_payload={

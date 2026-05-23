@@ -52,9 +52,7 @@ async def _do_check_timeouts() -> None:
         now = datetime.now(tz=timezone.utc)
 
         # Cargar PRs en pending_approval
-        stmt = select(PurchaseRequisition).where(
-            PurchaseRequisition.status == "pending_approval"
-        )
+        stmt = select(PurchaseRequisition).where(PurchaseRequisition.status == "pending_approval")
         prs = list((await session.execute(stmt)).scalars().all())
 
         for pr in prs:

@@ -24,7 +24,9 @@ _RECIPE = {
 async def test_validate_records_and_persists_test_run(db_session):
     repo = ScraperSourceRepository(db_session)
     source = await repo.create(
-        name="ACME", slug="acme-val", base_url="https://acme.example",
+        name="ACME",
+        slug="acme-val",
+        base_url="https://acme.example",
         destination_profile="competitor_price",
     )
     recipe_row = await repo.add_recipe(source.id, _RECIPE)
@@ -36,7 +38,9 @@ async def test_validate_records_and_persists_test_run(db_session):
 
     service = SourceValidationService(db_session)
     result = await service.validate(
-        source.id, recipe_row.id, "https://acme.example/s?q=valvula",
+        source.id,
+        recipe_row.id,
+        "https://acme.example/s?q=valvula",
         html_fetcher=fake_fetch,
     )
 
@@ -49,8 +53,12 @@ async def test_validate_records_and_persists_test_run(db_session):
     assert refreshed.validation_status == "failing"
 
     runs = (
-        await db_session.execute(
-            select(ScraperSourceTestRun).where(ScraperSourceTestRun.source_id == source.id)
+        (
+            await db_session.execute(
+                select(ScraperSourceTestRun).where(ScraperSourceTestRun.source_id == source.id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(runs) == 1

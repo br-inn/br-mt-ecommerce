@@ -70,9 +70,7 @@ async def _seed_admin(session: AsyncSession) -> tuple[UUID, str]:
         await session.execute(select(Role).where(Role.code == "pim_admin"))
     ).scalar_one_or_none()
     if role is None:
-        role = Role(
-            code="pim_admin", name="pim_admin", permissions_snapshot=perms_codes
-        )
+        role = Role(code="pim_admin", name="pim_admin", permissions_snapshot=perms_codes)
         session.add(role)
         await session.flush()
         for pid in perm_ids:
@@ -80,9 +78,7 @@ async def _seed_admin(session: AsyncSession) -> tuple[UUID, str]:
         await session.flush()
     uid = uuid4()
     email = f"admin-{uid.hex[:6]}@mt.ae"
-    user = User(
-        id=uid, email=email, full_name="A", locale="es", is_active=True, role_id=role.id
-    )
+    user = User(id=uid, email=email, full_name="A", locale="es", is_active=True, role_id=role.id)
     session.add(user)
     await session.flush()
     return uid, email
@@ -152,14 +148,10 @@ async def test_put_happy_path_returns_200_with_etag(
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
     sku = "MT-V-PUT-01"
-    r = await client.post(
-        "/api/v1/products", json=_create_payload(sku), headers=headers
-    )
+    r = await client.post("/api/v1/products", json=_create_payload(sku), headers=headers)
     assert r.status_code == 201, r.text
 
-    r = await client.put(
-        f"/api/v1/products/{sku}", json=_put_payload(), headers=headers
-    )
+    r = await client.put(f"/api/v1/products/{sku}", json=_put_payload(), headers=headers)
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["material"] == "ss316"
@@ -168,9 +160,7 @@ async def test_put_happy_path_returns_200_with_etag(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_put_immutable_sku_returns_422(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_put_immutable_sku_returns_422(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
@@ -185,15 +175,11 @@ async def test_put_immutable_sku_returns_422(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_put_unknown_sku_returns_404(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_put_unknown_sku_returns_404(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
-    r = await client.put(
-        "/api/v1/products/MT-DOES-NOT-EXIST", json=_put_payload(), headers=headers
-    )
+    r = await client.put("/api/v1/products/MT-DOES-NOT-EXIST", json=_put_payload(), headers=headers)
     assert r.status_code == 404
 
 
@@ -254,9 +240,7 @@ async def test_put_respects_manual_locked_fields(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_patch_data_quality_happy_path(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_patch_data_quality_happy_path(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 

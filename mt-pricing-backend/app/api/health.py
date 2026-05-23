@@ -78,9 +78,7 @@ async def verify_basic_auth_or_token(
 
     # Intento 2: basic-auth.
     if credentials is not None:
-        user_ok = secrets.compare_digest(
-            credentials.username, settings.HEALTH_BASIC_AUTH_USER
-        )
+        user_ok = secrets.compare_digest(credentials.username, settings.HEALTH_BASIC_AUTH_USER)
         pass_ok = secrets.compare_digest(
             credentials.password,
             settings.HEALTH_BASIC_AUTH_PASSWORD.get_secret_value(),
@@ -144,9 +142,7 @@ async def readiness() -> JSONResponse:
     }
     # Excluir checks "skipped" del cálculo de salud (downstream opcional sin URL).
     failed = [c for c in checks.values() if not c.get("ok") and not c.get("skipped")]
-    status_code = (
-        status.HTTP_200_OK if not failed else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
+    status_code = status.HTTP_200_OK if not failed else status.HTTP_503_SERVICE_UNAVAILABLE
     return JSONResponse(
         status_code=status_code,
         content={
@@ -186,9 +182,7 @@ async def deep_db() -> dict[str, Any]:
             "pool": {
                 "size": pool.size() if hasattr(pool, "size") else None,
                 "checked_in": pool.checkedin() if hasattr(pool, "checkedin") else None,
-                "checked_out": pool.checkedout()
-                if hasattr(pool, "checkedout")
-                else None,
+                "checked_out": pool.checkedout() if hasattr(pool, "checkedout") else None,
                 "overflow": pool.overflow() if hasattr(pool, "overflow") else None,
             },
         }
@@ -210,9 +204,7 @@ async def deep_redis() -> dict[str, Any]:
             info = await client.info(section="server")
         # `info` puede venir como bytes-keyed dict — normalizar.
         version = info.get("redis_version") if isinstance(info, dict) else None
-        uptime = (
-            info.get("uptime_in_seconds") if isinstance(info, dict) else None
-        )
+        uptime = info.get("uptime_in_seconds") if isinstance(info, dict) else None
         return {
             "ok": bool(pong),
             "redis_version": version,
@@ -254,7 +246,8 @@ def _list_bucket_one_file(bucket: str) -> list[Any]:
     """Wrapper síncrono — supabase-py no es async."""
     client = get_supabase_admin()
     return client.storage.from_(bucket).list(
-        path="", options={"limit": 1}  # type: ignore[arg-type]
+        path="",
+        options={"limit": 1},  # type: ignore[arg-type]
     )
 
 

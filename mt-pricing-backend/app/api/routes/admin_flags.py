@@ -124,9 +124,7 @@ async def update_flag(
                 "known_flags": sorted(KNOWN_FLAGS),
             },
         )
-    await flag_service.set_flag(
-        key, payload.enabled, updated_by=user.id
-    )
+    await flag_service.set_flag(key, payload.enabled, updated_by=user.id)
     # Reload para devolver audit columns.
     repo = flag_service.flag_repo
     row = await repo.get(key)  # type: ignore[attr-defined]

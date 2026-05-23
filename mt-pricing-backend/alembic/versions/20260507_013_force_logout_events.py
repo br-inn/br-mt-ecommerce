@@ -127,9 +127,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DELETE FROM job_definitions WHERE code = 'cleanup_force_logout_events';"
-    )
+    op.execute("DELETE FROM job_definitions WHERE code = 'cleanup_force_logout_events';")
     op.execute(
         """
         DO $$

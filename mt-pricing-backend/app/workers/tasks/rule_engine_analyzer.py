@@ -1,4 +1,5 @@
 """Task periódica que analiza performance de reglas y genera sugerencias IA."""
+
 from __future__ import annotations
 
 import asyncio

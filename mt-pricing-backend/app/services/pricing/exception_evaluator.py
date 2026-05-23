@@ -101,9 +101,7 @@ class ExceptionEvaluator:
             reasons.append(
                 {
                     "code": "below_min_margin",
-                    "message": (
-                        f"Margen {margin_pct_pct:.2f}% < mínimo configurado {min_m}%"
-                    ),
+                    "message": (f"Margen {margin_pct_pct:.2f}% < mínimo configurado {min_m}%"),
                 }
             )
             return "pending_review", reasons
@@ -125,9 +123,7 @@ class ExceptionEvaluator:
                 reasons.append(
                     {
                         "code": "margin_delta_exceeded",
-                        "message": (
-                            f"Delta margen {delta:.2f}% > umbral {margin_threshold}%"
-                        ),
+                        "message": (f"Delta margen {delta:.2f}% > umbral {margin_threshold}%"),
                         "prev_margin_pct": str(prev_margin),
                         "new_margin_pct": str(new_price.margin_pct),
                     }
@@ -158,9 +154,7 @@ class ExceptionEvaluator:
                 reasons.append(
                     {
                         "code": "fx_swing_exceeded",
-                        "message": (
-                            f"FX swing {fx_swing:.2f}% > umbral {fx_swing_threshold}%"
-                        ),
+                        "message": (f"FX swing {fx_swing:.2f}% > umbral {fx_swing_threshold}%"),
                     }
                 )
                 return "pending_review", reasons

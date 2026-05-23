@@ -128,9 +128,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("0"),
         ),
-        sa.UniqueConstraint(
-            "attribute_id", "code", name="uq_attribute_options_attr_code"
-        ),
+        sa.UniqueConstraint("attribute_id", "code", name="uq_attribute_options_attr_code"),
     )
     op.create_index(
         "ix_attribute_options_attribute",
@@ -176,14 +174,10 @@ def upgrade() -> None:
         ),
         sa.Column("default_value", sa.Text(), nullable=True),
         sa.Column("validation_rule", JSONB(), nullable=True),
-        sa.UniqueConstraint(
-            "family_id", "attribute_id", name="uq_family_attributes_family_attr"
-        ),
+        sa.UniqueConstraint("family_id", "attribute_id", name="uq_family_attributes_family_attr"),
     )
     op.create_index("ix_fa_family", "family_attributes", ["family_id"])
-    op.create_index(
-        "ix_fa_attribute", "family_attributes", ["attribute_id"]
-    )
+    op.create_index("ix_fa_attribute", "family_attributes", ["attribute_id"])
 
     # ------------------------------------------------------------------
     # 4. attribute_values — valores reales
@@ -239,12 +233,8 @@ def upgrade() -> None:
             name="ck_attribute_values_at_least_one_value",
         ),
     )
-    op.create_index(
-        "ix_av_owner", "attribute_values", ["owner_type", "owner_id"]
-    )
-    op.create_index(
-        "ix_av_attribute", "attribute_values", ["attribute_id"]
-    )
+    op.create_index("ix_av_owner", "attribute_values", ["owner_type", "owner_id"])
+    op.create_index("ix_av_attribute", "attribute_values", ["attribute_id"])
     # Partial index: queries de filtrado numérico por atributo (e.g. dn<=50)
     op.execute(
         "CREATE INDEX ix_av_attr_number "

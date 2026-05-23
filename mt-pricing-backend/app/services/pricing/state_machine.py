@@ -29,7 +29,7 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     "rejected": frozenset({"draft"}),
     "revised": frozenset({"pending_review", "rejected"}),
     "published": frozenset({"archived"}),
-    "archived": frozenset(),   # terminal
+    "archived": frozenset(),  # terminal
     "exported": frozenset({"archived"}),  # legacy alias de published
     "superseded": frozenset(),  # terminal
     "migrated": frozenset({"approved", "rejected"}),  # imported legacy data

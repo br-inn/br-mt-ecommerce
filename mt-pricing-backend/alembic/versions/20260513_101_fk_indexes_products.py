@@ -24,16 +24,16 @@ depends_on: str | Sequence[str] | None = None
 
 # (index_name, table, column)
 _INDEXES: list[tuple[str, str, str]] = [
-    ("idx_products_brand_id",         "products", "brand_id"),
-    ("idx_products_family_id",        "products", "family_id"),
-    ("idx_products_subfamily_id",     "products", "subfamily_id"),
-    ("idx_products_type_id",          "products", "type_id"),
-    ("idx_products_series_id",        "products", "series_id"),
-    ("idx_products_material_id",      "products", "material_id"),
-    ("idx_products_parent_sku",       "products", "parent_sku"),
+    ("idx_products_brand_id", "products", "brand_id"),
+    ("idx_products_family_id", "products", "family_id"),
+    ("idx_products_subfamily_id", "products", "subfamily_id"),
+    ("idx_products_type_id", "products", "type_id"),
+    ("idx_products_series_id", "products", "series_id"),
+    ("idx_products_material_id", "products", "material_id"),
+    ("idx_products_parent_sku", "products", "parent_sku"),
     ("idx_products_display_pair_sku", "products", "display_pair_sku"),
-    ("idx_products_created_by",       "products", "created_by"),
-    ("idx_products_updated_by",       "products", "updated_by"),
+    ("idx_products_created_by", "products", "created_by"),
+    ("idx_products_updated_by", "products", "updated_by"),
 ]
 
 

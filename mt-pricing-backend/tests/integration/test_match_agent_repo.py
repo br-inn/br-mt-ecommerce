@@ -105,9 +105,7 @@ async def test_count_decisions_empty(db_session: AsyncSession) -> None:
     assert await repo.count_shadow() == 0
 
 
-async def test_record_decision(
-    db_session: AsyncSession, match_candidate_id: uuid.UUID
-) -> None:
+async def test_record_decision(db_session: AsyncSession, match_candidate_id: uuid.UUID) -> None:
     repo = MatchAgentDecisionRepository(db_session)
     decision = await repo.record(
         candidate_id=match_candidate_id,
@@ -158,9 +156,7 @@ async def test_latest_for_candidate(
     assert latest.verdict == "auto_discard"
 
 
-async def test_set_human_outcome(
-    db_session: AsyncSession, match_candidate_id: uuid.UUID
-) -> None:
+async def test_set_human_outcome(db_session: AsyncSession, match_candidate_id: uuid.UUID) -> None:
     repo = MatchAgentDecisionRepository(db_session)
     await repo.record(
         candidate_id=match_candidate_id,

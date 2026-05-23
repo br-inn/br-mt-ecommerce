@@ -73,9 +73,7 @@ async def request_review(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     lang: Annotated[str, Path(pattern=r"^(es|ar)$")],
     user: Annotated[User, Depends(require_permissions("products:write"))],
-    service: Annotated[
-        TranslationWorkflowService, Depends(get_translation_workflow_service)
-    ],
+    service: Annotated[TranslationWorkflowService, Depends(get_translation_workflow_service)],
 ) -> TranslationWorkflowResponse:
     try:
         row = await service.request_review(sku, lang, user)
@@ -105,9 +103,7 @@ async def reject_translation(
     lang: Annotated[str, Path(pattern=r"^(es|ar)$")],
     payload: TranslationRejectRequest,
     user: Annotated[User, Depends(require_permissions("products:write"))],
-    service: Annotated[
-        TranslationWorkflowService, Depends(get_translation_workflow_service)
-    ],
+    service: Annotated[TranslationWorkflowService, Depends(get_translation_workflow_service)],
 ) -> TranslationWorkflowResponse:
     try:
         row = await service.reject(sku, lang, user, reason=payload.reason)
@@ -134,16 +130,12 @@ async def reject_translation(
 async def mark_stale(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     user: Annotated[User, Depends(require_permissions("products:write"))],
-    service: Annotated[
-        TranslationWorkflowService, Depends(get_translation_workflow_service)
-    ],
+    service: Annotated[TranslationWorkflowService, Depends(get_translation_workflow_service)],
     payload: TranslationMarkStaleRequest | None = None,
 ) -> TranslationMarkStaleResponse:
     reason = payload.reason if payload else "master_en_changed"
     try:
-        affected = await service.mark_stale_for_master_edit(
-            sku, user, reason=reason
-        )
+        affected = await service.mark_stale_for_master_edit(sku, user, reason=reason)
     except ProductDomainError as e:
         _raise_domain(e)
     return TranslationMarkStaleResponse(

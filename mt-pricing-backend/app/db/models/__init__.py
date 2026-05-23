@@ -15,7 +15,13 @@ from app.db.models.attributes import (
 )
 from app.db.models.audit import AuditEvent
 from app.db.models.compatibility import ProductCompatibility
-from app.db.models.comparator import BrandExtractor, CompetitorBrand, CompetitorListing, ManufacturerWhitelist, MatchDecision
+from app.db.models.comparator import (
+    BrandExtractor,
+    CompetitorBrand,
+    CompetitorListing,
+    ManufacturerWhitelist,
+    MatchDecision,
+)
 from app.db.models.dimensions import (
     ActuationCode,
     DimensionCell,

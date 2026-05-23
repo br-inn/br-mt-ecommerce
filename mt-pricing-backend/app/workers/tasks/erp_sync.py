@@ -164,7 +164,7 @@ async def _process_event(event_id: str, task_self: Any) -> dict[str, Any]:
 
             await session.commit()
 
-            countdown = 60 * (2 ** event.attempts)
+            countdown = 60 * (2**event.attempts)
             logger.warning(
                 "push_erp_event: attempt %d failed — retry in %ds id=%s error=%s",
                 event.attempts,

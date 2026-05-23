@@ -51,9 +51,7 @@ class _FakeCost:
         self.supplier_code = kw.get("supplier_code")
         self.currency_origin = kw.get("currency_origin", "EUR")
         self.fx_rate_id = kw.get("fx_rate_id")
-        self.effective_at = kw.get(
-            "effective_at", datetime(2026, 6, 12, tzinfo=timezone.utc)
-        )
+        self.effective_at = kw.get("effective_at", datetime(2026, 6, 12, tzinfo=timezone.utc))
         self.breakdown = kw.get("breakdown", {})
         self.scheme_landed_aed = kw.get("scheme_landed_aed")
         self.status = kw.get("status", "active")
@@ -61,12 +59,8 @@ class _FakeCost:
         self.fx_inferred = kw.get("fx_inferred", False)
         self.created_by = kw.get("created_by")
         self.updated_by = kw.get("updated_by")
-        self.created_at = kw.get(
-            "created_at", datetime(2026, 5, 7, tzinfo=timezone.utc)
-        )
-        self.updated_at = kw.get(
-            "updated_at", datetime(2026, 5, 7, tzinfo=timezone.utc)
-        )
+        self.created_at = kw.get("created_at", datetime(2026, 5, 7, tzinfo=timezone.utc))
+        self.updated_at = kw.get("updated_at", datetime(2026, 5, 7, tzinfo=timezone.utc))
 
 
 def _session_with_fx(rate: str | float | None) -> Any:
@@ -204,9 +198,7 @@ def test_compute_diff_handles_removed_keys() -> None:
 # ---------------------------------------------------------------------------
 def test_remap_fx_error_recognises_trigger_message() -> None:
     """The DB trigger raises with 'fx_rate_not_found_at_effective_at: ...'."""
-    fake_orig = Exception(
-        "fx_rate_not_found_at_effective_at: EUR -> AED at 2026-06-12 00:00:00+00"
-    )
+    fake_orig = Exception("fx_rate_not_found_at_effective_at: EUR -> AED at 2026-06-12 00:00:00+00")
     err = IntegrityError(statement="INSERT", params=None, orig=fake_orig)
     with pytest.raises(FXRateNotFoundAtEffectiveAt):
         CostService._maybe_remap_fx_error(err)

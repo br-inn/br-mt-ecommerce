@@ -105,9 +105,7 @@ def upgrade() -> None:
             nullable=True,
         ),
     )
-    op.create_index(
-        "idx_users_delegate", "users", ["delegate_user_id"], unique=False
-    )
+    op.create_index("idx_users_delegate", "users", ["delegate_user_id"], unique=False)
 
 
 def downgrade() -> None:

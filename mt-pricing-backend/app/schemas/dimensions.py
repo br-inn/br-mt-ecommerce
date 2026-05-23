@@ -32,9 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 _CODE_PATTERN = r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
 _STANDARD_CODE_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9 _./-]{0,63}$"
 
-ActuationType = Literal[
-    "free_shaft", "handle", "gearbox", "motorized", "pneumatic"
-]
+ActuationType = Literal["free_shaft", "handle", "gearbox", "motorized", "pneumatic"]
 
 
 # ===========================================================================
@@ -150,9 +148,7 @@ class DimensionCellBase(BaseModel):
         has_number = self.value_number is not None
         has_text = self.value_text is not None and self.value_text != ""
         if not (has_number or has_text):
-            raise ValueError(
-                "DimensionCell requires value_number or value_text to be set."
-            )
+            raise ValueError("DimensionCell requires value_number or value_text to be set.")
         return self
 
 
@@ -170,12 +166,8 @@ class DimensionCellPatch(BaseModel):
 
     @model_validator(mode="after")
     def _at_least_one(self) -> DimensionCellPatch:
-        if self.value_number is None and (
-            self.value_text is None or self.value_text == ""
-        ):
-            raise ValueError(
-                "DimensionCell patch requires value_number or value_text."
-            )
+        if self.value_number is None and (self.value_text is None or self.value_text == ""):
+            raise ValueError("DimensionCell patch requires value_number or value_text.")
         return self
 
 
@@ -255,9 +247,7 @@ class PressureTemperaturePointBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     series_variant_code: str | None = Field(default=None, max_length=64)
-    temperature_c: Decimal = Field(
-        description="Temperature in degrees Celsius."
-    )
+    temperature_c: Decimal = Field(description="Temperature in degrees Celsius.")
     pressure_max_bar: Decimal = Field(
         ge=Decimal("0"),
         description="Maximum allowed pressure in bar (non-negative).",

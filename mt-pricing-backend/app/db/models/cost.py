@@ -95,26 +95,14 @@ class Cost(UuidPkMixin, TimestampMixin, AuditMixin, Base):
     breakdown: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    scheme_landed_aed: Mapped[Decimal | None] = mapped_column(
-        Numeric(14, 4), nullable=True
-    )
-    effective_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'active'")
-    )
-    fx_inferred: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
-    version: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("1")
-    )
+    scheme_landed_aed: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
+    fx_inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('active','superseded')", name="ck_costs_status"
-        ),
+        CheckConstraint("status IN ('active','superseded')", name="ck_costs_status"),
         CheckConstraint("version >= 1", name="ck_costs_version_pos"),
         CheckConstraint(
             "scheme_landed_aed IS NULL OR scheme_landed_aed >= 0",

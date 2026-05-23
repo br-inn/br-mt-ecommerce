@@ -1,4 +1,5 @@
 """Router REST del módulo Scraper Source Builder (F1)."""
+
 from __future__ import annotations
 
 import ipaddress
@@ -110,9 +111,7 @@ async def list_sources(
     return [ScraperSourceRead.model_validate(s) for s in await repo.list_all()]
 
 
-@router.get(
-    "/{source_id}", response_model=ScraperSourceRead, operation_id="getScraperSource"
-)
+@router.get("/{source_id}", response_model=ScraperSourceRead, operation_id="getScraperSource")
 async def get_source(
     source_id: UUID,
     _user: Annotated[User, Depends(require_permissions("products:read"))],
@@ -168,9 +167,7 @@ async def validate_recipe(
             source_id, body.recipe_id, body.test_url, html_fetcher=curl_cffi_fetch
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
     return ValidateResponse(**result)
 

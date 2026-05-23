@@ -109,9 +109,7 @@ def _memo_number() -> str:
 
 async def _get_so_or_404(db: AsyncSession, so_id: UUID) -> SalesOrder:
     result = await db.execute(
-        select(SalesOrder)
-        .options(selectinload(SalesOrder.lines))
-        .where(SalesOrder.id == so_id)
+        select(SalesOrder).options(selectinload(SalesOrder.lines)).where(SalesOrder.id == so_id)
     )
     so = result.scalar_one_or_none()
     if so is None:
@@ -133,9 +131,7 @@ async def _get_delivery_or_404(db: AsyncSession, delivery_id: UUID) -> OutboundD
 
 async def _get_rma_or_404(db: AsyncSession, rma_id: UUID) -> RmaHeader:
     result = await db.execute(
-        select(RmaHeader)
-        .options(selectinload(RmaHeader.lines))
-        .where(RmaHeader.id == rma_id)
+        select(RmaHeader).options(selectinload(RmaHeader.lines)).where(RmaHeader.id == rma_id)
     )
     rma = result.scalar_one_or_none()
     if rma is None:
@@ -145,9 +141,7 @@ async def _get_rma_or_404(db: AsyncSession, rma_id: UUID) -> RmaHeader:
 
 async def _gi_movement_type_id(db: AsyncSession) -> UUID | None:
     """Obtiene el ID del StockMovementType para GI (Goods Issue)."""
-    result = await db.execute(
-        select(StockMovementType.id).where(StockMovementType.code == "GI")
-    )
+    result = await db.execute(select(StockMovementType.id).where(StockMovementType.code == "GI"))
     return result.scalar_one_or_none()
 
 
@@ -334,9 +328,7 @@ async def get_document_chain(
             .options(selectinload(OutboundDelivery.lines))
             .where(OutboundDelivery.so_id == so_id)
         ),
-        db.execute(
-            select(Invoice).where(Invoice.so_id == so_id)
-        ),
+        db.execute(select(Invoice).where(Invoice.so_id == so_id)),
     )
     deliveries = del_result.scalars().all()
     invoices = inv_result.scalars().all()
@@ -847,11 +839,7 @@ async def goods_issue(
 
     # 6. Update SO status
     # Check if all lines delivered
-    all_delivered = all(
-        l.status == "delivered"
-        for l in so.lines
-        if l.status != "cancelled"
-    )
+    all_delivered = all(l.status == "delivered" for l in so.lines if l.status != "cancelled")
     so.status = "delivered" if all_delivered else "partially_delivered"
 
     await db.commit()
@@ -908,9 +896,7 @@ async def create_rma(
 
     await db.commit()
     result = await db.execute(
-        select(RmaHeader)
-        .options(selectinload(RmaHeader.lines))
-        .where(RmaHeader.id == rma.id)
+        select(RmaHeader).options(selectinload(RmaHeader.lines)).where(RmaHeader.id == rma.id)
     )
     rma = result.scalar_one()
     return RmaOut.model_validate(rma)
@@ -929,7 +915,9 @@ async def approve_rma(
 ) -> RmaOut:
     rma = await _get_rma_or_404(db, rma_id)
     if rma.status != "requested":
-        raise HTTPException(status_code=400, detail=f"RMA not in 'requested' status: '{rma.status}'")
+        raise HTTPException(
+            status_code=400, detail=f"RMA not in 'requested' status: '{rma.status}'"
+        )
     rma.status = "approved"
     await db.commit()
     await db.refresh(rma)
@@ -1064,7 +1052,9 @@ async def get_kpis(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> O2CKpisOut:
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    first_of_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    first_of_month = datetime.now(timezone.utc).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
 
     # Run 9 independent count queries in parallel (1 round-trip to DB)
     (
@@ -1100,9 +1090,7 @@ async def get_kpis(
                 SalesOrder.total_amount.is_not(None),
             )
         ),
-        db.execute(
-            select(func.count(SalesOrder.id)).where(SalesOrder.status == "on_credit_hold")
-        ),
+        db.execute(select(func.count(SalesOrder.id)).where(SalesOrder.status == "on_credit_hold")),
         db.execute(
             select(func.count(RmaHeader.id)).where(
                 RmaHeader.status.in_(["requested", "approved", "goods_received"])

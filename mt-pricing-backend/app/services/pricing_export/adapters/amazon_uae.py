@@ -47,24 +47,28 @@ class AmazonUAEAdapter:
         for idx, row in enumerate(payload.rows):
             sku = row.get("sku", "")
             if not sku:
-                errors.append({
-                    "field": "sku",
-                    "row": idx,
-                    "code": "MISSING_SKU",
-                    "message": f"Fila {idx}: campo 'sku' ausente o vacío.",
-                })
+                errors.append(
+                    {
+                        "field": "sku",
+                        "row": idx,
+                        "code": "MISSING_SKU",
+                        "message": f"Fila {idx}: campo 'sku' ausente o vacío.",
+                    }
+                )
             price = row.get("price_aed", 0)
             try:
                 price_val = float(price)
             except (TypeError, ValueError):
                 price_val = 0.0
             if price_val <= 0:
-                errors.append({
-                    "field": "price_aed",
-                    "row": idx,
-                    "code": "INVALID_PRICE",
-                    "message": f"Fila {idx}: 'price_aed' debe ser > 0 (recibido: {price!r}).",
-                })
+                errors.append(
+                    {
+                        "field": "price_aed",
+                        "row": idx,
+                        "code": "INVALID_PRICE",
+                        "message": f"Fila {idx}: 'price_aed' debe ser > 0 (recibido: {price!r}).",
+                    }
+                )
         return errors
 
     # ------------------------------------------------------------------

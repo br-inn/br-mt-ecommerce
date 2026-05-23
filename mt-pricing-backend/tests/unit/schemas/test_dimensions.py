@@ -155,9 +155,7 @@ class TestDimensionRowCreate:
         m = DimensionRowCreate(
             size_label="DN50",
             dn=50,
-            cells=[
-                DimensionCellCreate(column_id=col_id, value_number=Decimal("100"))
-            ],
+            cells=[DimensionCellCreate(column_id=col_id, value_number=Decimal("100"))],
         )
         assert len(m.cells) == 1
         assert m.cells[0].column_id == col_id

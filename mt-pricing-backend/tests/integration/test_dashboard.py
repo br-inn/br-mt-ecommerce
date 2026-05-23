@@ -112,7 +112,13 @@ async def _cleanup_data(db_session: AsyncSession) -> AsyncIterator[None]:
     await db_session.execute(
         text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete;")
     )
+    await db_session.execute(
+        text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_trg;")
+    )
     await db_session.execute(text("DELETE FROM audit_events;"))
+    await db_session.execute(
+        text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable_trg;")
+    )
     await db_session.execute(text("DELETE FROM import_runs;"))
     await db_session.commit()
     yield
@@ -267,9 +273,7 @@ async def test_dashboard_with_seeded_data_returns_correct_counts(
     )
     await db_session.flush()
 
-    res = await client.get(
-        "/api/v1/dashboard/stats", headers=_auth_headers(uid, email)
-    )
+    res = await client.get("/api/v1/dashboard/stats", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
     body = res.json()
 
@@ -328,9 +332,7 @@ async def test_dashboard_translations_coverage_pct(
     )
     await db_session.flush()
 
-    res = await client.get(
-        "/api/v1/dashboard/stats", headers=_auth_headers(uid, email)
-    )
+    res = await client.get("/api/v1/dashboard/stats", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
     body = res.json()
 
@@ -368,9 +370,7 @@ async def test_dashboard_recent_events_limit_10(
     )
     await db_session.flush()
 
-    res = await client.get(
-        "/api/v1/dashboard/stats", headers=_auth_headers(uid, email)
-    )
+    res = await client.get("/api/v1/dashboard/stats", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
     body = res.json()
 

@@ -47,14 +47,10 @@ def _migrate(postgres_container: str) -> None:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-async def _purge_pair(
-    session: "AsyncSession", from_c: str, to_c: str
-) -> None:
+async def _purge_pair(session: "AsyncSession", from_c: str, to_c: str) -> None:
     """Borra todas las filas del par (limpia entre tests dentro de la mismatx)."""
     await session.execute(
-        text(
-            "DELETE FROM fx_rates WHERE from_currency = :f AND to_currency = :t"
-        ),
+        text("DELETE FROM fx_rates WHERE from_currency = :f AND to_currency = :t"),
         {"f": from_c, "t": to_c},
     )
 
@@ -162,9 +158,7 @@ async def test_retroactive_insert_blocked_without_flag(
 async def test_same_effective_from_blocked(db_session: "AsyncSession") -> None:
     await _purge_pair(db_session, "EUR", "AED")
     same_at = datetime(2026, 4, 1, tzinfo=timezone.utc)
-    await _insert_rate(
-        db_session, from_c="EUR", to_c="AED", rate=4.29, effective_from=same_at
-    )
+    await _insert_rate(db_session, from_c="EUR", to_c="AED", rate=4.29, effective_from=same_at)
     with pytest.raises((IntegrityError, InternalError, Exception)) as ei:
         await _insert_rate(
             db_session,

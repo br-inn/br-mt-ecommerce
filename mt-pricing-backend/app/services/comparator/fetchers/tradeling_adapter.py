@@ -6,6 +6,7 @@ listings de competidores en el canal B2B regional.
 
 US-F15-02-05.
 """
+
 from __future__ import annotations
 
 import logging
@@ -177,9 +178,7 @@ class TradelingFetcherFactory:
         settings = get_settings()
         api_key = settings.TRADELING_API_KEY.get_secret_value()
         if not api_key:
-            logger.warning(
-                "TRADELING_API_KEY not set — Tradeling fetcher disabled"
-            )
+            logger.warning("TRADELING_API_KEY not set — Tradeling fetcher disabled")
             return None
         return TradelingAdapter(
             api_key=api_key,
@@ -216,11 +215,7 @@ def _normalize(item: dict[str, Any]) -> TradelingListing:
 
     # images[].url
     images_raw = item.get("images", []) or []
-    image_urls = [
-        img["url"]
-        for img in images_raw
-        if isinstance(img, dict) and img.get("url")
-    ]
+    image_urls = [img["url"] for img in images_raw if isinstance(img, dict) and img.get("url")]
 
     return TradelingListing(
         external_id=str(item.get("id", "")),
@@ -262,9 +257,7 @@ async def _log_fetch_error(
                     )
                 )
     except Exception:  # noqa: BLE001
-        logger.warning(
-            "tradeling_adapter: no se pudo registrar error en competitor_fetch_errors"
-        )
+        logger.warning("tradeling_adapter: no se pudo registrar error en competitor_fetch_errors")
 
 
 __all__ = [

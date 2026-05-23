@@ -78,9 +78,7 @@ class Document(UuidPkMixin, Base):
             "type IN (" + ", ".join(f"'{t}'" for t in DOCUMENT_TYPES) + ")",
             name="ck_documents_type",
         ),
-        UniqueConstraint(
-            "code", "version", "language", name="uq_documents_code_version_language"
-        ),
+        UniqueConstraint("code", "version", "language", name="uq_documents_code_version_language"),
         Index("ix_doc_type", "type"),
         Index("ix_doc_asset", "asset_id"),
         Index("ix_doc_series", "series_id"),

@@ -31,9 +31,7 @@ _SERPAPI_BASE = "https://serpapi.com/search"
 class NoopRisAdapter(ReverseImageSearchPort):
     """Retorna hits vacíos sin llamadas externas — usado cuando flag OFF."""
 
-    async def search(
-        self, *, image_url: str, max_results: int = 10
-    ) -> ReverseImageSearchResult:
+    async def search(self, *, image_url: str, max_results: int = 10) -> ReverseImageSearchResult:
         return ReverseImageSearchResult(
             provider="noop",
             hits=(),
@@ -47,9 +45,7 @@ class TinEyeAdapter(ReverseImageSearchPort):
     def __init__(self, *, api_key: str) -> None:
         self._api_key = api_key
 
-    async def search(
-        self, *, image_url: str, max_results: int = 10
-    ) -> ReverseImageSearchResult:
+    async def search(self, *, image_url: str, max_results: int = 10) -> ReverseImageSearchResult:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(
@@ -66,10 +62,7 @@ class TinEyeAdapter(ReverseImageSearchPort):
             hits = tuple(
                 ReverseImageHit(
                     url=m.get("image_url", ""),
-                    domain=(
-                        m.get("domain")
-                        or urlparse(m.get("image_url", "")).netloc
-                    ),
+                    domain=(m.get("domain") or urlparse(m.get("image_url", "")).netloc),
                     similarity=float(m.get("score", 0.0)),
                 )
                 for m in matches
@@ -94,9 +87,7 @@ class GoogleLensSerpApiAdapter(ReverseImageSearchPort):
     def __init__(self, *, api_key: str) -> None:
         self._api_key = api_key
 
-    async def search(
-        self, *, image_url: str, max_results: int = 10
-    ) -> ReverseImageSearchResult:
+    async def search(self, *, image_url: str, max_results: int = 10) -> ReverseImageSearchResult:
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(
@@ -113,10 +104,7 @@ class GoogleLensSerpApiAdapter(ReverseImageSearchPort):
             hits = tuple(
                 ReverseImageHit(
                     url=m.get("link", ""),
-                    domain=(
-                        m.get("source", "")
-                        or urlparse(m.get("link", "")).netloc
-                    ),
+                    domain=(m.get("source", "") or urlparse(m.get("link", "")).netloc),
                     similarity=0.0,
                     thumbnail_url=m.get("thumbnail"),
                 )
@@ -128,9 +116,7 @@ class GoogleLensSerpApiAdapter(ReverseImageSearchPort):
                 searched_at=datetime.now(tz=timezone.utc),
             )
         except Exception as exc:
-            logger.warning(
-                "ris.google_lens.search failed image_url=%s: %s", image_url, exc
-            )
+            logger.warning("ris.google_lens.search failed image_url=%s: %s", image_url, exc)
             return ReverseImageSearchResult(
                 provider="google_lens_error",
                 hits=(),
@@ -152,9 +138,7 @@ class RateLimitedRisAdapter(ReverseImageSearchPort):
         self._redis = redis
         self._limit = limit
 
-    async def search(
-        self, *, image_url: str, max_results: int = 10
-    ) -> ReverseImageSearchResult:
+    async def search(self, *, image_url: str, max_results: int = 10) -> ReverseImageSearchResult:
         allowed = await check_and_increment(self._redis, limit=self._limit)
         if not allowed:
             return ReverseImageSearchResult(

@@ -150,6 +150,4 @@ def test_isotonic_improves_brier_on_mis_calibrated_dataset() -> None:
     calibrated = [cal.calibrate(s) for s in scores]
     cal_brier = brier_score(calibrated, labels)
 
-    assert cal_brier <= raw + 1e-9, (
-        f"Calibrated Brier ({cal_brier}) should be <= raw ({raw})"
-    )
+    assert cal_brier <= raw + 1e-9, f"Calibrated Brier ({cal_brier}) should be <= raw ({raw})"

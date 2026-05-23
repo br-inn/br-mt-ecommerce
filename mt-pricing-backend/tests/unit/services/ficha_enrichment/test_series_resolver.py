@@ -1,4 +1,5 @@
 """Unit tests for series_resolver — pure functions only (no DB)."""
+
 import pytest
 from app.services.ficha_enrichment.series_resolver import (
     extract_series_prefix,
@@ -73,6 +74,7 @@ def test_generate_candidate_skus_empty_dims():
 # extract_all_series_from_text
 # ---------------------------------------------------------------------------
 
+
 def test_extract_all_series_single_pair():
     text = "4097 / 40972 Pag. 3/9"
     result = extract_all_series_from_text(text)
@@ -80,11 +82,7 @@ def test_extract_all_series_single_pair():
 
 
 def test_extract_all_series_multi_pair():
-    text = (
-        "4295 / 42952 Pag. 1/9\n"
-        "4097 / 40972 Pag. 3/9\n"
-        "4098 / 40982 Pag. 5/9\n"
-    )
+    text = "4295 / 42952 Pag. 1/9\n4097 / 40972 Pag. 3/9\n4098 / 40982 Pag. 5/9\n"
     result = extract_all_series_from_text(text)
     assert ("4295", "42952") in result
     assert ("4097", "40972") in result
@@ -93,7 +91,7 @@ def test_extract_all_series_multi_pair():
 
 
 def test_extract_all_series_no_false_positive_page_numbers():
-    text = "Pag. 3/9\nDN 1/2\"\n"
+    text = 'Pag. 3/9\nDN 1/2"\n'
     result = extract_all_series_from_text(text)
     assert result == []
 

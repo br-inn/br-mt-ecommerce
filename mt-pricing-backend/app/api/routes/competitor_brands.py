@@ -1,4 +1,5 @@
 """Competitor Brands — gestión de marcas competidoras + trigger de scraping."""
+
 from __future__ import annotations
 
 import logging
@@ -361,6 +362,7 @@ async def bootstrap_scan(
     marketplace: str = "amazon_uae",
 ) -> dict:
     from app.workers.tasks.scraper import generate_brand_extractor_task
+
     task = generate_brand_extractor_task.apply_async(
         args=[str(brand_id), marketplace],
         queue="comparator",

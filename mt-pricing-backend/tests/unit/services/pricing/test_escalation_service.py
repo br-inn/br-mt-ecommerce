@@ -83,7 +83,9 @@ class _FakeAudit:
         user_agent=None,
     ):
         self.calls.append(
-            _AuditCall(entity_type=entity_type, entity_id=entity_id, action=action, after=after or {})
+            _AuditCall(
+                entity_type=entity_type, entity_id=entity_id, action=action, after=after or {}
+            )
         )
 
 

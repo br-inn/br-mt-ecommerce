@@ -104,6 +104,7 @@ def _sign_hash(last_hash: str, signing_key_b64: str) -> str:
 # Lógica de verificación (compartida con el endpoint GET /audit/verify)
 # ---------------------------------------------------------------------------
 
+
 def verify_chain_range(
     conn: Any,
     range_start: datetime,
@@ -169,6 +170,7 @@ def verify_chain_range(
 # ---------------------------------------------------------------------------
 # Celery task
 # ---------------------------------------------------------------------------
+
 
 @celery_app.task(
     name="audit.nightly_integrity_check",

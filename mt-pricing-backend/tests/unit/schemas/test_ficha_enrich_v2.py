@@ -1,4 +1,5 @@
 """Tests for extended ficha_enrich schemas."""
+
 from app.schemas.ficha_enrich import (
     ExtractedMaterial,
     ExtractedDimensionRow,
@@ -52,12 +53,8 @@ def test_ficha_extraction_result_has_certs_and_flow():
     result = FichaExtractionResult(
         scalars=ExtractedScalars(),
         specs=ExtractedSpecs(),
-        certificates=[
-            ExtractedCertificate(certification_code="WRAS", cert_number="240908012")
-        ],
-        flow_data=[
-            ExtractedFlowData(dn_label='1"', kv=18.5)
-        ],
+        certificates=[ExtractedCertificate(certification_code="WRAS", cert_number="240908012")],
+        flow_data=[ExtractedFlowData(dn_label='1"', kv=18.5)],
     )
     assert len(result.certificates) == 1
     assert result.certificates[0].certification_code == "WRAS"

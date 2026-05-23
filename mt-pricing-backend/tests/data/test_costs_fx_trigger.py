@@ -67,9 +67,7 @@ async def _ensure_test_sku(session: AsyncSession, sku: str = "TEST-COST-001") ->
     return sku
 
 
-async def _ensure_test_supplier(
-    session: AsyncSession, code: str = "TEST_SUP_FX"
-) -> str:
+async def _ensure_test_supplier(session: AsyncSession, code: str = "TEST_SUP_FX") -> str:
     await session.execute(
         text(
             """

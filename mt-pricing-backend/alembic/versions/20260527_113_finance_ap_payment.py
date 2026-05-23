@@ -25,9 +25,19 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "vendor_open_items",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("vendor_id", sa.Text(), nullable=False),
-        sa.Column("po_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("purchase_orders.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "po_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("purchase_orders.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("invoice_ref", sa.Text(), nullable=True),
         sa.Column("document_type", sa.Text(), server_default="vendor_invoice", nullable=False),
         sa.Column("amount", sa.Numeric(18, 4), nullable=False),
@@ -35,7 +45,12 @@ def upgrade() -> None:
         sa.Column("due_date", sa.Date(), nullable=True),
         sa.Column("status", sa.Text(), server_default="open", nullable=False),
         sa.Column("payment_block", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "document_type IN ('vendor_invoice','debit_memo','credit_note')",
             name="ck_vendor_open_items_doc_type",
@@ -54,16 +69,36 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "payment_runs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("run_number", sa.Text(), nullable=False),
         sa.Column("run_date", sa.Date(), nullable=False),
         sa.Column("payment_method", sa.Text(), nullable=True),
         sa.Column("total_amount", sa.Numeric(18, 4), nullable=True),
         sa.Column("currency", sa.CHAR(3), server_default="AED", nullable=False),
         sa.Column("status", sa.Text(), server_default="proposed", nullable=False),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("approved_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "approved_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "payment_method IN ('bank_transfer','check','wire') OR payment_method IS NULL",
             name="ck_payment_runs_method",
@@ -82,9 +117,24 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "payment_run_items",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
-        sa.Column("run_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("payment_runs.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("open_item_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("vendor_open_items.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "run_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("payment_runs.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "open_item_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("vendor_open_items.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("payment_amount", sa.Numeric(18, 4), nullable=True),
         sa.Column("discount_taken", sa.Numeric(18, 4), server_default="0", nullable=False),
     )

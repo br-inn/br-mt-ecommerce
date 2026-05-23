@@ -13,6 +13,7 @@ Cobertura objetivo (≥ 80 %):
   - POST /competitor-brands/run    → 202 con brand_ids, 202 sin brand_ids,
                                       202 nothing_to_do cuando lista vacía
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -77,6 +78,7 @@ class _FakeUser:
 # App builder
 # ---------------------------------------------------------------------------
 
+
 def _build_app(user: _FakeUser, repo_mock: Any) -> FastAPI:
     """Monta el router en una FastAPI ad-hoc con dependencias overrideadas."""
     app = FastAPI()
@@ -102,8 +104,10 @@ def _build_app(user: _FakeUser, repo_mock: Any) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call):  # noqa: ARG001
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -116,6 +120,7 @@ def _make_client(app: FastAPI) -> AsyncClient:
 # ---------------------------------------------------------------------------
 # Tests — POST /competitor-brands/
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_create_brand_returns_201() -> None:
@@ -198,6 +203,7 @@ async def test_create_brand_empty_name_returns_422() -> None:
 # Tests — GET /competitor-brands/
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_list_brands_returns_all() -> None:
     user = _FakeUser()
@@ -258,6 +264,7 @@ async def test_list_brands_empty_returns_empty_list() -> None:
 # Tests — PATCH /competitor-brands/{id}
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_patch_brand_partial_update() -> None:
     user = _FakeUser()
@@ -303,6 +310,7 @@ async def test_patch_brand_not_found_returns_404() -> None:
 # ---------------------------------------------------------------------------
 # Tests — POST /competitor-brands/run
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_run_with_brand_ids_queues_specific_brands() -> None:

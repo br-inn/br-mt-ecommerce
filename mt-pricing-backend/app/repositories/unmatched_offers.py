@@ -36,7 +36,9 @@ class UnmatchedOfferRepository(BaseRepository[UnmatchedOffer]):
     # Upsert
     # ------------------------------------------------------------------
 
-    async def upsert_from_raw(self, raw: CandidateRaw, *, source_sku: str | None = None) -> UnmatchedOffer:
+    async def upsert_from_raw(
+        self, raw: CandidateRaw, *, source_sku: str | None = None
+    ) -> UnmatchedOffer:
         """Inserta o toca la fila correspondiente a `raw`.
 
         El fingerprint se calcula como SHA-256 de ``"<source>|<external_id>"``.
@@ -44,9 +46,7 @@ class UnmatchedOfferRepository(BaseRepository[UnmatchedOffer]):
         via flush (el contenido no cambia — es la misma oferta).
         Si no existe, crea una fila nueva con `source_sku` si se provee.
         """
-        fingerprint = hashlib.sha256(
-            f"{raw.source}|{raw.external_id}".encode()
-        ).hexdigest()
+        fingerprint = hashlib.sha256(f"{raw.source}|{raw.external_id}".encode()).hexdigest()
 
         stmt = select(UnmatchedOffer).where(UnmatchedOffer.fingerprint == fingerprint)
         result = await self.session.execute(stmt)
@@ -182,6 +182,7 @@ class UnmatchedOfferRepository(BaseRepository[UnmatchedOffer]):
                 # (scraped_at, id) < (cursor_scraped_at, cursor_id) in DESC order means
                 # scraped_at < cursor_scraped_at OR (scraped_at == cursor_scraped_at AND id < cursor_id)
                 from sqlalchemy import and_, or_  # noqa: PLC0415
+
                 conditions.append(
                     or_(
                         UnmatchedOffer.scraped_at < cursor_row.scraped_at,
@@ -297,14 +298,14 @@ class UnmatchedOfferRepository(BaseRepository[UnmatchedOffer]):
 # ---------------------------------------------------------------------------
 
 
-def _generate_embedding(
-    title: str, brand: str | None, specs: dict[str, Any]
-) -> list[float] | None:
+def _generate_embedding(title: str, brand: str | None, specs: dict[str, Any]) -> list[float] | None:
     """Genera embedding local con sentence-transformers. Falla silenciosamente."""
     try:
         from app.services.matching.embeddings import embed_offer  # lazy — no en startup
 
         return embed_offer(title, brand, specs)
     except Exception:
-        logger.warning("unmatched_offer.embedding_failed", extra={"title": title[:80]}, exc_info=True)
+        logger.warning(
+            "unmatched_offer.embedding_failed", extra={"title": title[:80]}, exc_info=True
+        )
         return None

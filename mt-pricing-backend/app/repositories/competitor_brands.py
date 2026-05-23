@@ -1,4 +1,5 @@
 """CRUD repository para CompetitorBrand + upsert de competitor_listings."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -42,9 +43,7 @@ class CompetitorBrandRepository:
         return await self._session.get(CompetitorBrand, brand_id)
 
     async def get_by_name(self, name: str) -> CompetitorBrand | None:
-        stmt = select(CompetitorBrand).where(
-            func.lower(CompetitorBrand.name) == name.lower()
-        )
+        stmt = select(CompetitorBrand).where(func.lower(CompetitorBrand.name) == name.lower())
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 

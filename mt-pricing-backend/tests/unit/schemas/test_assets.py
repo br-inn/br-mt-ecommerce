@@ -38,9 +38,16 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 def test_asset_kind_values() -> None:
     expected = {
-        "photo", "banner", "datasheet_pdf", "exploded_3d",
-        "section_drawing", "dimension_drawing", "certificate_pdf",
-        "video_link", "external_url", "mirror_url",
+        "photo",
+        "banner",
+        "datasheet_pdf",
+        "exploded_3d",
+        "section_drawing",
+        "dimension_drawing",
+        "certificate_pdf",
+        "video_link",
+        "external_url",
+        "mirror_url",
     }
     assert {k.value for k in AssetKind} == expected
 

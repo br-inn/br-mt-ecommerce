@@ -104,9 +104,7 @@ def upgrade() -> None:
 
         for group_code, attr_code, order_index, is_required in rows:
             attr_row = bind.execute(
-                text(
-                    "SELECT id FROM attribute_definitions WHERE code = :code"
-                ),
+                text("SELECT id FROM attribute_definitions WHERE code = :code"),
                 {"code": attr_code},
             ).fetchone()
             if attr_row is None:

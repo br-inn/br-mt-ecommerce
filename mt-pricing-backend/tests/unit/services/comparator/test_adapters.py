@@ -26,6 +26,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _all_adapters() -> list[tuple[str, ComparatorPort]]:
     return [
         ("rag_only", RagOnlyComparatorAdapter()),
@@ -37,6 +38,7 @@ def _all_adapters() -> list[tuple[str, ComparatorPort]]:
 # ---------------------------------------------------------------------------
 # AC-1 — todos los adapters implementan ComparatorPort
 # ---------------------------------------------------------------------------
+
 
 def test_rag_only_implements_comparator_port() -> None:
     assert isinstance(RagOnlyComparatorAdapter(), ComparatorPort)
@@ -53,6 +55,7 @@ def test_full_graph_rag_implements_comparator_port() -> None:
 # ---------------------------------------------------------------------------
 # RagOnlyComparatorAdapter — activo Fase 1
 # ---------------------------------------------------------------------------
+
 
 async def test_rag_only_find_candidates_returns_empty() -> None:
     adapter = RagOnlyComparatorAdapter()
@@ -95,6 +98,7 @@ async def test_rag_only_get_stats_returns_zeros() -> None:
 # HybridComparatorAdapter — stub Fase 2 (NotImplementedError)
 # ---------------------------------------------------------------------------
 
+
 async def test_hybrid_find_candidates_raises() -> None:
     adapter = HybridComparatorAdapter()
     with pytest.raises(NotImplementedError):
@@ -104,17 +108,13 @@ async def test_hybrid_find_candidates_raises() -> None:
 async def test_hybrid_confirm_match_raises() -> None:
     adapter = HybridComparatorAdapter()
     with pytest.raises(NotImplementedError):
-        await adapter.confirm_match(
-            listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4()
-        )
+        await adapter.confirm_match(listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4())
 
 
 async def test_hybrid_reject_match_raises() -> None:
     adapter = HybridComparatorAdapter()
     with pytest.raises(NotImplementedError):
-        await adapter.reject_match(
-            listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4()
-        )
+        await adapter.reject_match(listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4())
 
 
 async def test_hybrid_get_stats_raises() -> None:
@@ -127,6 +127,7 @@ async def test_hybrid_get_stats_raises() -> None:
 # FullGraphRagComparatorAdapter — stub Fase 2+ (NotImplementedError)
 # ---------------------------------------------------------------------------
 
+
 async def test_full_graph_rag_find_candidates_raises() -> None:
     adapter = FullGraphRagComparatorAdapter()
     with pytest.raises(NotImplementedError):
@@ -136,17 +137,13 @@ async def test_full_graph_rag_find_candidates_raises() -> None:
 async def test_full_graph_rag_confirm_match_raises() -> None:
     adapter = FullGraphRagComparatorAdapter()
     with pytest.raises(NotImplementedError):
-        await adapter.confirm_match(
-            listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4()
-        )
+        await adapter.confirm_match(listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4())
 
 
 async def test_full_graph_rag_reject_match_raises() -> None:
     adapter = FullGraphRagComparatorAdapter()
     with pytest.raises(NotImplementedError):
-        await adapter.reject_match(
-            listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4()
-        )
+        await adapter.reject_match(listing_id=uuid4(), product_sku="SKU-001", decided_by=uuid4())
 
 
 async def test_full_graph_rag_get_stats_raises() -> None:

@@ -37,13 +37,9 @@ def upgrade() -> None:
 
     # Pre-stats
     pre_null = bind.execute(
-        text(
-            "SELECT COUNT(*) FROM products "
-            "WHERE family_id IS NULL AND family IS NOT NULL"
-        )
+        text("SELECT COUNT(*) FROM products WHERE family_id IS NULL AND family IS NOT NULL")
     ).scalar()
-    print(f"[mig 068] pre-backfill: products with family_id NULL "
-          f"and family NOT NULL = {pre_null}")
+    print(f"[mig 068] pre-backfill: products with family_id NULL and family NOT NULL = {pre_null}")
 
     # Backfill
     result = bind.execute(
@@ -64,13 +60,12 @@ def upgrade() -> None:
     # No-match count (filas que aún quedaron con family_id NULL pese a
     # tener family TEXT poblado).
     no_match = bind.execute(
-        text(
-            "SELECT COUNT(*) FROM products "
-            "WHERE family_id IS NULL AND family IS NOT NULL"
-        )
+        text("SELECT COUNT(*) FROM products WHERE family_id IS NULL AND family IS NOT NULL")
     ).scalar()
-    print(f"[mig 068] post-backfill: products with family TEXT but no "
-          f"matching families.code (still family_id NULL) = {no_match}")
+    print(
+        f"[mig 068] post-backfill: products with family TEXT but no "
+        f"matching families.code (still family_id NULL) = {no_match}"
+    )
 
     if no_match and no_match > 0:
         # Log distinct codes con gap.

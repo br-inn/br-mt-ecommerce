@@ -93,12 +93,8 @@ async def _run_recalibrate() -> dict[str, Any]:
             agg_stmt = select(
                 subq.c.category_id,
                 subq.c.currency,
-                func.percentile_cont(0.10)
-                .within_group(subq.c.price.asc())
-                .label("p10"),
-                func.percentile_cont(0.90)
-                .within_group(subq.c.price.asc())
-                .label("p90"),
+                func.percentile_cont(0.10).within_group(subq.c.price.asc()).label("p10"),
+                func.percentile_cont(0.90).within_group(subq.c.price.asc()).label("p90"),
             ).group_by(subq.c.category_id, subq.c.currency)
 
             rows = (await session.execute(agg_stmt)).all()
@@ -169,9 +165,7 @@ def recalibrate_price_ranges(self) -> dict[str, Any]:  # type: ignore[no-untyped
     try:
         result = asyncio.run(_run_recalibrate())
     except Exception as exc:  # noqa: BLE001
-        logger.exception(
-            "price_sanity.recalibrate.failed", extra={"error": str(exc)}
-        )
+        logger.exception("price_sanity.recalibrate.failed", extra={"error": str(exc)})
         raise
     return result
 

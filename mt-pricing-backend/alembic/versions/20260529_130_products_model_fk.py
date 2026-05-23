@@ -1,4 +1,5 @@
 """Add products.model_id FK → product_models"""
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -13,7 +14,12 @@ depends_on = None
 def upgrade() -> None:
     op.add_column("products", sa.Column("model_id", sa.UUID(), nullable=True))
     op.create_foreign_key(
-        "fk_products_model_id", "products", "product_models", ["model_id"], ["id"], ondelete="SET NULL"
+        "fk_products_model_id",
+        "products",
+        "product_models",
+        ["model_id"],
+        ["id"],
+        ondelete="SET NULL",
     )
     op.create_index("idx_products_model_id", "products", ["model_id"])
 

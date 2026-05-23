@@ -65,9 +65,7 @@ class _FakeCost:
         self.fx_rate_id: UUID | None = kw.get("fx_rate_id")
         self.effective_at: datetime = kw.get("effective_at", now)
         self.breakdown: dict[str, Any] = kw.get("breakdown", {"fob_eur": "12.40"})
-        self.scheme_landed_aed: Decimal | None = kw.get(
-            "scheme_landed_aed", Decimal("60.9180")
-        )
+        self.scheme_landed_aed: Decimal | None = kw.get("scheme_landed_aed", Decimal("60.9180"))
         self.status: str = kw.get("status", "active")
         self.fx_inferred: bool = kw.get("fx_inferred", False)
         self.version: int = kw.get("version", 1)
@@ -123,6 +121,7 @@ def _build_app(svc: _FakeCostService, user: _FakeUser) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call):  # noqa: ARG001
                     return user
 

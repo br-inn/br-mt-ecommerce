@@ -46,9 +46,7 @@ class _FakeRepo:
 
         return _Row(key, self.values[key])
 
-    async def upsert(
-        self, *, key: str, value: bool, updated_by: UUID | None = None
-    ) -> Any:
+    async def upsert(self, *, key: str, value: bool, updated_by: UUID | None = None) -> Any:
         self.values[key] = value
         self.upsert_calls.append((key, value, updated_by))
         return await self.get(key)

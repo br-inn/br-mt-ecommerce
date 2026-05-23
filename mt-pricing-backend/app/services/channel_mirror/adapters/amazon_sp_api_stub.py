@@ -50,9 +50,7 @@ class AmazonSPApiStub:
 
     channel_code: str = "amazon_uae"
 
-    async def pull_listing(
-        self, sku: str, external_id: str | None = None
-    ) -> LiveListing:
+    async def pull_listing(self, sku: str, external_id: str | None = None) -> LiveListing:
         canned = _CANNED_LISTINGS.get(sku)
         if canned is None:
             # SKU desconocido → listing inexistente.

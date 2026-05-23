@@ -181,6 +181,7 @@ class PurchaseOrderRepository:
             clauses.append(PurchaseOrder.po_number.ilike(f"%{q}%"))
         if clauses:
             from sqlalchemy import and_
+
             stmt = stmt.where(and_(*clauses))
 
         cursor_uuid = _decode_id_cursor(cursor)
@@ -311,9 +312,7 @@ class PurchaseOrderRepository:
     # ------------------------------------------------------------------
     # Lines
     # ------------------------------------------------------------------
-    async def add_line(
-        self, po_id: UUID, line_data: Any
-    ) -> PurchaseOrderLine:
+    async def add_line(self, po_id: UUID, line_data: Any) -> PurchaseOrderLine:
         po = await self.get(po_id)
         if po is None:
             raise HTTPException(
@@ -348,9 +347,7 @@ class PurchaseOrderRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_line(
-        self, po_id: UUID, line_id: UUID, update_data: Any
-    ) -> PurchaseOrderLine:
+    async def update_line(self, po_id: UUID, line_id: UUID, update_data: Any) -> PurchaseOrderLine:
         po = await self.get(po_id)
         if po is None:
             raise HTTPException(

@@ -89,9 +89,7 @@ async def bulk_publish(
     user: Annotated[User, Depends(require_permissions("prices:export"))],
     service: Annotated[BulkPublishService, Depends(get_bulk_publish_service)],
 ) -> BulkPublishResponse:
-    result = await service.publish(
-        data.price_ids, user, rollback_on_error=data.rollback_on_error
-    )
+    result = await service.publish(data.price_ids, user, rollback_on_error=data.rollback_on_error)
     payload = result.to_dict()
     return BulkPublishResponse.model_validate(payload)
 

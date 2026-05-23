@@ -20,9 +20,7 @@ import pytest
 pytest.importorskip("neo4j")
 
 # Ruta al script relativa al root del proyecto (un nivel sobre mt-pricing-backend)
-_SCRIPT = str(
-    Path(__file__).parents[5] / "scripts" / "seed_kg_materials.py"
-)
+_SCRIPT = str(Path(__file__).parents[5] / "scripts" / "seed_kg_materials.py")
 
 
 @pytest.mark.neo4j_real

@@ -1,4 +1,5 @@
 """Endpoint webhook para CDC events (Supabase Realtime → Celery → Neo4j)."""
+
 from __future__ import annotations
 
 import logging
@@ -23,10 +24,7 @@ def _verify_internal_secret(x_internal_secret: str | None = Header(default=None)
     expected = settings.INTERNAL_CDC_SECRET
     if not expected:
         if x_internal_secret is None:
-            logger.warning(
-                "cdc.internal_secret.not_configured "
-                "— endpoint abierto (dev mode)"
-            )
+            logger.warning("cdc.internal_secret.not_configured — endpoint abierto (dev mode)")
         return
     if x_internal_secret != expected:
         raise HTTPException(

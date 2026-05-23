@@ -76,9 +76,7 @@ class _FakeRepo:
 
         return _Row(key, self.values[key])
 
-    async def upsert(
-        self, *, key: str, value: bool, updated_by: UUID | None = None
-    ) -> Any:
+    async def upsert(self, *, key: str, value: bool, updated_by: UUID | None = None) -> Any:
         self.values[key] = value
         self.upsert_calls.append((key, value, updated_by))
         return await self.get(key)
@@ -139,17 +137,10 @@ async def test_set_flag_invalidates_cache_and_persists() -> None:
 
     svc = FlagService(flag_repo=repo, redis=redis)
     user_id = uuid4()
-    out = await svc.set_flag(
-        FLAG_LIVE_NETWORK_AMAZON_UAE, True, updated_by=user_id
-    )
+    out = await svc.set_flag(FLAG_LIVE_NETWORK_AMAZON_UAE, True, updated_by=user_id)
     assert out is True
-    assert repo.upsert_calls == [
-        (FLAG_LIVE_NETWORK_AMAZON_UAE, True, user_id)
-    ]
-    assert (
-        f"{CACHE_NS}:{FLAG_LIVE_NETWORK_AMAZON_UAE}"
-        in redis.delete_calls
-    )
+    assert repo.upsert_calls == [(FLAG_LIVE_NETWORK_AMAZON_UAE, True, user_id)]
+    assert f"{CACHE_NS}:{FLAG_LIVE_NETWORK_AMAZON_UAE}" in redis.delete_calls
 
 
 async def test_set_flag_rejects_unknown_key() -> None:

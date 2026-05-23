@@ -112,9 +112,10 @@ class DatabaseScheduler(Scheduler):
         with self._engine.begin() as conn:
             # Lock pessimista por fila (FOR UPDATE SKIP LOCKED) — si un día
             # corremos múltiples beats, solo uno gana el dispatch.
-            rows = conn.execute(
-                text(
-                    """
+            rows = (
+                conn.execute(
+                    text(
+                        """
                     SELECT id, code, task_name, queue, args, kwargs,
                            schedule_type, cron_expression, interval_seconds,
                            timezone
@@ -125,8 +126,11 @@ class DatabaseScheduler(Scheduler):
                     ORDER BY next_run_at ASC
                     FOR UPDATE SKIP LOCKED
                     """
-                ).bindparams(now=now)
-            ).mappings().all()
+                    ).bindparams(now=now)
+                )
+                .mappings()
+                .all()
+            )
 
             for job in rows:
                 next_run = self._compute_next_run(
@@ -182,9 +186,9 @@ class DatabaseScheduler(Scheduler):
 
                     # 4. Update JobRun con celery_task_id.
                     conn.execute(
-                        text(
-                            "UPDATE job_runs SET celery_task_id = :tid WHERE id = :id"
-                        ).bindparams(tid=str(run_id), id=run_id)
+                        text("UPDATE job_runs SET celery_task_id = :tid WHERE id = :id").bindparams(
+                            tid=str(run_id), id=run_id
+                        )
                     )
 
                     dispatched += 1
@@ -199,9 +203,7 @@ class DatabaseScheduler(Scheduler):
                         },
                     )
                 except Exception as exc:  # noqa: BLE001
-                    logger.exception(
-                        "DatabaseScheduler.dispatch_failed code=%s", job["code"]
-                    )
+                    logger.exception("DatabaseScheduler.dispatch_failed code=%s", job["code"])
                     conn.execute(
                         text(
                             """
@@ -249,9 +251,7 @@ class DatabaseScheduler(Scheduler):
                     next_dt = next_dt.astimezone(timezone.utc)
                 return next_dt
             except Exception:  # noqa: BLE001
-                logger.exception(
-                    "DatabaseScheduler.cron_parse_failed expr=%s", cron_expression
-                )
+                logger.exception("DatabaseScheduler.cron_parse_failed expr=%s", cron_expression)
                 return None
         if schedule_type == "interval" and interval_seconds:
             return reference + timedelta(seconds=interval_seconds)

@@ -56,9 +56,7 @@ class DimensionsByDnData(BaseModel):
             for r in self.rows:
                 unknown = set(r.measures) - allowed
                 if unknown:
-                    raise ValueError(
-                        f"row dn={r.dn!r} has unknown measure(s): {sorted(unknown)}"
-                    )
+                    raise ValueError(f"row dn={r.dn!r} has unknown measure(s): {sorted(unknown)}")
         return self
 
 

@@ -196,9 +196,7 @@ async def test_clear_pair_symmetric() -> None:
 async def test_clear_pair_idempotent_no_pair() -> None:
     prod = SimpleNamespace(sku="4295", display_pair_sku=None)
     session = AsyncMock()
-    session.execute = AsyncMock(
-        side_effect=[_scalar_one_or_none(prod)]
-    )
+    session.execute = AsyncMock(side_effect=[_scalar_one_or_none(prod)])
     session.commit = AsyncMock()
     svc = DisplayPairService(session)
     await svc.clear_pair("4295")

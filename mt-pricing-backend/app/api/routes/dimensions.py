@@ -148,9 +148,7 @@ async def get_product_dimensions(
         composite = await service.get_table_for_product(sku)
     except DimensionDomainError as e:
         _raise_domain(e)
-    columns = [
-        DimensionColumnResponse.model_validate(c) for c in composite["columns"]
-    ]
+    columns = [DimensionColumnResponse.model_validate(c) for c in composite["columns"]]
     rows: list[DimensionRowWithCells] = []
     for r in composite["rows"]:
         rows.append(
@@ -192,10 +190,7 @@ async def get_product_pt_curve(
     return PressureTemperatureCurveResponse(
         product_sku=composite["product_sku"],
         series_variant_code=composite["series_variant_code"],
-        points=[
-            PressureTemperaturePointResponse.model_validate(p)
-            for p in composite["points"]
-        ],
+        points=[PressureTemperaturePointResponse.model_validate(p) for p in composite["points"]],
     )
 
 
@@ -301,9 +296,7 @@ async def admin_patch_dimension_column(
     service: DimensionService = Depends(get_dimension_service),
 ) -> DimensionColumnResponse:
     try:
-        row = await service.patch_column(
-            column_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_column(column_id, data.model_dump(exclude_unset=True))
     except DimensionDomainError as e:
         _raise_domain(e)
     return DimensionColumnResponse.model_validate(row)
@@ -478,9 +471,7 @@ async def admin_patch_pt_point(
     service: PressureTemperatureService = Depends(get_pt_service),
 ) -> PressureTemperaturePointResponse:
     try:
-        row = await service.patch_point(
-            point_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_point(point_id, data.model_dump(exclude_unset=True))
     except DimensionDomainError as e:
         _raise_domain(e)
     return PressureTemperaturePointResponse.model_validate(row)

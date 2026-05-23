@@ -19,13 +19,15 @@ class TestSpikeExitsWithMissingDataset:
     def test_spike_exits_with_missing_dataset(self, tmp_path: Path):
         """Path inexistente sin --synthetic → exit 1 con mensaje claro."""
         non_existent = tmp_path / "does_not_exist.jsonl"
-        exit_code = main([
-            "--dataset", str(non_existent),
-            "--output-dir", str(tmp_path / "rnd"),
-        ])
-        assert exit_code == 1, (
-            f"Se esperaba exit code 1 para dataset inexistente, got {exit_code}"
+        exit_code = main(
+            [
+                "--dataset",
+                str(non_existent),
+                "--output-dir",
+                str(tmp_path / "rnd"),
+            ]
         )
+        assert exit_code == 1, f"Se esperaba exit code 1 para dataset inexistente, got {exit_code}"
 
     def test_spike_exits_with_insufficient_dataset(self, tmp_path: Path):
         """Dataset con < 500 pares → exit 1."""
@@ -34,17 +36,24 @@ class TestSpikeExitsWithMissingDataset:
         with open(dataset, "w", encoding="utf-8") as f:
             for i in range(10):
                 f.write(
-                    json.dumps({
-                        "sku": f"SKU{i}",
-                        "query": f"query {i}",
-                        "candidates": [f"cand {j}" for j in range(5)],
-                        "relevant_index": 0,
-                    }) + "\n"
+                    json.dumps(
+                        {
+                            "sku": f"SKU{i}",
+                            "query": f"query {i}",
+                            "candidates": [f"cand {j}" for j in range(5)],
+                            "relevant_index": 0,
+                        }
+                    )
+                    + "\n"
                 )
-        exit_code = main([
-            "--dataset", str(dataset),
-            "--output-dir", str(tmp_path / "rnd"),
-        ])
+        exit_code = main(
+            [
+                "--dataset",
+                str(dataset),
+                "--output-dir",
+                str(tmp_path / "rnd"),
+            ]
+        )
         assert exit_code == 1
 
 
@@ -52,11 +61,15 @@ class TestSpikeGeneratesOutputFileWithSynthetic:
     def test_spike_generates_output_file_with_synthetic(self, tmp_path: Path):
         """--synthetic → crea docs/rnd/spike-cross-encoder-results-{date}.json."""
         output_dir = tmp_path / "rnd"
-        exit_code = main([
-            "--synthetic",
-            "--candidates", "3",
-            "--output-dir", str(output_dir),
-        ])
+        exit_code = main(
+            [
+                "--synthetic",
+                "--candidates",
+                "3",
+                "--output-dir",
+                str(output_dir),
+            ]
+        )
         # El script debe completar (exit 0)
         assert exit_code == 0, f"Se esperaba exit code 0, got {exit_code}"
 
@@ -78,11 +91,15 @@ class TestSpikeGeneratesOutputFileWithSynthetic:
         from scripts.poc.spike_cross_encoder import MAX_SKUS_SAMPLE
 
         output_dir = tmp_path / "rnd"
-        main([
-            "--synthetic",
-            "--candidates", "3",
-            "--output-dir", str(output_dir),
-        ])
+        main(
+            [
+                "--synthetic",
+                "--candidates",
+                "3",
+                "--output-dir",
+                str(output_dir),
+            ]
+        )
         output_files = list(output_dir.glob("spike-cross-encoder-results-*.json"))
         data = json.loads(output_files[0].read_text(encoding="utf-8"))
         assert data["sample_size"] == MAX_SKUS_SAMPLE, (

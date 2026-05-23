@@ -69,7 +69,9 @@ class SalesOrder(UuidPkMixin, Base):
     )
     requested_delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     payment_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
-    currency: Mapped[str | None] = mapped_column(CHAR(3), nullable=True, server_default=text("'AED'"))
+    currency: Mapped[str | None] = mapped_column(
+        CHAR(3), nullable=True, server_default=text("'AED'")
+    )
     subtotal: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     total_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
@@ -243,7 +245,9 @@ class StockReservation(UuidPkMixin, Base):
     )
 
     # Relationships
-    so_line: Mapped["SalesOrderLine"] = relationship("SalesOrderLine", back_populates="reservations")
+    so_line: Mapped["SalesOrderLine"] = relationship(
+        "SalesOrderLine", back_populates="reservations"
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -269,7 +273,9 @@ class CustomerCreditLimit(UuidPkMixin, Base):
     customer_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     credit_limit: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default=text("'AED'"))
-    credit_horizon_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("30"))
+    credit_horizon_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("30")
+    )
     is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     block_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
@@ -598,6 +604,4 @@ class ReturnDelivery(UuidPkMixin, Base):
 
     rma: Mapped["RmaHeader"] = relationship("RmaHeader", back_populates="return_deliveries")
 
-    __table_args__ = (
-        Index("idx_return_delivery_rma", "rma_id"),
-    )
+    __table_args__ = (Index("idx_return_delivery_rma", "rma_id"),)

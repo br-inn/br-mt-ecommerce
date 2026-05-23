@@ -207,9 +207,7 @@ def _compute_kg_metrics(graph) -> dict:  # noqa: ANN001
     with driver.session(database=database) as s:
         node_count = s.run("MATCH (n) RETURN count(n) AS cnt").single()["cnt"]
         edge_count = s.run("MATCH ()-[r]->() RETURN count(r) AS cnt").single()["cnt"]
-        orphan_nodes = (
-            s.run("MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt").single()["cnt"]
-        )
+        orphan_nodes = s.run("MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt").single()["cnt"]
 
     return {
         "node_count": node_count,

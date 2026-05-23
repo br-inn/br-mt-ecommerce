@@ -116,9 +116,7 @@ class AuditRepository(BaseRepository[AuditEvent]):
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def list_by_actor(
-        self, actor_id: UUID, *, limit: int = 100
-    ) -> Sequence[AuditEvent]:
+    async def list_by_actor(self, actor_id: UUID, *, limit: int = 100) -> Sequence[AuditEvent]:
         stmt = (
             select(AuditEvent)
             .where(AuditEvent.actor_id == actor_id)
@@ -140,9 +138,7 @@ class AuditRepository(BaseRepository[AuditEvent]):
         Cursor es la tupla `(event_at, id)` del último item; el siguiente page
         empieza con eventos estrictamente anteriores (orden DESC por event_at, id).
         """
-        stmt = select(AuditEvent, User).join(
-            User, User.id == AuditEvent.actor_id, isouter=True
-        )
+        stmt = select(AuditEvent, User).join(User, User.id == AuditEvent.actor_id, isouter=True)
 
         conditions = []
         if filters.entity_type is not None:
@@ -180,9 +176,7 @@ class AuditRepository(BaseRepository[AuditEvent]):
         ).limit(limit + 1)
 
         result = await self.session.execute(stmt)
-        rows: list[tuple[AuditEvent, User | None]] = [
-            (row[0], row[1]) for row in result.all()
-        ]
+        rows: list[tuple[AuditEvent, User | None]] = [(row[0], row[1]) for row in result.all()]
         next_cursor: tuple[datetime, int] | None = None
         if len(rows) > limit:
             last = rows[limit - 1][0]

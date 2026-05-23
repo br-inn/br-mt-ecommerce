@@ -31,6 +31,7 @@ import pytest
 
 # ---- Helpers -----------------------------------------------------------------
 
+
 def _make_event(
     *,
     status: str = "pending",
@@ -93,6 +94,7 @@ def _make_settings(adapter: str = "noop", secret: str = "") -> MagicMock:
 
 
 # ---- Tests -------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @pytest.mark.unit

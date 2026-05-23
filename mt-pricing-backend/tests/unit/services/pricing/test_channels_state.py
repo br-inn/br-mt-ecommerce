@@ -15,11 +15,7 @@ def test_channel_state_check_constraint() -> None:
     """El CHECK constraint ck_channels_state debe estar en Channel.__table_args__."""
     from app.db.models.channels import Channel
 
-    check_names = [
-        arg.name
-        for arg in Channel.__table_args__
-        if isinstance(arg, CheckConstraint)
-    ]
+    check_names = [arg.name for arg in Channel.__table_args__ if isinstance(arg, CheckConstraint)]
     assert "ck_channels_state" in check_names, (
         "Channel.__table_args__ debe contener CheckConstraint(name='ck_channels_state')"
     )
@@ -33,9 +29,7 @@ def test_channel_states_constant() -> None:
         f"Se esperaban 6 estados, se encontraron {len(CHANNEL_STATES)}: {CHANNEL_STATES}"
     )
     expected = {"inactive", "pre_launch", "pilot", "live", "paused", "deprecated"}
-    assert set(CHANNEL_STATES) == expected, (
-        f"Estados inesperados: {set(CHANNEL_STATES) - expected}"
-    )
+    assert set(CHANNEL_STATES) == expected, f"Estados inesperados: {set(CHANNEL_STATES) - expected}"
 
 
 def test_channel_state_history_importable() -> None:
@@ -49,9 +43,5 @@ def test_channel_code_index_present() -> None:
     """Channel debe tener índice idx_channels_code en __table_args__."""
     from app.db.models.channels import Channel
 
-    index_names = [
-        arg.name
-        for arg in Channel.__table_args__
-        if isinstance(arg, Index)
-    ]
+    index_names = [arg.name for arg in Channel.__table_args__ if isinstance(arg, Index)]
     assert "idx_channels_code" in index_names

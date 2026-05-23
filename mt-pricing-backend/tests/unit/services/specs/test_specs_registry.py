@@ -19,6 +19,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_registry(tmp_path: Path, schemas: dict[str, dict]) -> SpecsRegistry:
     """Write *schemas* as JSON files into *tmp_path* and return a fresh registry."""
     for key, schema in schemas.items():
@@ -29,6 +30,7 @@ def _make_registry(tmp_path: Path, schemas: dict[str, dict]) -> SpecsRegistry:
 # ---------------------------------------------------------------------------
 # Tests — loader
 # ---------------------------------------------------------------------------
+
 
 def test_registry_loads_bundled_schemas() -> None:
     """The shipped schemas dir must contain _default, valve_ball, and filter."""
@@ -73,37 +75,50 @@ def test_list_keys_is_sorted(tmp_path: Path) -> None:
 # Tests — fallback chain
 # ---------------------------------------------------------------------------
 
+
 def test_fallback_family_subfamily_exact_match(tmp_path: Path) -> None:
-    reg = _make_registry(tmp_path, {
-        "valve_ball": {"type": "object", "title": "BallValve"},
-        "valve": {"type": "object", "title": "GenericValve"},
-        "_default": {"type": "object", "title": "Default"},
-    })
+    reg = _make_registry(
+        tmp_path,
+        {
+            "valve_ball": {"type": "object", "title": "BallValve"},
+            "valve": {"type": "object", "title": "GenericValve"},
+            "_default": {"type": "object", "title": "Default"},
+        },
+    )
     schema = reg.get_schema("valve", "ball")
     assert schema["title"] == "BallValve"
 
 
 def test_fallback_family_level_when_no_subfamily_schema(tmp_path: Path) -> None:
-    reg = _make_registry(tmp_path, {
-        "valve": {"type": "object", "title": "GenericValve"},
-        "_default": {"type": "object", "title": "Default"},
-    })
+    reg = _make_registry(
+        tmp_path,
+        {
+            "valve": {"type": "object", "title": "GenericValve"},
+            "_default": {"type": "object", "title": "Default"},
+        },
+    )
     schema = reg.get_schema("valve", "gate")
     assert schema["title"] == "GenericValve"
 
 
 def test_fallback_default_when_no_family_schema(tmp_path: Path) -> None:
-    reg = _make_registry(tmp_path, {
-        "_default": {"type": "object", "title": "Default"},
-    })
+    reg = _make_registry(
+        tmp_path,
+        {
+            "_default": {"type": "object", "title": "Default"},
+        },
+    )
     schema = reg.get_schema("unknown_family", "unknown_sub")
     assert schema["title"] == "Default"
 
 
 def test_fallback_default_when_no_subfamily_given(tmp_path: Path) -> None:
-    reg = _make_registry(tmp_path, {
-        "_default": {"type": "object", "title": "Default"},
-    })
+    reg = _make_registry(
+        tmp_path,
+        {
+            "_default": {"type": "object", "title": "Default"},
+        },
+    )
     schema = reg.get_schema("filter")
     assert schema["title"] == "Default"
 

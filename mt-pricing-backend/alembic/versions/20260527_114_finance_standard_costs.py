@@ -26,21 +26,43 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "standard_costs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
-        sa.Column("product_sku", sa.Text(), sa.ForeignKey("products.sku", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "product_sku",
+            sa.Text(),
+            sa.ForeignKey("products.sku", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("fiscal_year", sa.Integer(), nullable=False),
         sa.Column("standard_cost", sa.Numeric(18, 4), nullable=False),
         sa.Column("currency", sa.CHAR(3), server_default="AED", nullable=False),
         sa.Column("cost_type", sa.Text(), server_default="standard", nullable=False),
         sa.Column("valid_from", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False),
         sa.Column("valid_to", sa.Date(), nullable=True),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "cost_type IN ('standard','planned','actual')",
             name="ck_standard_costs_cost_type",
         ),
-        sa.UniqueConstraint("product_sku", "fiscal_year", "cost_type", name="uq_standard_costs_sku_fy_type"),
+        sa.UniqueConstraint(
+            "product_sku", "fiscal_year", "cost_type", name="uq_standard_costs_sku_fy_type"
+        ),
     )
     op.create_index("ix_standard_costs_sku", "standard_costs", ["product_sku"])
     op.create_index("ix_standard_costs_fy", "standard_costs", ["fiscal_year"])
@@ -50,18 +72,41 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "price_variances",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
-        sa.Column("po_line_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("purchase_order_lines.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("product_sku", sa.Text(), sa.ForeignKey("products.sku", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "po_line_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("purchase_order_lines.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "product_sku",
+            sa.Text(),
+            sa.ForeignKey("products.sku", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("standard_cost", sa.Numeric(18, 4), nullable=False),
         sa.Column("actual_cost", sa.Numeric(18, 4), nullable=False),
         # GENERATED ALWAYS AS stored column
-        sa.Column("variance_amount", sa.Numeric(18, 4),
-                  sa.Computed("actual_cost - standard_cost", persisted=True)),
+        sa.Column(
+            "variance_amount",
+            sa.Numeric(18, 4),
+            sa.Computed("actual_cost - standard_cost", persisted=True),
+        ),
         sa.Column("variance_pct", sa.Numeric(7, 4), nullable=True),
         sa.Column("period", sa.Integer(), nullable=True),
         sa.Column("fiscal_year", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.create_index("ix_price_variances_sku", "price_variances", ["product_sku"])
     op.create_index("ix_price_variances_period", "price_variances", ["fiscal_year", "period"])

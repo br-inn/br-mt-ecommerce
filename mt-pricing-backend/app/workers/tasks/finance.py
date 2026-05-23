@@ -58,9 +58,7 @@ def refresh_pl_mv(self: object) -> dict:
         from sqlalchemy import text
 
         async with get_sessionmaker()() as session:
-            await session.execute(
-                text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_pl_summary")
-            )
+            await session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_pl_summary"))
             await session.commit()
             log.info("mv_pl_summary refreshed OK")
             return {
@@ -104,18 +102,20 @@ def run_fx_revaluation(
         async with get_sessionmaker()() as session:
             # Obtener cuentas en moneda extranjera
             foreign_accounts = (
-                await session.execute(
-                    select(GlAccount).where(
-                        GlAccount.currency != "AED",
-                        GlAccount.is_blocked.is_(False),
+                (
+                    await session.execute(
+                        select(GlAccount).where(
+                            GlAccount.currency != "AED",
+                            GlAccount.is_blocked.is_(False),
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             fx_acct = (
-                await session.execute(
-                    select(GlAccount).where(GlAccount.account_code == "7100")
-                )
+                await session.execute(select(GlAccount).where(GlAccount.account_code == "7100"))
             ).scalar_one_or_none()
 
             if not fx_acct:
@@ -127,8 +127,9 @@ def run_fx_revaluation(
 
             for acct in foreign_accounts:
                 bal_row = (
-                    await session.execute(
-                        text("""
+                    (
+                        await session.execute(
+                            text("""
                             SELECT
                                 COALESCE(SUM(debit_amount - credit_amount), 0) AS balance_local,
                                 currency_code,
@@ -139,13 +140,16 @@ def run_fx_revaluation(
                               AND posting_period <= :period
                             GROUP BY currency_code
                         """),
-                        {
-                            "acct_id": str(acct.id),
-                            "fy": fiscal_year,
-                            "period": period,
-                        },
+                            {
+                                "acct_id": str(acct.id),
+                                "fy": fiscal_year,
+                                "period": period,
+                            },
+                        )
                     )
-                ).mappings().one_or_none()
+                    .mappings()
+                    .one_or_none()
+                )
 
                 if not bal_row or not bal_row["balance_local"]:
                     continue
@@ -280,9 +284,7 @@ def calc_price_variance(
 
             standard_cost = std_result.standard_cost
             variance_pct = (
-                ((actual_cost - standard_cost) / standard_cost * 100).quantize(
-                    Decimal("0.0001")
-                )
+                ((actual_cost - standard_cost) / standard_cost * 100).quantize(Decimal("0.0001"))
                 if standard_cost
                 else None
             )
@@ -356,15 +358,19 @@ def period_close_reminder(self: object) -> dict:
         async with get_sessionmaker()() as session:
             today = date.today()
             open_periods = (
-                await session.execute(
-                    select(PostingPeriod)
-                    .where(
-                        PostingPeriod.status == "open",
-                        PostingPeriod.date_to < today,
+                (
+                    await session.execute(
+                        select(PostingPeriod)
+                        .where(
+                            PostingPeriod.status == "open",
+                            PostingPeriod.date_to < today,
+                        )
+                        .order_by(PostingPeriod.fiscal_year, PostingPeriod.period_num)
                     )
-                    .order_by(PostingPeriod.fiscal_year, PostingPeriod.period_num)
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             if not open_periods:
                 return {"status": "ok", "pending_periods": 0}
@@ -377,8 +383,7 @@ def period_close_reminder(self: object) -> dict:
                 "status": "ok",
                 "pending_periods": len(open_periods),
                 "periods": [
-                    {"fiscal_year": p.fiscal_year, "period_num": p.period_num}
-                    for p in open_periods
+                    {"fiscal_year": p.fiscal_year, "period_num": p.period_num} for p in open_periods
                 ],
             }
 
@@ -390,6 +395,7 @@ def period_close_reminder(self: object) -> dict:
 # TODO: CREATE MATERIALIZED VIEW mv_copa_summary migration required before
 #       this task is activated. Register in job_definitions with daily schedule.
 # ===========================================================================
+
 
 @celery_app.task(
     name="mt.finance.refresh_copa_mv",
@@ -410,9 +416,7 @@ def refresh_copa_mv(self: object) -> dict:
         from sqlalchemy import text
 
         async with get_sessionmaker()() as session:
-            await session.execute(
-                text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_copa_summary")
-            )
+            await session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_copa_summary"))
             await session.commit()
             log.info("mv_copa_summary refreshed OK")
             return {
@@ -427,6 +431,7 @@ def refresh_copa_mv(self: object) -> dict:
 # Bug 3 fix — Daily balance reconciliation (US-ERP-06-01 spec requirement)
 # TODO: Register in job_definitions with a daily schedule (e.g. 02:00 UTC).
 # ===========================================================================
+
 
 @celery_app.task(
     name="mt.finance.run_balance_reconciliation",
@@ -458,13 +463,17 @@ def run_balance_reconciliation(self: object) -> dict:
         async with get_sessionmaker()() as session:
             # Fetch all reconciling GL accounts
             reconciling_accounts = (
-                await session.execute(
-                    select(GlAccount).where(
-                        GlAccount.is_reconciling.is_(True),
-                        GlAccount.is_blocked.is_(False),
+                (
+                    await session.execute(
+                        select(GlAccount).where(
+                            GlAccount.is_reconciling.is_(True),
+                            GlAccount.is_blocked.is_(False),
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             if not reconciling_accounts:
                 log.info("run_balance_reconciliation: no reconciling accounts found")
@@ -506,9 +515,9 @@ def run_balance_reconciliation(self: object) -> dict:
                 customer_oi_row = (
                     await session.execute(
                         select(
-                            func.coalesce(
-                                func.sum(CustomerOpenItem.amount), Decimal("0")
-                            ).label("open_balance")
+                            func.coalesce(func.sum(CustomerOpenItem.amount), Decimal("0")).label(
+                                "open_balance"
+                            )
                         ).where(
                             CustomerOpenItem.status.notin_(["paid"]),
                         )
@@ -519,9 +528,7 @@ def run_balance_reconciliation(self: object) -> dict:
                 open_items_total = (vendor_oi_balance + customer_oi_balance).quantize(
                     Decimal("0.0001"), rounding=ROUND_HALF_UP
                 )
-                gl_balance_q = gl_balance.quantize(
-                    Decimal("0.0001"), rounding=ROUND_HALF_UP
-                )
+                gl_balance_q = gl_balance.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
                 diff = abs(gl_balance_q - open_items_total)
 
                 if diff > Decimal("0"):
@@ -546,8 +553,7 @@ def run_balance_reconciliation(self: object) -> dict:
 
             if mismatches:
                 log.error(
-                    "run_balance_reconciliation: %d mismatch(es) found — "
-                    "manual review required",
+                    "run_balance_reconciliation: %d mismatch(es) found — manual review required",
                     len(mismatches),
                 )
             else:

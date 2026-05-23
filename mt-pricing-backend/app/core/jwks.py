@@ -40,7 +40,9 @@ __all__ = ["JWKSCache", "decode_with_jwks", "get_jwks_cache"]
 class JWKSCache:
     """Cache TTL in-memory de un JWKS — refresh on miss + on expiry."""
 
-    def __init__(self, *, jwks_url: str, ttl_seconds: int = 3600, http_timeout: float = 5.0) -> None:
+    def __init__(
+        self, *, jwks_url: str, ttl_seconds: int = 3600, http_timeout: float = 5.0
+    ) -> None:
         self._jwks_url = jwks_url
         self._ttl = ttl_seconds
         self._timeout = http_timeout
@@ -92,7 +94,10 @@ def get_jwks_cache() -> JWKSCache:
     """Singleton — instanciado lazy para que tests puedan parchear `settings`."""
     global _cache
     if _cache is None:
-        url = settings.SUPABASE_JWKS_URL or f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        url = (
+            settings.SUPABASE_JWKS_URL
+            or f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        )
         _cache = JWKSCache(jwks_url=url, ttl_seconds=settings.SUPABASE_JWKS_CACHE_TTL_SECONDS)
     return _cache
 

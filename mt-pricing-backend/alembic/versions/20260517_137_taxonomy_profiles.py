@@ -4,6 +4,7 @@ Revision ID: 20260517_137
 Revises: 20260602_136
 Create Date: 2026-05-17
 """
+
 from __future__ import annotations
 
 import uuid
@@ -153,9 +154,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("family", name="uq_taxonomy_profiles_family"),
-        sa.CheckConstraint(
-            "family != ''", name="ck_taxonomy_profiles_family_nonempty"
-        ),
+        sa.CheckConstraint("family != ''", name="ck_taxonomy_profiles_family_nonempty"),
     )
 
     now = datetime.now(timezone.utc)

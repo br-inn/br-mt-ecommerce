@@ -71,9 +71,7 @@ class JobRunRepository(BaseRepository[JobRun]):
     pk_field = "id"
     soft_delete_field = None
 
-    async def list_for_job(
-        self, job_id: UUID, *, limit: int = 50
-    ) -> Sequence[JobRun]:
+    async def list_for_job(self, job_id: UUID, *, limit: int = 50) -> Sequence[JobRun]:
         stmt = (
             select(JobRun)
             .where(JobRun.job_id == job_id)

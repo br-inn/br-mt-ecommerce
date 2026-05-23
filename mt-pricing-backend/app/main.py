@@ -40,6 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # adapter_registry pueda leer flags síncronamente sin tocar Redis/DB.
     try:
         from app.core.redis import get_redis
+
         redis_client = get_redis()
         async_session = get_sessionmaker()
         async with async_session() as session:
@@ -50,17 +51,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             warmup_local_cache(snapshot)
     except Exception:
         import logging
+
         logging.getLogger(__name__).warning(
             "feature_flags.bootstrap_failed — usando defaults (todo False)"
         )
 
     # Warm up cross-encoder reranker if enabled
     import logging as _logging
+
     _lifespan_logger = _logging.getLogger(__name__)
     from app.core.config import settings as _settings
+
     if _settings.ENABLE_CROSS_ENCODER_RERANKER:
         try:
             from app.services.matching.cross_encoder_reranker import CrossEncoderReranker
+
             CrossEncoderReranker()  # triggers model load
             _lifespan_logger.info("Cross-encoder reranker warmed up")
         except Exception as _e:
@@ -91,7 +96,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-RateLimit-Remaining", "Content-Disposition", "X-Rows-Exported", "X-Rows-Skipped"],
+    expose_headers=[
+        "X-Request-ID",
+        "X-RateLimit-Remaining",
+        "Content-Disposition",
+        "X-Rows-Exported",
+        "X-Rows-Skipped",
+    ],
 )
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(CacheControlMiddleware)

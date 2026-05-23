@@ -34,6 +34,7 @@ def _session_with_scalar(value: object | None) -> AsyncMock:
 
 # ---- validate_parent_link ----------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_parent_link_none_is_noop() -> None:
     resolver = ParentResolver(AsyncMock())
@@ -73,6 +74,7 @@ async def test_parent_link_valid_parent_passes() -> None:
 
 
 # ---- resolve_assets ----------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_resolve_assets_uses_own_when_present() -> None:
@@ -128,6 +130,7 @@ async def test_resolve_assets_no_parent_returns_empty() -> None:
 
 # ---- resolve_translations ----------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_resolve_translations_inherits_from_parent_when_empty() -> None:
     session = AsyncMock()
@@ -140,9 +143,7 @@ async def test_resolve_translations_inherits_from_parent_when_empty() -> None:
     parent_tr_result = MagicMock()
     parent_tr_result.scalars.return_value.all.return_value = parent_translations
 
-    session.execute = AsyncMock(
-        side_effect=[own_result, parent_lookup_result, parent_tr_result]
-    )
+    session.execute = AsyncMock(side_effect=[own_result, parent_lookup_result, parent_tr_result])
 
     resolver = ParentResolver(session)
     translations, inherited = await resolver.resolve_translations("MTV-100-DN15")
@@ -151,6 +152,7 @@ async def test_resolve_translations_inherits_from_parent_when_empty() -> None:
 
 
 # ---- resolve_specs -----------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_resolve_specs_merges_parent_under_own() -> None:
@@ -196,6 +198,7 @@ async def test_resolve_specs_unknown_sku_returns_empty() -> None:
 
 
 # ---- recompute_parent_flags --------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_recompute_flags_marks_self_variant_when_parent_set() -> None:

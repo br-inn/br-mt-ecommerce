@@ -262,7 +262,6 @@ ROW_DEFAULTS: dict[str, Any] = {
     "brand": "MT",
     "family": "unclassified",
     "data_quality": "partial",
-    "active": True,
     "manual_locked_fields": [],
     "weight_unit": "kg",
 }

@@ -87,9 +87,7 @@ class _InMemoryTranslationRepo:
     def __init__(self) -> None:
         self.rows: list[_FakeTranslation] = []
 
-    async def get_one(
-        self, sku: str, lang: str
-    ) -> _FakeTranslation | None:
+    async def get_one(self, sku: str, lang: str) -> _FakeTranslation | None:
         for r in self.rows:
             if r.sku == sku and r.lang == lang:
                 return r
@@ -131,6 +129,7 @@ def _make_service(
     product_skus = product_skus or ["MTBR4001050"]
     rows = rows or []
     fake_session = MagicMock()
+
     # `flush` debe ser un coroutine — patch:
     async def _flush() -> None:
         return None
@@ -138,9 +137,7 @@ def _make_service(
     fake_session.flush = _flush
 
     svc = TranslationWorkflowService(fake_session)
-    products_repo = _InMemoryProductRepo(
-        {sku: _FakeProduct(sku) for sku in product_skus}
-    )
+    products_repo = _InMemoryProductRepo({sku: _FakeProduct(sku) for sku in product_skus})
     translations_repo = _InMemoryTranslationRepo()
     translations_repo.rows = list(rows)
     audit = _RecordedAudit()
@@ -200,16 +197,11 @@ async def test_request_review_draft_to_pending_review() -> None:
     assert out.translated_by == actor.id
     assert out.translated_at is not None
     # Audit emitido.
-    assert any(
-        e["action"] == "product.translation.review_requested"
-        for e in audit.events
-    )
+    assert any(e["action"] == "product.translation.review_requested" for e in audit.events)
 
 
 async def test_request_review_from_pending_legacy() -> None:
-    row = _FakeTranslation(
-        "MTBR4001050", "es", status=STATE_PENDING_LEGACY
-    )
+    row = _FakeTranslation("MTBR4001050", "es", status=STATE_PENDING_LEGACY)
     svc, _, _ = _make_service(rows=[row])
     out = await svc.request_review("MTBR4001050", "es", _FakeUser())
     assert out.status == STATE_PENDING_REVIEW
@@ -261,9 +253,7 @@ async def test_approve_pending_review_to_approved() -> None:
     assert out.status == STATE_APPROVED
     assert out.reviewed_by == approver.id
     assert out.reviewed_at is not None
-    assert any(
-        e["action"] == "product.translation.approved" for e in audit.events
-    )
+    assert any(e["action"] == "product.translation.approved" for e in audit.events)
 
 
 async def test_approve_four_eyes_violation_when_same_user() -> None:
@@ -293,27 +283,19 @@ async def test_approve_from_draft_is_invalid() -> None:
 # reject
 # ---------------------------------------------------------------------------
 async def test_reject_pending_review_to_draft_with_reason() -> None:
-    row = _FakeTranslation(
-        "MTBR4001050", "es", status=STATE_PENDING_REVIEW
-    )
+    row = _FakeTranslation("MTBR4001050", "es", status=STATE_PENDING_REVIEW)
     svc, _, audit = _make_service(rows=[row])
     actor = _FakeUser()
-    out = await svc.reject(
-        "MTBR4001050", "es", actor, reason="terminología incorrecta"
-    )
+    out = await svc.reject("MTBR4001050", "es", actor, reason="terminología incorrecta")
     assert out.status == STATE_DRAFT
     assert out.rejection_reason == "terminología incorrecta"
     assert out.reviewed_by == actor.id
-    rec = next(
-        e for e in audit.events if e["action"] == "product.translation.rejected"
-    )
+    rec = next(e for e in audit.events if e["action"] == "product.translation.rejected")
     assert rec["reason"] == "terminología incorrecta"
 
 
 async def test_reject_missing_reason_raises_422() -> None:
-    row = _FakeTranslation(
-        "MTBR4001050", "es", status=STATE_PENDING_REVIEW
-    )
+    row = _FakeTranslation("MTBR4001050", "es", status=STATE_PENDING_REVIEW)
     svc, _, _ = _make_service(rows=[row])
     with pytest.raises(TranslationRejectMissingReason) as exc:
         await svc.reject("MTBR4001050", "es", _FakeUser(), reason="   ")
@@ -324,9 +306,7 @@ async def test_reject_from_approved_is_invalid() -> None:
     row = _FakeTranslation("MTBR4001050", "es", status=STATE_APPROVED)
     svc, _, _ = _make_service(rows=[row])
     with pytest.raises(InvalidTranslationStateTransition):
-        await svc.reject(
-            "MTBR4001050", "es", _FakeUser(), reason="cualquier motivo"
-        )
+        await svc.reject("MTBR4001050", "es", _FakeUser(), reason="cualquier motivo")
 
 
 # ---------------------------------------------------------------------------
@@ -339,23 +319,16 @@ async def test_mark_stale_only_affects_approved_non_en() -> None:
         _FakeTranslation("MTBR4001050", "en", status=STATE_APPROVED),
     ]
     svc, _, audit = _make_service(rows=rows)
-    affected = await svc.mark_stale_for_master_edit(
-        "MTBR4001050", _FakeUser()
-    )
+    affected = await svc.mark_stale_for_master_edit("MTBR4001050", _FakeUser())
     affected_langs = sorted(r.lang for r in affected)
     assert affected_langs == ["ar", "es"]
     assert all(r.status == STATE_STALE for r in affected)
-    assert all(
-        r.staleness_reason == STALENESS_REASON_MASTER_EN for r in affected
-    )
+    assert all(r.staleness_reason == STALENESS_REASON_MASTER_EN for r in affected)
     # EN no se toca.
     en_row = next(r for r in rows if r.lang == "en")
     assert en_row.status == STATE_APPROVED
     # Audit por cada idioma afectado.
-    stale_actions = [
-        e for e in audit.events
-        if e["action"] == "product.translation.marked_stale"
-    ]
+    stale_actions = [e for e in audit.events if e["action"] == "product.translation.marked_stale"]
     assert len(stale_actions) == 2
 
 
@@ -365,14 +338,10 @@ async def test_mark_stale_idempotent_when_already_stale_or_draft() -> None:
         _FakeTranslation("MTBR4001050", "ar", status=STATE_STALE),
     ]
     svc, _, audit = _make_service(rows=rows)
-    affected = await svc.mark_stale_for_master_edit(
-        "MTBR4001050", _FakeUser()
-    )
+    affected = await svc.mark_stale_for_master_edit("MTBR4001050", _FakeUser())
     assert affected == []
     # No emite audit si nada cambió.
-    assert all(
-        e["action"] != "product.translation.marked_stale" for e in audit.events
-    )
+    assert all(e["action"] != "product.translation.marked_stale" for e in audit.events)
 
 
 async def test_mark_stale_unknown_sku_raises_product_not_found() -> None:

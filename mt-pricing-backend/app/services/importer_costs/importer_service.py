@@ -169,9 +169,7 @@ class ImporterCostsService:
         if state is None:
             raise ImportRunNotFoundError(run_id)
         if state.status != "preview_ready":
-            raise ImportRunInvalidStateError(
-                run_id, current=state.status, expected="preview_ready"
-            )
+            raise ImportRunInvalidStateError(run_id, current=state.status, expected="preview_ready")
         lock = _RUN_LOCKS.setdefault(run_id, asyncio.Lock())
         async with lock:
             state.status = "applying"
@@ -267,9 +265,5 @@ class ImporterCostsService:
             "summary": state.summary,
             "orphans": state.orphans.to_dict(),
             "samples": buckets,
-            "apply": (
-                state.apply_result.to_dict()
-                if state.apply_result is not None
-                else None
-            ),
+            "apply": (state.apply_result.to_dict() if state.apply_result is not None else None),
         }

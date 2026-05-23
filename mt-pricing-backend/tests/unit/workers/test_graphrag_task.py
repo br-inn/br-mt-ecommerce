@@ -26,9 +26,8 @@ def _fake_summary() -> dict:
         "processed": 4,
         "failed": 1,
         "dead_lettered": 0,
-        "outcomes": [
-            {"event_id": i, "outcome": "processed"} for i in range(4)
-        ] + [{"event_id": 5, "outcome": "failed", "error": "boom"}],
+        "outcomes": [{"event_id": i, "outcome": "processed"} for i in range(4)]
+        + [{"event_id": 5, "outcome": "failed", "error": "boom"}],
     }
 
 

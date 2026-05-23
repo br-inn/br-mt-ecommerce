@@ -120,13 +120,21 @@ def _encode_audit_cursor(value: tuple[datetime, int] | None) -> str | None:
 async def list_audit_events(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     _: Annotated[User, Depends(require_permissions("audit:read"))],
-    entity_type: Annotated[str | None, Query(description="Tipo de entidad (product/user/job/role).")] = None,
+    entity_type: Annotated[
+        str | None, Query(description="Tipo de entidad (product/user/job/role).")
+    ] = None,
     entity_id: Annotated[str | None, Query(description="ID o SKU de la entidad.")] = None,
-    actor_id: Annotated[UUID | None, Query(description="Filtrar por usuario que originó el evento.")] = None,
-    action: Annotated[str | None, Query(description="Acción concreta (create/update/delete/...).")] = None,
+    actor_id: Annotated[
+        UUID | None, Query(description="Filtrar por usuario que originó el evento.")
+    ] = None,
+    action: Annotated[
+        str | None, Query(description="Acción concreta (create/update/delete/...).")
+    ] = None,
     since: Annotated[datetime | None, Query(description="Lower bound (ISO).")] = None,
     until: Annotated[datetime | None, Query(description="Upper bound (ISO).")] = None,
-    cursor: Annotated[str | None, Query(description="Cursor opaco devuelto en respuesta previa.")] = None,
+    cursor: Annotated[
+        str | None, Query(description="Cursor opaco devuelto en respuesta previa.")
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> Pagination[AuditEventResponse]:
     repo = AuditRepository(session)
@@ -139,9 +147,7 @@ async def list_audit_events(
         since=since,
         until=until,
     )
-    rows, next_cursor = await repo.list_paginated(
-        filters, cursor=decoded_cursor, limit=limit
-    )
+    rows, next_cursor = await repo.list_paginated(filters, cursor=decoded_cursor, limit=limit)
 
     items: list[AuditEventResponse] = [
         _build_audit_event_response(evt, actor_user) for evt, actor_user in rows
@@ -175,6 +181,7 @@ async def get_price_timeline(
 # ---------------------------------------------------------------------------
 # ADR-076 / R-005 — Verificación ad-hoc del hash chain
 # ---------------------------------------------------------------------------
+
 
 class AuditVerifyResponse(BaseModel):
     verified: bool

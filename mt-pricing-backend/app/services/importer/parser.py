@@ -56,17 +56,13 @@ def _validate_header(header: tuple[Any, ...]) -> list[str]:
     """Valida que el header coincida exactamente con la spec sprint0."""
     errors: list[str] = []
     if len(header) < len(EXPECTED_HEADERS):
-        errors.append(
-            f"Archivo con {len(header)} columnas; esperadas {len(EXPECTED_HEADERS)}."
-        )
+        errors.append(f"Archivo con {len(header)} columnas; esperadas {len(EXPECTED_HEADERS)}.")
         return errors
     for i, expected in enumerate(EXPECTED_HEADERS):
         actual = header[i]
         actual_str = (str(actual) if actual is not None else "").strip()
         if actual_str != expected:
-            errors.append(
-                f"col {i}: header esperado {expected!r}, recibido {actual_str!r}."
-            )
+            errors.append(f"col {i}: header esperado {expected!r}, recibido {actual_str!r}.")
     return errors
 
 
@@ -153,14 +149,10 @@ def parse_xlsx_stream(
             if sku is not None:
                 if sku in seen:
                     duplicates.append(sku)
-                    errors.append(
-                        f"SKU duplicado en archivo (primera ocurrencia row {seen[sku]})."
-                    )
+                    errors.append(f"SKU duplicado en archivo (primera ocurrencia row {seen[sku]}).")
                 else:
                     seen[sku] = i
-            rows.append(
-                ParsedRow(row_index=i, sku=sku, payload=payload, errors=errors)
-            )
+            rows.append(ParsedRow(row_index=i, sku=sku, payload=payload, errors=errors))
 
         return ParseResult(
             rows=rows,

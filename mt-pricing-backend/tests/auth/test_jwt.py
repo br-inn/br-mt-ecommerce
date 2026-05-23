@@ -75,7 +75,9 @@ async def test_jwks_cache_fetches_on_miss() -> None:
     cache = JWKSCache(jwks_url="https://example/jwks", ttl_seconds=3600)
     fake_keys = {"keys": [{"kid": "k1", "kty": "RSA", "alg": "RS256", "n": "x", "e": "AQAB"}]}
 
-    fake_resp = type("R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None})()
+    fake_resp = type(
+        "R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None}
+    )()
 
     fake_client = AsyncMock()
     fake_client.__aenter__ = AsyncMock(return_value=fake_client)
@@ -99,7 +101,9 @@ async def test_jwks_cache_hit_does_not_refetch() -> None:
 
     cache = JWKSCache(jwks_url="https://example/jwks", ttl_seconds=3600)
     fake_keys = {"keys": [{"kid": "k1", "kty": "RSA"}]}
-    fake_resp = type("R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None})()
+    fake_resp = type(
+        "R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None}
+    )()
 
     fake_client = AsyncMock()
     fake_client.__aenter__ = AsyncMock(return_value=fake_client)
@@ -122,7 +126,9 @@ async def test_jwks_cache_expired_refetches() -> None:
 
     cache = JWKSCache(jwks_url="https://example/jwks", ttl_seconds=0)  # TTL=0 → siempre stale
     fake_keys = {"keys": [{"kid": "k1", "kty": "RSA"}]}
-    fake_resp = type("R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None})()
+    fake_resp = type(
+        "R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None}
+    )()
 
     fake_client = AsyncMock()
     fake_client.__aenter__ = AsyncMock(return_value=fake_client)
@@ -145,7 +151,9 @@ async def test_jwks_cache_force_refresh_resets() -> None:
 
     cache = JWKSCache(jwks_url="https://example/jwks", ttl_seconds=3600)
     fake_keys = {"keys": [{"kid": "k1", "kty": "RSA"}]}
-    fake_resp = type("R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None})()
+    fake_resp = type(
+        "R", (), {"json": lambda self: fake_keys, "raise_for_status": lambda self: None}
+    )()
 
     fake_client = AsyncMock()
     fake_client.__aenter__ = AsyncMock(return_value=fake_client)

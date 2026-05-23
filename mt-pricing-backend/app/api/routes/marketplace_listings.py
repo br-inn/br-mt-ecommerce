@@ -11,6 +11,7 @@ Route order: fixed-segment routes (/{marketplace}/validate, /{marketplace}/expor
 MUST precede variable-segment routes (/{sku}/{marketplace}) to avoid FastAPI
 treating "validate"/"export" as a SKU value.
 """
+
 from __future__ import annotations
 
 import io
@@ -55,6 +56,7 @@ _SUPPORTED_MARKETPLACES = {"amazon_uae"}
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _require_amazon_uae(marketplace: str) -> None:
     if marketplace not in _SUPPORTED_MARKETPLACES:
         raise HTTPException(
@@ -62,7 +64,7 @@ def _require_amazon_uae(marketplace: str) -> None:
             detail={
                 "code": "UNSUPPORTED_MARKETPLACE",
                 "message": f"Marketplace '{marketplace}' is not supported. "
-                           f"Supported: {sorted(_SUPPORTED_MARKETPLACES)}",
+                f"Supported: {sorted(_SUPPORTED_MARKETPLACES)}",
             },
         )
 
@@ -112,7 +114,8 @@ def _build_product_context(product: Product) -> dict:
     """
     body_material = next(
         (
-            m for m in (product.materials or [])
+            m
+            for m in (product.materials or [])
             if getattr(m, "component", None) == "body" and getattr(m, "position", 0) == 0
         ),
         None,
@@ -122,11 +125,15 @@ def _build_product_context(product: Product) -> dict:
         None,
     )
     pt = next(
-        (t for t in (product.tech_tables or []) if getattr(t, "kind", "") == "pressure_temperature"),
+        (
+            t
+            for t in (product.tech_tables or [])
+            if getattr(t, "kind", "") == "pressure_temperature"
+        ),
         None,
     )
     description_en: str = ""
-    for t in (product.translations or []):
+    for t in product.translations or []:
         if getattr(t, "lang", None) == "en":
             description_en = getattr(t, "description", "") or ""
             break
@@ -146,13 +153,19 @@ def _build_product_context(product: Product) -> dict:
         "material": getattr(body_material, "material", None) or product.material or "",
         "connection_type": getattr(first_conn, "connection_type", None) or product.connection or "",
         "pressure_rating": (
-            float(pt.data.get("pn")) if pt and isinstance(pt.data, dict) and pt.data.get("pn") is not None else ""
+            float(pt.data.get("pn"))
+            if pt and isinstance(pt.data, dict) and pt.data.get("pn") is not None
+            else ""
         ),
         "temp_min": (
-            float(pt.data.get("temp_min_c")) if pt and isinstance(pt.data, dict) and pt.data.get("temp_min_c") is not None else ""
+            float(pt.data.get("temp_min_c"))
+            if pt and isinstance(pt.data, dict) and pt.data.get("temp_min_c") is not None
+            else ""
         ),
         "temp_max": (
-            float(pt.data.get("temp_max_c")) if pt and isinstance(pt.data, dict) and pt.data.get("temp_max_c") is not None else ""
+            float(pt.data.get("temp_max_c"))
+            if pt and isinstance(pt.data, dict) and pt.data.get("temp_max_c") is not None
+            else ""
         ),
         "certifications": cert_codes,
         "description_en": description_en,
@@ -162,6 +175,7 @@ def _build_product_context(product: Product) -> dict:
 # ---------------------------------------------------------------------------
 # 1. GET /{marketplace}/validate
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/{marketplace}/validate",
@@ -226,6 +240,7 @@ async def validate_marketplace_listings(
 # 2. GET /{marketplace}/export
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/{marketplace}/export",
     operation_id="marketplaceListingsExport",
@@ -235,7 +250,10 @@ async def export_marketplace_listings(
     _user: Annotated[User, Depends(require_permissions("products:read"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
     only_ready: bool = Query(True, description="Skip SKUs that have validation errors."),
-    skus: str | None = Query(None, description="Comma-separated list of SKUs to export. If omitted, all active products are exported."),
+    skus: str | None = Query(
+        None,
+        description="Comma-separated list of SKUs to export. If omitted, all active products are exported.",
+    ),
 ) -> StreamingResponse:
     """Export active products to an Amazon flat-file CSV feed.
 
@@ -294,6 +312,7 @@ async def export_marketplace_listings(
 # 3. GET /{sku}/{marketplace}
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/{sku}/{marketplace}",
     response_model=MarketplaceListingRead,
@@ -327,6 +346,7 @@ async def get_marketplace_listing(
 # ---------------------------------------------------------------------------
 # 4. PUT /{sku}/{marketplace}
 # ---------------------------------------------------------------------------
+
 
 @router.put(
     "/{sku}/{marketplace}",
@@ -380,6 +400,7 @@ async def upsert_marketplace_listing(
 # ---------------------------------------------------------------------------
 # 5. POST /{sku}/{marketplace}/generate
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/{sku}/{marketplace}/generate",

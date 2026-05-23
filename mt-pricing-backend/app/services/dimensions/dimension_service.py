@@ -42,9 +42,7 @@ from app.db.models.product import Product
 class DimensionDomainError(Exception):
     """Domain error for dimension operations — maps to HTTP via API layer."""
 
-    def __init__(
-        self, message: str, code: str, status_code: int = 400
-    ) -> None:
+    def __init__(self, message: str, code: str, status_code: int = 400) -> None:
         super().__init__(message)
         self.message = message
         self.code = code
@@ -149,9 +147,7 @@ class DimensionService:
     # ------------------------------------------------------------------
     # Columns (family-level)
     # ------------------------------------------------------------------
-    async def list_columns_for_family(
-        self, family_id: UUID
-    ) -> Sequence[DimensionColumn]:
+    async def list_columns_for_family(self, family_id: UUID) -> Sequence[DimensionColumn]:
         stmt = (
             select(DimensionColumn)
             .where(DimensionColumn.family_id == family_id)
@@ -198,9 +194,7 @@ class DimensionService:
         await self.session.refresh(row)
         return row
 
-    async def patch_column(
-        self, column_id: UUID, data: dict[str, Any]
-    ) -> DimensionColumn:
+    async def patch_column(self, column_id: UUID, data: dict[str, Any]) -> DimensionColumn:
         row = await self.get_column(column_id)
         for k, v in data.items():
             setattr(row, k, v)
@@ -211,11 +205,7 @@ class DimensionService:
     async def delete_column(self, column_id: UUID) -> None:
         row = await self.get_column(column_id)
         # FK on dimension_cells is RESTRICT — surface a domain error if used.
-        in_use_stmt = (
-            select(DimensionCell.id)
-            .where(DimensionCell.column_id == column_id)
-            .limit(1)
-        )
+        in_use_stmt = select(DimensionCell.id).where(DimensionCell.column_id == column_id).limit(1)
         in_use = await self.session.execute(in_use_stmt)
         if in_use.scalar_one_or_none() is not None:
             raise DimensionDomainError(
@@ -229,9 +219,7 @@ class DimensionService:
     # ------------------------------------------------------------------
     # Rows (per product)
     # ------------------------------------------------------------------
-    async def list_rows_for_product(
-        self, product_sku: str
-    ) -> Sequence[DimensionRow]:
+    async def list_rows_for_product(self, product_sku: str) -> Sequence[DimensionRow]:
         stmt = (
             select(DimensionRow)
             .where(DimensionRow.product_sku == product_sku)
@@ -405,9 +393,7 @@ class DimensionService:
     # ------------------------------------------------------------------
     # Composite — full table for a product
     # ------------------------------------------------------------------
-    async def get_table_for_product(
-        self, product_sku: str
-    ) -> dict[str, Any]:
+    async def get_table_for_product(self, product_sku: str) -> dict[str, Any]:
         """Return composite dict {product_sku, family_id, columns, rows}.
 
         - columns: ordered by order_index.
@@ -448,9 +434,7 @@ class PressureTemperatureService:
             PressureTemperaturePoint.product_sku == product_sku
         )
         if series_variant_code is not None:
-            stmt = stmt.where(
-                PressureTemperaturePoint.series_variant_code == series_variant_code
-            )
+            stmt = stmt.where(PressureTemperaturePoint.series_variant_code == series_variant_code)
         stmt = stmt.order_by(
             PressureTemperaturePoint.series_variant_code,
             PressureTemperaturePoint.order_index,
@@ -533,9 +517,7 @@ class PressureTemperatureService:
         await self.session.refresh(row)
         return row
 
-    async def patch_point(
-        self, point_id: UUID, data: dict[str, Any]
-    ) -> PressureTemperaturePoint:
+    async def patch_point(self, point_id: UUID, data: dict[str, Any]) -> PressureTemperaturePoint:
         row = await self.get_point(point_id)
         for k, v in data.items():
             setattr(row, k, v)

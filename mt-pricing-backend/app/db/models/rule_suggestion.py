@@ -19,9 +19,7 @@ class RuleSuggestion(UuidPkMixin, TimestampMixin, Base):
     proposed_change: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'pending'")
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
 
     __table_args__ = (
         CheckConstraint(

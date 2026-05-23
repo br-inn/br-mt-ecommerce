@@ -197,9 +197,7 @@ def _valid_payload(sku: str = "MT-V-038") -> dict[str, Any]:
 # ===========================================================================
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_list_products_empty(
-    client: AsyncClient, admin_user: tuple[UUID, str]
-) -> None:
+async def test_list_products_empty(client: AsyncClient, admin_user: tuple[UUID, str]) -> None:
     uid, email = admin_user
     res = await client.get("/api/v1/products", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
@@ -211,9 +209,7 @@ async def test_list_products_empty(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_product_minimal(
-    client: AsyncClient, admin_user: tuple[UUID, str]
-) -> None:
+async def test_create_product_minimal(client: AsyncClient, admin_user: tuple[UUID, str]) -> None:
     uid, email = admin_user
     res = await client.post(
         "/api/v1/products",
@@ -238,24 +234,18 @@ async def test_create_product_invalid_sku_regex(
 ) -> None:
     uid, email = admin_user
     payload = _valid_payload("invalid sku!")  # mayúsculas + guiones requerido
-    res = await client.post(
-        "/api/v1/products", json=payload, headers=_auth_headers(uid, email)
-    )
+    res = await client.post("/api/v1/products", json=payload, headers=_auth_headers(uid, email))
     assert res.status_code == 422, res.text
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_product_invalid_dn(
-    client: AsyncClient, admin_user: tuple[UUID, str]
-) -> None:
+async def test_create_product_invalid_dn(client: AsyncClient, admin_user: tuple[UUID, str]) -> None:
     """DN debe estar en whitelist {DN8, DN10, DN15, ...}."""
     uid, email = admin_user
     payload = _valid_payload("MT-V-100")
     payload["dn"] = "DN17"  # no permitido
-    res = await client.post(
-        "/api/v1/products", json=payload, headers=_auth_headers(uid, email)
-    )
+    res = await client.post("/api/v1/products", json=payload, headers=_auth_headers(uid, email))
     assert res.status_code == 422, res.text
 
 
@@ -282,17 +272,13 @@ async def test_get_product_by_id_not_found(
     client: AsyncClient, admin_user: tuple[UUID, str]
 ) -> None:
     uid, email = admin_user
-    res = await client.get(
-        "/api/v1/products/MT-DOES-NOT-EXIST", headers=_auth_headers(uid, email)
-    )
+    res = await client.get("/api/v1/products/MT-DOES-NOT-EXIST", headers=_auth_headers(uid, email))
     assert res.status_code == 404
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_update_product_partial(
-    client: AsyncClient, admin_user: tuple[UUID, str]
-) -> None:
+async def test_update_product_partial(client: AsyncClient, admin_user: tuple[UUID, str]) -> None:
     uid, email = admin_user
     headers = _auth_headers(uid, email)
     await client.post("/api/v1/products", json=_valid_payload("MT-V-040"), headers=headers)
@@ -322,9 +308,7 @@ async def test_soft_delete_product(
     assert res.status_code == 204
 
     # Verifica que está soft-deleted en DB
-    prod = (
-        await db_session.execute(select(Product).where(Product.sku == "MT-V-041"))
-    ).scalar_one()
+    prod = (await db_session.execute(select(Product).where(Product.sku == "MT-V-041"))).scalar_one()
     assert prod.deleted_at is not None
     assert prod.active is False
 
@@ -366,9 +350,7 @@ async def test_translation_upsert_idempotent(
     await client.post("/api/v1/products", json=_valid_payload("MT-V-200"), headers=headers)
 
     body = {"name": "صمام كروي نحاسي DN15", "status": "draft"}
-    res1 = await client.put(
-        "/api/v1/products/MT-V-200/translations/ar", json=body, headers=headers
-    )
+    res1 = await client.put("/api/v1/products/MT-V-200/translations/ar", json=body, headers=headers)
     assert res1.status_code == 200, res1.text
     assert res1.json()["lang"] == "ar"
     assert res1.json()["name"] == body["name"]
@@ -382,18 +364,14 @@ async def test_translation_upsert_idempotent(
     assert res2.json()["name"] == body2["name"]
 
     # Verifica via GET /translations
-    res3 = await client.get(
-        "/api/v1/products/MT-V-200/translations", headers=headers
-    )
+    res3 = await client.get("/api/v1/products/MT-V-200/translations", headers=headers)
     assert res3.status_code == 200
     assert len(res3.json()) == 1
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_translation_approve(
-    client: AsyncClient, admin_user: tuple[UUID, str]
-) -> None:
+async def test_translation_approve(client: AsyncClient, admin_user: tuple[UUID, str]) -> None:
     uid, email = admin_user
     headers = _auth_headers(uid, email)
     await client.post("/api/v1/products", json=_valid_payload("MT-V-201"), headers=headers)
@@ -403,9 +381,7 @@ async def test_translation_approve(
         headers=headers,
     )
 
-    res = await client.post(
-        "/api/v1/products/MT-V-201/translations/es/approve", headers=headers
-    )
+    res = await client.post("/api/v1/products/MT-V-201/translations/es/approve", headers=headers)
     assert res.status_code == 200, res.text
     assert res.json()["status"] == "approved"
 
@@ -453,12 +429,16 @@ async def test_audit_event_recorded_on_create_update_delete(
     await client.delete("/api/v1/products/MT-V-AUDIT", headers=headers)
 
     rows = (
-        await db_session.execute(
-            select(AuditEvent)
-            .where(AuditEvent.entity_type == "product", AuditEvent.entity_id == "MT-V-AUDIT")
-            .order_by(AuditEvent.event_at.asc(), AuditEvent.id.asc())
+        (
+            await db_session.execute(
+                select(AuditEvent)
+                .where(AuditEvent.entity_type == "product", AuditEvent.entity_id == "MT-V-AUDIT")
+                .order_by(AuditEvent.event_at.asc(), AuditEvent.id.asc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     actions = [r.action for r in rows]
     assert "product.created" in actions
     assert "product.updated" in actions
@@ -469,9 +449,7 @@ async def test_audit_event_recorded_on_create_update_delete(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_image_upload_url(
-    client: AsyncClient, admin_user: tuple[UUID, str]
-) -> None:
+async def test_image_upload_url(client: AsyncClient, admin_user: tuple[UUID, str]) -> None:
     """POST /products/{sku}/images/upload-url devuelve signed URL fake en tests."""
     uid, email = admin_user
     headers = _auth_headers(uid, email)
@@ -504,9 +482,7 @@ async def test_list_products_with_filter_family(
     await client.post("/api/v1/products", json=a, headers=headers)
     await client.post("/api/v1/products", json=b, headers=headers)
 
-    res = await client.get(
-        "/api/v1/products?family=valves_ball", headers=headers
-    )
+    res = await client.get("/api/v1/products?family=valves_ball", headers=headers)
     assert res.status_code == 200
     skus = {it["sku"] for it in res.json()["items"]}
     assert "MT-V-F1" in skus

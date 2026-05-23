@@ -136,9 +136,7 @@ def test_ensure_partitions_creates_missing(
 
 
 @pytest.mark.integration
-def test_ensure_partitions_idempotent(
-    monkeypatch: pytest.MonkeyPatch, _migrated_db: str
-) -> None:
+def test_ensure_partitions_idempotent(monkeypatch: pytest.MonkeyPatch, _migrated_db: str) -> None:
     """Segunda ejecución no crea duplicados — todas reportadas como `existing`."""
     from app.workers import audit_partitions
 
@@ -154,7 +152,5 @@ def test_ensure_partitions_idempotent(
     # Segunda corrida idéntica.
     result2 = audit_partitions.ensure_partitions.run(months_ahead=3)
 
-    assert result2["created"] == [], (
-        f"Idempotencia rota: segunda corrida creó {result2['created']}"
-    )
+    assert result2["created"] == [], f"Idempotencia rota: segunda corrida creó {result2['created']}"
     assert len(result2["existing"]) == 3

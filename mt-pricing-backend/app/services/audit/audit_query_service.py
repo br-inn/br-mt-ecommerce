@@ -122,9 +122,7 @@ class AuditQueryService:
         if limit > 200:
             limit = 200
 
-        stmt = select(AuditEvent, User).join(
-            User, User.id == AuditEvent.actor_id, isouter=True
-        )
+        stmt = select(AuditEvent, User).join(User, User.id == AuditEvent.actor_id, isouter=True)
 
         conditions = self._build_conditions(filters)
 
@@ -149,9 +147,7 @@ class AuditQueryService:
         ).limit(limit + 1)
 
         result = await self.session.execute(stmt)
-        rows: list[tuple[AuditEvent, User | None]] = [
-            (row[0], row[1]) for row in result.all()
-        ]
+        rows: list[tuple[AuditEvent, User | None]] = [(row[0], row[1]) for row in result.all()]
 
         next_cursor: tuple[datetime, int] | None = None
         if len(rows) > limit:
@@ -204,7 +200,9 @@ class AuditQueryService:
         )
 
         # Prices: entity_id es UUID del price → buscar precios del SKU
-        price_ids_subq = select(cast(Price.id, Text)).where(Price.product_sku == sku).scalar_subquery()
+        price_ids_subq = (
+            select(cast(Price.id, Text)).where(Price.product_sku == sku).scalar_subquery()
+        )
         price_clause = and_(
             AuditEvent.entity_type.in_(_PRICE_ENTITY_TYPES),
             AuditEvent.entity_id.in_(price_ids_subq),

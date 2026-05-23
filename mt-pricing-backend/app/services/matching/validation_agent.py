@@ -120,9 +120,7 @@ class MatchValidationAgent:
                     self._apply(cand, decision, mode)
 
                 calibrator_version = (
-                    await self._active_calibrator_version()
-                    if has_calibrator
-                    else None
+                    await self._active_calibrator_version() if has_calibrator else None
                 )
                 await self._decision_repo.record(
                     candidate_id=cand.id,
@@ -170,9 +168,10 @@ class MatchValidationAgent:
         """Returns True if there is an active calibrator version in the DB."""
         try:
             from app.db.models.golden_label import CalibratorVersion  # noqa: PLC0415
-            stmt = select(CalibratorVersion.id).where(
-                CalibratorVersion.is_active.is_(True)
-            ).limit(1)
+
+            stmt = (
+                select(CalibratorVersion.id).where(CalibratorVersion.is_active.is_(True)).limit(1)
+            )
             return (await self._session.execute(stmt)).scalar_one_or_none() is not None
         except Exception:  # noqa: BLE001 — if table doesn't exist yet, no calibrator
             return False
@@ -181,9 +180,12 @@ class MatchValidationAgent:
         """Returns the version string of the active calibrator, if any."""
         try:
             from app.db.models.golden_label import CalibratorVersion  # noqa: PLC0415
-            stmt = select(CalibratorVersion.version).where(
-                CalibratorVersion.is_active.is_(True)
-            ).limit(1)
+
+            stmt = (
+                select(CalibratorVersion.version)
+                .where(CalibratorVersion.is_active.is_(True))
+                .limit(1)
+            )
             return (await self._session.execute(stmt)).scalar_one_or_none()
         except Exception:  # noqa: BLE001
             return None

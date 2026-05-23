@@ -66,41 +66,77 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
     # ----- roles -----
     op.create_table(
         "roles",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("code", sa.Text(), nullable=False, unique=True),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("description", sa.Text()),
         sa.Column("is_system", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("permissions_snapshot", postgresql.JSONB(astext_type=sa.Text()),
-                  nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
+        sa.Column(
+            "permissions_snapshot",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
     )
     op.create_index("idx_roles_code", "roles", ["code"])
 
     # ----- permissions -----
     op.create_table(
         "permissions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("code", sa.Text(), nullable=False, unique=True),
         sa.Column("description", sa.Text()),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
     )
 
     # ----- role_permissions (M:N) -----
     op.create_table(
         "role_permissions",
-        sa.Column("role_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("permission_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("granted_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
+        sa.Column(
+            "role_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("roles.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "permission_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("permissions.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "granted_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
     )
 
     # ----- users -----
@@ -112,23 +148,37 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
         sa.Column("avatar_url", sa.Text()),
         sa.Column("locale", sa.String(2), nullable=False, server_default=sa.text("'es'")),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("role_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("roles.id", ondelete="SET NULL")),
+        sa.Column(
+            "role_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("roles.id", ondelete="SET NULL")
+        ),
         sa.Column("last_login_at", sa.DateTime(timezone=True)),
         sa.Column("failed_logins", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("locked_until", sa.DateTime(timezone=True)),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "created_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True)),
         sa.CheckConstraint("locale IN ('es','en','ar')", name="ck_users_locale"),
     )
     op.create_index("idx_users_role", "users", ["role_id"])
     op.create_index(
-        "idx_users_active", "users", ["is_active"],
+        "idx_users_active",
+        "users",
+        ["is_active"],
         postgresql_where=sa.text("is_active = true"),
     )
     op.execute(
@@ -144,8 +194,13 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
     op.create_table(
         "products",
         sa.Column("sku", sa.Text(), primary_key=True),
-        sa.Column("internal_id", postgresql.UUID(as_uuid=True), nullable=False, unique=True,
-                  server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "internal_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+            unique=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("name_en", sa.Text(), nullable=False),
         sa.Column("description_en", sa.Text()),
         sa.Column("marketing_copy_en", sa.Text()),
@@ -157,24 +212,42 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
         sa.Column("pn", sa.Text()),
         sa.Column("connection", sa.Text()),
         sa.Column("brand", sa.Text()),
-        sa.Column("specs", postgresql.JSONB(astext_type=sa.Text()), nullable=False,
-                  server_default=sa.text("'{}'::jsonb")),
-        sa.Column("dimensions", postgresql.JSONB(astext_type=sa.Text()), nullable=False,
-                  server_default=sa.text("'{}'::jsonb")),
-        sa.Column("packaging", postgresql.JSONB(astext_type=sa.Text()), nullable=False,
-                  server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "specs",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
+        sa.Column(
+            "dimensions",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
+        sa.Column(
+            "packaging",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
         sa.Column("weight", sa.Numeric(12, 4)),
         sa.Column("weight_unit", sa.String(8), server_default=sa.text("'kg'")),
         sa.Column("intrastat_code", sa.Text()),
         sa.Column("erp_name", sa.Text()),
         sa.Column("image_url", sa.Text()),
         sa.Column("image_origin_url", sa.Text()),
-        sa.Column("image_status", sa.String(16), nullable=False,
-                  server_default=sa.text("'missing'")),
-        sa.Column("data_quality", sa.String(16), nullable=False,
-                  server_default=sa.text("'partial'")),
-        sa.Column("manual_locked_fields", postgresql.ARRAY(sa.Text()), nullable=False,
-                  server_default=sa.text("'{}'::text[]")),
+        sa.Column(
+            "image_status", sa.String(16), nullable=False, server_default=sa.text("'missing'")
+        ),
+        sa.Column(
+            "data_quality", sa.String(16), nullable=False, server_default=sa.text("'partial'")
+        ),
+        sa.Column(
+            "manual_locked_fields",
+            postgresql.ARRAY(sa.Text()),
+            nullable=False,
+            server_default=sa.text("'{}'::text[]"),
+        ),
         sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         # embeddings — tipo TEXT[] como fallback genérico (real Vector(1024) lo
         # activa Sprint 2+ con `pgvector` instalado y ALTER TABLE).
@@ -182,14 +255,28 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
         sa.Column("embedding_image", postgresql.ARRAY(sa.Float())),
         sa.Column("embedding_model", sa.Text()),
         sa.Column("embedding_at", sa.DateTime(timezone=True)),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("updated_by", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "created_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True)),
         sa.CheckConstraint(
             f"data_quality IN {_csv(DATA_QUALITY_VALUES)}",
@@ -202,12 +289,11 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
     )
     op.create_index("idx_products_family", "products", ["family"])
     op.create_index("idx_products_brand", "products", ["brand"])
-    op.create_index("idx_products_active", "products", ["active"],
-                    postgresql_where=sa.text("active = true"))
-    op.create_index("idx_products_specs_gin", "products", ["specs"], postgresql_using="gin")
-    op.execute(
-        "CREATE INDEX idx_products_name_trgm ON products USING gin (name_en gin_trgm_ops);"
+    op.create_index(
+        "idx_products_active", "products", ["active"], postgresql_where=sa.text("active = true")
     )
+    op.create_index("idx_products_specs_gin", "products", ["specs"], postgresql_using="gin")
+    op.execute("CREATE INDEX idx_products_name_trgm ON products USING gin (name_en gin_trgm_ops);")
     op.execute(
         "CREATE TRIGGER trg_products_updated_at BEFORE UPDATE ON products "
         "FOR EACH ROW EXECUTE FUNCTION set_updated_at();"
@@ -216,24 +302,38 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
     # ----- product_translations -----
     op.create_table(
         "product_translations",
-        sa.Column("sku", sa.Text(),
-                  sa.ForeignKey("products.sku", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "sku", sa.Text(), sa.ForeignKey("products.sku", ondelete="CASCADE"), primary_key=True
+        ),
         sa.Column("lang", sa.String(2), primary_key=True),
         sa.Column("name", sa.Text()),
         sa.Column("description", sa.Text()),
         sa.Column("marketing_copy", sa.Text()),
-        sa.Column("status", sa.String(16), nullable=False,
-                  server_default=sa.text("'pending'")),
-        sa.Column("translated_by", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL")),
+        sa.Column("status", sa.String(16), nullable=False, server_default=sa.text("'pending'")),
+        sa.Column(
+            "translated_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+        ),
         sa.Column("translated_at", sa.DateTime(timezone=True)),
-        sa.Column("reviewed_by", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL")),
+        sa.Column(
+            "reviewed_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+        ),
         sa.Column("reviewed_at", sa.DateTime(timezone=True)),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.CheckConstraint("lang IN ('es','ar','en')", name="ck_translations_lang"),
         sa.CheckConstraint(
             f"status IN {_csv(TRANSLATION_STATUS_VALUES)}",
@@ -249,10 +349,15 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
     # ----- product_images -----
     op.create_table(
         "product_images",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
-        sa.Column("sku", sa.Text(),
-                  sa.ForeignKey("products.sku", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column(
+            "sku", sa.Text(), sa.ForeignKey("products.sku", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("role", sa.Text(), nullable=False),
         sa.Column("storage_path", sa.Text(), nullable=False, unique=True),
         sa.Column("original_url", sa.Text()),
@@ -264,10 +369,17 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
         sa.Column("mime_type", sa.Text()),
         sa.Column("hash_sha256", sa.Text()),
         sa.Column("status", sa.String(16), nullable=False, server_default=sa.text("'active'")),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "created_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+        ),
         sa.CheckConstraint(
             "status IN ('active','archived','broken')",
             name="ck_images_status",
@@ -327,8 +439,12 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
     # ----- job_definitions -----
     op.create_table(
         "job_definitions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("code", sa.Text(), nullable=False, unique=True),
         sa.Column("task_name", sa.Text(), nullable=False),
         sa.Column("description", sa.Text()),
@@ -338,23 +454,42 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
         sa.Column("interval_seconds", sa.Integer()),
         sa.Column("timezone", sa.Text(), nullable=False, server_default=sa.text("'Asia/Dubai'")),
         sa.Column("queue", sa.Text(), nullable=False, server_default=sa.text("'default'")),
-        sa.Column("args", postgresql.JSONB(astext_type=sa.Text()), nullable=False,
-                  server_default=sa.text("'[]'::jsonb")),
-        sa.Column("kwargs", postgresql.JSONB(astext_type=sa.Text()), nullable=False,
-                  server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "args",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
+        sa.Column(
+            "kwargs",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
         sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("last_run_at", sa.DateTime(timezone=True)),
         sa.Column("next_run_at", sa.DateTime(timezone=True)),
         sa.Column("last_status", sa.String(16)),
         sa.Column("last_error", sa.Text()),
         sa.Column("last_celery_task_id", sa.Text()),
-        sa.Column("edited_by", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL")),
+        sa.Column(
+            "edited_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+        ),
         sa.Column("edited_at", sa.DateTime(timezone=True)),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.CheckConstraint(f"owner IN {_csv(JOB_OWNER_VALUES)}", name="ck_jobs_owner"),
         sa.CheckConstraint(
             f"schedule_type IN {_csv(SCHEDULE_TYPE_VALUES)}",
@@ -370,8 +505,12 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
             name="ck_jobs_last_status",
         ),
     )
-    op.create_index("idx_jobs_enabled", "job_definitions", ["enabled"],
-                    postgresql_where=sa.text("enabled = true"))
+    op.create_index(
+        "idx_jobs_enabled",
+        "job_definitions",
+        ["enabled"],
+        postgresql_where=sa.text("enabled = true"),
+    )
     op.create_index("idx_jobs_next_run", "job_definitions", ["next_run_at"])
     op.execute(
         "CREATE TRIGGER trg_job_definitions_updated_at BEFORE UPDATE ON job_definitions "
@@ -381,10 +520,18 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
     # ----- job_runs -----
     op.create_table(
         "job_runs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
-        sa.Column("job_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("job_definitions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column(
+            "job_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("job_definitions.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("job_code", sa.Text(), nullable=False),
         sa.Column("status", sa.String(16), nullable=False, server_default=sa.text("'idle'")),
         sa.Column("started_at", sa.DateTime(timezone=True)),
@@ -393,15 +540,27 @@ def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por natu
         sa.Column("celery_task_id", sa.Text()),
         sa.Column("result", postgresql.JSONB(astext_type=sa.Text())),
         sa.Column("error", sa.Text()),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.CheckConstraint(f"status IN {_csv(JOB_STATUS_VALUES)}", name="ck_job_runs_status"),
     )
     op.create_index("idx_job_runs_job_started", "job_runs", ["job_id", "started_at"])
-    op.create_index("idx_job_runs_running", "job_runs", ["status"],
-                    postgresql_where=sa.text("status IN ('idle','running')"))
+    op.create_index(
+        "idx_job_runs_running",
+        "job_runs",
+        ["status"],
+        postgresql_where=sa.text("status IN ('idle','running')"),
+    )
     op.execute(
         "CREATE TRIGGER trg_job_runs_updated_at BEFORE UPDATE ON job_runs "
         "FOR EACH ROW EXECUTE FUNCTION set_updated_at();"

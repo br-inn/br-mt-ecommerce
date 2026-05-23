@@ -47,7 +47,9 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.UniqueConstraint("channel_code", "scheme_code", name="uq_last_good_exports_channel_scheme"),
+        sa.UniqueConstraint(
+            "channel_code", "scheme_code", name="uq_last_good_exports_channel_scheme"
+        ),
     )
 
     # Seed beat job for the new daily task
@@ -69,7 +71,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DELETE FROM job_definitions WHERE code = 'capture_last_good_exports';"
-    )
+    op.execute("DELETE FROM job_definitions WHERE code = 'capture_last_good_exports';")
     op.drop_table("last_good_exports")

@@ -28,6 +28,7 @@ pytestmark = pytest.mark.unit
 # AC-2 — PostgresGraphRepository activo (hereda GraphRepository)
 # ---------------------------------------------------------------------------
 
+
 def test_postgres_repo_is_graph_repository() -> None:
     repo = PostgresGraphRepository()
     assert isinstance(repo, GraphRepository)
@@ -68,6 +69,7 @@ async def test_postgres_repo_health_check_healthy() -> None:
 # AC-2 — Neo4jGraphRepository implementado (hereda GraphRepository)
 # ---------------------------------------------------------------------------
 
+
 def test_neo4j_repo_is_graph_repository() -> None:
     repo = Neo4jGraphRepository()
     assert isinstance(repo, GraphRepository)
@@ -102,6 +104,7 @@ async def test_neo4j_repo_health_check_none_store_returns_unhealthy() -> None:
 # US-F15-01-04 — Neo4jGraphRepository con mock de GraphStorePort
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_neo4j_get_product_neighbors_calls_query_neighbors() -> None:
     from unittest.mock import MagicMock
@@ -111,9 +114,11 @@ async def test_neo4j_get_product_neighbors_calls_query_neighbors() -> None:
     mock_store.query_neighbors.return_value = [
         (
             GraphEdge(
-                src_label="Product", src_pk="A",
+                src_label="Product",
+                src_pk="A",
                 type="COMPATIBLE_WITH",
-                dst_label="Material", dst_pk="M1",
+                dst_label="Material",
+                dst_pk="M1",
             ),
             GraphNode(label="Material", primary_key="M1", properties={}),
         )
@@ -122,9 +127,7 @@ async def test_neo4j_get_product_neighbors_calls_query_neighbors() -> None:
     repo = Neo4jGraphRepository(graph_store=mock_store)
     result = await repo.get_product_neighbors("SKU-001")
 
-    mock_store.query_neighbors.assert_called_once_with(
-        "Product", "SKU-001", edge_type=None
-    )
+    mock_store.query_neighbors.assert_called_once_with("Product", "SKU-001", edge_type=None)
     assert len(result) == 1
     assert result[0]["node_type"] == "Material"
     assert result[0]["primary_key"] == "M1"
@@ -140,9 +143,11 @@ async def test_neo4j_get_product_neighbors_with_rel_type() -> None:
     mock_store.query_neighbors.return_value = [
         (
             GraphEdge(
-                src_label="Product", src_pk="SKU-002",
+                src_label="Product",
+                src_pk="SKU-002",
                 type="SUPPLIED_BY",
-                dst_label="Supplier", dst_pk="SUP-1",
+                dst_label="Supplier",
+                dst_pk="SUP-1",
             ),
             GraphNode(label="Supplier", primary_key="SUP-1", properties={"name": "Acme"}),
         )
@@ -168,17 +173,21 @@ async def test_neo4j_get_competitor_context_with_matches() -> None:
     mock_store.query_neighbors.return_value = [
         (
             GraphEdge(
-                src_label="CompetitorListing", src_pk=str(listing_id),
+                src_label="CompetitorListing",
+                src_pk=str(listing_id),
                 type="MATCHES",
-                dst_label="Product", dst_pk="SKU-A",
+                dst_label="Product",
+                dst_pk="SKU-A",
             ),
             GraphNode(label="Product", primary_key="SKU-A", properties={"name": "Widget"}),
         ),
         (
             GraphEdge(
-                src_label="CompetitorListing", src_pk=str(listing_id),
+                src_label="CompetitorListing",
+                src_pk=str(listing_id),
                 type="HINT_SUPPLIER",
-                dst_label="Supplier", dst_pk="SUP-X",
+                dst_label="Supplier",
+                dst_pk="SUP-X",
             ),
             GraphNode(label="Supplier", primary_key="SUP-X", properties={}),
         ),
@@ -246,11 +255,13 @@ async def test_neo4j_health_check_store_raises_returns_unhealthy() -> None:
 # AC-3 — get_graph_repository() respeta GRAPHRAG_BACKEND
 # ---------------------------------------------------------------------------
 
+
 def test_get_graph_repository_default_returns_postgres(monkeypatch: pytest.MonkeyPatch) -> None:
     """GRAPHRAG_BACKEND=stub (default) → PostgresGraphRepository."""
     monkeypatch.setattr(
         "app.services.comparator.graph_repository.get_graph_repository.__wrapped__"
-        if hasattr(get_graph_repository, "__wrapped__") else "app.core.config.settings.GRAPHRAG_BACKEND",
+        if hasattr(get_graph_repository, "__wrapped__")
+        else "app.core.config.settings.GRAPHRAG_BACKEND",
         "stub",
         raising=False,
     )

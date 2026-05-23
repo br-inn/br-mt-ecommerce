@@ -106,9 +106,7 @@ class CostService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_for_sku(
-        self, sku: str, *, only_active: bool = False
-    ) -> Sequence[Cost]:
+    async def list_for_sku(self, sku: str, *, only_active: bool = False) -> Sequence[Cost]:
         stmt = select(Cost).where(Cost.sku == sku)
         if only_active:
             stmt = stmt.where(Cost.status == "active")
@@ -189,9 +187,7 @@ class CostService:
                 "scheme_code": cost.scheme_code,
                 "supplier_code": cost.supplier_code,
                 "currency_origin": cost.currency_origin,
-                "effective_at": cost.effective_at.isoformat()
-                if cost.effective_at
-                else None,
+                "effective_at": cost.effective_at.isoformat() if cost.effective_at else None,
                 "breakdown": cost.breakdown,
                 "scheme_landed_aed": str(cost.scheme_landed_aed)
                 if cost.scheme_landed_aed is not None
@@ -231,12 +227,8 @@ class CostService:
         await self.session.flush()
 
         # 2) Validar breakdown final (merged si llega parcial).
-        new_breakdown = (
-            dict(breakdown) if breakdown is not None else dict(prev.breakdown or {})
-        )
-        validation = await validate_breakdown(
-            self.session, prev.scheme_code, new_breakdown
-        )
+        new_breakdown = dict(breakdown) if breakdown is not None else dict(prev.breakdown or {})
+        validation = await validate_breakdown(self.session, prev.scheme_code, new_breakdown)
 
         # 3) Insertar nueva row.
         new = Cost(
@@ -279,9 +271,7 @@ class CostService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    async def missing_cost_skus(
-        self, scheme_code: str, *, limit: int = 1000
-    ) -> Sequence[str]:
+    async def missing_cost_skus(self, scheme_code: str, *, limit: int = 1000) -> Sequence[str]:
         """Devuelve los SKUs sin coste activo para el scheme. Implementación
         en SQL puro — usa NOT EXISTS para evitar un join LEFT con filtro post.
         """
@@ -302,9 +292,7 @@ class CostService:
             LIMIT :lim
             """
         )
-        result = await self.session.execute(
-            stmt, {"scheme": scheme_code, "lim": limit}
-        )
+        result = await self.session.execute(stmt, {"scheme": scheme_code, "lim": limit})
         return [r[0] for r in result.all()]
 
     async def _get(self, cost_id: UUID) -> Cost | None:
@@ -348,8 +336,7 @@ class CostService:
                     FXRate.from_currency == currency_origin.upper(),
                     FXRate.to_currency == "AED",
                     FXRate.effective_from <= effective_at,
-                    (FXRate.effective_to.is_(None))
-                    | (FXRate.effective_to > effective_at),
+                    (FXRate.effective_to.is_(None)) | (FXRate.effective_to > effective_at),
                 )
                 .order_by(desc(FXRate.effective_from))
                 .limit(1)

@@ -26,15 +26,33 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "budgets",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("fiscal_year", sa.Integer(), nullable=False),
         sa.Column("period_num", sa.Integer(), nullable=False),
-        sa.Column("gl_account_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("gl_accounts.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("profit_center_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("profit_centers.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "gl_account_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("gl_accounts.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "profit_center_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("profit_centers.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("budget_amount", sa.Numeric(18, 4), nullable=False),
         sa.Column("currency", sa.CHAR(3), server_default="AED", nullable=False),
         sa.UniqueConstraint(
-            "fiscal_year", "period_num", "gl_account_id", "profit_center_id",
+            "fiscal_year",
+            "period_num",
+            "gl_account_id",
+            "profit_center_id",
             name="uq_budgets_fy_period_account_pc",
         ),
     )

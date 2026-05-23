@@ -100,9 +100,7 @@ class KillSwitch:
             set_local_flag,
         )
 
-        await self.flag_service.set_flag(
-            FLAG_KILL_SWITCH, True, updated_by=updated_by
-        )
+        await self.flag_service.set_flag(FLAG_KILL_SWITCH, True, updated_by=updated_by)
         engage()  # in-memory sync
         set_local_flag(FLAG_KILL_SWITCH, True)
         logger.warning(
@@ -121,9 +119,7 @@ class KillSwitch:
             set_local_flag,
         )
 
-        await self.flag_service.set_flag(
-            FLAG_KILL_SWITCH, False, updated_by=updated_by
-        )
+        await self.flag_service.set_flag(FLAG_KILL_SWITCH, False, updated_by=updated_by)
         disengage()
         set_local_flag(FLAG_KILL_SWITCH, False)
         logger.info(

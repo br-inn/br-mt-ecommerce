@@ -41,9 +41,7 @@ class AmazonSpecsExtracted(BaseModel):
     size_dn: int | None = Field(
         None, description="Tamaño en DN (diámetro nominal): 15, 20, 25, 32, 40, 50, 80, 100"
     )
-    pressure_pn: int | None = Field(
-        None, description="Presión nominal PN: 6, 10, 16, 25, 40"
-    )
+    pressure_pn: int | None = Field(None, description="Presión nominal PN: 6, 10, 16, 25, 40")
     end_connection: str | None = Field(
         None,
         description='Tipo de conexión: "BSP", "NPT", "FLANGED", "WAFER", "WELD", "PRESS_FIT"',

@@ -1,4 +1,5 @@
 """Enable pgvector extension for vector similarity search"""
+
 from __future__ import annotations
 from alembic import op
 

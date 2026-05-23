@@ -28,6 +28,7 @@ pytestmark = pytest.mark.unit
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def registry() -> SpecsRegistry:
     """Real registry using the bundled schemas dir."""
@@ -49,7 +50,7 @@ def validator(registry: SpecsRegistry) -> SpecsValidator:
 VALID_VALVE_BALL: dict[str, Any] = {
     "dn": "DN25",
     "dn_real": "27mm",
-    "size": "1\"",
+    "size": '1"',
     "materials_body": "brass CW617N",
     "materials_closure": "chrome-plated brass",
     "materials_seats": "PTFE",
@@ -59,7 +60,7 @@ VALID_VALVE_BALL: dict[str, Any] = {
 VALID_FILTER: dict[str, Any] = {
     "dn": "DN50",
     "dn_real": "52mm",
-    "size": "2\"",
+    "size": '2"',
     "materials_body": "cast iron EN-GJL-250",
     "materials_screen": "stainless steel 316",
     "materials_gaskets": "NBR",
@@ -69,6 +70,7 @@ VALID_FILTER: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # valve_ball — happy path
 # ---------------------------------------------------------------------------
+
 
 def test_valve_ball_valid_minimal(validator: SpecsValidator) -> None:
     result = validator.validate(VALID_VALVE_BALL, "valve", "ball")
@@ -108,6 +110,7 @@ def test_valve_ball_valid_with_connections(validator: SpecsValidator) -> None:
 # valve_ball — missing required field
 # ---------------------------------------------------------------------------
 
+
 def test_valve_ball_missing_dn(validator: SpecsValidator) -> None:
     specs = {k: v for k, v in VALID_VALVE_BALL.items() if k != "dn"}
     result = validator.validate(specs, "valve", "ball")
@@ -132,6 +135,7 @@ def test_valve_ball_missing_multiple_required(validator: SpecsValidator) -> None
 # ---------------------------------------------------------------------------
 # valve_ball — invalid enum
 # ---------------------------------------------------------------------------
+
 
 def test_valve_ball_invalid_actuator_enum(validator: SpecsValidator) -> None:
     specs = {**VALID_VALVE_BALL, "actuator": "invalid_type"}
@@ -160,6 +164,7 @@ def test_valve_ball_invalid_connection_type(validator: SpecsValidator) -> None:
 # valve_ball — additionalProperties=false
 # ---------------------------------------------------------------------------
 
+
 def test_valve_ball_extra_property_rejected(validator: SpecsValidator) -> None:
     specs = {**VALID_VALVE_BALL, "unknown_field": "value"}
     result = validator.validate(specs, "valve", "ball")
@@ -171,6 +176,7 @@ def test_valve_ball_extra_property_rejected(validator: SpecsValidator) -> None:
 # ---------------------------------------------------------------------------
 # filter — happy path
 # ---------------------------------------------------------------------------
+
 
 def test_filter_valid_minimal(validator: SpecsValidator) -> None:
     result = validator.validate(VALID_FILTER, "filter")
@@ -208,6 +214,7 @@ def test_filter_extra_property_rejected(validator: SpecsValidator) -> None:
 # Default schema — permissive
 # ---------------------------------------------------------------------------
 
+
 def test_default_schema_accepts_empty_dict(validator: SpecsValidator) -> None:
     result = validator.validate({}, "unknown_family")
     assert result.valid is True
@@ -223,10 +230,11 @@ def test_default_schema_accepts_arbitrary_properties(validator: SpecsValidator) 
 # ValidationResult / FieldError models
 # ---------------------------------------------------------------------------
 
+
 def test_validation_result_model() -> None:
-    vr = ValidationResult(valid=False, errors=[
-        FieldError(field="specs.dn", message="required", value=None)
-    ])
+    vr = ValidationResult(
+        valid=False, errors=[FieldError(field="specs.dn", message="required", value=None)]
+    )
     d = vr.model_dump()
     assert d["valid"] is False
     assert len(d["errors"]) == 1
@@ -243,6 +251,7 @@ def test_field_error_truncates_long_value(validator: SpecsValidator) -> None:
 # ---------------------------------------------------------------------------
 # Integration: ProductService rejects invalid specs
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_product_service_rejects_invalid_specs(validator: SpecsValidator) -> None:

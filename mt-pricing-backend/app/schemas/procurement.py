@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # Purchase Requisition
 # ---------------------------------------------------------------------------
 
+
 class PRCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -59,6 +60,7 @@ class PRReject(BaseModel):
 # Approval Decision
 # ---------------------------------------------------------------------------
 
+
 class ApprovalDecisionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 
@@ -74,6 +76,7 @@ class ApprovalDecisionOut(BaseModel):
 # ---------------------------------------------------------------------------
 # Approval Rule
 # ---------------------------------------------------------------------------
+
 
 class ApprovalRuleCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -122,6 +125,7 @@ class ApprovalRuleUpdate(BaseModel):
 # Vendor Product Condition (PIR)
 # ---------------------------------------------------------------------------
 
+
 class VendorConditionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -169,6 +173,7 @@ class VendorConditionUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 # Vendor Invoices (US-ERP-03-04 — 3-way match)
 # ---------------------------------------------------------------------------
+
 
 class VendorInvoiceCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -243,6 +248,7 @@ class InvoiceToleranceUpdate(BaseModel):
 # Source List (US-ERP-03-05)
 # ---------------------------------------------------------------------------
 
+
 class SourceListCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -286,6 +292,7 @@ class SourceListUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 # RFQ (US-ERP-03-05)
 # ---------------------------------------------------------------------------
+
 
 class RfqLineCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -372,6 +379,7 @@ class RfqComparisonOut(BaseModel):
 # ---------------------------------------------------------------------------
 # KPIs Dashboard (US-ERP-03-06)
 # ---------------------------------------------------------------------------
+
 
 class ProcurementKpiOut(BaseModel):
     """KPIs consolidados del módulo de compras."""

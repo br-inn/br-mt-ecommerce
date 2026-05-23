@@ -58,18 +58,12 @@ class PurchaseRequisition(UuidPkMixin, Base):
         nullable=True,
     )
     qty: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
-    uom: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'UNIT'")
-    )
+    uom: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'UNIT'"))
     required_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     cost_center_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     suggested_vendor_id: Mapped[UUID | None] = mapped_column(UUID_PG, nullable=True)
-    estimated_amount: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 4), nullable=True
-    )
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'draft'")
-    )
+    estimated_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'draft'"))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
@@ -161,15 +155,9 @@ class ApprovalRule(UuidPkMixin, Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    timeout_hours: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("48")
-    )
-    priority: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    timeout_hours: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("48"))
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -197,29 +185,23 @@ class VendorProductCondition(UuidPkMixin, Base):
         nullable=False,
     )
     price: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
-    uom: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'UNIT'")
-    )
-    moq: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("1")
-    )
+    uom: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'UNIT'"))
+    moq: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     valid_from: Mapped[date] = mapped_column(
         Date, nullable=False, server_default=text("CURRENT_DATE")
     )
     valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
-    currency: Mapped[str] = mapped_column(
-        String(3), nullable=False, server_default=text("'AED'")
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'AED'"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
     __table_args__ = (
-        UniqueConstraint("vendor_id", "product_sku", "valid_from", name="uq_vpc_vendor_product_date"),
+        UniqueConstraint(
+            "vendor_id", "product_sku", "valid_from", name="uq_vpc_vendor_product_date"
+        ),
         CheckConstraint("price >= 0", name="ck_vpc_price_nonneg"),
         CheckConstraint("moq >= 1", name="ck_vpc_moq_pos"),
         Index(
@@ -241,6 +223,7 @@ class VendorProductCondition(UuidPkMixin, Base):
 # US-ERP-03-04 — Three-way match
 # ---------------------------------------------------------------------------
 
+
 class VendorInvoice(UuidPkMixin, Base):
     """Factura de proveedor — lifecycle: pending → matched/tolerance_ok/blocked → approved → paid."""
 
@@ -260,9 +243,7 @@ class VendorInvoice(UuidPkMixin, Base):
     )
     invoice_date: Mapped[date] = mapped_column(Date, nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
-    currency: Mapped[str] = mapped_column(
-        CHAR(3), nullable=False, server_default=text("'AED'")
-    )
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default=text("'AED'"))
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default=text("'pending'")
     )
@@ -302,12 +283,8 @@ class InvoiceTolerance(UuidPkMixin, Base):
     tolerance_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     absolute_limit: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     pct_limit: Mapped[Decimal | None] = mapped_column(Numeric(7, 4), nullable=True)
-    currency: Mapped[str] = mapped_column(
-        CHAR(3), nullable=False, server_default=text("'AED'")
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default=text("'AED'"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (
         Index(
@@ -322,6 +299,7 @@ class InvoiceTolerance(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-03-05 — Source List + RFQ
 # ---------------------------------------------------------------------------
+
 
 class SourceList(UuidPkMixin, Base):
     """Registro de proveedores aprobados por producto (Source List)."""
@@ -344,9 +322,7 @@ class SourceList(UuidPkMixin, Base):
     is_preferred: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
-    is_blocked: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     valid_from: Mapped[date] = mapped_column(
         Date, nullable=False, server_default=text("CURRENT_DATE")
     )
@@ -379,9 +355,7 @@ class RfqHeader(UuidPkMixin, Base):
         ForeignKey("purchase_requisitions.id", ondelete="SET NULL"),
         nullable=True,
     )
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'draft'")
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'draft'"))
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -432,9 +406,7 @@ class RfqLine(UuidPkMixin, Base):
         nullable=False,
     )
     qty: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
-    uom: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'UNIT'")
-    )
+    uom: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'UNIT'"))
 
     rfq: Mapped[RfqHeader] = relationship("RfqHeader", back_populates="lines", lazy="noload")
 
@@ -456,15 +428,11 @@ class RfqVendorResponse(UuidPkMixin, Base):
     )
     vendor_id: Mapped[str] = mapped_column(Text, nullable=False)
     unit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
-    currency: Mapped[str] = mapped_column(
-        CHAR(3), nullable=False, server_default=text("'AED'")
-    )
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default=text("'AED'"))
     lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    responded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     rfq: Mapped[RfqHeader] = relationship("RfqHeader", back_populates="responses", lazy="noload")
 

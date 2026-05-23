@@ -106,9 +106,7 @@ class InvalidTranslationStateTransition(ProductDomainError):
             message=(
                 f"Transición inválida {current!r} → {target!r}. "
                 f"Permitidas: "
-                + ", ".join(
-                    f"{a}->{b}" for a, b in sorted(_VALID_TRANSITIONS)
-                )
+                + ", ".join(f"{a}->{b}" for a, b in sorted(_VALID_TRANSITIONS))
                 + "."
             ),
             status_code=409,
@@ -184,9 +182,7 @@ class TranslationWorkflowService:
         self.audit_emitter = TranslationAuditEmitter(self.audit)
 
     # ---------------------------------------------------------- helpers
-    async def _ensure_translation(
-        self, sku: str, lang: str
-    ) -> ProductTranslation:
+    async def _ensure_translation(self, sku: str, lang: str) -> ProductTranslation:
         prod = await self.products.get_by_sku(sku)
         if prod is None or prod.deleted_at is not None:
             raise ProductNotFoundError(sku)
@@ -196,9 +192,7 @@ class TranslationWorkflowService:
         return existing
 
     # ---------------------------------------------------------- transitions
-    async def request_review(
-        self, sku: str, lang: str, actor: User
-    ) -> ProductTranslation:
+    async def request_review(self, sku: str, lang: str, actor: User) -> ProductTranslation:
         """``draft|pending|stale`` → ``pending_review`` (autor pide review)."""
         row = await self._ensure_translation(sku, lang)
         previous = row.status
@@ -221,9 +215,7 @@ class TranslationWorkflowService:
         )
         return row
 
-    async def approve(
-        self, sku: str, lang: str, actor: User
-    ) -> ProductTranslation:
+    async def approve(self, sku: str, lang: str, actor: User) -> ProductTranslation:
         """``pending_review`` → ``approved`` (con four-eyes)."""
         row = await self._ensure_translation(sku, lang)
         previous = row.status
@@ -247,9 +239,7 @@ class TranslationWorkflowService:
         )
         return row
 
-    async def reject(
-        self, sku: str, lang: str, actor: User, *, reason: str
-    ) -> ProductTranslation:
+    async def reject(self, sku: str, lang: str, actor: User, *, reason: str) -> ProductTranslation:
         """``pending_review`` → ``draft`` (con motivo obligatorio)."""
         if reason is None or not str(reason).strip():
             raise TranslationRejectMissingReason()

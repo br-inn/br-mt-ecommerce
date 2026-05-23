@@ -47,11 +47,7 @@ class ProductRepository(BaseRepository[Product]):
         """Like get_by_sku but eager-loads product.model for matching pipeline."""
         from sqlalchemy import select
 
-        stmt = (
-            select(Product)
-            .options(joinedload(Product.model))
-            .where(Product.sku == sku)
-        )
+        stmt = select(Product).options(joinedload(Product.model)).where(Product.sku == sku)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -73,9 +69,7 @@ class ProductRepository(BaseRepository[Product]):
             .options(
                 selectinload(Product.translations),
                 selectinload(Product.assets),
-                selectinload(Product.product_divisions).selectinload(
-                    ProductDivision.division
-                ),
+                selectinload(Product.product_divisions).selectinload(ProductDivision.division),
                 joinedload(Product.model),
             )
         )
@@ -259,40 +253,35 @@ class ProductRepository(BaseRepository[Product]):
                 # Documento ponderado: sku 'A', name_en 'B', family 'C', brand 'D'.
                 # literal_column evita que asyncpg envíe el peso como VARCHAR bind;
                 # setweight requiere "char", no character varying.
-                ts_doc = func.setweight(
-                    func.to_tsvector(
-                        "simple", func.coalesce(Product.sku, "")
-                    ),
-                    literal_column("'A'::\"char\""),
-                ).op("||")(
+                ts_doc = (
                     func.setweight(
-                        func.to_tsvector(
-                            "simple", func.coalesce(en_name_sql, "")
-                        ),
-                        literal_column("'B'::\"char\""),
+                        func.to_tsvector("simple", func.coalesce(Product.sku, "")),
+                        literal_column("'A'::\"char\""),
                     )
-                ).op("||")(
-                    func.setweight(
-                        func.to_tsvector(
-                            "simple", func.coalesce(Product.family, "")
-                        ),
-                        literal_column("'C'::\"char\""),
+                    .op("||")(
+                        func.setweight(
+                            func.to_tsvector("simple", func.coalesce(en_name_sql, "")),
+                            literal_column("'B'::\"char\""),
+                        )
                     )
-                ).op("||")(
-                    func.setweight(
-                        func.to_tsvector(
-                            "simple", func.coalesce(Product.brand, "")
-                        ),
-                        literal_column("'D'::\"char\""),
+                    .op("||")(
+                        func.setweight(
+                            func.to_tsvector("simple", func.coalesce(Product.family, "")),
+                            literal_column("'C'::\"char\""),
+                        )
+                    )
+                    .op("||")(
+                        func.setweight(
+                            func.to_tsvector("simple", func.coalesce(Product.brand, "")),
+                            literal_column("'D'::\"char\""),
+                        )
                     )
                 )
                 ts_query = func.websearch_to_tsquery("simple", search)
                 clauses.append(ts_doc.op("@@")(ts_query))
             else:
                 term = f"%{search}%"
-                clauses.append(
-                    or_(Product.sku.ilike(term), en_name_sql.ilike(term))
-                )
+                clauses.append(or_(Product.sku.ilike(term), en_name_sql.ilike(term)))
 
         if clauses:
             stmt = stmt.where(and_(*clauses))
@@ -319,9 +308,7 @@ class ProductRepository(BaseRepository[Product]):
             rows = rows[:limit]
         return rows, next_cursor, total
 
-    async def search_by_text(
-        self, query: str, *, limit: int = 10
-    ) -> Sequence[Product]:
+    async def search_by_text(self, query: str, *, limit: int = 10) -> Sequence[Product]:
         """Full-text simple: pg_trgm sobre product_translations(lang='en').name + ILIKE sobre sku.
 
         Usa JOIN directo sobre product_translations para que el planner pueda

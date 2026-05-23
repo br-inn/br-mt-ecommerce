@@ -82,35 +82,27 @@ def test_decide_initial_status_clean_auto_approved() -> None:
 
 def test_decide_initial_status_delta_above_threshold_pending() -> None:
     classified = {"critical": [], "warning": [], "info": []}
-    status, reasons = decide_initial_status(
-        classified, delta_margin_pct=Decimal("15.0")
-    )
+    status, reasons = decide_initial_status(classified, delta_margin_pct=Decimal("15.0"))
     assert status == "pending_review"
     assert any("delta_margin_pct_above_threshold" in r for r in reasons)
 
 
 def test_decide_initial_status_delta_below_threshold_auto_approved() -> None:
     classified = {"critical": [], "warning": [], "info": []}
-    status, _ = decide_initial_status(
-        classified, delta_margin_pct=Decimal("5.0")
-    )
+    status, _ = decide_initial_status(classified, delta_margin_pct=Decimal("5.0"))
     assert status == "auto_approved"
 
 
 def test_decide_initial_status_force_pending_review() -> None:
     classified = {"critical": [], "warning": [], "info": []}
-    status, reasons = decide_initial_status(
-        classified, overrides={"force_pending_review": True}
-    )
+    status, reasons = decide_initial_status(classified, overrides={"force_pending_review": True})
     assert status == "pending_review"
     assert "override:force_pending_review" in reasons
 
 
 def test_decide_initial_status_force_auto_overrides_critical() -> None:
     classified = {"critical": [{"code": "x"}], "warning": [], "info": []}
-    status, reasons = decide_initial_status(
-        classified, overrides={"force_auto_approved": True}
-    )
+    status, reasons = decide_initial_status(classified, overrides={"force_auto_approved": True})
     assert status == "auto_approved"
     assert "override:force_auto_approved" in reasons
 

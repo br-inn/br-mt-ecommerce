@@ -100,7 +100,7 @@ _PROMPT_TEMPLATE = (
     '  "material": string (e.g. "brass" / "ss316" / "ductile_iron"),\n'
     '  "seal": string (e.g. "epdm" / "nbr"),\n'
     '  "extra": object (any other relevant key/value)\n'
-    'Filename: {filename}\n'
+    "Filename: {filename}\n"
 )
 
 
@@ -152,9 +152,7 @@ class OpenAIVisionExtractor:
                         {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{b64}"
-                            },
+                            "image_url": {"url": f"data:image/png;base64,{b64}"},
                         },
                     ],
                 }
@@ -203,9 +201,7 @@ def _parse_vision_response(text: str) -> dict[str, Any]:
             out[k] = v.strip()
     extra = data.get("extra")
     if isinstance(extra, dict):
-        out["extra"] = {
-            k: v for k, v in extra.items() if isinstance(k, str)
-        }
+        out["extra"] = {k: v for k, v in extra.items() if isinstance(k, str)}
     return out
 
 
@@ -218,9 +214,7 @@ def _live_enabled() -> bool:
 # ---------------------------------------------------------------------------
 # Page rendering
 # ---------------------------------------------------------------------------
-def _render_pdf_pages(
-    payload: bytes, *, max_pages: int = 4, resolution: int = 150
-) -> list[bytes]:
+def _render_pdf_pages(payload: bytes, *, max_pages: int = 4, resolution: int = 150) -> list[bytes]:
     """Convierte un PDF en PNG bytes por página vía ``pdfplumber.to_image()``.
 
     Si pdfplumber no está disponible o el PDF no se puede abrir, devuelve
@@ -330,14 +324,10 @@ class VisionExtractor:
                     idx,
                     exc,
                 )
-                pages_out.append(
-                    VisionPageResult(page_index=idx, raw_text="", parsed={})
-                )
+                pages_out.append(VisionPageResult(page_index=idx, raw_text="", parsed={}))
                 continue
             parsed = _parse_vision_response(raw)
-            pages_out.append(
-                VisionPageResult(page_index=idx, raw_text=raw, parsed=parsed)
-            )
+            pages_out.append(VisionPageResult(page_index=idx, raw_text=raw, parsed=parsed))
             # Merge: la primera página que reporta cada spec gana (datasheets
             # tienen el header en pág 1 — buena heurística para PVF).
             for k in ("dn", "pn", "material", "seal"):
@@ -351,14 +341,10 @@ class VisionExtractor:
                         merged_extra[ek] = ev
                 agg_specs["extra"] = merged_extra
             # Confidence heurístico: count specs / 4 (max DN/PN/material/seal).
-            recognized = sum(
-                1 for k in ("dn", "pn", "material", "seal") if k in parsed
-            )
+            recognized = sum(1 for k in ("dn", "pn", "material", "seal") if k in parsed)
             confidences.append(recognized / 4.0)
 
-        confidence = (
-            sum(confidences) / len(confidences) if confidences else 0.0
-        )
+        confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
         return VisionExtractionResult(
             pages=pages_out,

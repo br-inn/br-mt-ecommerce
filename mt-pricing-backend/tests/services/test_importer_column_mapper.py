@@ -141,7 +141,19 @@ def test_map_row_missing_erp_yields_name_en_error() -> None:
         "73071910",
         "",  # erp_name vacío
         "8435319100004",
-        None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
     )
     payload, errors = map_row(row)
     assert any("name_en" in e for e in errors)
@@ -149,8 +161,27 @@ def test_map_row_missing_erp_yields_name_en_error() -> None:
 
 def test_map_row_invalid_int_reports_error_and_continues() -> None:
     """Un cast inválido genera error pero no aborta los demás campos."""
-    row = list(("001010", "73071910", "name", None, None, None,
-                None, None, None, None, "not_an_int", None, None, None, None, None, None))
+    row = list(
+        (
+            "001010",
+            "73071910",
+            "name",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            "not_an_int",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+    )
     payload, errors = map_row(tuple(row))
     assert any("qty x box" in e for e in errors)
     assert payload["sku"] == "001010"  # otros campos sí se setearon

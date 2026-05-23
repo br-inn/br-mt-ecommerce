@@ -67,7 +67,9 @@ async def _seed(dry_run: bool) -> None:
         async with engine.begin() as conn:
             result = await conn.execute(_UPSERT_SQL, _JOB)
             row = result.fetchone()
-            print(f"[seed] job_definitions upserted: id={row.id} code={row.code} enabled={row.enabled}")
+            print(
+                f"[seed] job_definitions upserted: id={row.id} code={row.code} enabled={row.enabled}"
+            )
     finally:
         await engine.dispose()
 

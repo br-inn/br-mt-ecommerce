@@ -26,43 +26,48 @@ from selectolax.parser import HTMLParser, Node
 # Canonical attribute keys → Amazon label aliases
 # ---------------------------------------------------------------------------
 ATTRIBUTE_LABELS: dict[str, list[str]] = {
-    "material_type":            ["Material Type", "Material"],
-    "valve_type":               ["Valve Type"],
-    "maximum_pressure":         ["Maximum Pressure", "Maximum pressure", "Pressure Rating"],
-    "pressure_rating":          ["Pressure Rating"],
-    "thread_size":              ["Thread Size"],
-    "thread_type":              ["Thread Type"],
-    "inlet_connection":         ["Inlet Connection Type", "Inlet Connection"],
-    "outlet_connection":        ["Outlet Connection Type", "Outlet Connection"],
-    "connection_type":          ["Connection Type"],
-    "exterior_finish":          ["Exterior Finish"],
-    "number_of_ports":          ["Number of Ports"],
-    "size":                     ["Size"],
-    "specification_met":        ["Specification Met", "Compliance", "Certification"],
-    "brand_name":               ["Brand Name", "Brand"],
-    "manufacturer":             ["Manufacturer"],
-    "model_number":             ["Model Number", "Item model number"],
+    "material_type": ["Material Type", "Material"],
+    "valve_type": ["Valve Type"],
+    "maximum_pressure": ["Maximum Pressure", "Maximum pressure", "Pressure Rating"],
+    "pressure_rating": ["Pressure Rating"],
+    "thread_size": ["Thread Size"],
+    "thread_type": ["Thread Type"],
+    "inlet_connection": ["Inlet Connection Type", "Inlet Connection"],
+    "outlet_connection": ["Outlet Connection Type", "Outlet Connection"],
+    "connection_type": ["Connection Type"],
+    "exterior_finish": ["Exterior Finish"],
+    "number_of_ports": ["Number of Ports"],
+    "size": ["Size"],
+    "specification_met": ["Specification Met", "Compliance", "Certification"],
+    "brand_name": ["Brand Name", "Brand"],
+    "manufacturer": ["Manufacturer"],
+    "model_number": ["Model Number", "Item model number"],
     "manufacturer_part_number": ["Manufacturer Part Number"],
-    "asin":                     ["ASIN"],
-    "unit_count":               ["Unit Count"],
-    "set_name":                 ["Set Name"],
-    "number_of_items":          ["Number of Items", "Number of Pieces", "Item Package Quantity", "Quantity"],
-    "package_dimensions":       ["Package Dimensions"],
-    "item_weight":              ["Item Weight"],
-    "date_first_available":     ["Date First Available"],
-    "country_of_origin":        ["Country of Origin"],
+    "asin": ["ASIN"],
+    "unit_count": ["Unit Count"],
+    "set_name": ["Set Name"],
+    "number_of_items": ["Number of Items", "Number of Pieces", "Item Package Quantity", "Quantity"],
+    "package_dimensions": ["Package Dimensions"],
+    "item_weight": ["Item Weight"],
+    "date_first_available": ["Date First Available"],
+    "country_of_origin": ["Country of Origin"],
 }
 
 # Reverse lookup: normalized label → canonical key (built once at import time).
 LABEL_TO_KEY: dict[str, str] = {
-    lbl.lower().strip(): key
-    for key, labels in ATTRIBUTE_LABELS.items()
-    for lbl in labels
+    lbl.lower().strip(): key for key, labels in ATTRIBUTE_LABELS.items() for lbl in labels
 }
 
 _SECTION_KEYWORDS = frozenset(
-    ["features", "specs", "item details", "measurements",
-     "additional details", "user guide", "product details"]
+    [
+        "features",
+        "specs",
+        "item details",
+        "measurements",
+        "additional details",
+        "user guide",
+        "product details",
+    ]
 )
 
 _ASIN_RE = re.compile(r"/dp/([A-Z0-9]{10})")
@@ -72,9 +77,9 @@ _RTL_MARKS = str.maketrans("", "", "‎‏")
 # Pack-size patterns in titles: "3 Pack", "Pack of 3", "Set of 3", "3 Pieces", "3 Pcs", etc.
 _PACK_TITLE_RE = re.compile(
     r"(?:"
-    r"(?:pack|set|lot|bundle|box)\s+of\s+(\d+)"   # "pack of 3", "set of 3"
+    r"(?:pack|set|lot|bundle|box)\s+of\s+(\d+)"  # "pack of 3", "set of 3"
     r"|(\d+)\s*[-–]?\s*(?:pack|pcs?|pieces?|units?|count|ct)\b"  # "3 pack", "3pcs", "3-piece"
-    r"|(?:set|lot|bundle)\s+(\d+)\b"              # "set 3"
+    r"|(?:set|lot|bundle)\s+(\d+)\b"  # "set 3"
     r")",
     re.I,
 )
@@ -124,7 +129,7 @@ def _extract_specs_from_title(title: str, raw_pairs: list[dict[str, str]]) -> No
     m = _DN_RE.search(title)
     if m:
         raw_pairs.append({"label": "Size", "value": f"DN{m.group(1)}"})
-    elif (m := _INCH_SIZE_RE.search(title)):
+    elif m := _INCH_SIZE_RE.search(title):
         raw_pairs.append({"label": "Thread Size", "value": m.group(0).strip()})
 
     m = _THREAD_TYPE_RE.search(title)
@@ -173,7 +178,9 @@ def extract_pdp_specs(html: str) -> dict[str, Any]:
     raw_pairs: list[dict[str, str]] = []
 
     # ── 1) Tech spec tables (most common template) ──────────────────────────
-    for tbl in tree.css("table[id*='productDetails_techSpec'], table[id*='productDetails_detailBullets']"):
+    for tbl in tree.css(
+        "table[id*='productDetails_techSpec'], table[id*='productDetails_detailBullets']"
+    ):
         for tr in tbl.css("tr"):
             th = tr.css_first("th")
             td = tr.css_first("td")
@@ -199,9 +206,7 @@ def extract_pdp_specs(html: str) -> dict[str, Any]:
                     raw_pairs.append({"label": lbl, "value": val})
 
     # ── 3) detailBullets list  (e.g. "Label  ‏ : ‎ Value") ─────────────────
-    for ul in tree.css(
-        "#detailBullets_feature_div ul, #detailBulletsWrapper_feature_div ul"
-    ):
+    for ul in tree.css("#detailBullets_feature_div ul, #detailBulletsWrapper_feature_div ul"):
         for li in ul.css("li"):
             span = li.css_first("span.a-list-item")
             if span is None:
@@ -219,10 +224,7 @@ def extract_pdp_specs(html: str) -> dict[str, Any]:
     # Collected from feature-bullets and productDescription sections.
     # This text is the richest source for LLM spec extraction.
     desc_parts: list[str] = []
-    for bullets_ul in tree.css(
-        "#feature-bullets ul.a-unordered-list, "
-        "#feature-bullets ul"
-    ):
+    for bullets_ul in tree.css("#feature-bullets ul.a-unordered-list, #feature-bullets ul"):
         for li in bullets_ul.css("li"):
             span = li.css_first("span.a-list-item")
             txt = _node_text(span) if span else _node_text(li)
@@ -254,9 +256,8 @@ def extract_pdp_specs(html: str) -> dict[str, Any]:
         _m_r = re.match(r"(\d+(?:[.,]\d+)?)", rt)
         if _m_r:
             review_rating = _m_r.group(1).replace(",", ".")
-    count_node = (
-        tree.css_first("span[data-hook='total-review-count']")
-        or tree.css_first("#acrCustomerReviewText")
+    count_node = tree.css_first("span[data-hook='total-review-count']") or tree.css_first(
+        "#acrCustomerReviewText"
     )
     if count_node:
         ct = _clean(count_node.text())
@@ -309,10 +310,16 @@ def extract_pdp_specs(html: str) -> dict[str, Any]:
     # from the product title (which is always present via meta or productTitle).
     # Exclude administrative-only keys (asin, model_number, etc.) from the check
     # so they don't suppress the regex parser on JS-shell pages.
-    _ADMIN_KEYS = frozenset({
-        "asin", "manufacturer_part_number", "model_number",
-        "date_first_available", "package_dimensions", "unit_count",
-    })
+    _ADMIN_KEYS = frozenset(
+        {
+            "asin",
+            "manufacturer_part_number",
+            "model_number",
+            "date_first_available",
+            "package_dimensions",
+            "unit_count",
+        }
+    )
     has_product_specs = any(
         (key := LABEL_TO_KEY.get(_normalize_label(p["label"]))) and key not in _ADMIN_KEYS
         for p in raw_pairs
@@ -355,6 +362,7 @@ def parse_pack_units(title: str, specs: dict[str, Any]) -> int | None:
 
     Returns None if no pack info found or pack size is 1 (individual item).
     """
+
     def _to_int(val: Any) -> int | None:
         if val is None:
             return None

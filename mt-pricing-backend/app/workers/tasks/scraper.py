@@ -150,7 +150,7 @@ def scrape_sku_task(self, sku: str, *, force: bool = False) -> dict:  # type: ig
         )
         raise self.retry(
             exc=exc,
-            countdown=60 * (2 ** self.request.retries),  # backoff exponencial
+            countdown=60 * (2**self.request.retries),  # backoff exponencial
         )
 
 
@@ -181,9 +181,9 @@ def scrape_batch_task(skus: list[str], *, force: bool = False) -> dict:
         logger.warning("scraper.batch_empty")
         return {"group_id": None, "total": 0}
 
-    job = celery_group(
-        scrape_sku_task.s(sku, force=force) for sku in skus
-    ).apply_async(queue="comparator")
+    job = celery_group(scrape_sku_task.s(sku, force=force) for sku in skus).apply_async(
+        queue="comparator"
+    )
 
     # Persistir GroupResult para que pueda ser consultado por id
     job.save()
@@ -371,9 +371,7 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
                 # ── Record extractor hit rate per candidate (AC-2) ─────────
                 if mapping is not None:
                     canonical_fields = {
-                        v["field"]
-                        for v in mapping.values()
-                        if isinstance(v, dict) and "field" in v
+                        v["field"] for v in mapping.values() if isinstance(v, dict) and "field" in v
                     }
                     for candidate in candidates:
                         hit = bool(canonical_fields & set(candidate.specs.keys()))
@@ -406,7 +404,7 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
         )
         raise self.retry(
             exc=exc,
-            countdown=120 * (2 ** self.request.retries),
+            countdown=120 * (2**self.request.retries),
         )
 
 
@@ -428,6 +426,7 @@ def scrape_brands_batch_task(brand_ids: list[str] | None = None, *, force: bool 
     brand_ids=None → carga todas las marcas activas desde DB.
     """
     if brand_ids is None:
+
         async def _load_active() -> list[str]:
             from sqlalchemy import select
             from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -456,9 +455,9 @@ def scrape_brands_batch_task(brand_ids: list[str] | None = None, *, force: bool 
         logger.warning("scraper.brands_batch_empty")
         return {"group_id": None, "total": 0}
 
-    job = celery_group(
-        scrape_brand_task.s(bid, force=force) for bid in brand_ids
-    ).apply_async(queue="scraper")
+    job = celery_group(scrape_brand_task.s(bid, force=force) for bid in brand_ids).apply_async(
+        queue="scraper"
+    )
     job.save()
 
     logger.info(
@@ -480,7 +479,9 @@ def scrape_brands_batch_task(brand_ids: list[str] | None = None, *, force: bool 
     default_retry_delay=60,
     name="mt.scraper.generate_brand_extractor",
 )
-def generate_brand_extractor_task(self: Any, brand_id: str, marketplace: str = "amazon_uae") -> dict[str, Any]:
+def generate_brand_extractor_task(
+    self: Any, brand_id: str, marketplace: str = "amazon_uae"
+) -> dict[str, Any]:
     """Bootstrap: genera el JSON attribute-mapping para una marca via Claude (US-SCR-05-01).
 
     Ejecutado al hacer Bootstrap Scan desde la UI. Fetches 3 sample ASINs
@@ -599,9 +600,7 @@ async def _scrape_source_async(
     brand_repo = CompetitorBrandRepository(session)
     upserted = 0
     for candidate in candidates:
-        await brand_repo.upsert_listing(
-            candidate, competitor_brand_id=source.competitor_brand_id
-        )
+        await brand_repo.upsert_listing(candidate, competitor_brand_id=source.competitor_brand_id)
         upserted += 1
     # El commit lo hace el dueño de la sesión (la task Celery), no este helper.
     return {"source_id": source_id, "status": "ok", "upserted": upserted}
@@ -641,9 +640,7 @@ def scrape_source_task(self, source_id: str, *, search_text: str) -> dict:  # ty
         )
         try:
             async with session_factory() as session:
-                result = await _scrape_source_async(
-                    session, source_id, search_text=search_text
-                )
+                result = await _scrape_source_async(session, source_id, search_text=search_text)
                 await session.commit()
                 return result
         finally:
@@ -664,4 +661,4 @@ def scrape_source_task(self, source_id: str, *, search_text: str) -> dict:  # ty
             "scraper.source_failed",
             extra={"source_id": source_id, "error": str(exc)},
         )
-        raise self.retry(exc=exc, countdown=120 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=120 * (2**self.request.retries))

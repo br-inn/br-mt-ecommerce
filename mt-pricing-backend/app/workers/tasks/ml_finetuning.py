@@ -39,6 +39,7 @@ _HOLDOUT_RATIO = 0.20
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_jsonl_local(path: str) -> list[dict[str, Any]]:
     """Lee un archivo JSONL desde el sistema local de archivos."""
     pairs: list[dict[str, Any]] = []
@@ -68,7 +69,7 @@ def _load_pairs(dataset_path: str) -> list[dict[str, Any]]:
     """Carga pares desde dataset_path (local o storage://...)."""
     if dataset_path.startswith("storage://"):
         # Formato: storage://<ruta dentro del bucket ml-datasets>
-        storage_key = dataset_path[len("storage://"):]
+        storage_key = dataset_path[len("storage://") :]
         return _read_jsonl_from_storage(storage_key)
     return _read_jsonl_local(dataset_path)
 
@@ -128,6 +129,7 @@ async def _insert_registry(
 # ---------------------------------------------------------------------------
 # Core logic (sync — se ejecuta dentro de la task Celery)
 # ---------------------------------------------------------------------------
+
 
 def _run_finetune(
     *,
@@ -234,6 +236,7 @@ class _InsufficientDataError(Exception):
 # ---------------------------------------------------------------------------
 # Celery task
 # ---------------------------------------------------------------------------
+
 
 @celery_app.task(
     name="ml.finetune_embeddings",

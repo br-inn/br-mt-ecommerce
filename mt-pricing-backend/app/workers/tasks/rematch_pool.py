@@ -3,6 +3,7 @@
 Patrón: Bronze/Silver/Gold — las ofertas sin match viven en Silver (unmatched_offers)
 y se re-intentan matchear cuando el pipeline mejora o periódicamente.
 """
+
 from __future__ import annotations
 
 import asyncio

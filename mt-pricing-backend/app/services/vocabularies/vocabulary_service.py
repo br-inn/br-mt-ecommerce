@@ -245,9 +245,7 @@ class ProductVocabularyService:
         await self.session.commit()
         return rows
 
-    async def remove_certification(
-        self, product_sku: str, certification_id: UUID
-    ) -> None:
+    async def remove_certification(self, product_sku: str, certification_id: UUID) -> None:
         removed = await self.cert_repo.unlink(product_sku, certification_id)
         if not removed:
             raise VocabularyDomainError(
@@ -299,9 +297,7 @@ class ProductVocabularyService:
         await self.session.commit()
         return rows
 
-    async def remove_application(
-        self, product_sku: str, application_id: UUID
-    ) -> None:
+    async def remove_application(self, product_sku: str, application_id: UUID) -> None:
         removed = await self.app_repo.unlink(product_sku, application_id)
         if not removed:
             raise VocabularyDomainError(
@@ -484,9 +480,7 @@ class ProductTypeService:
         self.repo = ProductTypeRepo(session)
         self.subfamily_repo = SubfamilyRepo(session)
 
-    async def list_by_subfamily(
-        self, subfamily_id: UUID
-    ) -> Sequence[ProductType]:
+    async def list_by_subfamily(self, subfamily_id: UUID) -> Sequence[ProductType]:
         return await self.repo.list_by_subfamily(subfamily_id)
 
     async def list_all(self) -> Sequence[ProductType]:
@@ -510,9 +504,7 @@ class ProductTypeService:
                 code="subfamily_not_found",
                 status_code=404,
             )
-        existing = await self.repo.get_by_subfamily_and_code(
-            subfamily_id, data["code"]
-        )
+        existing = await self.repo.get_by_subfamily_and_code(subfamily_id, data["code"])
         if existing is not None:
             raise VocabularyDomainError(
                 f"ProductType with code '{data['code']}' already exists in subfamily",
@@ -609,14 +601,10 @@ class ProductDivisionService:
         self.repo = ProductDivisionRepo(session)
         self.div_repo = DivisionRepo(session)
 
-    async def list_for_product(
-        self, product_sku: str
-    ) -> Sequence[ProductDivision]:
+    async def list_for_product(self, product_sku: str) -> Sequence[ProductDivision]:
         return await self.repo.list_for_product(product_sku)
 
-    async def add(
-        self, product_sku: str, division_id: UUID
-    ) -> ProductDivision:
+    async def add(self, product_sku: str, division_id: UUID) -> ProductDivision:
         if await self.div_repo.get(division_id) is None:
             raise VocabularyDomainError(
                 f"Division {division_id} not found",
@@ -728,9 +716,7 @@ class SeriesService:
     async def list_all(self) -> Sequence[Series]:
         return await self.repo.list_all()
 
-    async def list_by_division(
-        self, division_id: UUID
-    ) -> Sequence[Series]:
+    async def list_by_division(self, division_id: UUID) -> Sequence[Series]:
         return await self.repo.list_by_division(division_id)
 
     async def get_by_id(self, series_id: UUID) -> Series:
@@ -808,9 +794,7 @@ class SeriesService:
         await self.session.commit()
         return row
 
-    async def list_translations(
-        self, series_id: UUID
-    ) -> Sequence[SeriesTranslation]:
+    async def list_translations(self, series_id: UUID) -> Sequence[SeriesTranslation]:
         await self.get_by_id(series_id)
         return await self.tr_repo.list_for_series(series_id)
 
@@ -826,17 +810,13 @@ class SeriesService:
         await self.session.commit()
 
     # ---- Series ↔ Division (M:N) ----
-    async def add_division(
-        self, series_id: UUID, division_id: UUID
-    ) -> SeriesDivision:
+    async def add_division(self, series_id: UUID, division_id: UUID) -> SeriesDivision:
         await self.get_by_id(series_id)
         row = await self.div_repo.link(series_id, division_id)
         await self.session.commit()
         return row
 
-    async def remove_division(
-        self, series_id: UUID, division_id: UUID
-    ) -> None:
+    async def remove_division(self, series_id: UUID, division_id: UUID) -> None:
         await self.get_by_id(series_id)
         ok = await self.div_repo.unlink(series_id, division_id)
         if not ok:
@@ -847,9 +827,7 @@ class SeriesService:
             )
         await self.session.commit()
 
-    async def list_divisions(
-        self, series_id: UUID
-    ) -> Sequence[SeriesDivision]:
+    async def list_divisions(self, series_id: UUID) -> Sequence[SeriesDivision]:
         await self.get_by_id(series_id)
         return await self.div_repo.list_for_series(series_id)
 
@@ -862,9 +840,7 @@ class SeriesService:
         await self.session.commit()
         return row
 
-    async def remove_certification(
-        self, series_id: UUID, certification_id: UUID
-    ) -> None:
+    async def remove_certification(self, series_id: UUID, certification_id: UUID) -> None:
         await self.get_by_id(series_id)
         ok = await self.cert_repo.unlink(series_id, certification_id)
         if not ok:
@@ -875,9 +851,7 @@ class SeriesService:
             )
         await self.session.commit()
 
-    async def list_certifications(
-        self, series_id: UUID
-    ) -> Sequence[SeriesCertification]:
+    async def list_certifications(self, series_id: UUID) -> Sequence[SeriesCertification]:
         await self.get_by_id(series_id)
         return await self.cert_repo.list_for_series(series_id)
 
@@ -921,9 +895,7 @@ class MaterialService:
         await self.session.commit()
         return row
 
-    async def patch(
-        self, material_id: UUID, data: dict[str, Any]
-    ) -> Material:
+    async def patch(self, material_id: UUID, data: dict[str, Any]) -> Material:
         row = await self.get_by_id(material_id)
         for k, v in data.items():
             setattr(row, k, v)

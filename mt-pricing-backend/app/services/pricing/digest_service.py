@@ -40,12 +40,23 @@ class DigestService:
             }
         """
         day_start = datetime(
-            target_date.year, target_date.month, target_date.day,
-            0, 0, 0, tzinfo=timezone.utc,
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            0,
+            0,
+            0,
+            tzinfo=timezone.utc,
         )
         day_end = datetime(
-            target_date.year, target_date.month, target_date.day,
-            23, 59, 59, 999999, tzinfo=timezone.utc,
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            23,
+            59,
+            59,
+            999999,
+            tzinfo=timezone.utc,
         )
 
         # Counts por status

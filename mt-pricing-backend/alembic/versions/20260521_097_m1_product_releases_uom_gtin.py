@@ -30,10 +30,7 @@ def upgrade() -> None:
     # máxima compatibilidad usamos COMMIT / BEGIN explícito.
     # ------------------------------------------------------------------
     op.execute("COMMIT")
-    op.execute(
-        "ALTER TYPE lifecycle_status ADD VALUE IF NOT EXISTS 'in_review' "
-        "AFTER 'draft'"
-    )
+    op.execute("ALTER TYPE lifecycle_status ADD VALUE IF NOT EXISTS 'in_review' AFTER 'draft'")
     op.execute("BEGIN")
 
     # ------------------------------------------------------------------

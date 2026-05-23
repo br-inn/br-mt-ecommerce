@@ -97,6 +97,7 @@ def _build_app(session_mock: Any) -> tuple[FastAPI, _FakeUser]:
         for dep in getattr(getattr(route, "dependant", None), "dependencies", []):
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call):  # noqa: ARG001
                     return user
 

@@ -9,6 +9,7 @@ Cambios en ``invoices``:
   notas de crédito y cancelaciones.
 - Ampliar el CHECK de ``invoice_type`` para incluir 'CANCELLATION'.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa

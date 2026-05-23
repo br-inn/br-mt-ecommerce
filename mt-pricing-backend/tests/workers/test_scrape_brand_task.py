@@ -7,6 +7,7 @@ Cubre (US-SCR-03-02 AC-4, AC-5, AC-6):
 - AC-6: Query builder mapea amazon_dept / amazon_category_node correctamente
         y la URL SERP contiene los parámetros correctos.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -19,6 +20,7 @@ from app.services.matching.ports import Query
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_brand(
     *,
@@ -44,6 +46,7 @@ def _make_brand(
 # ---------------------------------------------------------------------------
 # AC-6: _build_brand_query — mapeo correcto de campos al Query
 # ---------------------------------------------------------------------------
+
 
 def test_build_brand_query_uses_name_when_no_search_term():
     from app.workers.tasks.scraper import _build_brand_query
@@ -115,6 +118,7 @@ def test_build_brand_query_returns_query_dataclass():
 # AC-6: URL SERP contiene los parámetros correctos
 # ---------------------------------------------------------------------------
 
+
 def test_serp_url_contains_dept_and_category_node():
     """La URL SERP construida por CurlCffiAmazonUaeFetcher._fetch_serp
     incluye el parámetro &i=<dept> y &rh=n:<category_node>."""
@@ -164,6 +168,7 @@ def test_serp_url_without_category_node_omits_rh_param():
 # ---------------------------------------------------------------------------
 # AC-4: lógica de _run_async probada directamente (sin asyncio.run)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_scrape_brand_task_run_async_calls_fetcher_with_correct_query():
@@ -218,9 +223,7 @@ async def test_scrape_brand_task_run_async_calls_fetcher_with_correct_query():
     mock_fetcher.fetch.assert_called_once_with(query)
 
     # Assertions: upsert called with correct brand id
-    mock_repo.upsert_listing.assert_called_once_with(
-        candidate, competitor_brand_id=brand.id
-    )
+    mock_repo.upsert_listing.assert_called_once_with(candidate, competitor_brand_id=brand.id)
 
     # Assertions: touch_scraped called
     mock_repo.touch_scraped.assert_called_once_with(brand)
@@ -229,6 +232,7 @@ async def test_scrape_brand_task_run_async_calls_fetcher_with_correct_query():
 # ---------------------------------------------------------------------------
 # AC-5: scrape_brands_batch_task — despacha una task por cada brand activa
 # ---------------------------------------------------------------------------
+
 
 def test_scrape_brands_batch_task_dispatches_one_task_per_brand(monkeypatch):
     """scrape_brands_batch_task crea un group con una scrape_brand_task.s()
@@ -311,6 +315,7 @@ def test_scrape_brands_batch_task_dispatches_with_force_flag():
 # ---------------------------------------------------------------------------
 # AC-5 (extra): scrape_brands_batch_task con brand_ids=None carga activas de DB
 # ---------------------------------------------------------------------------
+
 
 def test_scrape_brands_batch_task_loads_active_brands_when_none(monkeypatch):
     """brand_ids=None → se cargan las marcas activas desde DB vía asyncio.run."""

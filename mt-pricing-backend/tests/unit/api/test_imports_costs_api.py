@@ -162,9 +162,8 @@ def _build_app(*, with_orphans: bool = False) -> tuple[FastAPI, _FakeUser, Magic
                 if dep.call is None:
                     continue
                 fn = dep.call
-                if (
-                    fn.__module__ == require_permissions.__module__
-                    and fn.__qualname__.startswith("require_permissions.")
+                if fn.__module__ == require_permissions.__module__ and fn.__qualname__.startswith(
+                    "require_permissions."
                 ):
                     app.dependency_overrides[fn] = _override_perms_factory()
 

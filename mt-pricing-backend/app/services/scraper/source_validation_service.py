@@ -1,5 +1,6 @@
 """Servicio de validación de recetas — corre una receta contra una URL de muestra
 y registra el resultado por field."""
+
 from __future__ import annotations
 
 from typing import Any, Awaitable, Callable

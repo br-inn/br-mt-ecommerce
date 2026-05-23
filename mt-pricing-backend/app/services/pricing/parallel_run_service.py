@@ -70,12 +70,23 @@ class ParallelRunService:
             }
         """
         day_start = datetime(
-            target_date.year, target_date.month, target_date.day,
-            0, 0, 0, tzinfo=timezone.utc,
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            0,
+            0,
+            0,
+            tzinfo=timezone.utc,
         )
         day_end = datetime(
-            target_date.year, target_date.month, target_date.day,
-            23, 59, 59, 999999, tzinfo=timezone.utc,
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            23,
+            59,
+            59,
+            999999,
+            tzinfo=timezone.utc,
         )
 
         # 1. Leer prices activos del día
@@ -156,10 +167,7 @@ class ParallelRunService:
             day_end=day_end,
         )
         result = await self.session.execute(stmt)
-        return {
-            (row.sku, row.channel): Decimal(str(row.amount_aed))
-            for row in result
-        }
+        return {(row.sku, row.channel): Decimal(str(row.amount_aed)) for row in result}
 
     async def _fetch_excel_refs(
         self, day_start: datetime, day_end: datetime
@@ -178,10 +186,7 @@ class ParallelRunService:
             """
         ).bindparams(day_start=day_start, day_end=day_end)
         result = await self.session.execute(stmt)
-        return {
-            (row.sku, row.channel): Decimal(str(row.reference_price_aed))
-            for row in result
-        }
+        return {(row.sku, row.channel): Decimal(str(row.reference_price_aed)) for row in result}
 
     @staticmethod
     def _compute_diff(
@@ -218,9 +223,9 @@ class ParallelRunService:
             if excel_val == 0:
                 deviation = Decimal("0")
             else:
-                deviation = (
-                    abs(app_val - excel_val) / excel_val * Decimal("100")
-                ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                deviation = (abs(app_val - excel_val) / excel_val * Decimal("100")).quantize(
+                    Decimal("0.0001"), rounding=ROUND_HALF_UP
+                )
 
             flagged = deviation > DEVIATION_THRESHOLD_PCT
             items.append(

@@ -35,6 +35,4 @@ class ProductSearchQuery(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    __table_args__ = (
-        Index("ix_product_search_queries_sku", "sku"),
-    )
+    __table_args__ = (Index("ix_product_search_queries_sku", "sku"),)

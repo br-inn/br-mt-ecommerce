@@ -7,6 +7,7 @@ Endpoints:
 
 RBAC: products:read en todos.
 """
+
 from __future__ import annotations
 
 import logging
@@ -113,7 +114,9 @@ async def get_price_intelligence_dashboard(
     price_position_rank = None
     if mt_price_aed and mkt_avg and mkt_avg > 0:
         mt_dec = Decimal(str(mt_price_aed))
-        price_gap_pct = round(float((mt_dec - Decimal(str(mkt_avg))) / Decimal(str(mkt_avg)) * 100), 2)
+        price_gap_pct = round(
+            float((mt_dec - Decimal(str(mkt_avg))) / Decimal(str(mkt_avg)) * 100), 2
+        )
         price_index = round(float(mt_dec / Decimal(str(mkt_avg)) * 100), 2)
     if mt_price_aed and mkt_min and mkt_avg and mkt_avg > 0:
         price_position_rank = round(float(Decimal(str(mkt_min)) / Decimal(str(mkt_avg)) * 100), 1)
@@ -207,10 +210,14 @@ async def get_brand_listings(
             "sku": row["sku"],
             "marketplace": row["marketplace"],
             "competitor_title": row["competitor_title"],
-            "competitor_price_aed": float(row["competitor_price_aed"]) if row["competitor_price_aed"] else None,
+            "competitor_price_aed": float(row["competitor_price_aed"])
+            if row["competitor_price_aed"]
+            else None,
             "score": row["score"],
             "status": row["status"],
-            "calibrated_confidence": float(row["calibrated_confidence"]) if row["calibrated_confidence"] else None,
+            "calibrated_confidence": float(row["calibrated_confidence"])
+            if row["calibrated_confidence"]
+            else None,
         }
         for row in rows
     ]
@@ -267,9 +274,9 @@ async def get_matching_quality(
         }
 
     histogram = [
-        {"bin": "0.0-0.5",  "count": int(row["bin_0_50"]   or 0)},
-        {"bin": "0.5-0.7",  "count": int(row["bin_50_70"]  or 0)},
-        {"bin": "0.7-0.85", "count": int(row["bin_70_85"]  or 0)},
+        {"bin": "0.0-0.5", "count": int(row["bin_0_50"] or 0)},
+        {"bin": "0.5-0.7", "count": int(row["bin_50_70"] or 0)},
+        {"bin": "0.7-0.85", "count": int(row["bin_70_85"] or 0)},
         {"bin": "0.85-1.0", "count": int(row["bin_85_100"] or 0)},
     ]
 

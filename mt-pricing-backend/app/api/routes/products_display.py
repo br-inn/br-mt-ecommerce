@@ -53,9 +53,7 @@ def get_display_pair_service(
 def _raise_domain(e: VocabularyDomainError) -> None:
     raise HTTPException(
         status_code=e.status_code,
-        detail=ProblemDetails(
-            title=e.message, status=e.status_code, type=e.code
-        ).model_dump(),
+        detail=ProblemDetails(title=e.message, status=e.status_code, type=e.code).model_dump(),
     )
 
 

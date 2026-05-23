@@ -61,9 +61,7 @@ async def test_required_missing_raises_by_default() -> None:
 async def test_required_missing_collects_errors_when_no_raise() -> None:
     template = {"required": ["fob_eur"]}
     sess = _session_returning(_FakeScheme("FBA", template))
-    res = await validate_breakdown(
-        sess, "FBA", {}, raise_on_missing_required=False
-    )
+    res = await validate_breakdown(sess, "FBA", {}, raise_on_missing_required=False)
     assert isinstance(res, BreakdownValidationResult)
     assert res.valid is False
     assert any(e["field"] == "fob_eur" for e in res.errors)
@@ -75,13 +73,10 @@ async def test_unknown_field_emits_warning_no_error() -> None:
         "optional": ["freight_eur"],
     }
     sess = _session_returning(_FakeScheme("FBA", template))
-    res = await validate_breakdown(
-        sess, "FBA", {"fob_eur": 12.40, "weird_extra": 2.0}
-    )
+    res = await validate_breakdown(sess, "FBA", {"fob_eur": 12.40, "weird_extra": 2.0})
     assert res.valid is True
     assert any(
-        w["field"] == "weird_extra" and w["code"] == "unknown_breakdown_field"
-        for w in res.warnings
+        w["field"] == "weird_extra" and w["code"] == "unknown_breakdown_field" for w in res.warnings
     )
 
 
@@ -104,9 +99,7 @@ async def test_mixed_required_missing_and_unknown_raises_first() -> None:
     template = {"required": ["fob_eur"], "optional": []}
     sess = _session_returning(_FakeScheme("FBA", template))
     with pytest.raises(MissingRequiredField):
-        await validate_breakdown(
-            sess, "FBA", {"some_unknown": 5}
-        )
+        await validate_breakdown(sess, "FBA", {"some_unknown": 5})
 
 
 async def test_partial_required_present_still_raises_for_missing() -> None:

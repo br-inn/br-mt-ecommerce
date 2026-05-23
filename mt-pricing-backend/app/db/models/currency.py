@@ -34,15 +34,9 @@ class Currency(Base):
     code: Mapped[str] = mapped_column(String(3), primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     symbol: Mapped[str | None] = mapped_column(Text)
-    decimals: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("2")
-    )
-    is_base: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    decimals: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("2"))
+    is_base: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

@@ -54,6 +54,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        f"DELETE FROM job_definitions WHERE code = '{_JOB_CODE}';"
-    )
+    op.execute(f"DELETE FROM job_definitions WHERE code = '{_JOB_CODE}';")

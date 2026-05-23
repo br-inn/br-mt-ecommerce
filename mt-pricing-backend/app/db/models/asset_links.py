@@ -66,9 +66,7 @@ class AssetLink(UuidPkMixin, Base):
     owner_type: Mapped[str] = mapped_column(Text, nullable=False)
     owner_id: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
-    order_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

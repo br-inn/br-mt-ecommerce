@@ -24,25 +24,29 @@ from app.services.pmo_bus.ports import PmoEvent, PmoEventPublisherPort
 logger = structlog.get_logger(__name__)
 
 # Whitelist canónica — incrementar SOLO con review explícito (PR ADR-082).
-PMO_EVENT_WHITELIST: frozenset[str] = frozenset({
-    "price.approved",
-    "price.rejected",
-    "cost.upserted",
-    "translation.approved",
-})
+PMO_EVENT_WHITELIST: frozenset[str] = frozenset(
+    {
+        "price.approved",
+        "price.rejected",
+        "cost.upserted",
+        "translation.approved",
+    }
+)
 
 # Claves PII que NUNCA viajan al bus PMO — defensa segunda línea
 # (la primera es no incluirlas en el caller, esta es backstop).
-_PII_KEYS_BLOCKLIST: frozenset[str] = frozenset({
-    "email",
-    "phone",
-    "password",
-    "token",
-    "secret",
-    "jwt",
-    "api_key",
-    "authorization",
-})
+_PII_KEYS_BLOCKLIST: frozenset[str] = frozenset(
+    {
+        "email",
+        "phone",
+        "password",
+        "token",
+        "secret",
+        "jwt",
+        "api_key",
+        "authorization",
+    }
+)
 
 
 class PmoEventEmitter:
@@ -65,8 +69,7 @@ class PmoEventEmitter:
         """
         if event_name not in PMO_EVENT_WHITELIST:
             raise ValueError(
-                f"Event '{event_name}' not in PMO whitelist. "
-                f"Allowed: {sorted(PMO_EVENT_WHITELIST)}"
+                f"Event '{event_name}' not in PMO whitelist. Allowed: {sorted(PMO_EVENT_WHITELIST)}"
             )
 
         sanitized = self._sanitize(payload)

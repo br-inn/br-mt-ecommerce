@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # Shared config
 # ---------------------------------------------------------------------------
 
+
 class _Base(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -235,9 +235,7 @@ class ImporterDatasheetsService:
         if state is None:
             raise ImportRunNotFoundError(run_id)
         if state.status != "preview_ready":
-            raise ImportRunInvalidStateError(
-                run_id, current=state.status, expected="preview_ready"
-            )
+            raise ImportRunInvalidStateError(run_id, current=state.status, expected="preview_ready")
         lock = _RUN_LOCKS.setdefault(run_id, asyncio.Lock())
         async with lock:
             state.status = "applying"
@@ -267,9 +265,7 @@ class ImporterDatasheetsService:
                 raise
         return state
 
-    async def _upload_payloads_to_storage(
-        self, state: DatasheetsRunState
-    ) -> dict[str, int]:
+    async def _upload_payloads_to_storage(self, state: DatasheetsRunState) -> dict[str, int]:
         """Sube cada PDF único al bucket Supabase. Idempotente (upsert=True).
 
         Importante: supabase-py es sync (HTTP bloqueante). Si nuestra
@@ -301,6 +297,7 @@ class ImporterDatasheetsService:
                     bucket=bucket,
                     upsert=True,
                 )
+
             try:
                 await asyncio.to_thread(_sync)
                 return True
@@ -324,7 +321,7 @@ class ImporterDatasheetsService:
             # se descarta porque ya estamos subiendo al bucket.
             object_path = d.storage_path
             if object_path.startswith(f"{bucket}/"):
-                object_path = object_path[len(bucket) + 1:]
+                object_path = object_path[len(bucket) + 1 :]
             ok = await _upload_one(object_path, payload)
             if ok:
                 uploaded += 1

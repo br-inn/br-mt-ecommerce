@@ -58,7 +58,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_product_images_image_status_active;")
-    op.drop_constraint(
-        "ck_product_images_image_status", "product_images", type_="check"
-    )
+    op.drop_constraint("ck_product_images_image_status", "product_images", type_="check")
     op.drop_column("product_images", "image_status")

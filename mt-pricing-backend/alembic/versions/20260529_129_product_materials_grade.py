@@ -1,4 +1,5 @@
 """Add material_grade, material_standard, surface_treatment to product_materials"""
+
 from __future__ import annotations
 
 import sqlalchemy as sa

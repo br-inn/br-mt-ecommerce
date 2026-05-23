@@ -4,6 +4,7 @@ Revision ID: 20260517_139
 Revises: 20260517_138
 Create Date: 2026-05-17
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -18,17 +19,51 @@ branch_labels = None
 depends_on = None
 
 DN_TO_NPS = {
-    "6": '1/8"', "8": '1/4"', "10": '3/8"', "15": '1/2"', "20": '3/4"',
-    "25": '1"', "32": '1¼"', "40": '1½"', "50": '2"', "65": '2½"',
-    "80": '3"', "100": '4"', "125": '5"', "150": '6"', "200": '8"',
-    "250": '10"', "300": '12"',
+    "6": '1/8"',
+    "8": '1/4"',
+    "10": '3/8"',
+    "15": '1/2"',
+    "20": '3/4"',
+    "25": '1"',
+    "32": '1¼"',
+    "40": '1½"',
+    "50": '2"',
+    "65": '2½"',
+    "80": '3"',
+    "100": '4"',
+    "125": '5"',
+    "150": '6"',
+    "200": '8"',
+    "250": '10"',
+    "300": '12"',
 }
 
 SEED = [
-    ("numeric", "PSI", "PN", "floor({value} / 14.5038)", None, "PSI/WOG a PN (presión nominal bar)"),
+    (
+        "numeric",
+        "PSI",
+        "PN",
+        "floor({value} / 14.5038)",
+        None,
+        "PSI/WOG a PN (presión nominal bar)",
+    ),
     ("numeric", "WOG", "PN", "floor({value} / 14.5038)", None, "WOG a PN — misma escala que PSI"),
-    ("lookup", "DN_metric", "NPS_inches", None, DN_TO_NPS, "Diámetro nominal métrico a NPS pulgadas"),
-    ("nominal", "DN50", "NPS_2in", None, {"DN50": '2"', "DN65": '2.5"', "DN80": '3"'}, "Equivalencias nominales DN frecuentes"),
+    (
+        "lookup",
+        "DN_metric",
+        "NPS_inches",
+        None,
+        DN_TO_NPS,
+        "Diámetro nominal métrico a NPS pulgadas",
+    ),
+    (
+        "nominal",
+        "DN50",
+        "NPS_2in",
+        None,
+        {"DN50": '2"', "DN65": '2.5"', "DN80": '3"'},
+        "Equivalencias nominales DN frecuentes",
+    ),
 ]
 
 
@@ -42,10 +77,22 @@ def upgrade() -> None:
         sa.Column("formula", sa.Text(), nullable=True),
         sa.Column("lookup_table", JSONB(), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id"),
-        sa.CheckConstraint("transform_type IN ('numeric','lookup','nominal')", name="ck_unit_transforms_type"),
+        sa.CheckConstraint(
+            "transform_type IN ('numeric','lookup','nominal')", name="ck_unit_transforms_type"
+        ),
     )
     now = datetime.now(timezone.utc)
     op.bulk_insert(

@@ -85,9 +85,7 @@ class MatchAgentDecisionRepository:
         await self.session.flush()
         return row
 
-    async def latest_for_candidate(
-        self, candidate_id: UUID
-    ) -> MatchAgentDecision | None:
+    async def latest_for_candidate(self, candidate_id: UUID) -> MatchAgentDecision | None:
         stmt = (
             select(MatchAgentDecision)
             .where(MatchAgentDecision.candidate_id == candidate_id)
@@ -96,9 +94,7 @@ class MatchAgentDecisionRepository:
         )
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def set_human_outcome(
-        self, candidate_id: UUID, outcome: str
-    ) -> None:
+    async def set_human_outcome(self, candidate_id: UUID, outcome: str) -> None:
         """Rellena human_outcome en la última decisión del candidato."""
         latest = await self.latest_for_candidate(candidate_id)
         if latest is not None:
@@ -115,15 +111,11 @@ class MatchAgentDecisionRepository:
 
     async def shadow_precision(self) -> tuple[int, float | None]:
         """Precisión de sombra: aciertos / decisiones con human_outcome conocido."""
-        stmt = select(
-            MatchAgentDecision.verdict, MatchAgentDecision.human_outcome
-        ).where(MatchAgentDecision.human_outcome.is_not(None))
+        stmt = select(MatchAgentDecision.verdict, MatchAgentDecision.human_outcome).where(
+            MatchAgentDecision.human_outcome.is_not(None)
+        )
         rows = (await self.session.execute(stmt)).all()
-        scored = [
-            (v, o)
-            for v, o in rows
-            if v in ("auto_validate", "auto_discard")
-        ]
+        scored = [(v, o) for v, o in rows if v in ("auto_validate", "auto_discard")]
         if not scored:
             return 0, None
         hits = sum(

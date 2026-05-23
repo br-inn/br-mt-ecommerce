@@ -24,6 +24,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mk_user() -> Any:
     user = MagicMock()
     user.id = uuid4()

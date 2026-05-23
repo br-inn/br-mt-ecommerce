@@ -33,7 +33,9 @@ def _make_query(**kwargs) -> Query:
     return Query(**defaults)
 
 
-def _make_response(*, status_code: int = 200, url: str = "https://www.amazon.ae/s?k=valve", text: str = "") -> MagicMock:
+def _make_response(
+    *, status_code: int = 200, url: str = "https://www.amazon.ae/s?k=valve", text: str = ""
+) -> MagicMock:
     resp = MagicMock()
     resp.status_code = status_code
     resp.url = url
@@ -64,7 +66,9 @@ def test_custom_impersonate_pool_env_var() -> None:
 
 
 def test_single_impersonate_env_var_fallback() -> None:
-    with patch.dict(os.environ, {"SCRAPER_IMPERSONATE_POOL": "", "SCRAPER_IMPERSONATE": "chrome99"}, clear=False):
+    with patch.dict(
+        os.environ, {"SCRAPER_IMPERSONATE_POOL": "", "SCRAPER_IMPERSONATE": "chrome99"}, clear=False
+    ):
         fetcher = CurlCffiAmazonUaeFetcher()
     assert fetcher._impersonate_pool == ["chrome99"]
 
@@ -143,7 +147,9 @@ def test_check_blocked_passes_on_non_captcha_redirect() -> None:
 def test_make_session_returns_async_session_instance() -> None:
     fetcher = _make_fetcher()
     mock_session_cls = MagicMock()
-    with patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", mock_session_cls):
+    with patch(
+        "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", mock_session_cls
+    ):
         fetcher._make_session()
     mock_session_cls.assert_called_once()
     call_kwargs = mock_session_cls.call_args[1]
@@ -154,7 +160,9 @@ def test_make_session_returns_async_session_instance() -> None:
 def test_make_session_passes_proxy_when_set() -> None:
     fetcher = _make_fetcher(SCRAPER_PROXY_URL="http://proxy:8080")
     mock_session_cls = MagicMock()
-    with patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", mock_session_cls):
+    with patch(
+        "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", mock_session_cls
+    ):
         fetcher._make_session()
     call_kwargs = mock_session_cls.call_args[1]
     assert "proxies" in call_kwargs
@@ -162,10 +170,14 @@ def test_make_session_passes_proxy_when_set() -> None:
 
 
 def test_make_session_no_proxy_key_when_proxy_not_set() -> None:
-    with patch.dict(os.environ, {k: v for k, v in os.environ.items() if k != "SCRAPER_PROXY_URL"}, clear=True):
+    with patch.dict(
+        os.environ, {k: v for k, v in os.environ.items() if k != "SCRAPER_PROXY_URL"}, clear=True
+    ):
         fetcher = CurlCffiAmazonUaeFetcher()
     mock_session_cls = MagicMock()
-    with patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", mock_session_cls):
+    with patch(
+        "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", mock_session_cls
+    ):
         fetcher._make_session()
     call_kwargs = mock_session_cls.call_args[1]
     assert "proxies" not in call_kwargs
@@ -181,8 +193,13 @@ async def test_fetch_returns_candidate_list_on_success() -> None:
     fetcher = _make_fetcher()
 
     serp_items = [
-        {"asin": "B001VALVE", "title": "Brass Ball Valve 2in", "price_aed": Decimal("145.00"),
-         "image_url": "https://img.example.com/x.jpg", "url": "https://www.amazon.ae/dp/B001VALVE"},
+        {
+            "asin": "B001VALVE",
+            "title": "Brass Ball Valve 2in",
+            "price_aed": Decimal("145.00"),
+            "image_url": "https://img.example.com/x.jpg",
+            "url": "https://www.amazon.ae/dp/B001VALVE",
+        },
     ]
     pdp_specs = {
         "brand_name": "Pegler",
@@ -200,10 +217,22 @@ async def test_fetch_returns_candidate_list_on_success() -> None:
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=serp_items),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs", return_value=pdp_specs),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=serp_items,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs",
+            return_value=pdp_specs,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         query = _make_query(text="brass ball valve")
         results = await fetcher.fetch(query)
@@ -224,8 +253,13 @@ async def test_fetch_skips_serp_item_without_asin() -> None:
 
     serp_items = [
         {"asin": "", "title": "No ASIN item"},
-        {"asin": "B002VALID", "title": "Valid item", "price_aed": Decimal("50.00"),
-         "image_url": "", "url": ""},
+        {
+            "asin": "B002VALID",
+            "title": "Valid item",
+            "price_aed": Decimal("50.00"),
+            "image_url": "",
+            "url": "",
+        },
     ]
     pdp_specs: dict = {}
 
@@ -237,10 +271,22 @@ async def test_fetch_skips_serp_item_without_asin() -> None:
     mock_session.get.side_effect = [serp_resp, pdp_resp]
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=serp_items),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs", return_value=pdp_specs),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=serp_items,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs",
+            return_value=pdp_specs,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         results = await fetcher.fetch(_make_query())
 
@@ -260,8 +306,14 @@ async def test_fetch_raises_scraper_blocked_on_403_serp() -> None:
     mock_session.get.return_value = serp_resp
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         with pytest.raises(ScraperBlockedError):
             await fetcher.fetch(_make_query())
@@ -280,8 +332,14 @@ async def test_fetch_raises_scraper_blocked_on_captcha_serp() -> None:
     mock_session.get.return_value = serp_resp
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         with pytest.raises(ScraperBlockedError):
             await fetcher.fetch(_make_query())
@@ -293,8 +351,13 @@ async def test_fetch_pdp_error_returns_empty_specs_not_raises() -> None:
     fetcher = _make_fetcher()
 
     serp_items = [
-        {"asin": "B003VALVE", "title": "Valve", "price_aed": Decimal("99.00"),
-         "image_url": "", "url": ""},
+        {
+            "asin": "B003VALVE",
+            "title": "Valve",
+            "price_aed": Decimal("99.00"),
+            "image_url": "",
+            "url": "",
+        },
     ]
 
     serp_resp = _make_response()
@@ -306,9 +369,18 @@ async def test_fetch_pdp_error_returns_empty_specs_not_raises() -> None:
     mock_session.get.side_effect = [serp_resp, Exception("connection reset")]
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=serp_items),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=serp_items,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         results = await fetcher.fetch(_make_query())
 
@@ -334,9 +406,18 @@ async def test_fetch_pdp_blocked_propagates_scraper_blocked_error() -> None:
     mock_session.get.side_effect = [serp_resp, pdp_resp]
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=serp_items),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=serp_items,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         with pytest.raises(ScraperBlockedError):
             await fetcher.fetch(_make_query())
@@ -364,9 +445,18 @@ async def test_fetch_serp_url_contains_encoded_query() -> None:
     mock_session.get.side_effect = fake_get
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=[]),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=[],
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         await fetcher.fetch(_make_query(text="brass ball valve"))
 
@@ -394,9 +484,18 @@ async def test_fetch_serp_url_includes_dept_when_set() -> None:
     mock_session.get.side_effect = fake_get
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=[]),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=[],
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         await fetcher.fetch(_make_query(dept="industrial"))
 
@@ -420,13 +519,26 @@ async def test_fetch_pdp_url_uses_asin_and_language() -> None:
     mock_session.__aexit__ = AsyncMock(return_value=False)
     mock_session.get.side_effect = fake_get
 
-    serp_items = [{"asin": "BASIN123", "title": "Valve", "price_aed": None, "image_url": "", "url": ""}]
+    serp_items = [
+        {"asin": "BASIN123", "title": "Valve", "price_aed": None, "image_url": "", "url": ""}
+    ]
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=serp_items),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs", return_value={}),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=serp_items,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs", return_value={}
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         await fetcher.fetch(_make_query())
 
@@ -456,10 +568,22 @@ async def test_fetch_uses_pdp_price_when_serp_price_is_none() -> None:
     mock_session.get.side_effect = [_make_response(), _make_response()]
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=serp_items),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs", return_value=pdp_specs),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=serp_items,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_pdp_specs",
+            return_value=pdp_specs,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         results = await fetcher.fetch(_make_query())
 
@@ -476,9 +600,18 @@ async def test_fetch_returns_empty_list_when_no_serp_results() -> None:
     mock_session.get.return_value = _make_response()
 
     with (
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession", return_value=mock_session),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results", return_value=[]),
-        patch("app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.AsyncSession",
+            return_value=mock_session,
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.extract_top_results",
+            return_value=[],
+        ),
+        patch(
+            "app.services.matching.adapters.curl_cffi_amazon_uae.asyncio.sleep",
+            new_callable=AsyncMock,
+        ),
     ):
         results = await fetcher.fetch(_make_query())
 

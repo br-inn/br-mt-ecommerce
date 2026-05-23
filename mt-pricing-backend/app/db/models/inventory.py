@@ -55,9 +55,7 @@ class PurchaseOrder(UuidPkMixin, TimestampMixin, Base):
 
     __tablename__ = "purchase_orders"
 
-    po_number: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True
-    )
+    po_number: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     supplier_code: Mapped[str | None] = mapped_column(
         String(64),
         ForeignKey("suppliers.code", ondelete="RESTRICT"),
@@ -79,9 +77,7 @@ class PurchaseOrder(UuidPkMixin, TimestampMixin, Base):
         server_default=text("'STANDARD'"),
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    confirmed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -108,9 +104,7 @@ class PurchaseOrder(UuidPkMixin, TimestampMixin, Base):
         Index(
             "idx_po_status",
             "status",
-            postgresql_where=text(
-                "status NOT IN ('received','cancelled')"
-            ),
+            postgresql_where=text("status NOT IN ('received','cancelled')"),
         ),
     )
 
@@ -135,15 +129,11 @@ class PurchaseOrderLine(UuidPkMixin, TimestampMixin, Base):
         ForeignKey("schemes.code", ondelete="RESTRICT"),
         nullable=False,
     )
-    qty_ordered: Mapped[Decimal] = mapped_column(
-        Numeric(12, 3), nullable=False
-    )
+    qty_ordered: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     qty_received: Mapped[Decimal] = mapped_column(
         Numeric(12, 3), nullable=False, server_default=text("0")
     )
-    unit_price: Mapped[Decimal] = mapped_column(
-        Numeric(18, 4), nullable=False
-    )
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     landed_cost_breakdown: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
@@ -185,9 +175,7 @@ class GoodsReceipt(UuidPkMixin, TimestampMixin, Base):
         ForeignKey("purchase_order_lines.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    qty_received: Mapped[Decimal] = mapped_column(
-        Numeric(12, 3), nullable=False
-    )
+    qty_received: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -196,18 +184,12 @@ class GoodsReceipt(UuidPkMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    actual_unit_price: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 4), nullable=True
-    )
+    actual_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     actual_breakdown: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    map_before: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 4), nullable=True
-    )
-    map_after: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 4), nullable=True
-    )
+    map_before: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    map_after: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     fx_rate_id: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         ForeignKey("fx_rates.id", ondelete="SET NULL"),
@@ -219,9 +201,7 @@ class GoodsReceipt(UuidPkMixin, TimestampMixin, Base):
         nullable=False,
         server_default=text("'pending'"),
     )
-    processed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     po_line: Mapped[PurchaseOrderLine] = relationship(
         "PurchaseOrderLine",
@@ -266,15 +246,9 @@ class CostLot(UuidPkMixin, TimestampMixin, Base):
         ForeignKey("goods_receipts.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    qty_original: Mapped[Decimal] = mapped_column(
-        Numeric(12, 3), nullable=False
-    )
-    qty_remaining: Mapped[Decimal] = mapped_column(
-        Numeric(12, 3), nullable=False
-    )
-    unit_cost_aed: Mapped[Decimal] = mapped_column(
-        Numeric(18, 4), nullable=False
-    )
+    qty_original: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    qty_remaining: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    unit_cost_aed: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     effective_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -283,9 +257,7 @@ class CostLot(UuidPkMixin, TimestampMixin, Base):
         CheckConstraint("qty_original > 0", name="ck_cl_qty_original_pos"),
         CheckConstraint("qty_remaining >= 0", name="ck_cl_qty_remaining_nonneg"),
         CheckConstraint("unit_cost_aed >= 0", name="ck_cl_unit_cost_nonneg"),
-        CheckConstraint(
-            "qty_remaining <= qty_original", name="ck_cl_qty_remaining_lte_original"
-        ),
+        CheckConstraint("qty_remaining <= qty_original", name="ck_cl_qty_remaining_lte_original"),
         Index("idx_cost_lots_lookup", "sku", "supplier_code", "scheme_code"),
         Index("idx_cost_lots_gr", "gr_id"),
     )
@@ -302,12 +274,8 @@ class ERPSyncEvent(UuidPkMixin, TimestampMixin, Base):
 
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     entity_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    payload: Mapped[dict] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'::jsonb")
-    )
-    adapter: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'noop'")
-    )
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    adapter: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'noop'"))
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default=text("'pending'")
     )
@@ -316,9 +284,7 @@ class ERPSyncEvent(UuidPkMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    delivered_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     external_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     __table_args__ = (
@@ -358,9 +324,7 @@ class InventoryPosition(UuidPkMixin, TimestampMixin, Base):
     qty_on_hand: Mapped[Decimal] = mapped_column(
         Numeric(12, 3), nullable=False, server_default=text("0")
     )
-    map_aed: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 4), nullable=True
-    )
+    map_aed: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     total_stock_value_aed: Mapped[Decimal | None] = mapped_column(
         Numeric(18, 4),
         Computed("qty_on_hand * map_aed", persisted=True),
@@ -371,9 +335,7 @@ class InventoryPosition(UuidPkMixin, TimestampMixin, Base):
         ForeignKey("goods_receipts.id", ondelete="SET NULL"),
         nullable=True,
     )
-    last_updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # EP-ERP-02-02: columnas 5D
     warehouse_id: Mapped[UUID | None] = mapped_column(
         UUID_PG,
@@ -398,7 +360,9 @@ class InventoryPosition(UuidPkMixin, TimestampMixin, Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "sku", "supplier_code", "scheme_code",
+            "sku",
+            "supplier_code",
+            "scheme_code",
             name="uq_inventory_positions",
         ),
         CheckConstraint(
@@ -433,9 +397,7 @@ class StockMovementType(Base):
     )
     # mig 144 — default reason code to carry onto movements of this type
     reason_code: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -549,9 +511,7 @@ class JournalEntry(Base):
     debit_account: Mapped[str] = mapped_column(Text, nullable=False)
     credit_account: Mapped[str] = mapped_column(Text, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
-    currency: Mapped[str] = mapped_column(
-        CHAR(3), nullable=False, server_default=text("'AED'")
-    )
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default=text("'AED'"))
     posted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -626,13 +586,9 @@ class Warehouse(UuidPkMixin, TimestampMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     # mig 146 — FEFO picking enabled for this warehouse (default true)
-    fefo_enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    fefo_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     zones: Mapped[list[WarehouseZone]] = relationship(
         "WarehouseZone",
@@ -641,9 +597,7 @@ class Warehouse(UuidPkMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
     )
 
-    __table_args__ = (
-        UniqueConstraint("code", name="uq_warehouse_code"),
-    )
+    __table_args__ = (UniqueConstraint("code", name="uq_warehouse_code"),)
 
 
 class WarehouseZone(UuidPkMixin, TimestampMixin, Base):
@@ -693,12 +647,8 @@ class WarehouseLocation(UuidPkMixin, TimestampMixin, Base):
         nullable=False,
     )
     bin_code: Mapped[str] = mapped_column(Text, nullable=False)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
-    max_weight: Mapped[Decimal | None] = mapped_column(
-        Numeric(10, 2), nullable=True
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    max_weight: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     zone: Mapped[WarehouseZone] = relationship(
         "WarehouseZone",
@@ -728,13 +678,9 @@ class ExpiryAlertThreshold(UuidPkMixin, TimestampMixin, Base):
         nullable=False,
         unique=True,
     )
-    threshold_days: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("30")
-    )
+    threshold_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("30"))
 
-    __table_args__ = (
-        Index("idx_eat_sku", "product_sku"),
-    )
+    __table_args__ = (Index("idx_eat_sku", "product_sku"),)
 
 
 class InventoryAlert(UuidPkMixin, TimestampMixin, Base):
@@ -758,15 +704,9 @@ class InventoryAlert(UuidPkMixin, TimestampMixin, Base):
         ForeignKey("warehouses.id", ondelete="SET NULL"),
         nullable=True,
     )
-    severity: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'warning'")
-    )
-    payload: Mapped[dict] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'::jsonb")
-    )
-    resolved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    severity: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'warning'"))
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -816,12 +756,8 @@ class ReplenishmentParam(UuidPkMixin, TimestampMixin, Base):
     reorder_qty: Mapped[Decimal] = mapped_column(
         Numeric(12, 3), nullable=False, server_default=text("1")
     )
-    lead_time_days: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("7")
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    lead_time_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("7"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (
         UniqueConstraint("product_sku", "warehouse_id", name="uq_replenishment_params_sku_wh"),
@@ -874,9 +810,7 @@ class ProductAbcClassification(UuidPkMixin, Base):
         UniqueConstraint("product_sku", "warehouse_id", name="uq_abc_sku_wh"),
         CheckConstraint("abc_class IN ('A','B','C')", name="ck_abc_class"),
         CheckConstraint("annual_consumption_value >= 0", name="ck_abc_value_nonneg"),
-        CheckConstraint(
-            "pct_of_total >= 0 AND pct_of_total <= 100", name="ck_abc_pct_range"
-        ),
+        CheckConstraint("pct_of_total >= 0 AND pct_of_total <= 100", name="ck_abc_pct_range"),
         Index("idx_abc_sku", "product_sku"),
         Index("idx_abc_warehouse", "warehouse_id"),
         Index("idx_abc_class", "abc_class"),
@@ -897,9 +831,7 @@ class CycleCountSchedule(UuidPkMixin, TimestampMixin, Base):
     frequency_days: Mapped[int] = mapped_column(Integer, nullable=False)
     next_count_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_count_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (
         CheckConstraint("abc_class IN ('A','B','C')", name="ck_ccs_abc_class"),
@@ -954,9 +886,7 @@ class CycleCount(UuidPkMixin, TimestampMixin, Base):
     system_qty: Mapped[Decimal | None] = mapped_column(Numeric(15, 3), nullable=True)
     # counted_qty - system_qty, maintained by application logic
     variance: Mapped[Decimal | None] = mapped_column(Numeric(15, 3), nullable=True)
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'scheduled'")
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'scheduled'"))
     counted_by: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         # FK to auth.users — managed via Supabase Auth
@@ -966,12 +896,8 @@ class CycleCount(UuidPkMixin, TimestampMixin, Base):
         UUID_PG,
         nullable=True,
     )
-    counted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    approved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    counted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (

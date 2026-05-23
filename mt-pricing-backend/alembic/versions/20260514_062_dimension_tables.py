@@ -59,9 +59,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("0"),
         ),
-        sa.UniqueConstraint(
-            "family_id", "code", name="uq_dimension_columns_family_code"
-        ),
+        sa.UniqueConstraint("family_id", "code", name="uq_dimension_columns_family_code"),
     )
     op.create_index(
         "ix_dimension_columns_family",
@@ -134,9 +132,7 @@ def upgrade() -> None:
         ),
         sa.Column("value_number", sa.Numeric(18, 6), nullable=True),
         sa.Column("value_text", sa.Text(), nullable=True),
-        sa.UniqueConstraint(
-            "row_id", "column_id", name="uq_dimension_cells_row_col"
-        ),
+        sa.UniqueConstraint("row_id", "column_id", name="uq_dimension_cells_row_col"),
         sa.CheckConstraint(
             "value_number IS NOT NULL OR value_text IS NOT NULL",
             name="ck_dimension_cells_value_present",

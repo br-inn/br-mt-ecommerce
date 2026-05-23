@@ -114,6 +114,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 # US-ERP-06-01 — Chart of Accounts
 # ===========================================================================
 
+
 @router.get("/accounts", response_model=list[GlAccountOut])
 async def list_accounts(
     db: DbSession,
@@ -174,6 +175,7 @@ async def update_account(
 # US-ERP-06-01 — Posting Periods
 # ---------------------------------------------------------------------------
 
+
 @router.get("/posting-periods", response_model=list[PostingPeriodOut])
 async def list_posting_periods(
     db: DbSession,
@@ -191,7 +193,9 @@ async def list_posting_periods(
     return [PostingPeriodOut.model_validate(r) for r in result.scalars().all()]
 
 
-@router.post("/posting-periods", response_model=PostingPeriodOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/posting-periods", response_model=PostingPeriodOut, status_code=status.HTTP_201_CREATED
+)
 async def create_posting_period(
     body: PostingPeriodCreate,
     db: DbSession,
@@ -227,6 +231,7 @@ async def close_posting_period(
 # ===========================================================================
 # US-ERP-06-02 — Cost Centers + Profit Centers
 # ===========================================================================
+
 
 @router.get("/cost-centers", response_model=list[CostCenterOut])
 async def list_cost_centers(db: DbSession, current_user: CurrentUser) -> list[CostCenterOut]:
@@ -269,6 +274,7 @@ async def create_profit_center(
 # ===========================================================================
 # US-ERP-06-03 — Universal Journal
 # ===========================================================================
+
 
 @router.post("/entries", response_model=FinancialEntryOut, status_code=status.HTTP_201_CREATED)
 async def create_financial_entry(
@@ -387,6 +393,7 @@ async def reverse_financial_entry(
 # US-ERP-06-08 — Review + Approve (SoD)
 # ---------------------------------------------------------------------------
 
+
 @router.post("/entries/{entry_id}/review", response_model=EntryReviewApproveOut)
 async def review_financial_entry(
     entry_id: UUID,
@@ -399,7 +406,9 @@ async def review_financial_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Asiento no encontrado")
     if entry.preparer_id == current_user.id:
-        raise HTTPException(status_code=409, detail="SoD: reviewer no puede ser el mismo que preparer")
+        raise HTTPException(
+            status_code=409, detail="SoD: reviewer no puede ser el mismo que preparer"
+        )
     entry.reviewer_id = current_user.id
     await db.flush()
     return EntryReviewApproveOut(
@@ -422,9 +431,13 @@ async def approve_financial_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Asiento no encontrado")
     if entry.preparer_id == current_user.id:
-        raise HTTPException(status_code=409, detail="SoD: approver no puede ser el mismo que preparer")
+        raise HTTPException(
+            status_code=409, detail="SoD: approver no puede ser el mismo que preparer"
+        )
     if entry.reviewer_id == current_user.id:
-        raise HTTPException(status_code=409, detail="SoD: approver no puede ser el mismo que reviewer")
+        raise HTTPException(
+            status_code=409, detail="SoD: approver no puede ser el mismo que reviewer"
+        )
     entry.approver_id = current_user.id
     await db.flush()
     return EntryReviewApproveOut(
@@ -439,6 +452,7 @@ async def approve_financial_entry(
 # US-ERP-06-04 — AP Aging + Payment Run
 # ===========================================================================
 
+
 @router.get("/ap-aging", response_model=ApAgingOut)
 async def ap_aging(
     db: DbSession,
@@ -449,9 +463,7 @@ async def ap_aging(
     """GET /finance/ap-aging — AP aging por buckets current/1-30/31-60/61-90/90+."""
     ref_date = as_of_date or date.today()
 
-    q = select(VendorOpenItem).where(
-        VendorOpenItem.status.in_(["open", "partially_paid"])
-    )
+    q = select(VendorOpenItem).where(VendorOpenItem.status.in_(["open", "partially_paid"]))
     if vendor_id:
         q = q.where(VendorOpenItem.vendor_id == vendor_id)
     result = await db.execute(q)
@@ -548,7 +560,9 @@ async def approve_payment_run(
     if not run:
         raise HTTPException(status_code=404, detail="Payment run no encontrado")
     if run.status != "proposed":
-        raise HTTPException(status_code=409, detail=f"No se puede aprobar desde estado {run.status!r}")
+        raise HTTPException(
+            status_code=409, detail=f"No se puede aprobar desde estado {run.status!r}"
+        )
     run.status = "approved"
     run.approved_by = current_user.id
     await db.flush()
@@ -563,19 +577,17 @@ async def execute_payment_run(
     current_user: Annotated[User, Depends(require_role("gerente"))],
 ) -> PaymentRunOut:
     """POST /finance/payment-runs/{id}/execute — ejecutar: marca items como paid + crea financial_entries."""
-    result = await db.execute(
-        select(PaymentRun).where(PaymentRun.id == run_id)
-    )
+    result = await db.execute(select(PaymentRun).where(PaymentRun.id == run_id))
     run = result.scalar_one_or_none()
     if not run:
         raise HTTPException(status_code=404, detail="Payment run no encontrado")
     if run.status != "approved":
-        raise HTTPException(status_code=409, detail=f"Debe estar aprobado. Estado actual: {run.status!r}")
+        raise HTTPException(
+            status_code=409, detail=f"Debe estar aprobado. Estado actual: {run.status!r}"
+        )
 
     # Cargar items
-    items_result = await db.execute(
-        select(PaymentRunItem).where(PaymentRunItem.run_id == run_id)
-    )
+    items_result = await db.execute(select(PaymentRunItem).where(PaymentRunItem.run_id == run_id))
     run_items = items_result.scalars().all()
 
     today = date.today()
@@ -591,9 +603,7 @@ async def execute_payment_run(
             oi.status = "paid"
 
         # Obtener cuenta AP (2100)
-        ap_acct_result = await db.execute(
-            select(GlAccount).where(GlAccount.account_code == "2100")
-        )
+        ap_acct_result = await db.execute(select(GlAccount).where(GlAccount.account_code == "2100"))
         ap_acct = ap_acct_result.scalar_one_or_none()
         if ap_acct:
             entry_number = f"PAY-{run.run_number}-{entry_seq:04d}"
@@ -625,6 +635,7 @@ async def execute_payment_run(
 # ===========================================================================
 # US-ERP-06-05 — Standard Cost + Variances
 # ===========================================================================
+
 
 @router.get("/standard-costs", response_model=list[StandardCostOut])
 async def list_standard_costs(
@@ -680,6 +691,7 @@ async def list_price_variances(
 # US-ERP-06-06 — P&L + Balance Sheet + Trial Balance
 # ===========================================================================
 
+
 @router.get("/pl", response_model=PlSummaryOut)
 async def get_pl(
     db: DbSession,
@@ -691,7 +703,8 @@ async def get_pl(
     """GET /finance/pl — P&L desde mv_pl_summary o query directa."""
     # Intentar desde vista materializada; fallback a query directa
     try:
-        rows = await db.execute(text("""
+        rows = await db.execute(
+            text("""
             SELECT fiscal_year, posting_period, account_code, account_name,
                    account_type, total_debit, total_credit, net_amount
             FROM mv_pl_summary
@@ -699,11 +712,14 @@ async def get_pl(
               AND posting_period BETWEEN :p_from AND :p_to
               AND account_type IN ('REVENUE', 'EXPENSE')
             ORDER BY account_code
-        """), {"fy": fiscal_year, "p_from": period_from, "p_to": period_to})
+        """),
+            {"fy": fiscal_year, "p_from": period_from, "p_to": period_to},
+        )
         data = rows.mappings().all()
     except Exception:
         # fallback directo
-        rows = await db.execute(text("""
+        rows = await db.execute(
+            text("""
             SELECT fe.fiscal_year, fe.posting_period,
                    a.account_code, a.account_name, a.account_type,
                    SUM(fe.debit_amount) AS total_debit,
@@ -717,7 +733,9 @@ async def get_pl(
             GROUP BY fe.fiscal_year, fe.posting_period,
                      a.account_code, a.account_name, a.account_type
             ORDER BY a.account_code
-        """), {"fy": fiscal_year, "p_from": period_from, "p_to": period_to})
+        """),
+            {"fy": fiscal_year, "p_from": period_from, "p_to": period_to},
+        )
         data = rows.mappings().all()
 
     lines = [
@@ -754,7 +772,8 @@ async def get_balance_sheet(
     as_of_period: int = Query(12),
 ) -> BalanceSheetOut:
     """GET /finance/balance-sheet — ASSET/LIABILITY/EQUITY con saldo acumulado."""
-    rows = await db.execute(text("""
+    rows = await db.execute(
+        text("""
         SELECT a.account_code, a.account_name, a.account_type,
                SUM(fe.debit_amount - fe.credit_amount) AS balance
         FROM financial_entries fe
@@ -764,7 +783,9 @@ async def get_balance_sheet(
           AND a.account_type IN ('ASSET', 'LIABILITY', 'EQUITY')
         GROUP BY a.account_code, a.account_name, a.account_type
         ORDER BY a.account_code
-    """), {"fy": fiscal_year, "period": as_of_period})
+    """),
+        {"fy": fiscal_year, "period": as_of_period},
+    )
     data = rows.mappings().all()
 
     lines = [
@@ -798,7 +819,8 @@ async def get_trial_balance(
     period: int = Query(...),
 ) -> TrialBalanceOut:
     """GET /finance/trial-balance — todos los saldos para reconciliación."""
-    rows = await db.execute(text("""
+    rows = await db.execute(
+        text("""
         SELECT a.account_code, a.account_name, a.account_type,
                SUM(fe.debit_amount) AS total_debit,
                SUM(fe.credit_amount) AS total_credit,
@@ -808,7 +830,9 @@ async def get_trial_balance(
         WHERE fe.fiscal_year = :fy AND fe.posting_period = :period
         GROUP BY a.account_code, a.account_name, a.account_type
         ORDER BY a.account_code
-    """), {"fy": fiscal_year, "period": period})
+    """),
+        {"fy": fiscal_year, "period": period},
+    )
     data = rows.mappings().all()
 
     lines = [
@@ -836,6 +860,7 @@ async def get_trial_balance(
 # ===========================================================================
 # US-ERP-06-07 — Period Close + UAE CIT
 # ===========================================================================
+
 
 @router.post("/period-close/{fiscal_year}/{period_num}", response_model=PeriodCloseChecklistOut)
 async def start_period_close(
@@ -888,8 +913,9 @@ async def update_checklist_item(
     if body.item_name:
         # Buscar por nombre (string) o actualizar objeto dict
         for i, item in enumerate(items):
-            if (isinstance(item, str) and item == body.item_name) or \
-               (isinstance(item, dict) and item.get("name") == body.item_name):
+            if (isinstance(item, str) and item == body.item_name) or (
+                isinstance(item, dict) and item.get("name") == body.item_name
+            ):
                 if isinstance(item, str):
                     items[i] = {"name": item, "completed": body.completed}
                 else:
@@ -967,7 +993,8 @@ async def calculate_cit_provision(
 ) -> CitProvisionResult:
     """POST /finance/cit-provision/{fy} — calcular CIT UAE 9% sobre utilidades > AED 375,000."""
     # Calcular utilidad neta desde financial_entries
-    rows = await db.execute(text("""
+    rows = await db.execute(
+        text("""
         SELECT
             COALESCE(SUM(CASE WHEN a.account_type = 'REVENUE'
                          THEN fe.credit_amount - fe.debit_amount ELSE 0 END), 0) AS revenue,
@@ -976,7 +1003,9 @@ async def calculate_cit_provision(
         FROM financial_entries fe
         JOIN gl_accounts a ON fe.gl_account_id = a.id
         WHERE fe.fiscal_year = :fy
-    """), {"fy": fiscal_year})
+    """),
+        {"fy": fiscal_year},
+    )
     row = rows.mappings().one_or_none()
 
     revenue = Decimal(str(row["revenue"])) if row else Decimal("0")
@@ -1018,6 +1047,7 @@ async def calculate_cit_provision(
 # US-ERP-06-08 — FX Revaluation
 # ===========================================================================
 
+
 @router.post("/fx-revaluation/{fiscal_year}/{period}", response_model=FxRevalResult)
 async def run_fx_revaluation(
     fiscal_year: int,
@@ -1033,9 +1063,7 @@ async def run_fx_revaluation(
     foreign_accounts = accts_result.scalars().all()
 
     # Obtener cuenta FX gain/loss (7100)
-    fx_acct_result = await db.execute(
-        select(GlAccount).where(GlAccount.account_code == "7100")
-    )
+    fx_acct_result = await db.execute(select(GlAccount).where(GlAccount.account_code == "7100"))
     fx_acct = fx_acct_result.scalar_one_or_none()
     if not fx_acct:
         raise HTTPException(status_code=422, detail="Cuenta 7100 (FX gain/loss) no encontrada")
@@ -1047,7 +1075,8 @@ async def run_fx_revaluation(
 
     for acct in foreign_accounts:
         # Obtener saldo neto en moneda extranjera
-        bal_result = await db.execute(text("""
+        bal_result = await db.execute(
+            text("""
             SELECT
                 COALESCE(SUM(debit_amount - credit_amount), 0) AS balance_local,
                 currency_code,
@@ -1057,7 +1086,9 @@ async def run_fx_revaluation(
               AND fiscal_year = :fy
               AND posting_period <= :period
             GROUP BY currency_code
-        """), {"acct_id": str(acct.id), "fy": fiscal_year, "period": period})
+        """),
+            {"acct_id": str(acct.id), "fy": fiscal_year, "period": period},
+        )
         bal = bal_result.mappings().one_or_none()
 
         if not bal or bal["balance_local"] == 0:
@@ -1080,13 +1111,17 @@ async def run_fx_revaluation(
 
         rate_closing = Decimal(str(fx_rate_obj.rate))
         rate_original = Decimal(str(bal["avg_rate"]))
-        balance_foreign = Decimal(str(bal["balance_local"])) / rate_original if rate_original else Decimal("0")
+        balance_foreign = (
+            Decimal(str(bal["balance_local"])) / rate_original if rate_original else Decimal("0")
+        )
         fx_diff = balance_foreign * (rate_closing - rate_original)
 
         if fx_diff == 0:
             continue
 
-        entry_number = f"FXREV-{fiscal_year}-P{period:02d}-{acct.account_code}-{uuid.uuid4().hex[:6].upper()}"
+        entry_number = (
+            f"FXREV-{fiscal_year}-P{period:02d}-{acct.account_code}-{uuid.uuid4().hex[:6].upper()}"
+        )
         if fx_diff > 0:
             # FX gain: credit en cuenta 7100
             fe = FinancialEntry(
@@ -1141,6 +1176,7 @@ async def run_fx_revaluation(
 # ===========================================================================
 # US-ERP-06-09 — CO-PA + Budgets + Cash Flow
 # ===========================================================================
+
 
 @router.get("/copa", response_model=CopaOut)
 async def get_copa(
@@ -1205,16 +1241,18 @@ async def get_copa(
         gm = rev - cogs
         ebit = gm - opex
         gm_pct = (gm / rev * 100).quantize(Decimal("0.01")) if rev else None
-        lines.append(CopaLineOut(
-            profit_center_code=r["pc_code"],
-            profit_center_name=r["pc_name"],
-            revenue=rev,
-            cogs=cogs,
-            gross_margin=gm,
-            gross_margin_pct=gm_pct,
-            opex=opex,
-            ebit=ebit,
-        ))
+        lines.append(
+            CopaLineOut(
+                profit_center_code=r["pc_code"],
+                profit_center_name=r["pc_name"],
+                revenue=rev,
+                cogs=cogs,
+                gross_margin=gm,
+                gross_margin_pct=gm_pct,
+                opex=opex,
+                ebit=ebit,
+            )
+        )
 
     return CopaOut(fiscal_year=fiscal_year, profit_center=profit_center, lines=lines)
 
@@ -1257,7 +1295,8 @@ async def get_budget_vs_actual(
     period: int = Query(...),
 ) -> BudgetVsActualOut:
     """GET /finance/budget-vs-actual — comparar budgets vs financial_entries."""
-    rows = await db.execute(text("""
+    rows = await db.execute(
+        text("""
         SELECT
             a.account_code, a.account_name, a.account_type,
             pc.pc_code AS profit_center_code,
@@ -1278,7 +1317,9 @@ async def get_budget_vs_actual(
         GROUP BY a.account_code, a.account_name, a.account_type,
                  pc.pc_code, b.budget_amount
         ORDER BY a.account_code
-    """), {"fy": fiscal_year, "period": period})
+    """),
+        {"fy": fiscal_year, "period": period},
+    )
     data = rows.mappings().all()
 
     lines = []
@@ -1287,16 +1328,18 @@ async def get_budget_vs_actual(
         actual = Decimal(str(r["actual"]))
         variance = actual - budget
         variance_pct = (variance / budget * 100).quantize(Decimal("0.01")) if budget else None
-        lines.append(BudgetVsActualLine(
-            account_code=r["account_code"],
-            account_name=r["account_name"],
-            account_type=r["account_type"],
-            profit_center_code=r["profit_center_code"],
-            budget=budget,
-            actual=actual,
-            variance=variance,
-            variance_pct=variance_pct,
-        ))
+        lines.append(
+            BudgetVsActualLine(
+                account_code=r["account_code"],
+                account_name=r["account_name"],
+                account_type=r["account_type"],
+                profit_center_code=r["profit_center_code"],
+                budget=budget,
+                actual=actual,
+                variance=variance,
+                variance_pct=variance_pct,
+            )
+        )
 
     total_budget = sum(l.budget for l in lines)
     total_actual = sum(l.actual for l in lines)
@@ -1320,7 +1363,8 @@ async def get_cash_flow(
 ) -> CashFlowOut:
     """GET /finance/cash-flow — flujo de caja Operating/Investing/Financing."""
     # Operating: cobros clientes (cuenta 1100 — AR) y pagos proveedores (cuenta 2100 — AP)
-    rows = await db.execute(text("""
+    rows = await db.execute(
+        text("""
         SELECT
             COALESCE(SUM(CASE WHEN a.account_code = '1100'
                          THEN fe.credit_amount - fe.debit_amount ELSE 0 END), 0) AS ar_collections,
@@ -1330,7 +1374,9 @@ async def get_cash_flow(
         JOIN gl_accounts a ON fe.gl_account_id = a.id
         WHERE fe.fiscal_year = :fy
           AND fe.posting_period BETWEEN :p_from AND :p_to
-    """), {"fy": fiscal_year, "p_from": period_from, "p_to": period_to})
+    """),
+        {"fy": fiscal_year, "p_from": period_from, "p_to": period_to},
+    )
     row = rows.mappings().one_or_none()
 
     inflows = Decimal(str(row["ar_collections"])) if row else Decimal("0")

@@ -149,9 +149,7 @@ def test_exception_evaluator_critical_alerts_pending() -> None:
         margin_pct=Decimal("0.20"),
         rule_applied="aggressive_g1_no_match",
         formula="dummy",
-        alerts=[
-            {"severity": "critical", "code": "floor_forced", "message": "..."}
-        ],
+        alerts=[{"severity": "critical", "code": "floor_forced", "message": "..."}],
     )
     next_status, _reasons = ExceptionEvaluator.evaluate(
         new_price=new_price,

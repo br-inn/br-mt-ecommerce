@@ -56,6 +56,7 @@ DOCS_RND = Path(__file__).resolve().parents[3] / "docs" / "rnd"
 # Fetcher factory
 # ---------------------------------------------------------------------------
 
+
 def _build_fetchers(marketplace: str, *, use_stubs: bool) -> list[FetcherPort]:
     """Construye la lista de fetchers según marketplace y modo."""
     fetchers: list[FetcherPort] = []
@@ -69,18 +70,21 @@ def _build_fetchers(marketplace: str, *, use_stubs: bool) -> list[FetcherPort]:
             from app.services.matching.adapters.amazon_uae_stub import (
                 AmazonUaeStubFetcher,
             )
+
             fetchers.append(AmazonUaeStubFetcher())
         else:
             try:
                 from app.services.matching.adapters.curl_cffi_amazon_uae import (
                     CurlCffiAmazonUaeFetcher,
                 )
+
                 fetchers.append(CurlCffiAmazonUaeFetcher())
             except Exception as exc:
                 logger.warning("Real Amazon fetcher unavailable (%s) — falling back to stub", exc)
                 from app.services.matching.adapters.amazon_uae_stub import (
                     AmazonUaeStubFetcher,
                 )
+
                 fetchers.append(AmazonUaeStubFetcher())
 
     if want_noon:
@@ -88,24 +92,28 @@ def _build_fetchers(marketplace: str, *, use_stubs: bool) -> list[FetcherPort]:
             from app.services.matching.adapters.noon_uae_stub import (
                 NoonUaeStubFetcher,
             )
+
             fetchers.append(NoonUaeStubFetcher())
         else:
             try:
                 from app.services.matching.adapters.playwright_noon_uae import (
                     PlaywrightNoonUaeFetcher,
                 )
+
                 fetchers.append(PlaywrightNoonUaeFetcher())
             except Exception as exc:
                 logger.warning("Real Noon fetcher unavailable (%s) — falling back to stub", exc)
                 from app.services.matching.adapters.noon_uae_stub import (
                     NoonUaeStubFetcher,
                 )
+
                 fetchers.append(NoonUaeStubFetcher())
 
     if want_shopify:
         # Shopify: sólo stub disponible (Fase 1.5+ para real).
         try:
             from scripts.poc.shopify_stub import ShopifyUaeStubFetcher
+
             fetchers.append(ShopifyUaeStubFetcher())
         except ImportError as exc:
             logger.warning("Shopify stub unavailable (%s) — skipping shopify marketplace", exc)
@@ -116,6 +124,7 @@ def _build_fetchers(marketplace: str, *, use_stubs: bool) -> list[FetcherPort]:
 # ---------------------------------------------------------------------------
 # SKU loader
 # ---------------------------------------------------------------------------
+
 
 async def _load_skus(session: AsyncSession, n: int) -> list[str]:
     """Carga hasta N SKUs activos del catálogo."""
@@ -152,6 +161,7 @@ def _synthetic_skus(n: int) -> list[str]:
 # Core runner
 # ---------------------------------------------------------------------------
 
+
 async def run_poc(
     *,
     n_skus: int,
@@ -168,7 +178,10 @@ async def run_poc(
 
     logger.info(
         "POC START — n_skus=%d marketplace=%s use_stubs=%s no_db=%s",
-        n_skus, marketplace, use_stubs, no_db,
+        n_skus,
+        marketplace,
+        use_stubs,
+        no_db,
     )
 
     fetchers = _build_fetchers(marketplace, use_stubs=use_stubs)
@@ -200,8 +213,15 @@ async def run_poc(
             logger.warning("No SKUs en DB — usando sintéticos como fallback")
             skus = _synthetic_skus(n_skus)
             sku_dicts = [
-                {"sku": s, "family": "ball_valve", "material": "brass",
-                 "pn": "PN16", "connection": "BSP", "brand": None, "specs": {}}
+                {
+                    "sku": s,
+                    "family": "ball_valve",
+                    "material": "brass",
+                    "pn": "PN16",
+                    "connection": "BSP",
+                    "brand": None,
+                    "specs": {},
+                }
                 for s in skus
             ]
         else:
@@ -217,17 +237,19 @@ async def run_poc(
                 if p is None:
                     sku_dicts.append({"sku": s, "specs": {}})
                 else:
-                    sku_dicts.append({
-                        "sku": p.sku,
-                        "family": p.family,
-                        "subfamily": p.subfamily,
-                        "material": p.material,
-                        "dn": p.dn,
-                        "pn": p.pn,
-                        "connection": p.connection,
-                        "brand": p.brand,
-                        "specs": dict(p.specs or {}),
-                    })
+                    sku_dicts.append(
+                        {
+                            "sku": p.sku,
+                            "family": p.family,
+                            "subfamily": p.subfamily,
+                            "material": p.material,
+                            "dn": p.dn,
+                            "pn": p.pn,
+                            "connection": p.connection,
+                            "brand": p.brand,
+                            "specs": dict(p.specs or {}),
+                        }
+                    )
 
     logger.info("Procesando %d SKUs contra %d fetchers", len(sku_dicts), len(fetchers))
 
@@ -294,7 +316,9 @@ async def run_poc(
     collector.set_elapsed(elapsed)
     logger.info(
         "POC FIN — %d SKUs OK, %d errores, elapsed=%.1fs",
-        n_ok, n_err, elapsed,
+        n_ok,
+        n_err,
+        elapsed,
     )
 
     metrics = collector.compute()
@@ -313,6 +337,7 @@ async def run_poc(
 
     if report:
         from scripts.poc.g4_report import generate_g4_report
+
         report_path = DOCS_RND / "g4-decision-report.md"
         generate_g4_report(metrics, report_path)
         logger.info("Reporte G4: %s", report_path)
@@ -323,6 +348,7 @@ async def run_poc(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _classify(score: int, notes: list[str]) -> str:
     blocking = {"pn_below_sku_requirement", "thread_mismatch", "material_mismatch"}
@@ -345,8 +371,10 @@ def _print_summary(metrics: PocMetrics) -> None:
     print(f"  Stubs           : {metrics.use_stubs}")
     print(f"  Errores         : {len(metrics.errors)}")
     print()
-    print(f"  {'Marketplace':<18} {'Cands':>6} {'FP%':>6} {'FN%':>6} {'ECE%':>6} {'Cob%':>6} {'AC':>4}")
-    print(f"  {'-'*18} {'-'*6} {'-'*6} {'-'*6} {'-'*6} {'-'*6} {'-'*4}")
+    print(
+        f"  {'Marketplace':<18} {'Cands':>6} {'FP%':>6} {'FN%':>6} {'ECE%':>6} {'Cob%':>6} {'AC':>4}"
+    )
+    print(f"  {'-' * 18} {'-' * 6} {'-' * 6} {'-' * 6} {'-' * 6} {'-' * 6} {'-' * 4}")
     for m in metrics.marketplaces:
         ac_ok = "OK" if m.all_ac_pass() else "FAIL"
         print(
@@ -355,9 +383,11 @@ def _print_summary(metrics: PocMetrics) -> None:
             f"{m.ece * 100:>5.1f}% {m.cobertura * 100:>5.1f}% {ac_ok:>4}"
         )
     ac_ok = "OK" if agg.all_ac_pass() else "FAIL"
-    print(f"  {'ALL':<18} {agg.n_candidates:>6} "
-          f"{agg.fp_rate * 100:>5.1f}% {agg.fn_rate * 100:>5.1f}% "
-          f"{agg.ece * 100:>5.1f}% {agg.cobertura * 100:>5.1f}% {ac_ok:>4}")
+    print(
+        f"  {'ALL':<18} {agg.n_candidates:>6} "
+        f"{agg.fp_rate * 100:>5.1f}% {agg.fn_rate * 100:>5.1f}% "
+        f"{agg.ece * 100:>5.1f}% {agg.cobertura * 100:>5.1f}% {ac_ok:>4}"
+    )
     print("=" * 60 + "\n")
 
 
@@ -365,13 +395,16 @@ def _print_summary(metrics: PocMetrics) -> None:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="POC 500 SKUs × 3 marketplaces — matching pipeline",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--n-skus", type=int, default=500,
+        "--n-skus",
+        type=int,
+        default=500,
         help="Número de SKUs a procesar",
     )
     parser.add_argument(
@@ -381,19 +414,24 @@ def _parse_args() -> argparse.Namespace:
         help="Marketplace(s) a testear",
     )
     parser.add_argument(
-        "--use-stubs", action="store_true",
+        "--use-stubs",
+        action="store_true",
         help="Usar adapters stub (sin credenciales externas; CI-safe)",
     )
     parser.add_argument(
-        "--no-db", action="store_true",
+        "--no-db",
+        action="store_true",
         help="No conectar a DB — usar SKUs sintéticos (útil en entornos sin Postgres)",
     )
     parser.add_argument(
-        "--report", action="store_true",
+        "--report",
+        action="store_true",
         help="Generar reporte G4 en docs/rnd/g4-decision-report.md",
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true",
+        "--verbose",
+        "-v",
+        action="store_true",
         help="Logging DEBUG",
     )
     return parser.parse_args()
@@ -415,5 +453,7 @@ if __name__ == "__main__":
     _n_err = len(_metrics.errors)
     _error_rate = _n_err / max(_metrics.n_skus_total, 1)
     if _error_rate >= 0.20:
-        logger.error("Error rate %.0f%% ≥ 20%% threshold (%d errors) — exit 1", _error_rate * 100, _n_err)
+        logger.error(
+            "Error rate %.0f%% ≥ 20%% threshold (%d errors) — exit 1", _error_rate * 100, _n_err
+        )
         sys.exit(1)

@@ -47,6 +47,7 @@ from app.db.mixins import UuidPkMixin
 # US-ERP-06-01 — Chart of Accounts
 # ---------------------------------------------------------------------------
 
+
 class GlAccount(UuidPkMixin, Base):
     """General Ledger Account — Chart of Accounts."""
 
@@ -54,13 +55,17 @@ class GlAccount(UuidPkMixin, Base):
 
     account_code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     account_name: Mapped[str] = mapped_column(Text, nullable=False)
-    account_type: Mapped[str] = mapped_column(Text, nullable=False)  # ASSET|LIABILITY|EQUITY|REVENUE|EXPENSE|CONTRA
+    account_type: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # ASSET|LIABILITY|EQUITY|REVENUE|EXPENSE|CONTRA
     parent_id: Mapped[UUID | None] = mapped_column(
         UUID_PG(as_uuid=True),
         ForeignKey("gl_accounts.id", ondelete="SET NULL"),
         nullable=True,
     )
-    is_reconciling: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    is_reconciling: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False
+    )
     is_blocked: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     # normal_balance — DEBIT para activos/gastos; CREDIT para pasivos/equity/revenue (mig 141)
     normal_balance: Mapped[str] = mapped_column(
@@ -85,9 +90,15 @@ class GlAccount(UuidPkMixin, Base):
     )
 
     # relationships
-    parent: Mapped[GlAccount | None] = relationship("GlAccount", remote_side="GlAccount.id", foreign_keys=[parent_id])
-    children: Mapped[list[GlAccount]] = relationship("GlAccount", back_populates="parent", foreign_keys=[parent_id])
-    financial_entries: Mapped[list[FinancialEntry]] = relationship("FinancialEntry", back_populates="gl_account")
+    parent: Mapped[GlAccount | None] = relationship(
+        "GlAccount", remote_side="GlAccount.id", foreign_keys=[parent_id]
+    )
+    children: Mapped[list[GlAccount]] = relationship(
+        "GlAccount", back_populates="parent", foreign_keys=[parent_id]
+    )
+    financial_entries: Mapped[list[FinancialEntry]] = relationship(
+        "FinancialEntry", back_populates="gl_account"
+    )
     budgets: Mapped[list[Budget]] = relationship("Budget", back_populates="gl_account")
 
     def __repr__(self) -> str:
@@ -97,6 +108,7 @@ class GlAccount(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-06-01 — Posting Periods
 # ---------------------------------------------------------------------------
+
 
 class PostingPeriod(UuidPkMixin, Base):
     """Fiscal posting period — controla apertura/cierre contable."""
@@ -108,7 +120,9 @@ class PostingPeriod(UuidPkMixin, Base):
     period_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     date_from: Mapped[date] = mapped_column(Date, nullable=False)
     date_to: Mapped[date] = mapped_column(Date, nullable=False)
-    status: Mapped[str] = mapped_column(Text, server_default="open", nullable=False)  # open|soft_closed|closed|locked
+    status: Mapped[str] = mapped_column(
+        Text, server_default="open", nullable=False
+    )  # open|soft_closed|closed|locked
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_by: Mapped[UUID | None] = mapped_column(
         UUID_PG(as_uuid=True),
@@ -118,7 +132,9 @@ class PostingPeriod(UuidPkMixin, Base):
 
     __table_args__ = (
         CheckConstraint("period_num BETWEEN 1 AND 16", name="ck_posting_periods_period_num"),
-        CheckConstraint("status IN ('open','soft_closed','closed','locked')", name="ck_posting_periods_status"),
+        CheckConstraint(
+            "status IN ('open','soft_closed','closed','locked')", name="ck_posting_periods_status"
+        ),
         UniqueConstraint("fiscal_year", "period_num", name="uq_posting_periods_fy_period"),
     )
 
@@ -129,6 +145,7 @@ class PostingPeriod(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-06-02 — Cost Centers
 # ---------------------------------------------------------------------------
+
 
 class CostCenter(UuidPkMixin, Base):
     """Cost Center — centro de costo para imputación contable."""
@@ -142,13 +159,17 @@ class CostCenter(UuidPkMixin, Base):
         ForeignKey("cost_centers.id", ondelete="SET NULL"),
         nullable=True,
     )
-    cc_type: Mapped[str | None] = mapped_column(Text, nullable=True)  # PRODUCTION|SERVICE|ADMIN|SALES|IT
+    cc_type: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )  # PRODUCTION|SERVICE|ADMIN|SALES|IT
     responsible_id: Mapped[UUID | None] = mapped_column(
         UUID_PG(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    valid_from: Mapped[date] = mapped_column(Date, server_default=text("CURRENT_DATE"), nullable=False)
+    valid_from: Mapped[date] = mapped_column(
+        Date, server_default=text("CURRENT_DATE"), nullable=False
+    )
     valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -162,9 +183,15 @@ class CostCenter(UuidPkMixin, Base):
         ),
     )
 
-    parent: Mapped[CostCenter | None] = relationship("CostCenter", remote_side="CostCenter.id", foreign_keys=[parent_id])
-    children: Mapped[list[CostCenter]] = relationship("CostCenter", back_populates="parent", foreign_keys=[parent_id])
-    financial_entries: Mapped[list[FinancialEntry]] = relationship("FinancialEntry", back_populates="cost_center")
+    parent: Mapped[CostCenter | None] = relationship(
+        "CostCenter", remote_side="CostCenter.id", foreign_keys=[parent_id]
+    )
+    children: Mapped[list[CostCenter]] = relationship(
+        "CostCenter", back_populates="parent", foreign_keys=[parent_id]
+    )
+    financial_entries: Mapped[list[FinancialEntry]] = relationship(
+        "FinancialEntry", back_populates="cost_center"
+    )
 
     def __repr__(self) -> str:
         return f"<CostCenter {self.cc_code} {self.cc_name}>"
@@ -173,6 +200,7 @@ class CostCenter(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-06-02 — Profit Centers
 # ---------------------------------------------------------------------------
+
 
 class ProfitCenter(UuidPkMixin, Base):
     """Profit Center — unidad de negocio para análisis de rentabilidad."""
@@ -199,7 +227,9 @@ class ProfitCenter(UuidPkMixin, Base):
         ),
     )
 
-    financial_entries: Mapped[list[FinancialEntry]] = relationship("FinancialEntry", back_populates="profit_center")
+    financial_entries: Mapped[list[FinancialEntry]] = relationship(
+        "FinancialEntry", back_populates="profit_center"
+    )
     budgets: Mapped[list[Budget]] = relationship("Budget", back_populates="profit_center")
 
     def __repr__(self) -> str:
@@ -210,6 +240,7 @@ class ProfitCenter(UuidPkMixin, Base):
 # US-ERP-06-03 — Universal Journal (financial_entries)
 # DIFERENTE de journal_entries (inventario/stock movements)
 # ---------------------------------------------------------------------------
+
 
 class FinancialEntry(UuidPkMixin, Base):
     """Universal Journal Entry — asiento contable del módulo finanzas.
@@ -224,7 +255,9 @@ class FinancialEntry(UuidPkMixin, Base):
     journal_date: Mapped[date] = mapped_column(Date, nullable=False)
     posting_period: Mapped[int] = mapped_column(Integer, nullable=False)
     fiscal_year: Mapped[int] = mapped_column(Integer, nullable=False)
-    entry_type: Mapped[str] = mapped_column(Text, nullable=False)  # MANUAL|SYSTEM|REVERSAL|ACCRUAL|FX_REVAL
+    entry_type: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # MANUAL|SYSTEM|REVERSAL|ACCRUAL|FX_REVAL
     source_module: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_document: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_document_id: Mapped[UUID | None] = mapped_column(UUID_PG(as_uuid=True), nullable=True)
@@ -243,11 +276,17 @@ class FinancialEntry(UuidPkMixin, Base):
         ForeignKey("profit_centers.id", ondelete="SET NULL"),
         nullable=True,
     )
-    debit_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), server_default="0", nullable=False)
-    credit_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), server_default="0", nullable=False)
+    debit_amount: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), server_default="0", nullable=False
+    )
+    credit_amount: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), server_default="0", nullable=False
+    )
     currency_code: Mapped[str] = mapped_column(CHAR(3), server_default="AED", nullable=False)
     amount_local: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
-    fx_rate: Mapped[Decimal | None] = mapped_column(Numeric(14, 6), server_default="1", nullable=True)
+    fx_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(14, 6), server_default="1", nullable=True
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference: Mapped[str | None] = mapped_column(Text, nullable=True)
     preparer_id: Mapped[UUID | None] = mapped_column(
@@ -280,7 +319,9 @@ class FinancialEntry(UuidPkMixin, Base):
         ),
         CheckConstraint("debit_amount >= 0", name="ck_financial_entries_debit_pos"),
         CheckConstraint("credit_amount >= 0", name="ck_financial_entries_credit_pos"),
-        CheckConstraint("debit_amount > 0 OR credit_amount > 0", name="ck_financial_entries_nonzero"),
+        CheckConstraint(
+            "debit_amount > 0 OR credit_amount > 0", name="ck_financial_entries_nonzero"
+        ),
         Index("ix_fe_period_fy", "posting_period", "fiscal_year"),
         Index("ix_fe_account_date", "gl_account_id", "journal_date"),
         Index("ix_fe_source", "source_module", "source_document_id"),
@@ -288,8 +329,12 @@ class FinancialEntry(UuidPkMixin, Base):
     )
 
     gl_account: Mapped[GlAccount] = relationship("GlAccount", back_populates="financial_entries")
-    cost_center: Mapped[CostCenter | None] = relationship("CostCenter", back_populates="financial_entries")
-    profit_center: Mapped[ProfitCenter | None] = relationship("ProfitCenter", back_populates="financial_entries")
+    cost_center: Mapped[CostCenter | None] = relationship(
+        "CostCenter", back_populates="financial_entries"
+    )
+    profit_center: Mapped[ProfitCenter | None] = relationship(
+        "ProfitCenter", back_populates="financial_entries"
+    )
 
     def __repr__(self) -> str:
         return f"<FinancialEntry {self.entry_number} {self.entry_type}>"
@@ -298,6 +343,7 @@ class FinancialEntry(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-06-04 — AP Aging + Payment Run
 # ---------------------------------------------------------------------------
+
 
 class VendorOpenItem(UuidPkMixin, Base):
     """Open item de proveedor — AP subledger."""
@@ -311,12 +357,16 @@ class VendorOpenItem(UuidPkMixin, Base):
         nullable=True,
     )
     invoice_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
-    document_type: Mapped[str] = mapped_column(Text, server_default="vendor_invoice", nullable=False)
+    document_type: Mapped[str] = mapped_column(
+        Text, server_default="vendor_invoice", nullable=False
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), server_default="AED", nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(Text, server_default="open", nullable=False)
-    payment_block: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    payment_block: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
@@ -332,7 +382,9 @@ class VendorOpenItem(UuidPkMixin, Base):
         ),
     )
 
-    payment_run_items: Mapped[list[PaymentRunItem]] = relationship("PaymentRunItem", back_populates="open_item")
+    payment_run_items: Mapped[list[PaymentRunItem]] = relationship(
+        "PaymentRunItem", back_populates="open_item"
+    )
 
     def __repr__(self) -> str:
         return f"<VendorOpenItem {self.vendor_id} {self.amount} {self.status}>"
@@ -370,7 +422,9 @@ class PaymentRun(UuidPkMixin, Base):
         ),
     )
 
-    items: Mapped[list[PaymentRunItem]] = relationship("PaymentRunItem", back_populates="payment_run")
+    items: Mapped[list[PaymentRunItem]] = relationship(
+        "PaymentRunItem", back_populates="payment_run"
+    )
 
     def __repr__(self) -> str:
         return f"<PaymentRun {self.run_number} {self.status}>"
@@ -392,15 +446,20 @@ class PaymentRunItem(UuidPkMixin, Base):
         nullable=False,
     )
     payment_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
-    discount_taken: Mapped[Decimal] = mapped_column(Numeric(18, 4), server_default="0", nullable=False)
+    discount_taken: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), server_default="0", nullable=False
+    )
 
     payment_run: Mapped[PaymentRun] = relationship("PaymentRun", back_populates="items")
-    open_item: Mapped[VendorOpenItem] = relationship("VendorOpenItem", back_populates="payment_run_items")
+    open_item: Mapped[VendorOpenItem] = relationship(
+        "VendorOpenItem", back_populates="payment_run_items"
+    )
 
 
 # ---------------------------------------------------------------------------
 # US-ERP-06-05 — Standard Cost + Price Purchase Variance
 # ---------------------------------------------------------------------------
+
 
 class StandardCost(UuidPkMixin, Base):
     """Costo estándar por SKU y año fiscal."""
@@ -416,7 +475,9 @@ class StandardCost(UuidPkMixin, Base):
     standard_cost: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), server_default="AED", nullable=False)
     cost_type: Mapped[str] = mapped_column(Text, server_default="standard", nullable=False)
-    valid_from: Mapped[date] = mapped_column(Date, server_default=text("CURRENT_DATE"), nullable=False)
+    valid_from: Mapped[date] = mapped_column(
+        Date, server_default=text("CURRENT_DATE"), nullable=False
+    )
     valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_by: Mapped[UUID | None] = mapped_column(
         UUID_PG(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -430,7 +491,9 @@ class StandardCost(UuidPkMixin, Base):
             "cost_type IN ('standard','planned','actual')",
             name="ck_standard_costs_cost_type",
         ),
-        UniqueConstraint("product_sku", "fiscal_year", "cost_type", name="uq_standard_costs_sku_fy_type"),
+        UniqueConstraint(
+            "product_sku", "fiscal_year", "cost_type", name="uq_standard_costs_sku_fy_type"
+        ),
     )
 
     def __repr__(self) -> str:
@@ -472,6 +535,7 @@ class PriceVariance(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-06-07 — Period Close Checklist + Tax Provisions
 # ---------------------------------------------------------------------------
+
 
 class PeriodCloseChecklist(UuidPkMixin, Base):
     """Checklist de cierre de período contable."""
@@ -543,6 +607,7 @@ class TaxProvision(UuidPkMixin, Base):
 # US-ERP-06-08 — Journal Entry SoD Controls
 # ---------------------------------------------------------------------------
 
+
 class JournalEntryControl(UuidPkMixin, Base):
     """Segregation of Duties control para asientos contables.
 
@@ -558,7 +623,9 @@ class JournalEntryControl(UuidPkMixin, Base):
     )
     control_type: Mapped[str] = mapped_column(Text, nullable=False)  # PREPARER|REVIEWER|APPROVER
     gl_account_code: Mapped[str | None] = mapped_column(Text, nullable=True)
-    effective_from: Mapped[date] = mapped_column(Date, server_default=text("CURRENT_DATE"), nullable=False)
+    effective_from: Mapped[date] = mapped_column(
+        Date, server_default=text("CURRENT_DATE"), nullable=False
+    )
     effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     __table_args__ = (
@@ -575,6 +642,7 @@ class JournalEntryControl(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-06-09 — Budgets
 # ---------------------------------------------------------------------------
+
 
 class Budget(UuidPkMixin, Base):
     """Presupuesto por período, cuenta contable y profit center."""
@@ -598,14 +666,19 @@ class Budget(UuidPkMixin, Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "fiscal_year", "period_num", "gl_account_id", "profit_center_id",
+            "fiscal_year",
+            "period_num",
+            "gl_account_id",
+            "profit_center_id",
             name="uq_budgets_fy_period_account_pc",
         ),
         Index("ix_budgets_fy_period", "fiscal_year", "period_num"),
     )
 
     gl_account: Mapped[GlAccount] = relationship("GlAccount", back_populates="budgets")
-    profit_center: Mapped[ProfitCenter | None] = relationship("ProfitCenter", back_populates="budgets")
+    profit_center: Mapped[ProfitCenter | None] = relationship(
+        "ProfitCenter", back_populates="budgets"
+    )
 
     def __repr__(self) -> str:
         return f"<Budget FY{self.fiscal_year}/P{self.period_num} {self.budget_amount}>"

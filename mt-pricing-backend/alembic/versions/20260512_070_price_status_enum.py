@@ -63,9 +63,7 @@ def upgrade() -> None:
     op.drop_constraint(
         "ck_price_approval_events_from_status", "price_approval_events", type_="check"
     )
-    op.drop_constraint(
-        "ck_price_approval_events_to_status", "price_approval_events", type_="check"
-    )
+    op.drop_constraint("ck_price_approval_events_to_status", "price_approval_events", type_="check")
     op.create_check_constraint(
         "ck_price_approval_events_from_status",
         "price_approval_events",
@@ -131,9 +129,7 @@ def downgrade() -> None:
     op.drop_constraint(
         "ck_price_approval_events_from_status", "price_approval_events", type_="check"
     )
-    op.drop_constraint(
-        "ck_price_approval_events_to_status", "price_approval_events", type_="check"
-    )
+    op.drop_constraint("ck_price_approval_events_to_status", "price_approval_events", type_="check")
     op.create_check_constraint(
         "ck_price_approval_events_from_status",
         "price_approval_events",

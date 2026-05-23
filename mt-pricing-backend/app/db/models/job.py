@@ -34,30 +34,18 @@ class JobDefinition(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     task_name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    owner: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'infra'")
-    )
+    owner: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'infra'"))
 
     schedule_type: Mapped[str] = mapped_column(String(16), nullable=False)
     cron_expression: Mapped[str | None] = mapped_column(Text)
     interval_seconds: Mapped[int | None] = mapped_column(Integer)
-    timezone: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'Asia/Dubai'")
-    )
-    queue: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'default'")
-    )
+    timezone: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'Asia/Dubai'"))
+    queue: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'default'"))
 
-    args: Mapped[list] = mapped_column(
-        JSONB, nullable=False, server_default=text("'[]'::jsonb")
-    )
-    kwargs: Mapped[dict] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'::jsonb")
-    )
+    args: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    kwargs: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
-    enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -85,9 +73,7 @@ class JobDefinition(UuidPkMixin, Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            f"owner IN {values_csv(JobOwner)}", name="ck_jobs_owner"
-        ),
+        CheckConstraint(f"owner IN {values_csv(JobOwner)}", name="ck_jobs_owner"),
         CheckConstraint(
             f"schedule_type IN {values_csv(ScheduleType)}",
             name="ck_jobs_schedule_type",
@@ -119,14 +105,10 @@ class JobRun(UuidPkMixin, Base):
         nullable=False,
     )
     job_code: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'idle'")
-    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'idle'"))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    retries: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    retries: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     celery_task_id: Mapped[str | None] = mapped_column(Text)
     result: Mapped[dict | None] = mapped_column(JSONB)
     error: Mapped[str | None] = mapped_column(Text)
@@ -143,9 +125,7 @@ class JobRun(UuidPkMixin, Base):
     definition: Mapped[JobDefinition] = relationship(back_populates="runs")
 
     __table_args__ = (
-        CheckConstraint(
-            f"status IN {values_csv(JobStatus)}", name="ck_job_runs_status"
-        ),
+        CheckConstraint(f"status IN {values_csv(JobStatus)}", name="ck_job_runs_status"),
         Index("idx_job_runs_job_started", "job_id", "started_at"),
         Index(
             "idx_job_runs_running",

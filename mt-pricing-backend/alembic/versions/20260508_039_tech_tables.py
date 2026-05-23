@@ -111,16 +111,10 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.UniqueConstraint(
-            "product_sku", "kind", name="uq_product_tech_tables_sku_kind"
-        ),
+        sa.UniqueConstraint("product_sku", "kind", name="uq_product_tech_tables_sku_kind"),
     )
-    op.create_index(
-        "idx_product_tech_tables_sku", "product_tech_tables", ["product_sku"]
-    )
-    op.create_index(
-        "idx_product_tech_tables_kind", "product_tech_tables", ["kind"]
-    )
+    op.create_index("idx_product_tech_tables_sku", "product_tech_tables", ["product_sku"])
+    op.create_index("idx_product_tech_tables_kind", "product_tech_tables", ["kind"])
 
 
 def downgrade() -> None:

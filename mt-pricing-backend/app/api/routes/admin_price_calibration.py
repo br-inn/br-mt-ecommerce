@@ -173,9 +173,7 @@ async def list_price_calibration_ranges(
 ) -> PriceCalibrationListResponse:
     offset = (page - 1) * page_size
 
-    total_result = await session.execute(
-        select(func.count()).select_from(PriceCalibrationRange)
-    )
+    total_result = await session.execute(select(func.count()).select_from(PriceCalibrationRange))
     total = total_result.scalar_one()
 
     rows_result = await session.execute(
@@ -262,9 +260,7 @@ async def download_template(
     return StreamingResponse(
         iter([csv_content.encode("utf-8")]),
         media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=price_calibration_template.csv"
-        },
+        headers={"Content-Disposition": "attachment; filename=price_calibration_template.csv"},
     )
 
 

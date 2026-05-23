@@ -63,8 +63,7 @@ async def test_scheme_template_components(
     """Cada esquema tiene su `cost_components_template.required` esperado."""
     row = await db_session.execute(
         text(
-            "SELECT cost_components_template->'required' FROM schemes "
-            "WHERE code = :code;"
+            "SELECT cost_components_template->'required' FROM schemes WHERE code = :code;"
         ).bindparams(code=scheme_code)
     )
     raw = row.scalar_one()
@@ -78,9 +77,7 @@ async def test_scheme_code_check_constraint(db_session: "AsyncSession") -> None:
 
     with pytest.raises(IntegrityError):
         await db_session.execute(
-            text(
-                "INSERT INTO schemes (code, name) VALUES ('INVALID_SCHEME', 'Bad');"
-            )
+            text("INSERT INTO schemes (code, name) VALUES ('INVALID_SCHEME', 'Bad');")
         )
         await db_session.flush()
 
@@ -90,7 +87,5 @@ async def test_scheme_pk_unique(db_session: "AsyncSession") -> None:
     from sqlalchemy.exc import IntegrityError
 
     with pytest.raises(IntegrityError):
-        await db_session.execute(
-            text("INSERT INTO schemes (code, name) VALUES ('FBA', 'Dup');")
-        )
+        await db_session.execute(text("INSERT INTO schemes (code, name) VALUES ('FBA', 'Dup');"))
         await db_session.flush()

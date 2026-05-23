@@ -3,6 +3,7 @@
 Bloque 1: estructura de la receta (validación del JSONB).
 Bloque 2 (Task 10): schemas request/response de la API.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal

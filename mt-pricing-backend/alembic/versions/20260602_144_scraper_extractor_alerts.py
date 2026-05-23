@@ -7,6 +7,7 @@ Create Date: 2026-05-20
 Crea ``scraper_extractor_alerts`` para registrar cuando el hit_rate de un
 BrandExtractor cae > 20pp respecto a la baseline de 7 días.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -31,12 +32,8 @@ def upgrade() -> None:
         sa.Column("delta_pp", sa.Numeric(6, 2), nullable=False),
         sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("resolved_by", sa.UUID(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["brand_id"], ["competitor_brands.id"], ondelete="CASCADE"
-        ),
-        sa.ForeignKeyConstraint(
-            ["resolved_by"], ["users.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["brand_id"], ["competitor_brands.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["resolved_by"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(

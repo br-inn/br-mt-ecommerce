@@ -38,9 +38,7 @@ class Role(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    is_system: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     permissions_snapshot: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
@@ -102,12 +100,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     full_name: Mapped[str | None] = mapped_column(Text)
     avatar_url: Mapped[str | None] = mapped_column(Text)
-    locale: Mapped[str] = mapped_column(
-        String(2), nullable=False, server_default=text("'es'")
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    locale: Mapped[str] = mapped_column(String(2), nullable=False, server_default=text("'es'"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     role_id: Mapped[UUID | None] = mapped_column(
         UUID_PG, ForeignKey("roles.id", ondelete="SET NULL")
     )
@@ -117,9 +111,7 @@ class User(Base):
     )
 
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    failed_logins: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    failed_logins: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(
@@ -139,9 +131,7 @@ class User(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    role: Mapped[Role | None] = relationship(
-        back_populates="users", foreign_keys=[role_id]
-    )
+    role: Mapped[Role | None] = relationship(back_populates="users", foreign_keys=[role_id])
 
     __table_args__ = (
         CheckConstraint("locale IN ('es','en','ar')", name="ck_users_locale"),

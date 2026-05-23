@@ -56,9 +56,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_ptp_product", "pressure_temperature_points", ["product_sku"]
-    )
+    op.create_index("ix_ptp_product", "pressure_temperature_points", ["product_sku"])
 
 
 def downgrade() -> None:

@@ -245,9 +245,7 @@ class PricingService:
 
         fx_rate = await self._resolve_fx()
 
-        prev_price = await self.prices.get_active_for(
-            product.sku, channel.id, scheme_code
-        )
+        prev_price = await self.prices.get_active_for(product.sku, channel.id, scheme_code)
 
         active_rules = list(await self.exceptions.list_active())
 
@@ -304,9 +302,7 @@ class PricingService:
         await self.session.flush()  # asigna id
 
         # Marcar precios anteriores como expirados
-        await self.prices.supersede_previous(
-            product.sku, channel.id, scheme_code, new_price.id
-        )
+        await self.prices.supersede_previous(product.sku, channel.id, scheme_code, new_price.id)
 
         # Aplicar transición draft → next_status
         try:
@@ -333,9 +329,7 @@ class PricingService:
         await self.session.flush()
         return new_price
 
-    async def approve(
-        self, price_id: UUID, actor: User, reason: str | None = None
-    ) -> Price:
+    async def approve(self, price_id: UUID, actor: User, reason: str | None = None) -> Price:
         price = await self.get_price(price_id)
         before = _snapshot_price(price)
         try:
@@ -381,9 +375,7 @@ class PricingService:
         await self.session.flush()
         return price
 
-    async def revise(
-        self, price_id: UUID, actor: User, new_amount: Decimal, reason: str
-    ) -> Price:
+    async def revise(self, price_id: UUID, actor: User, new_amount: Decimal, reason: str) -> Price:
         if not reason:
             raise PricingDomainError(
                 "reason_required", "Razón obligatoria para revisar precio.", 422
@@ -397,7 +389,9 @@ class PricingService:
         # Recalcular margen si tenemos cost breakdown
         cost = await self.costs.get_active_for(price.product_sku, price.scheme_code)
         if cost is not None and cost.total > 0:
-            price.margin_pct = (new_amount - cost.total) / new_amount if new_amount > 0 else Decimal("0")
+            price.margin_pct = (
+                (new_amount - cost.total) / new_amount if new_amount > 0 else Decimal("0")
+            )
         try:
             event = transition(
                 price,
@@ -489,9 +483,7 @@ class PricingService:
 
         return {"approved": approved_ids}
 
-    async def recalculate_for_product(
-        self, product_id: UUID | str, actor: User
-    ) -> list[Price]:
+    async def recalculate_for_product(self, product_id: UUID | str, actor: User) -> list[Price]:
         """Re-propone precios para todas las (channel × scheme) activas del SKU."""
         # product_id puede ser sku o internal_id UUID
         product: Product | None

@@ -1,4 +1,5 @@
 """Integration tests para /scraper-sources REST API."""
+
 from __future__ import annotations
 
 import os
@@ -24,6 +25,7 @@ os.environ["JWT_ALGORITHM"] = "HS256"
 # Clear settings cache so the env overrides take effect
 try:
     from app.core import config as _cfg
+
     _cfg.get_settings.cache_clear()
     _cfg.settings = _cfg.get_settings()
 except Exception:
@@ -44,15 +46,18 @@ def _migrate(postgres_container: str) -> None:
 
     sync_url = postgres_container.replace("postgresql+asyncpg://", "postgresql+psycopg://")
     from app.core import config as _app_cfg
+
     _app_cfg.get_settings.cache_clear()
     os.environ["DATABASE_URL"] = postgres_container
     os.environ["ALEMBIC_DATABASE_URL"] = sync_url
     _app_cfg.settings = _app_cfg.get_settings()
 
     import app.api.deps as _deps
+
     _deps.settings = _app_cfg.settings
     try:
         import app.core.jwks as _jwks
+
         _jwks._settings = _app_cfg.settings  # type: ignore[attr-defined]
     except Exception:
         pass
@@ -108,9 +113,7 @@ def _emit_jwt(*, sub: str, email: str) -> str:
     )
 
 
-async def _seed_user_with_perms(
-    session: AsyncSession, perms_codes: list[str]
-) -> tuple[UUID, str]:
+async def _seed_user_with_perms(session: AsyncSession, perms_codes: list[str]) -> tuple[UUID, str]:
     from app.db.models.user import Permission, Role, RolePermission, User
 
     perm_ids = []
@@ -166,9 +169,7 @@ async def client_rw(postgres_container: str) -> AsyncIterator[AsyncClient]:
         await conn.begin()
         sm = async_sessionmaker(bind=conn, expire_on_commit=False)
         async with sm() as session:
-            uid, email = await _seed_user_with_perms(
-                session, ["products:write", "products:read"]
-            )
+            uid, email = await _seed_user_with_perms(session, ["products:write", "products:read"])
             await session.flush()
 
             async def _override() -> AsyncIterator[AsyncSession]:
@@ -178,9 +179,7 @@ async def client_rw(postgres_container: str) -> AsyncIterator[AsyncClient]:
             try:
                 token = _emit_jwt(sub=str(uid), email=email)
                 transport = ASGITransport(app=app)
-                async with AsyncClient(
-                    transport=transport, base_url="http://testserver"
-                ) as ac:
+                async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
                     ac.headers["Authorization"] = f"Bearer {token}"
                     yield ac
             finally:

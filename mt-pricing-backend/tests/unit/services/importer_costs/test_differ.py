@@ -202,9 +202,7 @@ async def test_error_row_passes_through() -> None:
 
 
 def test_orphan_report_to_dict() -> None:
-    orph = OrphanReport(
-        sku_not_in_pim=["A"], scheme_unknown=["B"], supplier_unknown=["C"]
-    )
+    orph = OrphanReport(sku_not_in_pim=["A"], scheme_unknown=["B"], supplier_unknown=["C"])
     d = orph.to_dict()
     assert d == {
         "sku_not_in_pim": ["A"],

@@ -1,4 +1,5 @@
 """Stub the anthropic package so tests run without the SDK installed."""
+
 from __future__ import annotations
 
 import sys

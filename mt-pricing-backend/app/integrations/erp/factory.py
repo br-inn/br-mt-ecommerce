@@ -20,17 +20,19 @@ def get_erp_adapter() -> ERPAdapter:
 
     if adapter_name == "noop":
         from app.integrations.erp.noop_adapter import NoOpAdapter
+
         return NoOpAdapter()
 
     if adapter_name == "sap":
         from app.integrations.erp.sap_adapter import SAPAdapter
+
         return SAPAdapter()
 
     if adapter_name == "odoo":
         from app.integrations.erp.odoo_adapter import OdooAdapter
+
         return OdooAdapter()
 
     raise ValueError(
-        f"ERP_ADAPTER='{adapter_name}' no reconocido. "
-        "Valores válidos: 'noop', 'sap', 'odoo'."
+        f"ERP_ADAPTER='{adapter_name}' no reconocido. Valores válidos: 'noop', 'sap', 'odoo'."
     )

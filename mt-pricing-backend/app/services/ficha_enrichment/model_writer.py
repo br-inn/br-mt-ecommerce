@@ -1,4 +1,5 @@
 """Writes extracted ficha data to product_models and related tables."""
+
 from __future__ import annotations
 
 import logging
@@ -42,9 +43,7 @@ async def upsert_model(
     variant_series: str | None = None,
 ) -> ProductModel:
     """Find or create ProductModel for series_prefix. Links variant if provided."""
-    result = await session.execute(
-        select(ProductModel).where(ProductModel.code == series_prefix)
-    )
+    result = await session.execute(select(ProductModel).where(ProductModel.code == series_prefix))
     model = result.scalar_one_or_none()
     if model is None:
         model = ProductModel(code=series_prefix)
@@ -173,6 +172,7 @@ async def write_certificates(
         )
         if existing.scalar_one_or_none() is not None:
             continue
+
         def _parse_date(s: str | None) -> date | None:
             if not s:
                 return None

@@ -61,8 +61,15 @@ def upgrade() -> None:
         sa.Column(
             "component",
             postgresql.ENUM(
-                "body", "closure", "seat", "gasket", "screen",
-                "actuator_housing", "stem", "handle", "other",
+                "body",
+                "closure",
+                "seat",
+                "gasket",
+                "screen",
+                "actuator_housing",
+                "stem",
+                "handle",
+                "other",
                 name="component_kind",
                 create_type=False,
             ),
@@ -88,7 +95,9 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.PrimaryKeyConstraint("product_sku", "component", "position", name="pk_product_materials"),
+        sa.PrimaryKeyConstraint(
+            "product_sku", "component", "position", name="pk_product_materials"
+        ),
     )
     op.create_index("idx_product_materials_sku", "product_materials", ["product_sku"])
     op.create_index("idx_product_materials_material", "product_materials", ["material"])
@@ -111,7 +120,13 @@ def upgrade() -> None:
         sa.Column(
             "connection_type",
             postgresql.ENUM(
-                "flange", "threaded", "weld", "press", "push_fit", "compression", "other",
+                "flange",
+                "threaded",
+                "weld",
+                "press",
+                "push_fit",
+                "compression",
+                "other",
                 name="connection_type",
                 create_type=False,
             ),

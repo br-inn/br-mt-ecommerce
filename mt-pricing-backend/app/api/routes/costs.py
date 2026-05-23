@@ -218,9 +218,7 @@ async def missing_costs_by_scheme(
         404: {"model": ProblemDetails, "description": "SKU/Scheme/Supplier inexistente"},
         422: {
             "model": ProblemDetails,
-            "description": (
-                "Validación falló (missing required field, fx_rate_not_found, etc.)"
-            ),
+            "description": ("Validación falló (missing required field, fx_rate_not_found, etc.)"),
         },
     },
 )

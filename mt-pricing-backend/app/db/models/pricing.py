@@ -165,9 +165,7 @@ class Price(UuidPkMixin, TimestampMixin, AuditMixin, Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rejection_reason: Mapped[str | None] = mapped_column(Text)
 
-    escalated: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    escalated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     valid_from: Mapped[datetime] = mapped_column(
@@ -220,26 +218,19 @@ class ExceptionRule(UuidPkMixin, TimestampMixin, Base):
     margin_threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
     fx_swing_threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
     min_margin_pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
-    version: Mapped[int] = mapped_column(
-        nullable=False, server_default=text("1")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    version: Mapped[int] = mapped_column(nullable=False, server_default=text("1"))
     effective_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
-    effective_to: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[UUID | None] = mapped_column(
         UUID_PG, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     __table_args__ = (
         CheckConstraint(
-            "scheme_code IS NULL OR scheme_code IN "
-            f"{values_csv(Scheme)}",
+            f"scheme_code IS NULL OR scheme_code IN {values_csv(Scheme)}",
             name="ck_exception_rules_scheme_code",
         ),
         Index("idx_exception_rules_active", "active", postgresql_where=text("active = true")),

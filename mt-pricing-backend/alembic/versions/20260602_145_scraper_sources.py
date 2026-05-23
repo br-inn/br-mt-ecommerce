@@ -9,6 +9,7 @@ Crea las tablas del módulo Scraper Source Builder:
 - scraper_source_recipes: receta de extracción versionada (una is_live por source)
 - scraper_source_test_runs: resultados de validación de recetas
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -27,15 +28,19 @@ def upgrade() -> None:
     destination_profile = postgresql.ENUM(
         "competitor_price", "product_data", name="scraper_destination_profile"
     )
-    fetch_mode = postgresql.ENUM(
-        "static", "headless", "stealth", name="scraper_fetch_mode"
-    )
+    fetch_mode = postgresql.ENUM("static", "headless", "stealth", name="scraper_fetch_mode")
     source_status = postgresql.ENUM(
-        "draft", "testing", "active", "disabled", "degraded",
+        "draft",
+        "testing",
+        "active",
+        "disabled",
+        "degraded",
         name="scraper_source_status",
     )
     validation_status = postgresql.ENUM(
-        "unvalidated", "passing", "failing",
+        "unvalidated",
+        "passing",
+        "failing",
         name="scraper_recipe_validation_status",
     )
     destination_profile.create(bind, checkfirst=True)
@@ -71,9 +76,21 @@ def upgrade() -> None:
         sa.Column("created_by", sa.UUID(), nullable=True),
         sa.Column("generated_by", sa.String(100), nullable=True),
         sa.Column("last_validated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["competitor_brand_id"], ["competitor_brands.id"], ondelete="SET NULL"),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["competitor_brand_id"], ["competitor_brands.id"], ondelete="SET NULL"
+        ),
         sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("slug", name="uq_scraper_sources_slug"),
@@ -85,16 +102,25 @@ def upgrade() -> None:
         sa.Column("source_id", sa.UUID(), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False),
         sa.Column("is_live", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("recipe", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "recipe", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
         sa.Column(
             "validation_status",
             postgresql.ENUM(name="scraper_recipe_validation_status", create_type=False),
             nullable=False,
             server_default=sa.text("'unvalidated'::scraper_recipe_validation_status"),
         ),
-        sa.Column("has_unapproved_snippet", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "has_unapproved_snippet", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
         sa.Column("created_by", sa.UUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["source_id"], ["scraper_sources.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
@@ -115,9 +141,21 @@ def upgrade() -> None:
         sa.Column("recipe_id", sa.UUID(), nullable=False),
         sa.Column("test_url", sa.Text(), nullable=False),
         sa.Column("html_snapshot_ref", sa.Text(), nullable=True),
-        sa.Column("extracted", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("field_results", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "extracted", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
+        sa.Column(
+            "field_results",
+            postgresql.JSONB(),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["source_id"], ["scraper_sources.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["recipe_id"], ["scraper_source_recipes.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),

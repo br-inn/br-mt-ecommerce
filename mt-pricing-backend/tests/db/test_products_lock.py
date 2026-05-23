@@ -41,17 +41,12 @@ async def test_delete_product_blocked_by_trigger(db_session: AsyncSession) -> No
 
     # Insertar primero
     await db_session.execute(
-        text(
-            "INSERT INTO products (sku, family) "
-            "VALUES ('LOCK-V-001', 'gate_valve');"
-        )
+        text("INSERT INTO products (sku, family) VALUES ('LOCK-V-001', 'gate_valve');")
     )
     await db_session.flush()
 
     with pytest.raises(DBAPIError) as exc_info:
-        await db_session.execute(
-            text("DELETE FROM products WHERE sku = 'LOCK-V-001';")
-        )
+        await db_session.execute(text("DELETE FROM products WHERE sku = 'LOCK-V-001';"))
         await db_session.flush()
 
     # El mensaje del trigger debe mencionar 'soft-deactivate' o 'VAT'.
@@ -114,10 +109,7 @@ async def test_manual_locked_fields_append_and_query(db_session: AsyncSession) -
 
     # Query: productos con 'name_en' bloqueado.
     count_row = await db_session.execute(
-        text(
-            "SELECT count(*) FROM products "
-            "WHERE 'name_en' = ANY(manual_locked_fields);"
-        )
+        text("SELECT count(*) FROM products WHERE 'name_en' = ANY(manual_locked_fields);")
     )
     assert count_row.scalar_one() >= 1
 

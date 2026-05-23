@@ -2,6 +2,7 @@
 
 Ver docs/superpowers/specs/2026-05-20-scraper-source-builder-design.md
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -27,20 +28,33 @@ from app.db.mixins import TimestampMixin, UuidPkMixin
 from app.db.types import UUID_PG
 
 _DESTINATION_PROFILE = Enum(
-    "competitor_price", "product_data",
-    name="scraper_destination_profile", create_type=False,
+    "competitor_price",
+    "product_data",
+    name="scraper_destination_profile",
+    create_type=False,
 )
 _FETCH_MODE = Enum(
-    "static", "headless", "stealth",
-    name="scraper_fetch_mode", create_type=False,
+    "static",
+    "headless",
+    "stealth",
+    name="scraper_fetch_mode",
+    create_type=False,
 )
 _SOURCE_STATUS = Enum(
-    "draft", "testing", "active", "disabled", "degraded",
-    name="scraper_source_status", create_type=False,
+    "draft",
+    "testing",
+    "active",
+    "disabled",
+    "degraded",
+    name="scraper_source_status",
+    create_type=False,
 )
 _VALIDATION_STATUS = Enum(
-    "unvalidated", "passing", "failing",
-    name="scraper_recipe_validation_status", create_type=False,
+    "unvalidated",
+    "passing",
+    "failing",
+    name="scraper_recipe_validation_status",
+    create_type=False,
 )
 
 
@@ -83,9 +97,7 @@ class ScraperSourceRecipe(UuidPkMixin, Base):
         UUID_PG, ForeignKey("scraper_sources.id", ondelete="CASCADE"), nullable=False
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
-    is_live: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    is_live: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     recipe: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
@@ -104,9 +116,7 @@ class ScraperSourceRecipe(UuidPkMixin, Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    __table_args__ = (
-        UniqueConstraint("source_id", "version", name="uq_recipe_source_version"),
-    )
+    __table_args__ = (UniqueConstraint("source_id", "version", name="uq_recipe_source_version"),)
 
 
 class ScraperSourceTestRun(UuidPkMixin, Base):

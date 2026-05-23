@@ -299,22 +299,14 @@ def _build_mt_rec(product_data: dict[str, Any]) -> dict[str, Any]:
     # Sección excel
     excel: dict[str, Any] = {
         "ean_individual": ean,
-        "medidas_clean": (
-            attrs.get("medidas_clean")
-            or attrs.get("size")
-            or str(web["size_in"])
-        ),
+        "medidas_clean": (attrs.get("medidas_clean") or attrs.get("size") or str(web["size_in"])),
         "material_intrastat_guess": attrs.get("material_intrastat_guess") or "",
     }
 
     # Sección ficha
     ficha: dict[str, Any] = {
         "alloy_codes": alloy_codes,
-        "pressure_pn": (
-            product_data.get("pn")
-            or attrs.get("pn")
-            or attrs.get("pressure_pn")
-        ),
+        "pressure_pn": (product_data.get("pn") or attrs.get("pn") or attrs.get("pressure_pn")),
         "end_connection": _build_end_connection_list(product_data, attrs),
         "materials": attrs.get("materials") or {},
     }
@@ -328,9 +320,7 @@ def _build_mt_rec(product_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _build_end_connection_list(
-    product_data: dict[str, Any], attrs: dict[str, Any]
-) -> list[str]:
+def _build_end_connection_list(product_data: dict[str, Any], attrs: dict[str, Any]) -> list[str]:
     """Construye lista canónica de end connections del producto MT."""
     raw = (
         attrs.get("end_connection")
@@ -455,7 +445,12 @@ def score_match(
         if _matches_any(amz_blob, VALVE_TYPE_SYNONYMS[mt_valve_canon]):
             breakdown["valve_type"] = (True, 20, 30, f"{mt_valve_canon} encontrado en título")
         else:
-            breakdown["valve_type"] = (False, 0, 30, f"{mt_valve_canon} no encontrado en ningún campo")
+            breakdown["valve_type"] = (
+                False,
+                0,
+                30,
+                f"{mt_valve_canon} no encontrado en ningún campo",
+            )
     else:
         breakdown["valve_type"] = (None, 0, 0, "categoría no clasificable")
 
@@ -466,7 +461,7 @@ def score_match(
         if c:
             mt_mats.add(c)
     for comp_mats in (ficha.get("materials") or {}).values():
-        for m in (comp_mats or []):
+        for m in comp_mats or []:
             c = _classify_term(str(m), MATERIAL_SYNONYMS) if m not in MATERIAL_SYNONYMS else m
             if c:
                 mt_mats.add(c)
@@ -613,7 +608,7 @@ def score_match(
             True,
             bonus,
             20,
-            f'{matched_competitor["brand_canonical"]} (tier {tier} peer fabricator)',
+            f"{matched_competitor['brand_canonical']} (tier {tier} peer fabricator)",
         )
     elif matched_dropshipper:
         breakdown["competitor"] = (

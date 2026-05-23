@@ -93,9 +93,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "idx_product_divisions_division", "product_divisions", ["division_id"]
-    )
+    op.create_index("idx_product_divisions_division", "product_divisions", ["division_id"])
 
     # Seed inicial — 2 divisiones MT actuales.
     op.execute(

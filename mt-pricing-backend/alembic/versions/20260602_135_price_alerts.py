@@ -10,6 +10,7 @@ Tablas:
 - job_definitions seed para ``send_price_alert_emails`` (cada 5 min) y
   ``scraper_heartbeat`` (cada 26h).
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -149,7 +150,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DELETE FROM job_definitions WHERE code IN ('send_price_alert_emails', 'scraper_heartbeat')")
+    op.execute(
+        "DELETE FROM job_definitions WHERE code IN ('send_price_alert_emails', 'scraper_heartbeat')"
+    )
     op.execute("DROP TRIGGER IF EXISTS trg_price_alert_notify ON price_alerts")
     op.execute("DROP FUNCTION IF EXISTS notify_price_alert()")
     op.drop_index("ix_price_alerts_match_id", table_name="price_alerts")

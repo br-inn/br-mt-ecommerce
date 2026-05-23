@@ -295,7 +295,11 @@ async def approve_price(
     "/prices/{price_id}/reject",
     response_model=PriceResponse,
     summary="Rechaza precio con razón obligatoria",
-    responses={404: {"model": ProblemDetails}, 409: {"model": ProblemDetails}, 422: {"model": ProblemDetails}},
+    responses={
+        404: {"model": ProblemDetails},
+        409: {"model": ProblemDetails},
+        422: {"model": ProblemDetails},
+    },
 )
 async def reject_price(
     price_id: UUID,
@@ -323,9 +327,7 @@ async def revise_price(
     service: Annotated[PricingService, Depends(get_pricing_service)],
 ) -> PriceResponse:
     try:
-        price = await service.revise(
-            price_id, user, new_amount=data.new_amount, reason=data.reason
-        )
+        price = await service.revise(price_id, user, new_amount=data.new_amount, reason=data.reason)
     except PricingDomainError as exc:
         _raise_domain(exc)
     return PriceResponse.model_validate(price)

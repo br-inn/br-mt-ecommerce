@@ -36,12 +36,13 @@ from app.services.comparator.vlm_judge_stub import NoopVlmJudgeAdapter  # noqa: 
 
 pytestmark = pytest.mark.unit
 
-_CTX: dict[str, Any] = {"dn": "2\"", "pn": "PN-001", "material": "SS316"}
+_CTX: dict[str, Any] = {"dn": '2"', "pn": "PN-001", "material": "SS316"}
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_client_mock(text_content: str) -> MagicMock:
     content_block = MagicMock()
@@ -56,6 +57,7 @@ def _make_client_mock(text_content: str) -> MagicMock:
 # ---------------------------------------------------------------------------
 # T10.3 — JSON válido → veredicto correcto
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_valid_json_returns_correct_verdict() -> None:
@@ -86,6 +88,7 @@ async def test_valid_json_returns_correct_verdict() -> None:
 # T10.4 — JSON inválido → fallback uncertain/0.0
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_invalid_json_returns_uncertain_fallback() -> None:
     bad_text = "Lo siento, no puedo analizar las imágenes."
@@ -109,6 +112,7 @@ async def test_invalid_json_returns_uncertain_fallback() -> None:
 # ---------------------------------------------------------------------------
 # T10.5 — uncertain + confidence < 0.50 → enqueue llamado
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_uncertain_low_confidence_enqueues_to_human_queue() -> None:
@@ -162,6 +166,7 @@ async def test_uncertain_low_confidence_enqueues_to_human_queue() -> None:
 # T10.6 — NoopVlmJudgeAdapter → uncertain sin llamadas HTTP
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_noop_adapter_returns_uncertain_without_http_call() -> None:
     adapter = NoopVlmJudgeAdapter()
@@ -181,6 +186,7 @@ async def test_noop_adapter_returns_uncertain_without_http_call() -> None:
 # ---------------------------------------------------------------------------
 # T10.7 — response.content vacío → fallback uncertain/0.0 (F-16)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_empty_response_content_returns_uncertain_fallback() -> None:
@@ -208,6 +214,7 @@ async def test_empty_response_content_returns_uncertain_fallback() -> None:
 # ---------------------------------------------------------------------------
 # T10.8 — VlmJudgeFactory con ANTHROPIC_API_KEY vacío → NoopVlmJudgeAdapter (F-19)
 # ---------------------------------------------------------------------------
+
 
 def test_factory_returns_noop_when_api_key_empty() -> None:
     """VlmJudgeFactory devuelve Noop cuando ANTHROPIC_API_KEY está vacío (AC#9)."""

@@ -66,9 +66,7 @@ def _load_yaml_profiles(path: Path) -> dict[str, dict[str, float]] | None:
         return None
 
     if not path.exists():
-        logger.warning(
-            "scorer_weights: archivo %s no encontrado — usando pesos hardcoded", path
-        )
+        logger.warning("scorer_weights: archivo %s no encontrado — usando pesos hardcoded", path)
         return None
 
     try:
@@ -90,6 +88,7 @@ def _get_weights_path() -> Path:
     """Retorna el path configurado via SCORER_WEIGHTS_PATH o el default."""
     try:
         from app.core.config import settings  # evitar import circular en tests
+
         raw = getattr(settings, "SCORER_WEIGHTS_PATH", "config/scorer_weights_by_family.yaml")
     except Exception:  # noqa: BLE001
         raw = "config/scorer_weights_by_family.yaml"

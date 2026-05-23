@@ -218,9 +218,7 @@ class ConformalWrapper:
             ValueError: si len(cal_scores) < 200.
         """
         if len(cal_scores) < 200:
-            raise ValueError(
-                f"Insufficient calibration samples (min 200), got {len(cal_scores)}"
-            )
+            raise ValueError(f"Insufficient calibration samples (min 200), got {len(cal_scores)}")
         if len(cal_scores) != len(labels):
             raise ValueError("cal_scores and labels must have same length")
 

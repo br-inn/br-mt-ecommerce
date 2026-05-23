@@ -89,12 +89,8 @@ def test_merge_node_is_idempotent_and_merges_props(
     store: Neo4jGraphStore,
 ) -> None:
     """Second merge upserts props, no second node."""
-    store.merge_node(
-        GraphNode(label="Product", primary_key="SKU-002", properties={"a": 1})
-    )
-    store.merge_node(
-        GraphNode(label="Product", primary_key="SKU-002", properties={"b": 2})
-    )
+    store.merge_node(GraphNode(label="Product", primary_key="SKU-002", properties={"a": 1}))
+    store.merge_node(GraphNode(label="Product", primary_key="SKU-002", properties={"b": 2}))
     diag = store.health_check()
     assert diag["nodes"] == 1
 
@@ -194,9 +190,7 @@ def test_query_neighbors_filters_by_edge_type(store: Neo4jGraphStore) -> None:
             dst_pk="brass",
         )
     )
-    only_branded = store.query_neighbors(
-        "Product", "SKU-Q2", edge_type="BRANDED"
-    )
+    only_branded = store.query_neighbors("Product", "SKU-Q2", edge_type="BRANDED")
     assert len(only_branded) == 1
     assert only_branded[0][0].type == "BRANDED"
 
@@ -237,9 +231,7 @@ def test_delete_subgraph_removes_node_and_incident_edges(
 # =============================================================================
 # Constraint enforcement (uniqueness por primary_key dentro del label)
 # =============================================================================
-def test_uniqueness_constraint_enforced(
-    store: Neo4jGraphStore, neo4j_driver: Driver
-) -> None:
+def test_uniqueness_constraint_enforced(store: Neo4jGraphStore, neo4j_driver: Driver) -> None:
     """Constraint uniqueness por (Label, primary_key) creada lazy — un INSERT
     duplicado vía Cypher CREATE (sin MERGE) debería fallar.
     """
@@ -250,6 +242,4 @@ def test_uniqueness_constraint_enforced(
 
     with neo4j_driver.session(database="neo4j") as sess:
         with pytest.raises(ConstraintError):
-            sess.run(
-                "CREATE (n:Product {primary_key: $pk})", pk="UNI-1"
-            ).consume()
+            sess.run("CREATE (n:Product {primary_key: $pk})", pk="UNI-1").consume()

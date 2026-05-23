@@ -30,28 +30,50 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "period_close_checklists",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("fiscal_year", sa.Integer(), nullable=True),
         sa.Column("period_num", sa.Integer(), nullable=True),
-        sa.Column("checklist_items", postgresql.JSONB(), server_default=sa.text(f"'{_DEFAULT_CHECKLIST}'::jsonb"), nullable=False),
+        sa.Column(
+            "checklist_items",
+            postgresql.JSONB(),
+            server_default=sa.text(f"'{_DEFAULT_CHECKLIST}'::jsonb"),
+            nullable=False,
+        ),
         sa.Column("status", sa.Text(), server_default="open", nullable=False),
         sa.Column("started_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("completed_at", sa.TIMESTAMP(timezone=True), nullable=True),
-        sa.Column("completed_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "completed_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.CheckConstraint(
             "status IN ('open','in_progress','closed')",
             name="ck_period_close_checklists_status",
         ),
         sa.UniqueConstraint("fiscal_year", "period_num", name="uq_period_close_fy_period"),
     )
-    op.create_index("ix_period_close_fy_period", "period_close_checklists", ["fiscal_year", "period_num"])
+    op.create_index(
+        "ix_period_close_fy_period", "period_close_checklists", ["fiscal_year", "period_num"]
+    )
 
     # -------------------------------------------------------------------------
     # tax_provisions
     # -------------------------------------------------------------------------
     op.create_table(
         "tax_provisions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("provision_type", sa.Text(), nullable=True),
         sa.Column("fiscal_year", sa.Integer(), nullable=True),
         sa.Column("period_num", sa.Integer(), nullable=True),
@@ -60,7 +82,12 @@ def upgrade() -> None:
         sa.Column("provision_amount", sa.Numeric(18, 4), nullable=True),
         sa.Column("status", sa.Text(), server_default="draft", nullable=False),
         sa.Column("gl_entry_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "provision_type IN ('VAT','CIT','WHT') OR provision_type IS NULL",
             name="ck_tax_provisions_type",

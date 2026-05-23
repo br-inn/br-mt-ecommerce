@@ -152,9 +152,7 @@ class TestMapPrimerLote:
 
         session = AsyncMock()
 
-        expected_pos = _make_position(
-            qty_on_hand="10", map_aed="11.2000"
-        )
+        expected_pos = _make_position(qty_on_hand="10", map_aed="11.2000")
 
         svc = MAPService(session=session)
 

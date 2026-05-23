@@ -9,6 +9,7 @@ Tablas:
   Auto-enqueue via trigger cuando match_candidate tiene confidence < 0.6 Y
   product_value > 1000 AED.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa

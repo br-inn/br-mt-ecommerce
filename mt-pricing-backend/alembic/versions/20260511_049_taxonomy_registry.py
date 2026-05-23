@@ -184,9 +184,7 @@ def upgrade() -> None:
             name="ck_taxonomy_types_slug_format",
         ),
         sa.CheckConstraint(
-            "value_kind IN ("
-            + ", ".join(f"'{v}'" for v in VALUE_KINDS)
-            + ")",
+            "value_kind IN (" + ", ".join(f"'{v}'" for v in VALUE_KINDS) + ")",
             name="ck_taxonomy_types_value_kind",
         ),
         sa.CheckConstraint(
@@ -194,9 +192,7 @@ def upgrade() -> None:
             name="ck_taxonomy_types_depth_max_positive",
         ),
     )
-    op.create_index(
-        "idx_taxonomy_types_active", "taxonomy_types", ["active"]
-    )
+    op.create_index("idx_taxonomy_types_active", "taxonomy_types", ["active"])
     op.create_index(
         "idx_taxonomy_types_filterable",
         "taxonomy_types",
@@ -276,8 +272,7 @@ def upgrade() -> None:
             JSONB(),
             nullable=True,
             comment=(
-                "ACL granular opcional override del type. "
-                "{visible_to_roles, editable_by_roles}"
+                "ACL granular opcional override del type. {visible_to_roles, editable_by_roles}"
             ),
         ),
         sa.Column(
@@ -298,9 +293,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.UniqueConstraint(
-            "type_id", "slug", name="uq_taxonomy_nodes_type_slug"
-        ),
+        sa.UniqueConstraint("type_id", "slug", name="uq_taxonomy_nodes_type_slug"),
         sa.CheckConstraint(
             f"slug ~ '{SLUG_REGEX}'",
             name="ck_taxonomy_nodes_slug_format",
@@ -460,9 +453,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.PrimaryKeyConstraint(
-            "type_id", "alias_slug", name="pk_taxonomy_aliases"
-        ),
+        sa.PrimaryKeyConstraint("type_id", "alias_slug", name="pk_taxonomy_aliases"),
         sa.CheckConstraint(
             f"alias_slug ~ '{SLUG_REGEX}'",
             name="ck_taxonomy_aliases_slug_format",
@@ -809,16 +800,12 @@ def downgrade() -> None:
     # Triggers + funciones
     op.execute("DROP TRIGGER IF EXISTS trg_taxonomy_nodes_closure_insert ON taxonomy_nodes;")
     op.execute("DROP FUNCTION IF EXISTS taxonomy_nodes_closure_trigger();")
-    op.execute(
-        "DROP TRIGGER IF EXISTS trg_taxonomy_node_parents_closure ON taxonomy_node_parents;"
-    )
+    op.execute("DROP TRIGGER IF EXISTS trg_taxonomy_node_parents_closure ON taxonomy_node_parents;")
     op.execute("DROP FUNCTION IF EXISTS taxonomy_node_parents_closure_trigger();")
     op.execute("DROP FUNCTION IF EXISTS taxonomy_recompute_closure(UUID);")
 
     # Tablas en orden reverso de FKs
-    op.drop_index(
-        "idx_family_schemas_json_gin", table_name="family_schemas"
-    )
+    op.drop_index("idx_family_schemas_json_gin", table_name="family_schemas")
     op.drop_index("idx_family_schemas_active", table_name="family_schemas")
     op.drop_table("family_schemas")
 
@@ -836,9 +823,7 @@ def downgrade() -> None:
     )
     op.drop_table("product_taxonomy_links")
 
-    op.drop_index(
-        "idx_taxonomy_aliases_canonical", table_name="taxonomy_aliases"
-    )
+    op.drop_index("idx_taxonomy_aliases_canonical", table_name="taxonomy_aliases")
     op.drop_table("taxonomy_aliases")
 
     op.drop_index(
@@ -861,19 +846,13 @@ def downgrade() -> None:
     )
     op.drop_table("taxonomy_node_parents")
 
-    op.drop_index(
-        "idx_taxonomy_nodes_attributes_gin", table_name="taxonomy_nodes"
-    )
-    op.drop_index(
-        "idx_taxonomy_nodes_labels_gin", table_name="taxonomy_nodes"
-    )
+    op.drop_index("idx_taxonomy_nodes_attributes_gin", table_name="taxonomy_nodes")
+    op.drop_index("idx_taxonomy_nodes_labels_gin", table_name="taxonomy_nodes")
     op.drop_index("idx_taxonomy_nodes_active", table_name="taxonomy_nodes")
     op.drop_index("idx_taxonomy_nodes_parent", table_name="taxonomy_nodes")
     op.drop_index("idx_taxonomy_nodes_type", table_name="taxonomy_nodes")
     op.drop_table("taxonomy_nodes")
 
-    op.drop_index(
-        "idx_taxonomy_types_filterable", table_name="taxonomy_types"
-    )
+    op.drop_index("idx_taxonomy_types_filterable", table_name="taxonomy_types")
     op.drop_index("idx_taxonomy_types_active", table_name="taxonomy_types")
     op.drop_table("taxonomy_types")

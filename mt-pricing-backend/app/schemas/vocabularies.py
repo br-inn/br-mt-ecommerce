@@ -254,7 +254,9 @@ class BrandBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     code: str = Field(
-        min_length=1, max_length=64, pattern=_CODE_PATTERN,
+        min_length=1,
+        max_length=64,
+        pattern=_CODE_PATTERN,
         description="Código único snake_case lowercase, e.g. 'mt'.",
     )
     name: str = Field(min_length=1, max_length=256)
@@ -294,7 +296,9 @@ class FamilyBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     code: str = Field(
-        min_length=1, max_length=64, pattern=_CODE_PATTERN,
+        min_length=1,
+        max_length=64,
+        pattern=_CODE_PATTERN,
         description="Código único, e.g. 'valve', 'elbow'.",
     )
     name: str = Field(min_length=1, max_length=256)
@@ -435,7 +439,9 @@ class DivisionBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     code: str = Field(
-        min_length=1, max_length=64, pattern=_CODE_PATTERN,
+        min_length=1,
+        max_length=64,
+        pattern=_CODE_PATTERN,
         description="Código único, e.g. 'hidrosanitario', 'industrial'.",
     )
     name: str = Field(min_length=1, max_length=256)
@@ -545,7 +551,9 @@ class SeriesBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     code: str = Field(
-        min_length=1, max_length=64, pattern=_CODE_PATTERN,
+        min_length=1,
+        max_length=64,
+        pattern=_CODE_PATTERN,
         description="Código único, e.g. 'pn40_platinum', 'mt_press'.",
     )
     name_en: str = Field(min_length=1, max_length=256)
@@ -649,12 +657,15 @@ class MaterialBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     code: str = Field(
-        min_length=1, max_length=64, pattern=_CODE_PATTERN,
+        min_length=1,
+        max_length=64,
+        pattern=_CODE_PATTERN,
         description="Código único, e.g. 'laton', 'acero_inoxidable'.",
     )
     name: str = Field(min_length=1, max_length=256)
     family_kind: str | None = Field(
-        default=None, max_length=32,
+        default=None,
+        max_length=32,
         description="Agrupador grueso: 'metal', 'polymer', 'composite'.",
     )
     notes: str | None = Field(default=None, max_length=1024)

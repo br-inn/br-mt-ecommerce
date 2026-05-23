@@ -124,6 +124,7 @@ def get_match_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> MatchService:
     import logging as _logging
+
     fetchers = [get_fetcher("amazon_uae"), get_fetcher("noon_uae")]
     _logging.getLogger(__name__).info(
         "match_service.fetchers",
@@ -246,9 +247,7 @@ async def get_agent_metrics(
     try:
         from app.db.models.golden_label import GoldenLabel  # noqa: PLC0415
 
-        total = int(
-            (await session.execute(select(_func.count(GoldenLabel.id)))).scalar_one() or 0
-        )
+        total = int((await session.execute(select(_func.count(GoldenLabel.id)))).scalar_one() or 0)
     except Exception:  # noqa: BLE001
         pass
 
@@ -308,9 +307,7 @@ async def list_matches(
         str | None,
         Query(alias="status", pattern=r"^(pending|validated|discarded)$"),
     ] = None,
-    channel: Annotated[
-        str | None, Query(pattern=r"^(amazon_uae|noon_uae)$")
-    ] = None,
+    channel: Annotated[str | None, Query(pattern=r"^(amazon_uae|noon_uae)$")] = None,
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     _user: User = Depends(require_permissions("matches:read")),
@@ -377,9 +374,13 @@ async def refresh_matches(
 
     # Verify SKU exists before enqueuing.
     from app.repositories.product import ProductRepository  # noqa: PLC0415
+
     product = await ProductRepository(session).get_by_sku(sku)
     if product is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "sku_not_found", "title": f"SKU {sku!r} no existe."})
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "sku_not_found", "title": f"SKU {sku!r} no existe."},
+        )
 
     # Current DB state (stale) — returned immediately so UI has something to show.
     rows, _ = await service.list_candidates(sku=sku, limit=50)
@@ -637,9 +638,7 @@ async def invalidate_model_enriched_cache(
     from app.db.models.product import Product  # noqa: PLC0415
 
     skus_with_model = select(Product.sku).where(Product.model_id.is_not(None)).scalar_subquery()
-    stmt = sa_delete(ProductSearchQuery).where(
-        ProductSearchQuery.sku.in_(skus_with_model)
-    )
+    stmt = sa_delete(ProductSearchQuery).where(ProductSearchQuery.sku.in_(skus_with_model))
     result = await session.execute(stmt)
     await session.commit()
     return {"deleted_count": result.rowcount}

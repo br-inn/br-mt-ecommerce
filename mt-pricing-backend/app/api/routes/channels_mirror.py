@@ -236,9 +236,7 @@ async def get_channel_diff(
     except UnknownChannelError as e:
         _raise_400(str(e))
 
-    listing = await ChannelListingRepository(session).get_by_channel_sku(
-        channel_code, sku
-    )
+    listing = await ChannelListingRepository(session).get_by_channel_sku(channel_code, sku)
     return DiffResponse(
         channel_code=channel_code,
         sku=sku,
@@ -271,9 +269,7 @@ async def sync_channel_listing(
     service: MirrorService = Depends(get_mirror_service),
 ) -> DiffResponse:
     try:
-        outcome = await service.sync(
-            channel_code, sku, external_id=external_id
-        )
+        outcome = await service.sync(channel_code, sku, external_id=external_id)
     except CanonicalNotFoundError as e:
         _raise_404(str(e))
     except UnknownChannelError as e:

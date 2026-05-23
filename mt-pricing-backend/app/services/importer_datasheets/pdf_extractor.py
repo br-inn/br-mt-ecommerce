@@ -243,10 +243,7 @@ def extract_text_from_pdf(payload: bytes) -> str:
 
 def _normalize_table_row(row: list) -> list[str]:
     """Limpia una fila pdfplumber: None→'', strip, colapsa whitespace."""
-    return [
-        " ".join((cell or "").split()) if cell is not None else ""
-        for cell in row
-    ]
+    return [" ".join((cell or "").split()) if cell is not None else "" for cell in row]
 
 
 def _normalize_table(raw_rows: list[list]) -> dict | None:

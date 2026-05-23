@@ -1,8 +1,11 @@
 from unittest.mock import MagicMock
 from app.services.ficha_enrichment.differ import FichaEnrichmentDiffer, _specs_to_dict
 from app.schemas.ficha_enrich import (
-    ExtractedScalars, ExtractedSpecs, ExtractedMaterial,
-    ExtractedAsset, FichaExtractionResult,
+    ExtractedScalars,
+    ExtractedSpecs,
+    ExtractedMaterial,
+    ExtractedAsset,
+    FichaExtractionResult,
 )
 
 

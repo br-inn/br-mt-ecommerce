@@ -381,9 +381,7 @@ async def replace_product_certifications(
     try:
         # Fase 5 — model_dump(mode='json') normaliza Enums a strings antes de
         # propagar al repo/service.
-        await service.replace_certifications(
-            sku, [d.model_dump(mode="json") for d in data]
-        )
+        await service.replace_certifications(sku, [d.model_dump(mode="json") for d in data])
     except VocabularyDomainError as e:
         _raise_domain(e)
     links = await service.list_certifications(sku)

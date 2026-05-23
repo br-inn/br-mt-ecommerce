@@ -3,6 +3,7 @@
 Contrato que deben implementar todos los adapters de fetching de precios
 de competidores (Amazon SP API real, stub, futuros: Noon, etc.).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

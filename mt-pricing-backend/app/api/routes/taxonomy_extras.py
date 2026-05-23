@@ -121,9 +121,7 @@ def get_material_service(
 def _raise_domain(e: VocabularyDomainError) -> None:
     raise HTTPException(
         status_code=e.status_code,
-        detail=ProblemDetails(
-            title=e.message, status=e.status_code, type=e.code
-        ).model_dump(),
+        detail=ProblemDetails(title=e.message, status=e.status_code, type=e.code).model_dump(),
     )
 
 
@@ -162,16 +160,12 @@ async def list_series_tiers(
     summary="Listar series activas, opcionalmente filtradas por división",
 )
 async def list_series(
-    division_id: Annotated[
-        UUID | None, Query(description="Filtrar por división (M:N)")
-    ] = None,
+    division_id: Annotated[UUID | None, Query(description="Filtrar por división (M:N)")] = None,
     _user: User = Depends(require_permissions("products:read")),
     service: SeriesService = Depends(get_series_service),
 ) -> list[SeriesResponse]:
     rows = (
-        await service.list_by_division(division_id)
-        if division_id
-        else await service.list_active()
+        await service.list_by_division(division_id) if division_id else await service.list_active()
     )
     return [SeriesResponse.model_validate(r) for r in rows]
 
@@ -233,9 +227,7 @@ def get_compatibility_service_taxo(
 @series_router.get(
     "/series/{series_id}/spare-parts",
     response_model=list[ProductCompatibilityResponse],
-    summary=(
-        "Listar recambios aplicables a una serie en un DN concreto (Fase 5)."
-    ),
+    summary=("Listar recambios aplicables a una serie en un DN concreto (Fase 5)."),
     responses={404: {"model": ProblemDetails}, 422: {"model": ProblemDetails}},
 )
 async def list_series_spare_parts(
@@ -343,9 +335,7 @@ async def admin_patch_division(
     service: DivisionService = Depends(get_division_service),
 ) -> DivisionResponse:
     try:
-        row = await service.patch(
-            division_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch(division_id, data.model_dump(exclude_unset=True))
     except VocabularyDomainError as e:
         _raise_domain(e)
     return DivisionResponse.model_validate(row)
@@ -722,9 +712,7 @@ async def admin_patch_material(
     service: MaterialService = Depends(get_material_service),
 ) -> MaterialResponse:
     try:
-        row = await service.patch(
-            material_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch(material_id, data.model_dump(exclude_unset=True))
     except VocabularyDomainError as e:
         _raise_domain(e)
     return MaterialResponse.model_validate(row)
@@ -782,9 +770,7 @@ async def add_product_division(
         _raise_domain(e)
     # Re-fetch with division eager-loaded
     rows = await service.list_for_product(sku)
-    match = next(
-        (r for r in rows if r.division_id == data.division_id), None
-    )
+    match = next((r for r in rows if r.division_id == data.division_id), None)
     if match is None:
         return ProductDivisionResponse(
             division_id=row.division_id,

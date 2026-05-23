@@ -97,6 +97,7 @@ def _get_amazon_uae_fetcher(
 ) -> "FetcherPort":
     """Prioridad: curl_cffi → patchright → vacío (nunca stubs)."""
     import logging
+
     log = logging.getLogger(__name__)
     empty = _EmptyFetcher("amazon_uae")
 
@@ -113,7 +114,10 @@ def _get_amazon_uae_fetcher(
         fallback: "FetcherPort"
         if patchright_active:
             try:
-                from app.services.matching.adapters.patchright_amazon_uae import PatchrightAmazonUaeFetcher
+                from app.services.matching.adapters.patchright_amazon_uae import (
+                    PatchrightAmazonUaeFetcher,
+                )
+
                 fallback = _BlockFallbackWrapper(PatchrightAmazonUaeFetcher(), empty)
             except ImportError:
                 fallback = empty
@@ -127,7 +131,9 @@ def _get_amazon_uae_fetcher(
 
     if patchright_active:
         try:
-            from app.services.matching.adapters.patchright_amazon_uae import PatchrightAmazonUaeFetcher
+            from app.services.matching.adapters.patchright_amazon_uae import (
+                PatchrightAmazonUaeFetcher,
+            )
         except ImportError:
             log.warning("patchright no disponible en este contenedor — amazon_uae desactivado")
             return empty

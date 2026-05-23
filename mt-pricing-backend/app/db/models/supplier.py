@@ -50,9 +50,7 @@ class Supplier(Base):
     payment_terms: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
 
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

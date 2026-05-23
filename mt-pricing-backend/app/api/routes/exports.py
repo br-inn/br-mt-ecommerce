@@ -41,6 +41,7 @@ class LastGoodExportRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 router = APIRouter(prefix="/exports", tags=["Exports"])
 
 

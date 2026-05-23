@@ -87,9 +87,7 @@ def upgrade() -> None:
         ),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "triggered_by", postgresql.UUID(as_uuid=True), nullable=True
-        ),
+        sa.Column("triggered_by", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("celery_task_id", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
@@ -119,9 +117,7 @@ def upgrade() -> None:
             name="ck_import_runs_status",
         ),
     )
-    op.create_index(
-        "idx_import_runs_status", "import_runs", ["status"], unique=False
-    )
+    op.create_index("idx_import_runs_status", "import_runs", ["status"], unique=False)
     op.create_index(
         "idx_import_runs_type_created",
         "import_runs",

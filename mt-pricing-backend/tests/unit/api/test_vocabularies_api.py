@@ -191,9 +191,7 @@ class TestAdminCertifications:
         cert_svc = MagicMock(spec=CertificationService)
         app_svc = MagicMock(spec=ApplicationService)
         cert_svc.create = AsyncMock(
-            side_effect=VocabularyDomainError(
-                "Conflict", "certification_code_conflict", 409
-            )
+            side_effect=VocabularyDomainError("Conflict", "certification_code_conflict", 409)
         )
 
         test_app = _build_app(user, cert_svc, app_svc)

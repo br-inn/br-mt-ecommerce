@@ -116,9 +116,7 @@ class DatasheetSpecs:
 _DN_RE = re.compile(r"\bDN\s*[:=]?\s*(\d{1,4})\b", re.IGNORECASE)
 # PN debe ir seguido de un dígito; "PNCANONICAL" o "PN " no valen.
 _PN_RE = re.compile(r"\bPN\s*[:=]?\s*(\d{1,4})\b")
-_MATERIAL_RE = re.compile(
-    r"\b(?:material|body)\s*[:=]?\s*([A-Za-z0-9 \-_/+]{2,32})", re.IGNORECASE
-)
+_MATERIAL_RE = re.compile(r"\b(?:material|body)\s*[:=]?\s*([A-Za-z0-9 \-_/+]{2,32})", re.IGNORECASE)
 _SEAL_RE = re.compile(
     r"\b(?:seal(?:ing)?|junta)\s*[:=]?\s*([A-Za-z0-9 \-_/+]{2,32})", re.IGNORECASE
 )

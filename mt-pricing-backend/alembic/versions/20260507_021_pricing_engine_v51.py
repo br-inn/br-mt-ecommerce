@@ -153,9 +153,7 @@ def upgrade() -> None:
         $fn$ LANGUAGE plpgsql;
         """
     )
-    op.execute(
-        "DROP TRIGGER IF EXISTS prices_initial_status_trg ON prices"
-    )
+    op.execute("DROP TRIGGER IF EXISTS prices_initial_status_trg ON prices")
     op.execute(
         """
         CREATE TRIGGER prices_initial_status_trg
@@ -190,9 +188,7 @@ def upgrade() -> None:
         $fn$ LANGUAGE plpgsql;
         """
     )
-    op.execute(
-        "DROP TRIGGER IF EXISTS prices_state_machine_trg ON prices"
-    )
+    op.execute("DROP TRIGGER IF EXISTS prices_state_machine_trg ON prices")
     op.execute(
         """
         CREATE TRIGGER prices_state_machine_trg

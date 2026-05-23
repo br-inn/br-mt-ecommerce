@@ -27,8 +27,18 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False, server_default=sa.text("gen_random_uuid()")),
         sa.Column("invoice_number", sa.Text(), nullable=False),
         sa.Column("vendor_id", sa.Text(), nullable=False),
-        sa.Column("po_id", sa.UUID(), sa.ForeignKey("purchase_orders.id", ondelete="RESTRICT"), nullable=False),
-        sa.Column("gr_id", sa.UUID(), sa.ForeignKey("goods_receipts.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "po_id",
+            sa.UUID(),
+            sa.ForeignKey("purchase_orders.id", ondelete="RESTRICT"),
+            nullable=False,
+        ),
+        sa.Column(
+            "gr_id",
+            sa.UUID(),
+            sa.ForeignKey("goods_receipts.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("invoice_date", sa.Date(), nullable=False),
         sa.Column("total_amount", sa.Numeric(18, 4), nullable=False),
         sa.Column("currency", sa.CHAR(3), nullable=False, server_default=sa.text("'AED'")),
@@ -40,7 +50,12 @@ def upgrade() -> None:
         ),
         sa.Column("payment_block", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("match_details", JSONB(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id", name="pk_vendor_invoices"),
         sa.UniqueConstraint("invoice_number", name="uq_vendor_invoices_number"),
         sa.CheckConstraint(
@@ -64,7 +79,9 @@ def upgrade() -> None:
     op.create_table(
         "invoice_tolerances",
         sa.Column("id", sa.UUID(), nullable=False, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("document_type", sa.Text(), nullable=False, server_default=sa.text("'vendor_invoice'")),
+        sa.Column(
+            "document_type", sa.Text(), nullable=False, server_default=sa.text("'vendor_invoice'")
+        ),
         sa.Column("vendor_category", sa.Text(), nullable=True),
         sa.Column("tolerance_key", sa.Text(), nullable=False),
         sa.Column("absolute_limit", sa.Numeric(18, 4), nullable=True),

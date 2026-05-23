@@ -44,9 +44,7 @@ class MatchAgentConfig(Base):
     __tablename__ = "match_agent_config"
 
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
-    mode: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'shadow'")
-    )
+    mode: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'shadow'"))
     alpha: Mapped[Decimal] = mapped_column(
         Numeric(4, 3), nullable=False, server_default=text("0.02")
     )
@@ -62,15 +60,9 @@ class MatchAgentConfig(Base):
 
     __table_args__ = (
         CheckConstraint("id = 1", name="ck_match_agent_config_singleton"),
-        CheckConstraint(
-            "mode IN ('shadow','active')", name="ck_match_agent_config_mode"
-        ),
-        CheckConstraint(
-            "alpha > 0 AND alpha < 1", name="ck_match_agent_config_alpha"
-        ),
-        CheckConstraint(
-            "min_labels_gate >= 1", name="ck_match_agent_config_gate"
-        ),
+        CheckConstraint("mode IN ('shadow','active')", name="ck_match_agent_config_mode"),
+        CheckConstraint("alpha > 0 AND alpha < 1", name="ck_match_agent_config_alpha"),
+        CheckConstraint("min_labels_gate >= 1", name="ck_match_agent_config_gate"),
     )
 
 
@@ -87,9 +79,7 @@ class MatchAgentDecision(UuidPkMixin, Base):
     product_sku: Mapped[str] = mapped_column(Text, nullable=False)
     verdict: Mapped[str] = mapped_column(String(16), nullable=False)
     mode: Mapped[str] = mapped_column(String(16), nullable=False)
-    applied: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    applied: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     signal: Mapped[str] = mapped_column(String(24), nullable=False)
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     calibrated_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
@@ -105,9 +95,7 @@ class MatchAgentDecision(UuidPkMixin, Base):
             "verdict IN ('auto_validate','auto_discard','human')",
             name="ck_match_agent_decisions_verdict",
         ),
-        CheckConstraint(
-            "mode IN ('shadow','active')", name="ck_match_agent_decisions_mode"
-        ),
+        CheckConstraint("mode IN ('shadow','active')", name="ck_match_agent_decisions_mode"),
         CheckConstraint(
             "signal IN ('conformal','bootstrap')",
             name="ck_match_agent_decisions_signal",

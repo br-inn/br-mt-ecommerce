@@ -4,6 +4,7 @@ INSERT en esta tabla dispara pg_notify en canal ``price_alert`` via trigger DB.
 El worker ``send_price_alert_emails`` consulta filas con ``notified_at IS NULL``
 y envía emails via SendGrid.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -60,12 +61,8 @@ class PriceAlert(Base):
         nullable=False,
         server_default=func.now(),
     )
-    notified_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    channel: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'email'")
-    )
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    channel: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'email'"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

@@ -80,12 +80,8 @@ class MatchCandidate(UuidPkMixin, TimestampMixin, Base):
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
 
-    kind: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'unknown'")
-    )
-    score: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'unknown'"))
+    score: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'pending'")
     )

@@ -212,9 +212,7 @@ async def apply_materials_import(
         _raise_domain(ImportRunNotFoundError(run_id))
     if state.status != "preview_ready":
         _raise_domain(
-            ImportRunInvalidStateError(
-                run_id, current=state.status, expected="preview_ready"
-            )
+            ImportRunInvalidStateError(run_id, current=state.status, expected="preview_ready")
         )
 
     mode = body.mode if body is not None else "replace"
@@ -224,9 +222,7 @@ async def apply_materials_import(
         state.status = "applying"
         try:
             assert state.parse_result is not None
-            result = await apply_material_rows(
-                state.parse_result.rows, repo=repo, mode=mode
-            )
+            result = await apply_material_rows(state.parse_result.rows, repo=repo, mode=mode)
             state.apply_result = result
             state.status = "completed_with_errors" if result.errors > 0 else "completed"
             state.summary["applied_inserted"] = result.inserted

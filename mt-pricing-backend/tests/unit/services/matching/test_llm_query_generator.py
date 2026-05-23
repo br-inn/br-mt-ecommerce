@@ -1,4 +1,5 @@
 """Unit tests para llm_query_generator._build_product_summary."""
+
 from __future__ import annotations
 import pytest
 

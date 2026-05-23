@@ -1,4 +1,5 @@
 """Tests unitarios — AmazonSPFetcherStub + get_fetcher() — US-F15-02-01."""
+
 from __future__ import annotations
 
 import pytest
@@ -65,7 +66,9 @@ def test_stub_implements_fetcher_port() -> None:
 
 
 @pytest.mark.asyncio
-async def test_real_adapter_fallback_when_live_network_false(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_real_adapter_fallback_when_live_network_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Con MT_LIVE_NETWORK=false, AmazonSPApiFetcherAdapter usa stub sin llamadas HTTP."""
     from app.core.config import settings
     from app.services.comparator.fetchers.amazon_sp_fetcher import AmazonSPApiFetcherAdapter
@@ -81,7 +84,9 @@ async def test_real_adapter_fallback_when_live_network_false(monkeypatch: pytest
 
 
 @pytest.mark.asyncio
-async def test_real_adapter_fallback_when_missing_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_real_adapter_fallback_when_missing_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Con MT_LIVE_NETWORK=true pero sin credenciales, cae a stub."""
     from app.core.config import settings
     from app.services.comparator.fetchers.amazon_sp_fetcher import AmazonSPApiFetcherAdapter

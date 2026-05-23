@@ -130,9 +130,7 @@ def upgrade() -> None:
 
         for group_code, attr_code, order_index, is_required in rows:
             attr_row = bind.execute(
-                text(
-                    "SELECT id FROM attribute_definitions WHERE code = :code"
-                ),
+                text("SELECT id FROM attribute_definitions WHERE code = :code"),
                 {"code": attr_code},
             ).fetchone()
             if attr_row is None:
@@ -165,10 +163,7 @@ def upgrade() -> None:
             )
             inserted += 1
 
-    print(
-        f"[mig 067] EAV template seed done: inserted={inserted} "
-        f"skipped={skipped}"
-    )
+    print(f"[mig 067] EAV template seed done: inserted={inserted} skipped={skipped}")
 
 
 def downgrade() -> None:

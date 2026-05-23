@@ -41,9 +41,7 @@ async def test_currencies_seed_has_four_rows(db_session: "AsyncSession") -> None
 
 async def test_currencies_seed_aed_is_base(db_session: "AsyncSession") -> None:
     """AED es la moneda base (única con is_base=true)."""
-    rows = await db_session.execute(
-        text("SELECT code FROM currencies WHERE is_base = true;")
-    )
+    rows = await db_session.execute(text("SELECT code FROM currencies WHERE is_base = true;"))
     bases = {r[0] for r in rows.all()}
     assert bases == {"AED"}
 
@@ -96,7 +94,9 @@ async def test_supplier_insert_with_valid_currency(db_session: "AsyncSession") -
 
     # Re-read
     fetched = await db_session.execute(
-        text("SELECT name, contract_currency, lead_time_days FROM suppliers WHERE code = 'MT_VALVES_ES';")
+        text(
+            "SELECT name, contract_currency, lead_time_days FROM suppliers WHERE code = 'MT_VALVES_ES';"
+        )
     )
     row = fetched.one()
     assert row[0] == "MT Valves España"

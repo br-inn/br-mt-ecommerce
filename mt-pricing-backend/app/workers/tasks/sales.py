@@ -163,7 +163,9 @@ def auto_release_credit_holds(self: Any, dry_run: bool = False) -> dict[str, Any
                     continue
 
                 open_r = await session.execute(
-                    _select(_func.coalesce(_func.sum(CustomerOpenItem.amount), _Decimal("0"))).where(
+                    _select(
+                        _func.coalesce(_func.sum(CustomerOpenItem.amount), _Decimal("0"))
+                    ).where(
                         CustomerOpenItem.customer_id == so.customer_id,
                         CustomerOpenItem.status != "paid",
                     )

@@ -108,9 +108,7 @@ async def enhanced_score(
         amazon_specs = dict(candidate.raw_payload)
 
     amazon_image_url: str | None = (
-        candidate.raw_payload.get("image_url")
-        if candidate.raw_payload
-        else None
+        candidate.raw_payload.get("image_url") if candidate.raw_payload else None
     )
 
     # ─── CAPA 0: Scorer determinista ───
@@ -154,9 +152,7 @@ async def enhanced_score(
         )
 
     # ─── CAPA 1: Enriquecimiento con LLM ───
-    logger.debug(
-        "enhanced_score: capa 0 score=%d → enriqueciendo con LLM", layer0_score
-    )
+    logger.debug("enhanced_score: capa 0 score=%d → enriqueciendo con LLM", layer0_score)
 
     # Obtener descripción desde raw_payload (guardada por curl_cffi_amazon_uae).
     amazon_description = ""
@@ -204,9 +200,7 @@ async def enhanced_score(
             llm_specs=llm_dict,
         )
 
-    logger.debug(
-        "enhanced_score: capa 1 score=%d confidence=%.2f", layer1_score, llm_confidence
-    )
+    logger.debug("enhanced_score: capa 1 score=%d confidence=%.2f", layer1_score, llm_confidence)
 
     # AUTO_VALIDATE: score suficientemente alto tras enriquecimiento con confianza alta
     if layer1_score >= LAYER1_AUTO_VALIDATE_THRESHOLD and llm_confidence >= LAYER1_MIN_CONFIDENCE:
@@ -250,9 +244,7 @@ async def enhanced_score(
             llm_specs=llm_dict if llm_dict else None,
         )
 
-    logger.debug(
-        "enhanced_score: visión verdict=%s reason=%s", visual_verdict.value, visual_reason
-    )
+    logger.debug("enhanced_score: visión verdict=%s reason=%s", visual_verdict.value, visual_reason)
 
     # FILTRO NEGATIVO: solo DIFFERENT_TYPE descarta
     if visual_verdict == VisualVerdict.DIFFERENT_TYPE:

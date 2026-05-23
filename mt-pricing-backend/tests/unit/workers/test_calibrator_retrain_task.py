@@ -49,9 +49,7 @@ async def test_run_retrain_returns_metrics_on_success() -> None:
             return ctx
 
     fake_trainer = MagicMock()
-    fake_trainer.train = AsyncMock(
-        return_value=_make_training_result(auto_promoted=True)
-    )
+    fake_trainer.train = AsyncMock(return_value=_make_training_result(auto_promoted=True))
 
     with (
         patch(
@@ -96,18 +94,12 @@ async def test_run_retrain_returns_skipped_when_not_ready() -> None:
             ctx.__aenter__ = AsyncMock(return_value=fake_session)
             ctx.__aexit__ = AsyncMock(return_value=None)
             fake_session.begin = MagicMock()
-            fake_session.begin.return_value.__aenter__ = AsyncMock(
-                return_value=None
-            )
-            fake_session.begin.return_value.__aexit__ = AsyncMock(
-                return_value=None
-            )
+            fake_session.begin.return_value.__aenter__ = AsyncMock(return_value=None)
+            fake_session.begin.return_value.__aexit__ = AsyncMock(return_value=None)
             return ctx
 
     fake_trainer = MagicMock()
-    fake_trainer.train = AsyncMock(
-        side_effect=CalibratorTrainingNotReady(found=10, required=50)
-    )
+    fake_trainer.train = AsyncMock(side_effect=CalibratorTrainingNotReady(found=10, required=50))
 
     with (
         patch(

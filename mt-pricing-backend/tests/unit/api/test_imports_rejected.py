@@ -33,6 +33,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _FakeRole:
     def __init__(self, perms: list[str]) -> None:
         self.code = "tester"
@@ -70,8 +71,10 @@ def _build_app(user: _FakeUser) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call):  # noqa: ARG001
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -107,6 +110,7 @@ def _clear_run_store() -> None:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 async def test_rejected_rows_returns_404_for_unknown_run() -> None:
     """run_id inexistente → HTTP 404."""

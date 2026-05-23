@@ -28,6 +28,7 @@ from typing import Protocol
 # Value objects
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class PublishPayload:
     """Datos de entrada para una exportación de precios.
@@ -36,9 +37,9 @@ class PublishPayload:
     ``{sku, price_aed, status, fx_rate, approved_at}``.
     """
 
-    channel_code: str          # 'AMAZON_UAE', 'NOON_UAE', 'SHOPIFY'
-    scheme_code: str           # 'FBA', 'MARKETPLACE', etc.
-    rows: list[dict]           # cada dict: {sku, price_aed, status, fx_rate, approved_at}
+    channel_code: str  # 'AMAZON_UAE', 'NOON_UAE', 'SHOPIFY'
+    scheme_code: str  # 'FBA', 'MARKETPLACE', etc.
+    rows: list[dict]  # cada dict: {sku, price_aed, status, fx_rate, approved_at}
     generated_at: datetime
     fx_as_of: datetime | None = None
 
@@ -50,7 +51,7 @@ class ExportResult:
     ok: bool
     channel_code: str
     rows_exported: int
-    rows_blocked: int          # filas excluidas por estado no aprobado
+    rows_blocked: int  # filas excluidas por estado no aprobado
     submission_id: str | None = None
     errors: list[dict] = field(default_factory=list)  # [{field, row, code, message}]
     shadow_mode: bool = False
@@ -61,6 +62,7 @@ class ExportResult:
 # ---------------------------------------------------------------------------
 # Protocol (port)
 # ---------------------------------------------------------------------------
+
 
 class ChannelPublisher(Protocol):
     """Contrato que cada adapter de exportación de precios debe cumplir.

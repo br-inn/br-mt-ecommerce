@@ -209,9 +209,7 @@ class TokenBucketLimiter:
         """Adapter — soporta tanto ``redis.asyncio.Redis`` como fakes sync."""
         eval_fn = getattr(self._redis, "eval", None)
         if eval_fn is None:
-            raise RuntimeError(
-                "Redis client no soporta eval() — provee un cliente compatible."
-            )
+            raise RuntimeError("Redis client no soporta eval() — provee un cliente compatible.")
         result = eval_fn(script, len(keys), *keys, *args)
         # ``redis.asyncio.Redis.eval`` devuelve coroutine; fakes podrían ser sync.
         if hasattr(result, "__await__"):

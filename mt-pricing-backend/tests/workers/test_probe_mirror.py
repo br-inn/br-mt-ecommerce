@@ -73,9 +73,11 @@ def test_probe_uploads_and_triggers_thumbnails(celery_app_eager):
     def fake_enqueue(sku: str, key: str) -> None:
         enqueued.append((sku, key))
 
-    with patch.object(pm, "_get_supabase_storage", return_value=fake_storage), patch.object(
-        pm, "safe_fetch_image", return_value=fake_fetch_result
-    ), patch.object(pm, "_enqueue_thumbnails", side_effect=fake_enqueue):
+    with (
+        patch.object(pm, "_get_supabase_storage", return_value=fake_storage),
+        patch.object(pm, "safe_fetch_image", return_value=fake_fetch_result),
+        patch.object(pm, "_enqueue_thumbnails", side_effect=fake_enqueue),
+    ):
         result = pm.probe_and_mirror_image.apply(
             args=("MT-V-038", "https://example.com/img.jpg", "manual")
         ).get()
@@ -106,9 +108,11 @@ def test_probe_idempotent_skips_existing(celery_app_eager):
 
     enqueued: list[Any] = []
 
-    with patch.object(pm, "_get_supabase_storage", return_value=fake_storage), patch.object(
-        pm, "safe_fetch_image", return_value=fake_fetch_result
-    ), patch.object(pm, "_enqueue_thumbnails", side_effect=lambda s, k: enqueued.append((s, k))):
+    with (
+        patch.object(pm, "_get_supabase_storage", return_value=fake_storage),
+        patch.object(pm, "safe_fetch_image", return_value=fake_fetch_result),
+        patch.object(pm, "_enqueue_thumbnails", side_effect=lambda s, k: enqueued.append((s, k))),
+    ):
         result = pm.probe_and_mirror_image.apply(
             args=("MT-V-001", "https://example.com/img.jpg", "manual")
         ).get()

@@ -4,6 +4,7 @@ Implementa FetcherPort. No tiene dependencias externas. El precio sintético
 es determinístico por ASIN (seed derivado de hash) para que los tests
 sean reproducibles.
 """
+
 from __future__ import annotations
 
 import hashlib

@@ -145,9 +145,9 @@ class HumanQueueService:
             Número de filas actualizadas (0 si listing o candidato no existen).
         """
         # Resolver (source, source_id) del listing para identificar el candidato exacto
-        listing_stmt = select(
-            CompetitorListing.source, CompetitorListing.source_id
-        ).where(CompetitorListing.id == listing_id)
+        listing_stmt = select(CompetitorListing.source, CompetitorListing.source_id).where(
+            CompetitorListing.id == listing_id
+        )
         listing_result = await self._session.execute(listing_stmt)
         listing_row = listing_result.one_or_none()
         if listing_row is None:

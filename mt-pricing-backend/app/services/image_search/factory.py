@@ -38,6 +38,7 @@ class RisFactory:
 
         try:
             from app.core.config import get_settings
+
             settings = get_settings()
         except Exception as exc:  # noqa: BLE001
             logger.warning("ris.factory: settings import failed: %s", exc)

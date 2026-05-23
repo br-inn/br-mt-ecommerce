@@ -72,9 +72,7 @@ class ApplicationRepo(BaseRepository[Application]):
 
     async def list_active(self) -> Sequence[Application]:
         stmt = (
-            select(Application)
-            .where(Application.active.is_(True))
-            .order_by(Application.code.asc())
+            select(Application).where(Application.active.is_(True)).order_by(Application.code.asc())
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
@@ -180,9 +178,7 @@ class ProductCertificationRepo:
         """
         # Delete existing
         await self.session.execute(
-            delete(ProductCertification).where(
-                ProductCertification.product_sku == product_sku
-            )
+            delete(ProductCertification).where(ProductCertification.product_sku == product_sku)
         )
         # Insert new ones
         rows: list[ProductCertification] = []
@@ -243,9 +239,7 @@ class ProductApplicationRepo:
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def get_link(
-        self, product_sku: str, application_id: UUID
-    ) -> ProductApplication | None:
+    async def get_link(self, product_sku: str, application_id: UUID) -> ProductApplication | None:
         stmt = select(ProductApplication).where(
             ProductApplication.product_sku == product_sku,
             ProductApplication.application_id == application_id,
@@ -270,9 +264,7 @@ class ProductApplicationRepo:
     ) -> Sequence[ProductApplication]:
         """Atomically replace all applications for a product."""
         await self.session.execute(
-            delete(ProductApplication).where(
-                ProductApplication.product_sku == product_sku
-            )
+            delete(ProductApplication).where(ProductApplication.product_sku == product_sku)
         )
         rows: list[ProductApplication] = []
         for lnk in links:
@@ -304,11 +296,7 @@ class BrandRepo(BaseRepository[Brand]):
         return result.scalar_one_or_none()
 
     async def list_active(self) -> Sequence[Brand]:
-        stmt = (
-            select(Brand)
-            .where(Brand.active.is_(True))
-            .order_by(Brand.code.asc())
-        )
+        stmt = select(Brand).where(Brand.active.is_(True)).order_by(Brand.code.asc())
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -346,11 +334,7 @@ class FamilyRepo(BaseRepository[Family]):
         """Carga families + subfamilies + product_types en una sola query."""
         stmt = (
             select(Family)
-            .options(
-                selectinload(Family.subfamilies).selectinload(
-                    Subfamily.product_types
-                )
-            )
+            .options(selectinload(Family.subfamilies).selectinload(Subfamily.product_types))
             .order_by(Family.sort_order.asc(), Family.code.asc())
         )
         result = await self.session.execute(stmt)
@@ -362,12 +346,8 @@ class SubfamilyRepo(BaseRepository[Subfamily]):
     pk_field = "id"
     soft_delete_field = None
 
-    async def get_by_family_and_code(
-        self, family_id: UUID, code: str
-    ) -> Subfamily | None:
-        stmt = select(Subfamily).where(
-            Subfamily.family_id == family_id, Subfamily.code == code
-        )
+    async def get_by_family_and_code(self, family_id: UUID, code: str) -> Subfamily | None:
+        stmt = select(Subfamily).where(Subfamily.family_id == family_id, Subfamily.code == code)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -393,18 +373,14 @@ class ProductTypeRepo(BaseRepository[ProductType]):
     pk_field = "id"
     soft_delete_field = None
 
-    async def get_by_subfamily_and_code(
-        self, subfamily_id: UUID, code: str
-    ) -> ProductType | None:
+    async def get_by_subfamily_and_code(self, subfamily_id: UUID, code: str) -> ProductType | None:
         stmt = select(ProductType).where(
             ProductType.subfamily_id == subfamily_id, ProductType.code == code
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_by_subfamily(
-        self, subfamily_id: UUID
-    ) -> Sequence[ProductType]:
+    async def list_by_subfamily(self, subfamily_id: UUID) -> Sequence[ProductType]:
         stmt = (
             select(ProductType)
             .where(ProductType.subfamily_id == subfamily_id)
@@ -448,9 +424,7 @@ class DivisionRepo(BaseRepository[Division]):
         return result.scalars().all()
 
     async def list_all(self) -> Sequence[Division]:
-        stmt = select(Division).order_by(
-            Division.sort_order.asc(), Division.code.asc()
-        )
+        stmt = select(Division).order_by(Division.sort_order.asc(), Division.code.asc())
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -478,9 +452,7 @@ class ProductDivisionRepo:
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def get_link(
-        self, product_sku: str, division_id: UUID
-    ) -> ProductDivision | None:
+    async def get_link(self, product_sku: str, division_id: UUID) -> ProductDivision | None:
         stmt = select(ProductDivision).where(
             ProductDivision.product_sku == product_sku,
             ProductDivision.division_id == division_id,
@@ -488,9 +460,7 @@ class ProductDivisionRepo:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_for_product(
-        self, product_sku: str
-    ) -> Sequence[ProductDivision]:
+    async def list_for_product(self, product_sku: str) -> Sequence[ProductDivision]:
         stmt = (
             select(ProductDivision)
             .where(ProductDivision.product_sku == product_sku)
@@ -504,9 +474,7 @@ class ProductDivisionRepo:
         self, product_sku: str, division_ids: list[UUID]
     ) -> Sequence[ProductDivision]:
         await self.session.execute(
-            delete(ProductDivision).where(
-                ProductDivision.product_sku == product_sku
-            )
+            delete(ProductDivision).where(ProductDivision.product_sku == product_sku)
         )
         rows: list[ProductDivision] = []
         for div_id in division_ids:
@@ -542,9 +510,7 @@ class SeriesTierRepo(BaseRepository[SeriesTier]):
         return result.scalars().all()
 
     async def list_all(self) -> Sequence[SeriesTier]:
-        stmt = select(SeriesTier).order_by(
-            SeriesTier.rank.asc(), SeriesTier.code.asc()
-        )
+        stmt = select(SeriesTier).order_by(SeriesTier.rank.asc(), SeriesTier.code.asc())
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -571,9 +537,7 @@ class SeriesRepo(BaseRepository[Series]):
             .options(
                 selectinload(Series.tier),
                 selectinload(Series.translations),
-                selectinload(Series.series_divisions).selectinload(
-                    SeriesDivision.division
-                ),
+                selectinload(Series.series_divisions).selectinload(SeriesDivision.division),
                 selectinload(Series.series_certifications).selectinload(
                     SeriesCertification.certification
                 ),
@@ -592,15 +556,11 @@ class SeriesRepo(BaseRepository[Series]):
         return result.scalars().all()
 
     async def list_all(self) -> Sequence[Series]:
-        stmt = select(Series).order_by(
-            Series.sort_order.asc(), Series.code.asc()
-        )
+        stmt = select(Series).order_by(Series.sort_order.asc(), Series.code.asc())
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def list_by_division(
-        self, division_id: UUID
-    ) -> Sequence[Series]:
+    async def list_by_division(self, division_id: UUID) -> Sequence[Series]:
         stmt = (
             select(Series)
             .join(SeriesDivision, SeriesDivision.series_id == Series.id)
@@ -647,9 +607,7 @@ class SeriesTranslationRepo:
         await self.session.flush()
         return row
 
-    async def get(
-        self, series_id: UUID, lang: str
-    ) -> SeriesTranslation | None:
+    async def get(self, series_id: UUID, lang: str) -> SeriesTranslation | None:
         stmt = select(SeriesTranslation).where(
             SeriesTranslation.series_id == series_id,
             SeriesTranslation.lang == lang,
@@ -657,9 +615,7 @@ class SeriesTranslationRepo:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_for_series(
-        self, series_id: UUID
-    ) -> Sequence[SeriesTranslation]:
+    async def list_for_series(self, series_id: UUID) -> Sequence[SeriesTranslation]:
         stmt = (
             select(SeriesTranslation)
             .where(SeriesTranslation.series_id == series_id)
@@ -705,9 +661,7 @@ class SeriesDivisionRepo:
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def list_for_series(
-        self, series_id: UUID
-    ) -> Sequence[SeriesDivision]:
+    async def list_for_series(self, series_id: UUID) -> Sequence[SeriesDivision]:
         stmt = (
             select(SeriesDivision)
             .where(SeriesDivision.series_id == series_id)
@@ -723,9 +677,7 @@ class SeriesCertificationRepo:
     def __init__(self, session: "sqlalchemy.ext.asyncio.AsyncSession") -> None:  # type: ignore[name-defined]
         self.session = session
 
-    async def link(
-        self, series_id: UUID, certification_id: UUID
-    ) -> SeriesCertification:
+    async def link(self, series_id: UUID, certification_id: UUID) -> SeriesCertification:
         stmt = select(SeriesCertification).where(
             SeriesCertification.series_id == series_id,
             SeriesCertification.certification_id == certification_id,
@@ -734,9 +686,7 @@ class SeriesCertificationRepo:
         existing = result.scalar_one_or_none()
         if existing:
             return existing
-        row = SeriesCertification(
-            series_id=series_id, certification_id=certification_id
-        )
+        row = SeriesCertification(series_id=series_id, certification_id=certification_id)
         self.session.add(row)
         await self.session.flush()
         return row
@@ -749,9 +699,7 @@ class SeriesCertificationRepo:
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def list_for_series(
-        self, series_id: UUID
-    ) -> Sequence[SeriesCertification]:
+    async def list_for_series(self, series_id: UUID) -> Sequence[SeriesCertification]:
         stmt = (
             select(SeriesCertification)
             .where(SeriesCertification.series_id == series_id)
@@ -786,8 +734,6 @@ class MaterialRepo(BaseRepository[Material]):
         return result.scalars().all()
 
     async def list_all(self) -> Sequence[Material]:
-        stmt = select(Material).order_by(
-            Material.sort_order.asc(), Material.code.asc()
-        )
+        stmt = select(Material).order_by(Material.sort_order.asc(), Material.code.asc())
         result = await self.session.execute(stmt)
         return result.scalars().all()

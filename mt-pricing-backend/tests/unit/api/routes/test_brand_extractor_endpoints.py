@@ -62,7 +62,10 @@ def _make_extractor(
     ext.marketplace = marketplace
     ext.hit_rate = hit_rate
     ext.sample_asins = sample_asins or ["B09ABC1234", "B09XYZ5678"]
-    ext.attribute_map = attribute_map or {"Brand": {"field": "brand", "type": "str"}, "Weight": {"field": "weight_kg", "type": "float"}}
+    ext.attribute_map = attribute_map or {
+        "Brand": {"field": "brand", "type": "str"},
+        "Weight": {"field": "weight_kg", "type": "float"},
+    }
     ext.generated_by = generated_by
     ext.generated_at = generated_at or datetime(2025, 6, 1, tzinfo=UTC)
     ext.last_used_at = last_used_at

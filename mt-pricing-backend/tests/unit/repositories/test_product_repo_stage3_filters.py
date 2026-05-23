@@ -66,6 +66,7 @@ def _compile_sql(stmt: Any) -> str:
 # division_code → EXISTS sobre product_divisions JOIN divisions
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_stage3_division_code_filter_emits_exists_clause() -> None:
     session, captured = _fake_session()
@@ -123,6 +124,7 @@ async def test_stage3_tier_code_filter_emits_join_to_series_tiers() -> None:
 # Combinación con filtros existentes: no rompe + clauses acumulan.
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_stage3_filters_combined_with_legacy_filters() -> None:
     session, captured = _fake_session()
@@ -176,6 +178,7 @@ async def test_stage3_kwargs_default_none_no_extra_clauses() -> None:
 async def test_stage3_filters_signature_kwargs_only() -> None:
     """Los nuevos parámetros deben ser keyword-only (firma del repo)."""
     import inspect
+
     sig = inspect.signature(ProductRepository.list_paginated_with_filters)
     for name in ("division_code", "series_id", "material_id", "tier_code"):
         assert name in sig.parameters, f"missing kwarg {name!r}"
@@ -197,6 +200,7 @@ async def test_stage3_uuid_type_accepted_for_series_and_material() -> None:
 # ---------------------------------------------------------------------------
 # Mig 052 — series_id/material_id aceptan SLUG (taxonomy registry slug)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_stage3_series_slug_emits_exists_against_series_code() -> None:

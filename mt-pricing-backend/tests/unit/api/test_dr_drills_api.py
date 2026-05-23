@@ -118,6 +118,7 @@ def _build_app(session_mock: Any, user: _FakeUser) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call):  # noqa: ARG001
                     return user
 

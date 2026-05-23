@@ -90,17 +90,14 @@ def _validate_header(header: tuple[Any, ...]) -> list[str]:
     errors: list[str] = []
     if len(header) < len(EXPECTED_COSTS_HEADERS):
         errors.append(
-            f"Archivo con {len(header)} columnas; esperadas "
-            f"{len(EXPECTED_COSTS_HEADERS)}."
+            f"Archivo con {len(header)} columnas; esperadas {len(EXPECTED_COSTS_HEADERS)}."
         )
         return errors
     for i, expected in enumerate(EXPECTED_COSTS_HEADERS):
         actual = header[i]
         actual_str = (str(actual) if actual is not None else "").strip()
         if actual_str != expected:
-            errors.append(
-                f"col {i}: header esperado {expected!r}, recibido {actual_str!r}."
-            )
+            errors.append(f"col {i}: header esperado {expected!r}, recibido {actual_str!r}.")
     return errors
 
 
@@ -135,9 +132,7 @@ def _cast_datetime(v: Any) -> datetime | None:
     raise ValueError(f"Fecha inválida: {v!r}")
 
 
-def _map_cost_row(
-    excel_row: tuple[Any, ...] | list[Any], row_index: int
-) -> CostRow:
+def _map_cost_row(excel_row: tuple[Any, ...] | list[Any], row_index: int) -> CostRow:
     errors: list[str] = []
     breakdown: dict[str, Any] = {}
 
@@ -246,9 +241,7 @@ def parse_costs_xlsx_stream(
             if cr.sku is not None and cr.scheme_code is not None:
                 if key in seen:
                     duplicates.append(key)
-                    cr.errors.append(
-                        f"Duplicado en archivo (primera ocurrencia row {seen[key]})."
-                    )
+                    cr.errors.append(f"Duplicado en archivo (primera ocurrencia row {seen[key]}).")
                 else:
                     seen[key] = i
             rows.append(cr)

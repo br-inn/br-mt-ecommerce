@@ -28,10 +28,10 @@ from typing import NamedTuple
 
 
 class DeliveryClassification(NamedTuple):
-    category: str       # "local_stock" | "regional" | "import" | "unknown"
+    category: str  # "local_stock" | "regional" | "import" | "unknown"
     estimated_days: int | None
     price_confidence_score: int  # 0-100
-    note: str           # razón legible para el panel de análisis
+    note: str  # razón legible para el panel de análisis
 
 
 # ─── Patrones ────────────────────────────────────────────────────────────────
@@ -39,8 +39,14 @@ class DeliveryClassification(NamedTuple):
 # Señales de stock local UAE/GCC (entrega ≤ 5 días)
 _LOCAL_PATTERNS = [
     re.compile(r"\bin\s+stock\b", re.I),
-    re.compile(r"\bget\s+it\s+(by\s+)?(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", re.I),
-    re.compile(r"\bfree\s+delivery\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun|\d+\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))", re.I),
+    re.compile(
+        r"\bget\s+it\s+(by\s+)?(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bfree\s+delivery\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun|\d+\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))",
+        re.I,
+    ),
     re.compile(r"\b(same|next)\s+day\s+delivery\b", re.I),
     re.compile(r"\bdelivery\s+in\s+[1-5]\s+(?:business\s+)?days?\b", re.I),
     re.compile(r"\bships\s+from\s+(?:uae|dubai|abu\s+dhabi|sharjah|gcc|abudhabi)\b", re.I),
@@ -60,18 +66,10 @@ _IMPORT_PATTERNS = [
 ]
 
 # Extrae número de días explícito (ej. "15 to 30 days" → 22 días promedio)
-_DAYS_RANGE_RE = re.compile(
-    r"(\d+)\s*(?:to|-)\s*(\d+)\s*(?:business\s+)?days?", re.I
-)
-_DAYS_SINGLE_RE = re.compile(
-    r"(\d+)\s+(?:business\s+)?days?", re.I
-)
-_WEEKS_RANGE_RE = re.compile(
-    r"(\d+)\s*(?:to|-)\s*(\d+)\s*weeks?", re.I
-)
-_WEEKS_SINGLE_RE = re.compile(
-    r"(\d+)\s*weeks?", re.I
-)
+_DAYS_RANGE_RE = re.compile(r"(\d+)\s*(?:to|-)\s*(\d+)\s*(?:business\s+)?days?", re.I)
+_DAYS_SINGLE_RE = re.compile(r"(\d+)\s+(?:business\s+)?days?", re.I)
+_WEEKS_RANGE_RE = re.compile(r"(\d+)\s*(?:to|-)\s*(\d+)\s*weeks?", re.I)
+_WEEKS_SINGLE_RE = re.compile(r"(\d+)\s*weeks?", re.I)
 
 
 # ─── Clasificador ────────────────────────────────────────────────────────────

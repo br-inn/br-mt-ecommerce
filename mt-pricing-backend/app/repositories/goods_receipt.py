@@ -165,9 +165,7 @@ class GoodsReceiptRepository:
         stmt = (
             select(GoodsReceipt)
             .options(
-                selectinload(GoodsReceipt.po_line).selectinload(
-                    PurchaseOrderLine.purchase_order
-                )
+                selectinload(GoodsReceipt.po_line).selectinload(PurchaseOrderLine.purchase_order)
             )
             .where(GoodsReceipt.id == gr_id)
         )
@@ -212,9 +210,7 @@ class GoodsReceiptRepository:
         limit: int = 50,
     ) -> tuple[list[GoodsReceipt], str | None]:
         stmt = select(GoodsReceipt).options(
-            selectinload(GoodsReceipt.po_line).selectinload(
-                PurchaseOrderLine.purchase_order
-            )
+            selectinload(GoodsReceipt.po_line).selectinload(PurchaseOrderLine.purchase_order)
         )
 
         clauses: list[Any] = []
@@ -224,9 +220,7 @@ class GoodsReceiptRepository:
             clauses.append(GoodsReceipt.po_line_id.in_(sub))
         if po_id:
             # Filtra por PO — todas las líneas de ese PO
-            sub_po = select(PurchaseOrderLine.id).where(
-                PurchaseOrderLine.po_id == po_id
-            )
+            sub_po = select(PurchaseOrderLine.id).where(PurchaseOrderLine.po_id == po_id)
             clauses.append(GoodsReceipt.po_line_id.in_(sub_po))
         if status_filter:
             clauses.append(GoodsReceipt.status == status_filter)

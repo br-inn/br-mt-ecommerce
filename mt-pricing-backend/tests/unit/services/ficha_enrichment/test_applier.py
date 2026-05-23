@@ -3,8 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.ficha_enrichment.applier import FichaEnrichmentApplier
 from app.schemas.ficha_enrich import (
-    FichaEnrichApplyRequest, FichaExtractionResult,
-    ExtractedScalars, ExtractedSpecs, ExtractedMaterial,
+    FichaEnrichApplyRequest,
+    FichaExtractionResult,
+    ExtractedScalars,
+    ExtractedSpecs,
+    ExtractedMaterial,
 )
 
 
@@ -29,7 +32,7 @@ def _make_session(product):
     session.execute = AsyncMock(
         return_value=MagicMock(
             scalar_one_or_none=MagicMock(return_value=product),
-            scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+            scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
         )
     )
     session.flush = AsyncMock()

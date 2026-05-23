@@ -7,6 +7,7 @@ Diferencia clave con 'certifications':
 Un Certificate tiene owner model_id (nivel modelo/serie). Los SKUs/DN que
 cubre se detallan en certificate_scopes.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -31,6 +32,7 @@ from app.db.types import UUID_PG
 
 class Certificate(UuidPkMixin, Base):
     """Certificado emitido con número, fechas, estado lifecycle."""
+
     __tablename__ = "certificates"
 
     model_id: Mapped[UUID | None] = mapped_column(
@@ -43,9 +45,7 @@ class Certificate(UuidPkMixin, Base):
     issuer: Mapped[str | None] = mapped_column(Text, nullable=True)
     issued_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     expires_at: Mapped[date | None] = mapped_column(Date, nullable=True)
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'valid'")
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'valid'"))
     signatory_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     signatory_role: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -74,6 +74,7 @@ class Certificate(UuidPkMixin, Base):
 
 class CertificateScope(UuidPkMixin, Base):
     """SKU o rango de DN cubierto por un certificado."""
+
     __tablename__ = "certificate_scopes"
 
     certificate_id: Mapped[UUID] = mapped_column(

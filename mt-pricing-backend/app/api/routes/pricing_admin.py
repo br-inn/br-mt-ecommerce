@@ -105,9 +105,7 @@ async def trigger_bulk_recalc(
             "task_id": task_id,
         },
     )
-    return BulkRecalcTriggerResponse(
-        task_id=task_id, source=body.source, status="queued"
-    )
+    return BulkRecalcTriggerResponse(task_id=task_id, source=body.source, status="queued")
 
 
 @router.get(

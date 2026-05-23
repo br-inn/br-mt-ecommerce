@@ -100,8 +100,7 @@ async def test_process_one_delete_calls_delete_subgraph() -> None:
     await dispatcher.process_one(event_delete)
     # El nodo Product debe haber desaparecido (Family auto-creada queda).
     assert all(
-        not (n.label == "Product" and n.primary_key == "MT-V-001")
-        for n in store._nodes.values()
+        not (n.label == "Product" and n.primary_key == "MT-V-001") for n in store._nodes.values()
     )
 
 

@@ -180,9 +180,7 @@ async def test_get_agent_config(
 async def test_put_agent_config_changes_alpha(
     authed_client: AsyncClient, seeded_config: MatchAgentConfig
 ) -> None:
-    resp = await authed_client.put(
-        "/api/v1/matches/agent/config", json={"alpha": 0.05}
-    )
+    resp = await authed_client.put("/api/v1/matches/agent/config", json={"alpha": 0.05})
     assert resp.status_code == 200
     assert float(resp.json()["alpha"]) == pytest.approx(0.05)
 
@@ -191,9 +189,7 @@ async def test_put_agent_config_active_blocked_without_labels(
     authed_client: AsyncClient, seeded_config: MatchAgentConfig
 ) -> None:
     """No se puede pasar a active sin alcanzar el gate de labels."""
-    resp = await authed_client.put(
-        "/api/v1/matches/agent/config", json={"mode": "active"}
-    )
+    resp = await authed_client.put("/api/v1/matches/agent/config", json={"mode": "active"})
     assert resp.status_code == 409
     assert resp.json()["detail"]["code"] == "labels_gate_not_reached"
 

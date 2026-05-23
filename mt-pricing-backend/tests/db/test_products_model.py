@@ -108,8 +108,6 @@ async def test_product_translation_cascade_on_delete(db_session: AsyncSession) -
 
 async def test_seed_roles_present(db_session: AsyncSession) -> None:
     """Los 4 roles canónicos quedan seedados por la migración 001."""
-    result = await db_session.execute(
-        text("SELECT code FROM roles ORDER BY code;")
-    )
+    result = await db_session.execute(text("SELECT code FROM roles ORDER BY code;"))
     codes = {r[0] for r in result.all()}
     assert codes >= {"admin", "comercial", "gerente_comercial", "ti_integracion"}

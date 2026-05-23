@@ -39,8 +39,15 @@ class ProductMaterial(Base):
     )
     component: Mapped[str] = mapped_column(
         Enum(
-            "body", "closure", "seat", "gasket", "screen",
-            "actuator_housing", "stem", "handle", "other",
+            "body",
+            "closure",
+            "seat",
+            "gasket",
+            "screen",
+            "actuator_housing",
+            "stem",
+            "handle",
+            "other",
             name="component_kind",
             create_type=False,
         ),
@@ -54,16 +61,13 @@ class ProductMaterial(Base):
     material: Mapped[str] = mapped_column(Text, nullable=False)
     observations: Mapped[str | None] = mapped_column(Text)
     material_grade: Mapped[str | None] = mapped_column(
-        Text, nullable=True,
-        comment="ej. EN-GJL-250, AISI 304, CW617N"
+        Text, nullable=True, comment="ej. EN-GJL-250, AISI 304, CW617N"
     )
     material_standard: Mapped[str | None] = mapped_column(
-        Text, nullable=True,
-        comment="ej. ASTM A307, UNE-EN-12165"
+        Text, nullable=True, comment="ej. ASTM A307, UNE-EN-12165"
     )
     surface_treatment: Mapped[str | None] = mapped_column(
-        Text, nullable=True,
-        comment="ej. Epoxy, Nickel, Zinc, None"
+        Text, nullable=True, comment="ej. Epoxy, Nickel, Zinc, None"
     )
 
     created_at: Mapped[datetime] = mapped_column(

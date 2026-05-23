@@ -30,6 +30,7 @@ pytestmark = pytest.mark.unit
 # Fakes
 # ---------------------------------------------------------------------------
 
+
 class _FakeRole:
     def __init__(self, perms: list[str]) -> None:
         self.code = "auditor"
@@ -107,6 +108,7 @@ def _build_app(rows: list[MagicMock]) -> FastAPI:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestAuditVerifyEndpoint:
     @pytest.mark.asyncio
     async def test_verify_returns_200_for_clean_chain(self) -> None:
@@ -123,9 +125,7 @@ class TestAuditVerifyEndpoint:
         from_str = (_BASE_TIME).isoformat()
         to_str = (_BASE_TIME + timedelta(days=1)).isoformat()
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(
                 "/api/v1/audit/verify",
                 params={"from": from_str, "to": to_str},
@@ -156,9 +156,7 @@ class TestAuditVerifyEndpoint:
         from_str = (_BASE_TIME).isoformat()
         to_str = (_BASE_TIME + timedelta(days=1)).isoformat()
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(
                 "/api/v1/audit/verify",
                 params={"from": from_str, "to": to_str},
@@ -177,9 +175,7 @@ class TestAuditVerifyEndpoint:
         from_str = (_BASE_TIME - timedelta(days=8)).isoformat()
         to_str = _BASE_TIME.isoformat()
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(
                 "/api/v1/audit/verify",
                 params={"from": from_str, "to": to_str},

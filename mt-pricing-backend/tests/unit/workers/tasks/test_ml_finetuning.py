@@ -26,6 +26,7 @@ pytestmark = pytest.mark.unit
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_jsonl_lines(n: int) -> list[str]:
     """Genera N líneas JSONL de pares de entrenamiento sintéticos."""
     return [
@@ -44,6 +45,7 @@ def _make_jsonl_lines(n: int) -> list[str]:
 # AC#3 test 1 — abort si insuficientes datos
 # ---------------------------------------------------------------------------
 
+
 def test_finetune_aborts_with_insufficient_data(caplog: pytest.LogCaptureFixture) -> None:
     """Con 500 pares (< 1 000) la task debe lanzar Retry y emitir log de abort.
 
@@ -55,8 +57,7 @@ def test_finetune_aborts_with_insufficient_data(caplog: pytest.LogCaptureFixture
     import app.workers.tasks.ml_finetuning as mod
 
     pairs_500 = [
-        {"title_mt": f"MT {i}", "title_candidate": f"Cand {i}", "label": 0.8}
-        for i in range(500)
+        {"title_mt": f"MT {i}", "title_candidate": f"Cand {i}", "label": 0.8} for i in range(500)
     ]
 
     # Verificar que _InsufficientDataError se lanza correctamente con 500 pares
@@ -111,7 +112,8 @@ def test_finetune_aborts_with_insufficient_data(caplog: pytest.LogCaptureFixture
 
     # Verificar log estructurado de abort
     abort_records = [
-        r for r in caplog.records
+        r
+        for r in caplog.records
         if "finetune_aborted" in r.getMessage() or "insufficient_data" in r.getMessage()
     ]
     assert len(abort_records) >= 1, (
@@ -123,14 +125,14 @@ def test_finetune_aborts_with_insufficient_data(caplog: pytest.LogCaptureFixture
 # AC#3 test 2 — log finetune_complete al terminar exitosamente
 # ---------------------------------------------------------------------------
 
+
 def test_finetune_logs_completion(caplog: pytest.LogCaptureFixture) -> None:
     """Mock SentenceTransformer + Storage + DB → verifica log finetune_complete."""
     import app.workers.tasks.ml_finetuning as mod
 
     # Dataset con 1200 pares
     pairs = [
-        {"title_mt": f"MT {i}", "title_candidate": f"Cand {i}", "label": 0.8}
-        for i in range(1200)
+        {"title_mt": f"MT {i}", "title_candidate": f"Cand {i}", "label": 0.8} for i in range(1200)
     ]
 
     # Mock SentenceTransformer
@@ -148,9 +150,7 @@ def test_finetune_logs_completion(caplog: pytest.LogCaptureFixture) -> None:
         side_effect=lambda texts, label: MagicMock(texts=texts, label=label)
     )
     mock_st_module.losses.CosineSimilarityLoss.return_value = MagicMock()
-    mock_st_module.evaluation.EmbeddingSimilarityEvaluator.return_value = (
-        fake_evaluator_instance
-    )
+    mock_st_module.evaluation.EmbeddingSimilarityEvaluator.return_value = fake_evaluator_instance
 
     mock_dataloader = MagicMock()
 
@@ -169,7 +169,9 @@ def test_finetune_logs_completion(caplog: pytest.LogCaptureFixture) -> None:
                 "torch.utils.data": MagicMock(DataLoader=MagicMock(return_value=mock_dataloader)),
             },
         ),
-        patch.object(mod, "_upload_model_to_storage", return_value="embeddings/test-model-20260519"),
+        patch.object(
+            mod, "_upload_model_to_storage", return_value="embeddings/test-model-20260519"
+        ),
         patch.object(mod, "_insert_registry", new=AsyncMock(return_value=fake_model_id)),
         caplog.at_level(logging.INFO, logger="app.workers.tasks.ml_finetuning"),
     ):
@@ -207,6 +209,7 @@ def test_finetune_logs_completion(caplog: pytest.LogCaptureFixture) -> None:
 # ---------------------------------------------------------------------------
 # AC#4 test 3 — promote_model actualiza status correctamente
 # ---------------------------------------------------------------------------
+
 
 def test_promote_model_updates_status() -> None:
     """Mock DB con candidate + active previo → verifica transición correcta."""

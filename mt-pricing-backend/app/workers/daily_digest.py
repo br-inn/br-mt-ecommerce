@@ -36,9 +36,7 @@ DIGEST_NOTIFICATION_KIND = "pricing.daily_digest"
 MANAGER_ROLE_CODE = "gerente_comercial"
 
 # Ruta al template HTML (relativa al paquete)
-_TEMPLATE_PATH = (
-    Path(__file__).parent.parent / "templates" / "email" / "daily_digest.html"
-)
+_TEMPLATE_PATH = Path(__file__).parent.parent / "templates" / "email" / "daily_digest.html"
 
 
 def _render_email(summary: dict) -> str:
@@ -71,6 +69,7 @@ def _render_email(summary: dict) -> str:
 
     # Eliminar bloques de plantilla originales (template usa {% if %} que no procesamos)
     import re
+
     # Quitar bloques {% if ... %} ... {% endif %} del template
     template = re.sub(r"\{%.*?%\}", "", template, flags=re.DOTALL)
 
@@ -88,9 +87,8 @@ def _render_email(summary: dict) -> str:
 
     # Inyectar bloques condicionales tras la tabla
     template = template.replace(
-        '<a href=',
-        f"{pending_block}{escalated_block}"
-        '<a href=',
+        "<a href=",
+        f"{pending_block}{escalated_block}<a href=",
         1,
     )
     return template

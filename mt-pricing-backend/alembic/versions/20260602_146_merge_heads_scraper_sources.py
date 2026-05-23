@@ -8,6 +8,7 @@ Migración de merge (no-op) para resolver los dos heads divergentes de Alembic
 que la rama traía de la integración de features paralelas. Permite que
 `alembic upgrade head` resuelva a un único head. No modifica el schema.
 """
+
 from __future__ import annotations
 
 # revision identifiers, used by Alembic.

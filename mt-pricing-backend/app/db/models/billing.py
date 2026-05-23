@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 # US-ERP-05-01 — Invoice
 # ---------------------------------------------------------------------------
 
+
 class Invoice(UuidPkMixin, Base):
     """Cabecera de factura — STANDARD, CREDIT_MEMO, DEBIT_MEMO, PROFORMA, INTERCOMPANY."""
 
@@ -222,6 +223,7 @@ class InvoiceLine(UuidPkMixin, Base):
 # US-ERP-05-03 — Dunning
 # ---------------------------------------------------------------------------
 
+
 class DunningLevel(UuidPkMixin, Base):
     """Configuración de niveles de morosidad."""
 
@@ -280,6 +282,7 @@ class DunningHistory(UuidPkMixin, Base):
 # ---------------------------------------------------------------------------
 # US-ERP-05-04 — E-Invoice Submissions
 # ---------------------------------------------------------------------------
+
 
 class EInvoiceSubmission(UuidPkMixin, Base):
     """Registro de envío a sistemas de facturación electrónica (ZATCA, CFDI, etc)."""
@@ -342,6 +345,7 @@ class EInvoiceSubmission(UuidPkMixin, Base):
 # US-ERP-05-03 — Payment Terms catalog (mig 139)
 # ---------------------------------------------------------------------------
 
+
 class PaymentTerms(UuidPkMixin, Base):
     """Catálogo de condiciones de pago (NET30, NET60, 2/10 NET30, etc.)."""
 
@@ -375,9 +379,7 @@ class PaymentTerms(UuidPkMixin, Base):
         server_default=text("now()"),
     )
 
-    __table_args__ = (
-        Index("idx_payment_terms_code", "code"),
-    )
+    __table_args__ = (Index("idx_payment_terms_code", "code"),)
 
 
 class PaymentPromise(UuidPkMixin, Base):

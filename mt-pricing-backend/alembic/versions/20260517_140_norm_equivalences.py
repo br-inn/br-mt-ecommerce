@@ -3,6 +3,7 @@
 Revision ID: 20260517_140
 Revises: 20260517_139
 """
+
 from alembic import op
 import sqlalchemy as sa
 
@@ -22,10 +23,22 @@ def upgrade() -> None:
         sa.Column("system_b", sa.Text(), nullable=False),
         sa.Column("equivalence_type", sa.Text(), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id"),
-        sa.CheckConstraint("equivalence_type IN ('exact','subset','compatible')", name="ck_norm_equiv_type"),
+        sa.CheckConstraint(
+            "equivalence_type IN ('exact','subset','compatible')", name="ck_norm_equiv_type"
+        ),
     )
 
 

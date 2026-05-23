@@ -219,9 +219,7 @@ def neo4j_container() -> Iterator[str]:
 
     from testcontainers.neo4j import Neo4jContainer
 
-    with Neo4jContainer("neo4j:5.20-community").with_env(
-        "NEO4J_AUTH", f"{user}/{password}"
-    ) as neo:
+    with Neo4jContainer("neo4j:5.20-community").with_env("NEO4J_AUTH", f"{user}/{password}") as neo:
         bolt_uri = neo.get_connection_url()
         os.environ["NEO4J_URI"] = bolt_uri
         os.environ["NEO4J_USER"] = user
@@ -298,7 +296,13 @@ async def db_session_committed(db_engine: AsyncEngine) -> AsyncIterator[AsyncSes
             text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete")
         )
         await session.execute(text("DELETE FROM import_runs"))
+        await session.execute(
+            text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_trg")
+        )
         await session.execute(text("DELETE FROM audit_events"))
+        await session.execute(
+            text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable_trg")
+        )
         await session.commit()
 
 

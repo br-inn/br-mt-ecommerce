@@ -3,6 +3,7 @@
 Usa Claude claude-sonnet-4-6 via anthropic SDK con tool_use para output estructurado.
 Si no hay API key o MT_LIVE_NETWORK != 'true', devuelve resultado vacío sin lanzar.
 """
+
 from __future__ import annotations
 
 import base64
@@ -37,30 +38,80 @@ _TOOL_SCHEMA: dict[str, Any] = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "family": {"type": "string", "description": "Product family in English matching the catalog (e.g. 'Ball Valve', 'Butterfly Valve', 'Gate Valve', 'Check Valve', 'Angle Valve'). English only."},
-            "subfamily": {"type": "string", "description": "Product subfamily in English (e.g. 'Threaded ball valve with ergonomic handle', 'Full bore butterfly valve')."},
-            "type": {"type": "string", "description": "Specific product type in English (e.g. 'Threaded ball valve PN30', 'Wafer butterfly valve PN16')."},
-            "material": {"type": "string", "description": "Canonical body material code in lowercase English (e.g. 'brass_cw617n', 'ss316', 'cast_iron')."},
-            "dn": {"type": "string", "description": "Nominal diameter number only, no DN prefix (e.g. '50')."},
-            "pn": {"type": "string", "description": "Nominal pressure number only, no PN prefix (e.g. '30')."},
-            "connection": {"type": "string", "description": "Connection standard code only (e.g. 'bsp', 'npt', 'flanged', 'wafer'). Do NOT include gender here."},
-            "brand": {"type": "string", "description": "Brand using canonical catalog name: 'MT' or 'MT Middle East'. If PDF shows 'MT Business Key', 'MT BK', 'MTBK' or similar → use 'MT'."},
+            "family": {
+                "type": "string",
+                "description": "Product family in English matching the catalog (e.g. 'Ball Valve', 'Butterfly Valve', 'Gate Valve', 'Check Valve', 'Angle Valve'). English only.",
+            },
+            "subfamily": {
+                "type": "string",
+                "description": "Product subfamily in English (e.g. 'Threaded ball valve with ergonomic handle', 'Full bore butterfly valve').",
+            },
+            "type": {
+                "type": "string",
+                "description": "Specific product type in English (e.g. 'Threaded ball valve PN30', 'Wafer butterfly valve PN16').",
+            },
+            "material": {
+                "type": "string",
+                "description": "Canonical body material code in lowercase English (e.g. 'brass_cw617n', 'ss316', 'cast_iron').",
+            },
+            "dn": {
+                "type": "string",
+                "description": "Nominal diameter number only, no DN prefix (e.g. '50').",
+            },
+            "pn": {
+                "type": "string",
+                "description": "Nominal pressure number only, no PN prefix (e.g. '30').",
+            },
+            "connection": {
+                "type": "string",
+                "description": "Connection standard code only (e.g. 'bsp', 'npt', 'flanged', 'wafer'). Do NOT include gender here.",
+            },
+            "brand": {
+                "type": "string",
+                "description": "Brand using canonical catalog name: 'MT' or 'MT Middle East'. If PDF shows 'MT Business Key', 'MT BK', 'MTBK' or similar → use 'MT'.",
+            },
             "temp_min_c": {"type": "integer", "description": "Minimum working temperature in °C."},
             "temp_max_c": {"type": "integer", "description": "Maximum working temperature in °C."},
-            "pressure_max_bar": {"type": "number", "description": "Maximum working pressure in bar."},
+            "pressure_max_bar": {
+                "type": "number",
+                "description": "Maximum working pressure in bar.",
+            },
             "weight": {"type": "number"},
             "weight_unit": {"type": "string", "enum": ["kg", "g", "lb"]},
             "specs": {
                 "type": "object",
                 "properties": {
-                    "seat_material": {"type": "string", "description": "Seat material in English (e.g. 'PTFE', 'EPDM')."},
-                    "seal_material": {"type": "string", "description": "Seal material in English (e.g. 'NBR', 'PTFE')."},
-                    "stem_material": {"type": "string", "description": "Stem material in English (e.g. 'Stainless steel', 'Brass CW617N')."},
-                    "standards": {"type": "array", "items": {"type": "string"}, "description": "Applicable standards (e.g. 'EN-ISO-228', 'EN-19')."},
-                    "certifications": {"type": "array", "items": {"type": "string"}, "description": "Certification codes (e.g. 'WRAS', 'ACS', 'PZH')."},
+                    "seat_material": {
+                        "type": "string",
+                        "description": "Seat material in English (e.g. 'PTFE', 'EPDM').",
+                    },
+                    "seal_material": {
+                        "type": "string",
+                        "description": "Seal material in English (e.g. 'NBR', 'PTFE').",
+                    },
+                    "stem_material": {
+                        "type": "string",
+                        "description": "Stem material in English (e.g. 'Stainless steel', 'Brass CW617N').",
+                    },
+                    "standards": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Applicable standards (e.g. 'EN-ISO-228', 'EN-19').",
+                    },
+                    "certifications": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Certification codes (e.g. 'WRAS', 'ACS', 'PZH').",
+                    },
                     "no_frost": {"type": "boolean"},
-                    "actuation_type": {"type": "string", "description": "Actuation type in English (e.g. 'manual lever', 'pneumatic', 'electric')."},
-                    "bore_type": {"type": "string", "description": "Bore type in English (e.g. 'full bore', 'reduced bore')."},
+                    "actuation_type": {
+                        "type": "string",
+                        "description": "Actuation type in English (e.g. 'manual lever', 'pneumatic', 'electric').",
+                    },
+                    "bore_type": {
+                        "type": "string",
+                        "description": "Bore type in English (e.g. 'full bore', 'reduced bore').",
+                    },
                     "end_connection_gender": {
                         "type": "string",
                         "enum": ["male-female", "female-female", "male-male"],
@@ -89,21 +140,37 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "type": "object",
                     "required": ["component", "material"],
                     "properties": {
-                        "component": {"type": "string", "enum": ["body", "closure", "seat", "gasket", "screen", "actuator_housing", "stem", "handle", "other"]},
+                        "component": {
+                            "type": "string",
+                            "enum": [
+                                "body",
+                                "closure",
+                                "seat",
+                                "gasket",
+                                "screen",
+                                "actuator_housing",
+                                "stem",
+                                "handle",
+                                "other",
+                            ],
+                        },
                         "position": {"type": "integer", "default": 0},
                         "material": {"type": "string", "description": "Material name in English."},
-                        "observations": {"type": "string", "description": "Additional observations in English."},
+                        "observations": {
+                            "type": "string",
+                            "description": "Additional observations in English.",
+                        },
                         "material_grade": {
                             "type": "string",
-                            "description": "Material grade per standard (e.g. EN-GJL-250, CW617N, AISI 304)."
+                            "description": "Material grade per standard (e.g. EN-GJL-250, CW617N, AISI 304).",
                         },
                         "material_standard": {
                             "type": "string",
-                            "description": "Material standard (e.g. UNE-EN-12165, ASTM A307)."
+                            "description": "Material standard (e.g. UNE-EN-12165, ASTM A307).",
                         },
                         "surface_treatment": {
                             "type": "string",
-                            "description": "Surface treatment in English (e.g. Nickel, Epoxy, Zinc, None)."
+                            "description": "Surface treatment in English (e.g. Nickel, Epoxy, Zinc, None).",
                         },
                     },
                 },
@@ -114,11 +181,14 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "type": "object",
                     "required": ["dn_label", "values"],
                     "properties": {
-                        "dn_label": {"type": "string", "description": "DN label as it appears in the table (e.g. '1/2\"', 'DN15')."},
+                        "dn_label": {
+                            "type": "string",
+                            "description": "DN label as it appears in the table (e.g. '1/2\"', 'DN15').",
+                        },
                         "values": {"type": "object"},
                         "dn_secondary_label": {
                             "type": "string",
-                            "description": "Outlet DN for reducers (e.g. '3/8\"' in a 1/2 x 3/8 reduction)."
+                            "description": "Outlet DN for reducers (e.g. '3/8\"' in a 1/2 x 3/8 reduction).",
                         },
                     },
                 },
@@ -136,8 +206,14 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "required": ["lang"],
                     "properties": {
                         "lang": {"type": "string", "enum": ["es", "ar", "en"]},
-                        "name": {"type": "string", "description": "Commercial product name in this language."},
-                        "description": {"type": "string", "description": "Technical description in this language."},
+                        "name": {
+                            "type": "string",
+                            "description": "Commercial product name in this language.",
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Technical description in this language.",
+                        },
                     },
                 },
             },
@@ -155,12 +231,21 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "properties": {
                         "certification_code": {
                             "type": "string",
-                            "description": "Code: ACS | WRAS | PZH | CE | FM | ISO9001."
+                            "description": "Code: ACS | WRAS | PZH | CE | FM | ISO9001.",
                         },
                         "cert_number": {"type": "string"},
-                        "issuer": {"type": "string", "description": "Issuing body (e.g. Carso, BSI, TÜV)."},
-                        "issued_at": {"type": "string", "description": "Issue date ISO format (YYYY-MM-DD)."},
-                        "expires_at": {"type": "string", "description": "Expiry date ISO format (YYYY-MM-DD)."},
+                        "issuer": {
+                            "type": "string",
+                            "description": "Issuing body (e.g. Carso, BSI, TÜV).",
+                        },
+                        "issued_at": {
+                            "type": "string",
+                            "description": "Issue date ISO format (YYYY-MM-DD).",
+                        },
+                        "expires_at": {
+                            "type": "string",
+                            "description": "Expiry date ISO format (YYYY-MM-DD).",
+                        },
                         "signatory_name": {"type": "string"},
                         "signatory_role": {"type": "string"},
                     },
@@ -173,10 +258,16 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "type": "object",
                     "required": ["dn_label"],
                     "properties": {
-                        "dn_label": {"type": "string", "description": "DN label as it appears in the table."},
+                        "dn_label": {
+                            "type": "string",
+                            "description": "DN label as it appears in the table.",
+                        },
                         "kv": {"type": "number", "description": "Flow coefficient Kv (m³/h)."},
                         "cv": {"type": "number", "description": "Flow coefficient Cv (US gpm)."},
-                        "mesh_mm": {"type": "number", "description": "Mesh size in mm (e.g. 1.8, 1.0)."},
+                        "mesh_mm": {
+                            "type": "number",
+                            "description": "Mesh size in mm (e.g. 1.8, 1.0).",
+                        },
                     },
                 },
             },
@@ -199,8 +290,16 @@ _PAGE_CLASSIFICATION_TOOL: dict[str, Any] = {
         "properties": {
             "kind": {
                 "type": "string",
-                "enum": ["specs_text", "dimension_drawing", "section_drawing",
-                         "pt_curve", "certificate", "exploded_view", "materials_table", "other"],
+                "enum": [
+                    "specs_text",
+                    "dimension_drawing",
+                    "section_drawing",
+                    "pt_curve",
+                    "certificate",
+                    "exploded_view",
+                    "materials_table",
+                    "other",
+                ],
             },
             "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
             "description": {"type": "string"},
@@ -304,7 +403,9 @@ def _parse_tool_response(response: Any) -> dict[str, Any]:
     for block in response.content:
         if hasattr(block, "type") and block.type == "tool_use":
             if hasattr(block, "name") and block.name in (
-                "extract_product_fields", "classify_pdf_page", "extract_pt_curve"
+                "extract_product_fields",
+                "classify_pdf_page",
+                "extract_pt_curve",
             ):
                 inp = block.input
                 if isinstance(inp, str):
@@ -370,7 +471,9 @@ def _build_result(data: dict[str, Any], raw_text: str) -> FichaExtractionResult:
         if t.get("lang")
     ]
     certificates = [
-        ExtractedCertificate(**{k: v for k, v in c.items() if k in ExtractedCertificate.model_fields})
+        ExtractedCertificate(
+            **{k: v for k, v in c.items() if k in ExtractedCertificate.model_fields}
+        )
         for c in (data.get("certificates") or [])
         if c.get("certification_code")
     ]
@@ -461,6 +564,7 @@ class FichaEnrichmentExtractor:
         if classify_pages and pdf_bytes:
             try:
                 import anthropic as _anthropic
+
                 client2 = _anthropic.AsyncAnthropic(api_key=self._api_key)
                 page_clfs, page_assets, pt_points = await self._classify_pages_and_extract(
                     pdf_bytes, client2
@@ -487,17 +591,22 @@ class FichaEnrichmentExtractor:
                 max_tokens=256,
                 tools=[_PAGE_CLASSIFICATION_TOOL],
                 tool_choice={"type": "tool", "name": "classify_pdf_page"},
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": _PAGE_CLASSIFICATION_PROMPT},
-                        {"type": "image", "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": b64,
-                        }},
-                    ],
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": _PAGE_CLASSIFICATION_PROMPT},
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": b64,
+                                },
+                            },
+                        ],
+                    }
+                ],
             )
         except Exception as exc:
             logger.warning("page_classify failed idx=%d err=%s", idx, exc)
@@ -566,17 +675,22 @@ class FichaEnrichmentExtractor:
                 max_tokens=512,
                 tools=[_PT_CURVE_TOOL],
                 tool_choice={"type": "tool", "name": "extract_pt_curve"},
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": _PT_CURVE_PROMPT},
-                        {"type": "image", "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": b64,
-                        }},
-                    ],
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": _PT_CURVE_PROMPT},
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": b64,
+                                },
+                            },
+                        ],
+                    }
+                ],
             )
         except Exception as exc:
             logger.warning("pt_curve_extract failed: %s", exc)

@@ -6,6 +6,7 @@ Endpoints:
 
 RBAC: products:read (GET), products:write (PATCH).
 """
+
 from __future__ import annotations
 
 import logging
@@ -47,7 +48,9 @@ class HitlQueueItemOut(BaseModel):
 
 
 class HitlQueuePatch(BaseModel):
-    status: HitlStatus = Field(..., description="Nuevo estado: pending | approved | rejected | skipped")
+    status: HitlStatus = Field(
+        ..., description="Nuevo estado: pending | approved | rejected | skipped"
+    )
     notes: str | None = Field(None, description="Notas del revisor")
 
 
@@ -81,7 +84,9 @@ async def list_hitl_queue(
                 "id": str(item.id),
                 "match_id": str(item.match_id),
                 "uncertainty_score": float(item.uncertainty_score),
-                "product_value_aed": float(item.product_value_aed) if item.product_value_aed else None,
+                "product_value_aed": float(item.product_value_aed)
+                if item.product_value_aed
+                else None,
                 "priority_score": float(item.priority_score) if item.priority_score else None,
                 "status": item.status,
                 "assigned_to": str(item.assigned_to) if item.assigned_to else None,
@@ -104,7 +109,9 @@ async def update_hitl_queue_item(
     """Actualiza el status de un item HITL (approved/rejected/skipped)."""
     item = await session.get(HitlQueue, queue_id)
     if item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="HITL queue item not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="HITL queue item not found"
+        )
 
     item.status = payload.status
     if payload.notes is not None:

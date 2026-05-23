@@ -61,9 +61,7 @@ FAILURE_RATE_ALERT_THRESHOLD: float = 0.05
 class PricingServiceProtocol(Protocol):
     """Contracto mínimo del PricingService consumido por el bulk recalc."""
 
-    async def recalculate_for_product(
-        self, product_id: UUID | str, actor: User
-    ) -> list[Any]: ...
+    async def recalculate_for_product(self, product_id: UUID | str, actor: User) -> list[Any]: ...
 
 
 class ProductRepoProtocol(Protocol):
@@ -109,9 +107,7 @@ class BulkRecalcResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "started_at": self.started_at.isoformat(),
-            "finished_at": self.finished_at.isoformat()
-            if self.finished_at
-            else None,
+            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "duration_seconds": round(self.duration_seconds, 3),
             "skus_total": self.skus_total,
             "skus_processed": self.skus_processed,
@@ -184,9 +180,7 @@ class BulkRecalcService:
             pricing_service if pricing_service is not None else PricingService(session)  # type: ignore[arg-type]
         )
         self._products = (
-            product_repo
-            if product_repo is not None
-            else _DefaultProductRepo(session)  # type: ignore[arg-type]
+            product_repo if product_repo is not None else _DefaultProductRepo(session)  # type: ignore[arg-type]
         )
         self._audit = (
             audit_repo if audit_repo is not None else AuditRepository(session)  # type: ignore[arg-type]
@@ -237,9 +231,7 @@ class BulkRecalcService:
                 )
                 continue
             except Exception as exc:  # noqa: BLE001 — unhandled error per-SKU
-                logger.exception(
-                    "bulk_recalc.unhandled sku=%s", sku
-                )
+                logger.exception("bulk_recalc.unhandled sku=%s", sku)
                 result.skus_failed += 1
                 result.errors.append(
                     {

@@ -41,9 +41,7 @@ class _FakeUser:
         self.id: UUID = uuid4()
         self.email = "tester@mt.ae"
         self.is_active = True
-        self.role = _FakeRole(
-            ["prices:export", "prices:propose", "prices:read", "prices:approve"]
-        )
+        self.role = _FakeRole(["prices:export", "prices:propose", "prices:read", "prices:approve"])
 
 
 def _build_app(
@@ -79,9 +77,8 @@ def _build_app(
                 if dep.call is None:
                     continue
                 fn = dep.call
-                if (
-                    fn.__module__ == require_permissions.__module__
-                    and fn.__qualname__.startswith("require_permissions.")
+                if fn.__module__ == require_permissions.__module__ and fn.__qualname__.startswith(
+                    "require_permissions."
                 ):
                     app.dependency_overrides[fn] = _override_perms_factory()
 
@@ -94,9 +91,7 @@ def _build_app(
 async def test_bulk_publish_happy() -> None:
     bulk = MagicMock()
     pid = uuid4()
-    bulk.publish = AsyncMock(
-        return_value=BulkPublishResult(total=1, published=[str(pid)])
-    )
+    bulk.publish = AsyncMock(return_value=BulkPublishResult(total=1, published=[str(pid)]))
     app, _ = _build_app(bulk_service=bulk)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://t") as cli:
@@ -218,9 +213,7 @@ async def test_recalc_batch_queues_tasks(monkeypatch: pytest.MonkeyPatch) -> Non
 
     fake_task = MagicMock()
     fake_task.delay = MagicMock(return_value=MagicMock(id="task-1"))
-    monkeypatch.setattr(
-        pricing_tasks, "recalculate_sku_task", fake_task, raising=True
-    )
+    monkeypatch.setattr(pricing_tasks, "recalculate_sku_task", fake_task, raising=True)
 
     app, _ = _build_app()
     transport = ASGITransport(app=app)

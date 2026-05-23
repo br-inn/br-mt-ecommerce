@@ -62,9 +62,7 @@ async def get_role_permissions(
                 "status": 404,
             },
         )
-    permissions = [
-        PermissionResponse.model_validate(rp.permission) for rp in role.role_permissions
-    ]
+    permissions = [PermissionResponse.model_validate(rp.permission) for rp in role.role_permissions]
     return RoleWithPermissionsResponse(
         id=role.id,
         code=role.code,

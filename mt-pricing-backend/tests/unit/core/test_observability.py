@@ -35,11 +35,11 @@ def _reset_obs_state():
 # configure_observability
 # -----------------------------------------------------------------------------
 def test_configure_observability_is_idempotent() -> None:
-    with patch("app.core.logging.configure_logging") as p_log, patch(
-        "app.core.sentry.configure_sentry"
-    ) as p_sentry, patch(
-        "app.core.log_handlers.attach_better_stack_handler"
-    ) as p_bs:
+    with (
+        patch("app.core.logging.configure_logging") as p_log,
+        patch("app.core.sentry.configure_sentry") as p_sentry,
+        patch("app.core.log_handlers.attach_better_stack_handler") as p_bs,
+    ):
         configure_observability()
         configure_observability()
         configure_observability()
@@ -166,8 +166,13 @@ def test_handler_emit_drops_when_token_empty() -> None:
     client = MagicMock()
     handler = BetterStackHandler(token="", client=client)
     record = logging.LogRecord(
-        name="app", level=logging.INFO, pathname=__file__, lineno=1,
-        msg="m", args=(), exc_info=None,
+        name="app",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg="m",
+        args=(),
+        exc_info=None,
     )
     handler.emit(record)
     handler.flush()
@@ -179,8 +184,13 @@ def test_handler_emit_buffers_and_flush_sends_batch() -> None:
     handler = BetterStackHandler(token="tok", client=client)
     for i in range(3):
         record = logging.LogRecord(
-            name="app", level=logging.INFO, pathname=__file__, lineno=1,
-            msg=f"event-{i}", args=(), exc_info=None,
+            name="app",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg=f"event-{i}",
+            args=(),
+            exc_info=None,
         )
         handler.emit(record)
 

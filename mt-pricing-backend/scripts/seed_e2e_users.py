@@ -43,6 +43,7 @@ log = logging.getLogger("seed_e2e_users")
 # Definición de usuarios de test
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class E2EUser:
     email: str
@@ -78,16 +79,16 @@ E2E_USERS: list[E2EUser] = [
 # Helpers Supabase
 # ---------------------------------------------------------------------------
 
+
 def _get_admin_client() -> Any:
     """Crea cliente Supabase admin (service_role)."""
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     if not url or not key:
-        log.error(
-            "SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY deben estar en el entorno."
-        )
+        log.error("SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY deben estar en el entorno.")
         sys.exit(1)
     from supabase import create_client
+
     return create_client(url, key)
 
 
@@ -112,7 +113,11 @@ def _ensure_supabase_user(admin: Any, user: E2EUser) -> UUID:
         return uid
     except Exception as exc:
         err_msg = str(exc).lower()
-        if "already been registered" in err_msg or "email_exists" in err_msg or "already registered" in err_msg:
+        if (
+            "already been registered" in err_msg
+            or "email_exists" in err_msg
+            or "already registered" in err_msg
+        ):
             # Existe — listar y obtener id + actualizar password.
             log.info("  Supabase: usuario ya existe, actualizando password…")
             # list_users devuelve Page con .users
@@ -136,6 +141,7 @@ def _ensure_supabase_user(admin: Any, user: E2EUser) -> UUID:
 # ---------------------------------------------------------------------------
 # Helpers DB (asyncpg vía SQLAlchemy)
 # ---------------------------------------------------------------------------
+
 
 async def _ensure_db_user(user: E2EUser, supabase_id: UUID) -> None:
     """Upsert en public.users asignando el rol indicado."""
@@ -203,7 +209,9 @@ async def _ensure_db_user(user: E2EUser, supabase_id: UUID) -> None:
                 )
                 log.info(
                     "  DB: rol actualizado  %s  %s → %s",
-                    user.email, existing_role_id, user.role_code,
+                    user.email,
+                    existing_role_id,
+                    user.role_code,
                 )
             else:
                 log.info("  DB: sin cambios  %s", user.email)
@@ -216,6 +224,7 @@ async def _ensure_db_user(user: E2EUser, supabase_id: UUID) -> None:
 # ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     log.info("=== seed_e2e_users ===")

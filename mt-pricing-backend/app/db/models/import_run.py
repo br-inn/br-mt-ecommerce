@@ -64,30 +64,16 @@ class ImportRun(UuidPkMixin, TimestampMixin, Base):
     source_filename: Mapped[str] = mapped_column(Text, nullable=False)
     # Path en Supabase Storage (bucket `imports-raw`) o filesystem path en dev.
     source_storage_path: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=text("'queued'")
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'queued'"))
 
     total_rows: Mapped[int | None] = mapped_column(Integer)
-    inserted_rows: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    updated_rows: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    skipped_rows: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    error_rows: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    inserted_rows: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    updated_rows: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    skipped_rows: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    error_rows: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
-    errors: Mapped[list] = mapped_column(
-        JSONB, nullable=False, server_default=text("'[]'::jsonb")
-    )
-    summary: Mapped[dict] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'::jsonb")
-    )
+    errors: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    summary: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

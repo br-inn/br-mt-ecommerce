@@ -7,6 +7,7 @@ Fallback automático a AmazonSPFetcherStub cuando:
 - settings.MT_LIVE_NETWORK != "true"
 - Faltan credenciales SP_API_*
 """
+
 from __future__ import annotations
 
 import logging

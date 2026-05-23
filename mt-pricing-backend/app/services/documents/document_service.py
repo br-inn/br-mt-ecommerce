@@ -46,9 +46,7 @@ class DocumentService:
         return list(result.scalars().all())
 
     async def get_document(self, document_id: UUID) -> Document:
-        result = await self.session.execute(
-            select(Document).where(Document.id == document_id)
-        )
+        result = await self.session.execute(select(Document).where(Document.id == document_id))
         row = result.scalar_one_or_none()
         if row is None:
             raise DocumentDomainError(
@@ -59,9 +57,7 @@ class DocumentService:
         return row
 
     async def _get_optional(self, document_id: UUID) -> Document | None:
-        result = await self.session.execute(
-            select(Document).where(Document.id == document_id)
-        )
+        result = await self.session.execute(select(Document).where(Document.id == document_id))
         return result.scalar_one_or_none()
 
     async def _assert_asset_exists(self, asset_id: UUID) -> None:
@@ -93,8 +89,7 @@ class DocumentService:
         result = await self.session.execute(stmt)
         if result.scalar_one_or_none() is not None:
             raise DocumentDomainError(
-                f"Documento ya existe para (code={code}, version={version}, "
-                f"language={language})",
+                f"Documento ya existe para (code={code}, version={version}, language={language})",
                 code="document_conflict",
                 status_code=409,
             )

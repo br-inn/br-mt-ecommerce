@@ -24,10 +24,12 @@ class TestNormalizeTable:
         assert result == {"headers": ["DN", "PN", "Material"], "rows": [["50", "16", "Brass"]]}
 
     def test_collapses_whitespace_and_handles_none_cells(self) -> None:
-        result = _normalize_table([
-            ["DN", "  PN  ", None],
-            ["50", "16", "Brass\n  body"],
-        ])
+        result = _normalize_table(
+            [
+                ["DN", "  PN  ", None],
+                ["50", "16", "Brass\n  body"],
+            ]
+        )
         assert result is not None
         assert result["headers"] == ["DN", "PN", ""]
         assert result["rows"] == [["50", "16", "Brass body"]]
@@ -45,11 +47,7 @@ class TestExtractTables:
 
     def test_minimal_pdf_no_tables(self) -> None:
         # PDF mínimo válido — pdfplumber no encontrará tablas estructuradas.
-        payload = (
-            b"%PDF-1.4\n"
-            b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
-            b"%%EOF\n"
-        )
+        payload = b"%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n%%EOF\n"
         assert extract_tables_from_pdf(payload) == []
 
 
@@ -93,9 +91,7 @@ class TestExtractPdfMetadata:
         assert isinstance(meta["tables"], list)
         assert isinstance(meta["warnings"], list)
 
-    @pytest.mark.parametrize(
-        "key", ["parse_method", "page_count", "text", "tables", "warnings"]
-    )
+    @pytest.mark.parametrize("key", ["parse_method", "page_count", "text", "tables", "warnings"])
     def test_metadata_schema_has_all_keys(self, key: str) -> None:
         meta = extract_pdf_metadata(b"")
         assert key in meta

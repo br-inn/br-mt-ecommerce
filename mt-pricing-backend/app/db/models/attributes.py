@@ -61,9 +61,7 @@ class AttributeDefinition(UuidPkMixin, Base):
     is_seo_relevant: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
-    scope: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'product'")
-    )
+    scope: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'product'"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -102,16 +100,12 @@ class AttributeOption(UuidPkMixin, Base):
     )
     code: Mapped[str] = mapped_column(Text, nullable=False)
     label_en: Mapped[str] = mapped_column(Text, nullable=False)
-    order_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
     attribute: Mapped[AttributeDefinition] = relationship(back_populates="options")
 
     __table_args__ = (
-        UniqueConstraint(
-            "attribute_id", "code", name="uq_attribute_options_attr_code"
-        ),
+        UniqueConstraint("attribute_id", "code", name="uq_attribute_options_attr_code"),
         Index("ix_attribute_options_attribute", "attribute_id"),
     )
 
@@ -132,23 +126,15 @@ class FamilyAttribute(UuidPkMixin, Base):
         nullable=False,
     )
     group_code: Mapped[str] = mapped_column(Text, nullable=False)
-    order_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    is_required: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
-    validation_rule: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB, nullable=True
-    )
+    validation_rule: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     attribute: Mapped[AttributeDefinition] = relationship(back_populates="family_links")
 
     __table_args__ = (
-        UniqueConstraint(
-            "family_id", "attribute_id", name="uq_family_attributes_family_attr"
-        ),
+        UniqueConstraint("family_id", "attribute_id", name="uq_family_attributes_family_attr"),
         Index("ix_fa_family", "family_id"),
         Index("ix_fa_attribute", "attribute_id"),
     )
@@ -182,9 +168,7 @@ class AttributeValue(UuidPkMixin, Base):
     language: Mapped[str | None] = mapped_column(CHAR(2), nullable=True)
 
     attribute: Mapped[AttributeDefinition] = relationship()
-    enum_option: Mapped[AttributeOption | None] = relationship(
-        foreign_keys=[value_enum_id]
-    )
+    enum_option: Mapped[AttributeOption | None] = relationship(foreign_keys=[value_enum_id])
 
     __table_args__ = (
         UniqueConstraint(

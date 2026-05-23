@@ -65,7 +65,9 @@ MT_DELIVERY_DAYS = 2
 CHANNEL_MULTIPLIERS: dict[str, Decimal] = {
     "amazon_uae": Decimal("1.00"),
     "noon_uae": Decimal("1.00"),
-    "b2c_direct": Decimal("0.95"),  # Marketing propio menor → más margen, precio levemente competitivo
+    "b2c_direct": Decimal(
+        "0.95"
+    ),  # Marketing propio menor → más margen, precio levemente competitivo
     "b2b_direct": Decimal("0.85"),  # Distribuidor descuenta volumen
     "marketplace_listing": Decimal("1.00"),
 }
@@ -325,9 +327,7 @@ class PricingRuleEngine:
         referral_aed = pvp_min_calc * REFERRAL_PCT
         bancos_aed = pvp_min_calc * BANCOS_PCT
         devol_aed = pvp_min_calc * DEVOLUCIONES_PCT
-        total_costes = (
-            coste + logistica + fba_fee + vat_aed + referral_aed + bancos_aed + devol_aed
-        )
+        total_costes = coste + logistica + fba_fee + vat_aed + referral_aed + bancos_aed + devol_aed
 
         return {
             "pvp_min": _round(pvp_min_calc, 2),
@@ -347,9 +347,7 @@ class PricingRuleEngine:
     # ----------------------------------------------------------------------
     # 2.9 — regla_analyze_candidates
     # ----------------------------------------------------------------------
-    def analyze_candidates(
-        self, candidates: list[dict[str, Any]] | None
-    ) -> dict[str, Any]:
+    def analyze_candidates(self, candidates: list[dict[str, Any]] | None) -> dict[str, Any]:
         if not candidates:
             return {
                 "median_aed": None,
@@ -635,9 +633,7 @@ class PricingRuleEngine:
         subfamily = g(product, "subfamily")
         material = g(product, "material") or ""
         weight_raw = g(product, "weight")
-        weight: Decimal | None = (
-            Decimal(str(weight_raw)) if weight_raw is not None else None
-        )
+        weight: Decimal | None = Decimal(str(weight_raw)) if weight_raw is not None else None
         name = g(product, "name_en")
 
         # Determinar grupo G1/G2 — heurística simple (industrial = G2)
@@ -676,7 +672,10 @@ class PricingRuleEngine:
             market = scenario_overrides.get("market")
         market_summary = market or self.analyze_candidates(None)
         if scenario_overrides and scenario_overrides.get("median_aed"):
-            market_summary = {**market_summary, "median_aed": Decimal(str(scenario_overrides["median_aed"]))}
+            market_summary = {
+                **market_summary,
+                "median_aed": Decimal(str(scenario_overrides["median_aed"])),
+            }
 
         # Política agresiva (2.10-2.14)
         policy = self.apply_aggressive_policy(

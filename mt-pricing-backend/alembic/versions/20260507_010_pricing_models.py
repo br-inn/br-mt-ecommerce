@@ -190,7 +190,7 @@ def upgrade() -> None:
         schemes_sql = json.dumps(schemes).replace("'", "''")
         op.execute(
             f"INSERT INTO channels (code, name, state, schemes_supported) "
-            f"VALUES ('{code}', '{name.replace(chr(39), chr(39)*2)}', "
+            f"VALUES ('{code}', '{name.replace(chr(39), chr(39) * 2)}', "
             f"        '{state}', '{schemes_sql}'::jsonb) "
             f"ON CONFLICT (code) DO NOTHING;"
         )
@@ -239,9 +239,7 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("rate > 0", name="ck_fx_rate_positive"),
     )
-    op.create_index(
-        "idx_fx_lookup", "fx_rates", ["from_currency", "to_currency", "effective_from"]
-    )
+    op.create_index("idx_fx_lookup", "fx_rates", ["from_currency", "to_currency", "effective_from"])
     op.create_index(
         "idx_fx_active",
         "fx_rates",
@@ -344,9 +342,7 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("total >= 0", name="ck_costs_total_nonneg"),
     )
-    op.create_index(
-        "idx_costs_lookup", "costs", ["product_sku", "scheme_code", "valid_from"]
-    )
+    op.create_index("idx_costs_lookup", "costs", ["product_sku", "scheme_code", "valid_from"])
     op.create_index(
         "idx_costs_active",
         "costs",
@@ -473,9 +469,7 @@ def upgrade() -> None:
             name="ck_prices_status",
         ),
     )
-    op.create_index(
-        "idx_prices_lookup", "prices", ["product_sku", "channel_id", "scheme_code"]
-    )
+    op.create_index("idx_prices_lookup", "prices", ["product_sku", "channel_id", "scheme_code"])
     op.create_index(
         "idx_prices_pending",
         "prices",
@@ -561,9 +555,7 @@ def upgrade() -> None:
     ) in _EXCEPTION_RULES_SEED:
         desc_sql = description.replace("'", "''") if description else ""
         if channel_code:
-            channel_id_sql = (
-                f"(SELECT id FROM channels WHERE code = '{channel_code}')"
-            )
+            channel_id_sql = f"(SELECT id FROM channels WHERE code = '{channel_code}')"
         else:
             channel_id_sql = "NULL"
         scheme_sql = f"'{scheme_code}'" if scheme_code else "NULL"

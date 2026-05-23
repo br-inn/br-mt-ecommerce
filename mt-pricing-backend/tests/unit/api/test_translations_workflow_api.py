@@ -93,9 +93,7 @@ class _TranslationsRepo:
     def __init__(self, rows: list[_FakeTranslation]) -> None:
         self.rows = rows
 
-    async def get_one(
-        self, sku: str, lang: str
-    ) -> _FakeTranslation | None:
+    async def get_one(self, sku: str, lang: str) -> _FakeTranslation | None:
         for r in self.rows:
             if r.sku == sku and r.lang == lang:
                 return r
@@ -154,9 +152,7 @@ def _make_service(
     return svc
 
 
-def _build_app(
-    service: TranslationWorkflowService, user: _FakeUser
-) -> FastAPI:
+def _build_app(service: TranslationWorkflowService, user: _FakeUser) -> FastAPI:
     app = FastAPI()
     app.include_router(workflow_router, prefix="/api/v1")
 
@@ -176,6 +172,7 @@ def _build_app(
         for d in dep.dependencies:
             call = d.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call: Any = call) -> _FakeUser:  # noqa: ARG001
                     return user
 
@@ -198,9 +195,7 @@ async def test_request_review_endpoint_200() -> None:
     user = _FakeUser()
     app = _build_app(svc, user)
     async with await _client(app) as ac:
-        resp = await ac.post(
-            "/api/v1/products/MTBR4001050/translations/es/request-review"
-        )
+        resp = await ac.post("/api/v1/products/MTBR4001050/translations/es/request-review")
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["status"] == STATE_PENDING_REVIEW
@@ -214,9 +209,7 @@ async def test_request_review_invalid_state_returns_409() -> None:
     user = _FakeUser()
     app = _build_app(svc, user)
     async with await _client(app) as ac:
-        resp = await ac.post(
-            "/api/v1/products/MTBR4001050/translations/es/request-review"
-        )
+        resp = await ac.post("/api/v1/products/MTBR4001050/translations/es/request-review")
     assert resp.status_code == 409, resp.text
     body = resp.json()
     assert body["detail"]["code"] == "invalid_translation_state_transition"
@@ -227,17 +220,13 @@ async def test_request_review_unknown_translation_404() -> None:
     user = _FakeUser()
     app = _build_app(svc, user)
     async with await _client(app) as ac:
-        resp = await ac.post(
-            "/api/v1/products/MTBR4001050/translations/es/request-review"
-        )
+        resp = await ac.post("/api/v1/products/MTBR4001050/translations/es/request-review")
     assert resp.status_code == 404
     assert resp.json()["detail"]["code"] == "translation_not_found"
 
 
 async def test_reject_endpoint_200_with_reason() -> None:
-    row = _FakeTranslation(
-        "MTBR4001050", "es", status=STATE_PENDING_REVIEW
-    )
+    row = _FakeTranslation("MTBR4001050", "es", status=STATE_PENDING_REVIEW)
     svc = _make_service(rows=[row])
     user = _FakeUser()
     app = _build_app(svc, user)
@@ -253,9 +242,7 @@ async def test_reject_endpoint_200_with_reason() -> None:
 
 
 async def test_reject_missing_reason_returns_422() -> None:
-    row = _FakeTranslation(
-        "MTBR4001050", "es", status=STATE_PENDING_REVIEW
-    )
+    row = _FakeTranslation("MTBR4001050", "es", status=STATE_PENDING_REVIEW)
     svc = _make_service(rows=[row])
     user = _FakeUser()
     app = _build_app(svc, user)
@@ -269,9 +256,7 @@ async def test_reject_missing_reason_returns_422() -> None:
 
 
 async def test_reject_short_reason_returns_422() -> None:
-    row = _FakeTranslation(
-        "MTBR4001050", "es", status=STATE_PENDING_REVIEW
-    )
+    row = _FakeTranslation("MTBR4001050", "es", status=STATE_PENDING_REVIEW)
     svc = _make_service(rows=[row])
     user = _FakeUser()
     app = _build_app(svc, user)
@@ -315,9 +300,7 @@ async def test_mark_stale_idempotent_returns_zero() -> None:
     user = _FakeUser()
     app = _build_app(svc, user)
     async with await _client(app) as ac:
-        resp = await ac.post(
-            "/api/v1/products/MTBR4001050/translations/mark-stale"
-        )
+        resp = await ac.post("/api/v1/products/MTBR4001050/translations/mark-stale")
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["affected_count"] == 0

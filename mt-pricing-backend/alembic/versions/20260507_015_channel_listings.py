@@ -101,9 +101,7 @@ def upgrade() -> None:
         sa.UniqueConstraint(
             "channel_code", "external_id", name="uq_channel_listings_channel_external"
         ),
-        sa.UniqueConstraint(
-            "channel_code", "product_sku", name="uq_channel_listings_channel_sku"
-        ),
+        sa.UniqueConstraint("channel_code", "product_sku", name="uq_channel_listings_channel_sku"),
         sa.CheckConstraint(
             "buybox_state IN ('own','competitor','none')",
             name="ck_channel_listings_buybox_state",
@@ -119,12 +117,8 @@ def upgrade() -> None:
         "channel_listings",
         ["channel_code", "last_sync_at"],
     )
-    op.create_index(
-        "ix_channel_listings_product_sku", "channel_listings", ["product_sku"]
-    )
-    op.create_index(
-        "ix_channel_listings_channel_code", "channel_listings", ["channel_code"]
-    )
+    op.create_index("ix_channel_listings_product_sku", "channel_listings", ["product_sku"])
+    op.create_index("ix_channel_listings_channel_code", "channel_listings", ["channel_code"])
     op.execute(
         "CREATE TRIGGER trg_channel_listings_updated_at "
         "BEFORE UPDATE ON channel_listings "

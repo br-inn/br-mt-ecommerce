@@ -74,6 +74,7 @@ class ERPSyncEventsPage(BaseModel):
 # GET /admin/erp-eventos
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "",
     response_model=ERPSyncEventsPage,
@@ -82,9 +83,13 @@ class ERPSyncEventsPage(BaseModel):
 async def list_erp_eventos(
     current_user: Annotated[User, Depends(require_role("admin"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
-    status: str | None = Query(default=None, description="Filtrar por status: pending, delivered, failed, skipped"),
+    status: str | None = Query(
+        default=None, description="Filtrar por status: pending, delivered, failed, skipped"
+    ),
     limit: int = Query(default=50, ge=1, le=200),
-    cursor: str | None = Query(default=None, description="Cursor opaco — valor del campo created_at de la última fila"),
+    cursor: str | None = Query(
+        default=None, description="Cursor opaco — valor del campo created_at de la última fila"
+    ),
 ) -> ERPSyncEventsPage:
     """Lista ERPSyncEvent con filtro opcional por ``status`` y cursor pagination.
 
@@ -129,6 +134,7 @@ async def list_erp_eventos(
 # ---------------------------------------------------------------------------
 # PATCH /admin/erp-eventos/{event_id}/retry
 # ---------------------------------------------------------------------------
+
 
 @router.patch(
     "/{event_id}/retry",

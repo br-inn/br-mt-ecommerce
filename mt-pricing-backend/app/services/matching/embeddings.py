@@ -7,6 +7,7 @@ Carga lazy: el modelo NO se instancia al importar el módulo — solo cuando
 se llama por primera vez a `embed_offer()`. Esto evita penalizar el startup
 del backend (que no necesita embeddings) y solo afecta al worker.
 """
+
 from __future__ import annotations
 
 import logging

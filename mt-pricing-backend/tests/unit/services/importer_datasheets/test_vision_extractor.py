@@ -40,7 +40,7 @@ def test_parse_vision_response_clean_json() -> None:
 
 
 def test_parse_vision_response_with_prose_around() -> None:
-    txt = "Sure, here is the JSON: {\"dn\": \"DN65\"} — that's it."
+    txt = 'Sure, here is the JSON: {"dn": "DN65"} — that\'s it.'
     out = _parse_vision_response(txt)
     assert out == {"dn": "DN65"}
 
@@ -113,9 +113,7 @@ def _renderer_factory(num_pages: int = 1) -> Any:
 
 
 async def test_extract_happy_single_page() -> None:
-    client = _MockClient(
-        ['{"dn":"DN50","pn":"PN16","material":"brass","seal":"epdm"}']
-    )
+    client = _MockClient(['{"dn":"DN50","pn":"PN16","material":"brass","seal":"epdm"}'])
     extractor = VisionExtractor(client=client, page_renderer=_renderer_factory(1))
     res = await extractor.extract(pdf_bytes=b"%PDF-1.4", filename="MTFT_5114.pdf")
     assert res.skipped is False
@@ -169,9 +167,7 @@ async def test_extract_continues_when_client_raises() -> None:
         async def extract(self, *, png_bytes: bytes, prompt: str) -> str:
             raise RuntimeError("openai 500")
 
-    extractor = VisionExtractor(
-        client=_FlakyClient(), page_renderer=_renderer_factory(2)
-    )
+    extractor = VisionExtractor(client=_FlakyClient(), page_renderer=_renderer_factory(2))
     res = await extractor.extract(pdf_bytes=b"%PDF-1.4", filename="x.pdf")
     # Sin specs detectados → confidence 0
     assert res.specs == {}
@@ -187,18 +183,12 @@ async def test_openai_vision_extractor_uses_data_url() -> None:
     fake_response = MagicMock()
     fake_response.raise_for_status = MagicMock()
     fake_response.json = MagicMock(
-        return_value={
-            "choices": [
-                {"message": {"content": '{"dn":"DN100"}'}}
-            ]
-        }
+        return_value={"choices": [{"message": {"content": '{"dn":"DN100"}'}}]}
     )
     fake_http = MagicMock()
     fake_http.post = AsyncMock(return_value=fake_response)
 
-    extractor = OpenAIVisionExtractor(
-        api_key="sk-test", model="gpt-4o-mini", http_client=fake_http
-    )
+    extractor = OpenAIVisionExtractor(api_key="sk-test", model="gpt-4o-mini", http_client=fake_http)
     out = await extractor.extract(png_bytes=b"\x89PNGdata", prompt="hello")
     assert out == '{"dn":"DN100"}'
     fake_http.post.assert_awaited_once()

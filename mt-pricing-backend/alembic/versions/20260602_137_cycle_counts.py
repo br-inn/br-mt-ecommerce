@@ -8,6 +8,7 @@ Tablas:
 - ``cycle_counts`` — registros de ejecución de conteos cíclicos por schedule × SKU × almacén.
   Almacena qty contada, qty sistema (snapshot) y varianza calculada.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa

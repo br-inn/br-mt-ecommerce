@@ -35,9 +35,7 @@ class ProductDatasheetRepository(BaseRepository[ProductDatasheet]):
     soft_delete_field = None
 
     async def find_by_storage_path(self, storage_path: str) -> ProductDatasheet | None:
-        stmt = select(ProductDatasheet).where(
-            ProductDatasheet.storage_path == storage_path
-        )
+        stmt = select(ProductDatasheet).where(ProductDatasheet.storage_path == storage_path)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

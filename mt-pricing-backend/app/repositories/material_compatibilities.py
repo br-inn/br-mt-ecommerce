@@ -46,9 +46,7 @@ class MaterialCompatibilitiesRepository:
         )
         return len(rows)
 
-    async def find_by_descriptor(
-        self, descriptor: str
-    ) -> list[MaterialCompatibility]:
+    async def find_by_descriptor(self, descriptor: str) -> list[MaterialCompatibility]:
         stmt = (
             select(MaterialCompatibility)
             .where(MaterialCompatibility.producto_descriptor == descriptor)
@@ -60,9 +58,7 @@ class MaterialCompatibilitiesRepository:
     async def count(self) -> int:
         from sqlalchemy import func
 
-        result = await self.session.execute(
-            select(func.count()).select_from(MaterialCompatibility)
-        )
+        result = await self.session.execute(select(func.count()).select_from(MaterialCompatibility))
         return int(result.scalar_one())
 
     @staticmethod

@@ -167,9 +167,7 @@ class TestAttributeService:
         session.get = AsyncMock(return_value=attr)
         svc = AttributeService(session)
         with pytest.raises(AttributeDomainError) as exc:
-            await svc.create_option(
-                attr.id, {"code": "x", "label_en": "X", "order_index": 0}
-            )
+            await svc.create_option(attr.id, {"code": "x", "label_en": "X", "order_index": 0})
         assert exc.value.code == "attribute_not_enum"
 
 

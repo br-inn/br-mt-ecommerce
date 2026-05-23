@@ -96,9 +96,8 @@ def _build_app(
                 if dep.call is None:
                     continue
                 fn = dep.call
-                if (
-                    fn.__module__ == require_permissions.__module__
-                    and fn.__qualname__.startswith("require_permissions.")
+                if fn.__module__ == require_permissions.__module__ and fn.__qualname__.startswith(
+                    "require_permissions."
                 ):
                     app.dependency_overrides[fn] = _override_perms_factory()
 
@@ -171,9 +170,7 @@ async def test_apply_invokes_product_service() -> None:
             files={"files": ("MTFT_5114.pdf", payload, "application/pdf")},
         )
         run_id = resp.json()["run_id"]
-        resp_apply = await cli.post(
-            f"/api/v1/imports/datasheets/{run_id}/apply", json={}
-        )
+        resp_apply = await cli.post(f"/api/v1/imports/datasheets/{run_id}/apply", json={})
     assert resp_apply.status_code == 200, resp_apply.text
     body = resp_apply.json()
     assert body["status"] == "completed"
@@ -201,16 +198,12 @@ async def test_apply_invalid_state_409() -> None:
         run_id = resp.json()["run_id"]
         await cli.post(f"/api/v1/imports/datasheets/{run_id}/apply", json={})
         # Segundo apply → 409
-        resp2 = await cli.post(
-            f"/api/v1/imports/datasheets/{run_id}/apply", json={}
-        )
+        resp2 = await cli.post(f"/api/v1/imports/datasheets/{run_id}/apply", json={})
     assert resp2.status_code == 409
 
 
 async def test_preview_multi_sku_filename() -> None:
-    app, _, _ = _build_app(
-        sku_mapping={"5114": "MT-V-5114", "5115": "MT-V-5115"}
-    )
+    app, _, _ = _build_app(sku_mapping={"5114": "MT-V-5114", "5115": "MT-V-5115"})
     payload = _mk_pdf("DN50 PN16 brass")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://t") as cli:

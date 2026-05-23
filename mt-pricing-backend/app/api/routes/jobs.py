@@ -45,9 +45,7 @@ router = APIRouter(prefix="/admin/jobs", tags=["Jobs Admin"])
 def _serialize_run(run: JobRun) -> JobRunResponse:
     duration_ms: int | None = None
     if run.started_at and run.finished_at:
-        duration_ms = int(
-            (run.finished_at - run.started_at).total_seconds() * 1000
-        )
+        duration_ms = int((run.finished_at - run.started_at).total_seconds() * 1000)
     return JobRunResponse(
         id=run.id,
         job_id=run.job_id,
@@ -82,11 +80,7 @@ async def list_jobs(
         stmt = stmt.where(JobDefinition.enabled.is_(enabled))
     if owner is not None:
         stmt = stmt.where(JobDefinition.owner == owner)
-    stmt = (
-        stmt.order_by(JobDefinition.next_run_at.asc().nullslast())
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = stmt.order_by(JobDefinition.next_run_at.asc().nullslast()).limit(limit).offset(offset)
     result = await session.execute(stmt)
     rows = result.scalars().all()
     return [JobDefinitionListItem.model_validate(j) for j in rows]

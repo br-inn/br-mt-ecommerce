@@ -36,12 +36,7 @@ def test_extract_simple_text() -> None:
 
 
 def test_extract_text_dedups() -> None:
-    payload = (
-        b"%PDF-1.4\n"
-        b"BT (Same Text) Tj ET\n"
-        b"BT (Same Text) Tj ET\n"
-        b"%%EOF"
-    )
+    payload = b"%PDF-1.4\nBT (Same Text) Tj ET\nBT (Same Text) Tj ET\n%%EOF"
     text = extract_text_from_pdf(payload)
     # Solo aparece una vez por dedupe
     assert text.count("Same Text") == 1
@@ -61,21 +56,13 @@ def test_extract_empty_payload_raises() -> None:
 
 def test_extract_with_escapes() -> None:
     # Paréntesis escapados \\( y \\) no rompen el parseo.
-    payload = (
-        b"%PDF-1.4\n"
-        b"BT (Datos\\(DN50\\)PN16) Tj ET\n"
-        b"%%EOF"
-    )
+    payload = b"%PDF-1.4\nBT (Datos\\(DN50\\)PN16) Tj ET\n%%EOF"
     text = extract_text_from_pdf(payload)
     assert "DN50" in text
 
 
 def test_extract_tj_block_with_array() -> None:
-    payload = (
-        b"%PDF-1.4\n"
-        b"BT [(Brass )(body) (DN50)] TJ ET\n"
-        b"%%EOF"
-    )
+    payload = b"%PDF-1.4\nBT [(Brass )(body) (DN50)] TJ ET\n%%EOF"
     text = extract_text_from_pdf(payload)
     assert "Brass" in text
     assert "DN50" in text

@@ -1,4 +1,5 @@
 """Unit tests for AmazonListingExporter — no DB, pure mock."""
+
 import csv
 import io
 from unittest.mock import MagicMock
@@ -163,7 +164,9 @@ class TestBuildRow:
 class TestValidate:
     def test_complete_product_has_no_errors(self):
         exporter = AmazonListingExporter()
-        errors, warnings = exporter.validate(_make_product(), _make_listing(), _make_channel_listing())
+        errors, warnings = exporter.validate(
+            _make_product(), _make_listing(), _make_channel_listing()
+        )
         assert errors == []
 
     def test_missing_gtin_is_error(self):

@@ -43,6 +43,7 @@ _VLM_UNCERTAIN_CONFIDENCE_THRESHOLD = Decimal("0.50")
 # Adapter Fase 1 — RagOnly (activo)
 # ---------------------------------------------------------------------------
 
+
 class RagOnlyComparatorAdapter(ComparatorPort):
     """Adapter RAG puro — Fase 1 activo.
 
@@ -139,9 +140,7 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             deal_breakers = vlm_data.get("deal_breakers_triggered") or None
             judge_model_version = vlm_data.get("model_version")
 
-        if judge_confidence is not None and not (
-            Decimal("0") <= judge_confidence <= Decimal("1")
-        ):
+        if judge_confidence is not None and not (Decimal("0") <= judge_confidence <= Decimal("1")):
             logger.warning(
                 "comparator.rag_only.confirm_match: confidence fuera de rango [0,1] "
                 "listing_id=%s confidence=%s — forzado a None",
@@ -187,16 +186,10 @@ class RagOnlyComparatorAdapter(ComparatorPort):
                 canonical_domains = await get_canonical_domains(
                     session=self._session, product_sku=product_sku
                 )
-                boosted_conf, was_boosted = apply_ris_boost(
-                    cal_conf, ris_result, canonical_domains
-                )
+                boosted_conf, was_boosted = apply_ris_boost(cal_conf, ris_result, canonical_domains)
 
-                listing_stmt = select(CompetitorListing).where(
-                    CompetitorListing.id == listing_id
-                )
-                listing_row = (
-                    await self._session.execute(listing_stmt)
-                ).scalar_one_or_none()
+                listing_stmt = select(CompetitorListing).where(CompetitorListing.id == listing_id)
+                listing_row = (await self._session.execute(listing_stmt)).scalar_one_or_none()
                 if listing_row is not None:
                     listing_row.reverse_image_hits = [
                         {"url": h.url, "domain": h.domain, "similarity": h.similarity}

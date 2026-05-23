@@ -38,17 +38,18 @@ def upgrade() -> None:
             server_default=sa.text("'released'"),
         ),
         sa.Column("po_line_id", sa.UUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.CheckConstraint(
             "quality_status IN ('released','hold','blocked')",
             name="ck_lot_quality_status",
         ),
-        sa.ForeignKeyConstraint(
-            ["product_sku"], ["products.sku"], ondelete="RESTRICT"
-        ),
-        sa.ForeignKeyConstraint(
-            ["po_line_id"], ["purchase_order_lines.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["product_sku"], ["products.sku"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["po_line_id"], ["purchase_order_lines.id"], ondelete="SET NULL"),
         sa.UniqueConstraint("lot_number", "product_sku", name="uq_lot_number_product"),
         sa.PrimaryKeyConstraint("id"),
     )

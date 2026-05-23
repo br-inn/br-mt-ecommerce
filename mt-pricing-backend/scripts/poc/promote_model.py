@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # DB helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_database_url() -> str:
     """Lee DATABASE_URL desde el entorno."""
     import os
@@ -59,6 +60,7 @@ def _make_sessionmaker(database_url: str) -> async_sessionmaker[AsyncSession]:
 # Core promotion logic
 # ---------------------------------------------------------------------------
 
+
 async def _promote(
     model_id: str,
     env: str,
@@ -86,9 +88,7 @@ async def _promote(
     async with sessionmaker() as session:
         async with session.begin():
             # 1. Buscar el modelo objetivo
-            stmt = select(ComparatorModelRegistry).where(
-                ComparatorModelRegistry.id == target_uuid
-            )
+            stmt = select(ComparatorModelRegistry).where(ComparatorModelRegistry.id == target_uuid)
             target = (await session.execute(stmt)).scalar_one_or_none()
 
             if target is None:
@@ -130,6 +130,7 @@ async def _promote(
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

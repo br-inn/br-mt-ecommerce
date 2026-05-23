@@ -17,6 +17,7 @@ from app.schemas.tech_tables import (
 
 # ---- materials_matrix ----------------------------------------------------------
 
+
 def test_materials_matrix_happy() -> None:
     data = {
         "rows": [
@@ -30,9 +31,7 @@ def test_materials_matrix_happy() -> None:
 
 def test_materials_matrix_missing_required_field() -> None:
     with pytest.raises(ValidationError):
-        ProductTechTableCreate(
-            kind="materials_matrix", data={"rows": [{"material": "brass"}]}
-        )
+        ProductTechTableCreate(kind="materials_matrix", data={"rows": [{"material": "brass"}]})
 
 
 def test_materials_matrix_extra_forbidden() -> None:
@@ -43,6 +42,7 @@ def test_materials_matrix_extra_forbidden() -> None:
 
 
 # ---- dimensions_by_dn ----------------------------------------------------------
+
 
 def test_dimensions_by_dn_happy_with_columns() -> None:
     data = {
@@ -80,6 +80,7 @@ def test_dimensions_by_dn_null_measure_value_ok() -> None:
 
 # ---- pressure_temperature ------------------------------------------------------
 
+
 def test_pressure_temperature_happy() -> None:
     data = {
         "points": [
@@ -107,6 +108,7 @@ def test_pressure_temperature_temp_out_of_range_rejected() -> None:
 
 
 # ---- generic ------------------------------------------------------------------
+
 
 def test_create_invalid_kind_rejected() -> None:
     with pytest.raises(ValidationError):

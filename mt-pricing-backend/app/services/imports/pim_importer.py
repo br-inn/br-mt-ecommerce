@@ -97,7 +97,8 @@ class PimImporter:
         if self._division_codes:
             logger.info(
                 "PimImporter run_id=%s aplicará divisions=%s a cada SKU.",
-                self.run_id, self._division_codes,
+                self.run_id,
+                self._division_codes,
             )
 
         if not self.source_path.exists():
@@ -108,9 +109,7 @@ class PimImporter:
         from openpyxl import load_workbook
 
         try:
-            wb = load_workbook(
-                str(self.source_path), read_only=True, data_only=True
-            )
+            wb = load_workbook(str(self.source_path), read_only=True, data_only=True)
         except Exception as exc:  # noqa: BLE001
             await self._mark_failed(f"openpyxl load failed: {exc}")
             raise
@@ -128,9 +127,7 @@ class PimImporter:
 
             header_errors = self._collect_header_errors(header)
             if header_errors:
-                await self._mark_failed(
-                    "Header mismatch: " + "; ".join(header_errors[:5])
-                )
+                await self._mark_failed("Header mismatch: " + "; ".join(header_errors[:5]))
                 return self._run
 
             # Marca run como running.
@@ -171,9 +168,7 @@ class PimImporter:
                                 "error": str(exc)[:200],
                             }
                         )
-                    logger.warning(
-                        "PimImporter row %d failed: %s", row_idx + 1, exc
-                    )
+                    logger.warning("PimImporter row %d failed: %s", row_idx + 1, exc)
 
                 # Commit periódico — flush al ImportRun + a products.
                 if row_idx % COMMIT_EVERY_N_ROWS == 0:
@@ -213,13 +208,14 @@ class PimImporter:
             "max_errors_logged": MAX_ERRORS_LOGGED,
         }
         self._run.finished_at = datetime.now(tz=timezone.utc)
-        self._run.status = (
-            "completed" if error_rows == 0 else "completed_with_errors"
-        )
+        self._run.status = "completed" if error_rows == 0 else "completed_with_errors"
         await self.session.commit()
         logger.info(
             "PimImporter completed run_id=%s inserted=%d updated=%d errors=%d",
-            self.run_id, inserted, updated, error_rows,
+            self.run_id,
+            inserted,
+            updated,
+            error_rows,
         )
         return self._run
 
@@ -229,18 +225,13 @@ class PimImporter:
         """Devuelve lista de mismatches contra EXPECTED_HEADERS. Vacia → OK."""
         errors: list[str] = []
         if len(header) < len(EXPECTED_HEADERS):
-            errors.append(
-                f"Header con {len(header)} columnas; esperadas "
-                f"{len(EXPECTED_HEADERS)}."
-            )
+            errors.append(f"Header con {len(header)} columnas; esperadas {len(EXPECTED_HEADERS)}.")
             return errors
         for i, expected in enumerate(EXPECTED_HEADERS):
             actual = header[i]
             actual_str = (str(actual) if actual is not None else "").strip()
             if actual_str != expected:
-                errors.append(
-                    f"col {i}: esperado {expected!r}, recibido {actual_str!r}"
-                )
+                errors.append(f"col {i}: esperado {expected!r}, recibido {actual_str!r}")
         return errors
 
     async def _mark_failed(self, reason: str) -> None:
@@ -259,9 +250,7 @@ class PimImporter:
             await self.session.rollback()
 
     # --------------------------------------------------------- row process
-    async def _process_row(
-        self, row: tuple[Any, ...], row_idx: int
-    ) -> str:
+    async def _process_row(self, row: tuple[Any, ...], row_idx: int) -> str:
         """Procesa una fila: cast → upsert. Devuelve 'inserted'|'updated'|'skipped'."""
         payload = map_pim_row_to_product(row)
         cast_errors = payload.pop("_row_errors", None)
@@ -346,7 +335,8 @@ class PimImporter:
         except Exception:  # noqa: BLE001
             logger.exception(
                 "PimImporter assign_divisions failed sku=%s codes=%s",
-                sku, self._division_codes,
+                sku,
+                self._division_codes,
             )
             raise
 
@@ -370,9 +360,7 @@ class PimImporter:
                 reason=f"PIM batch import run {self.run_id}",
             )
         except Exception:  # noqa: BLE001
-            logger.exception(
-                "PimImporter audit failed sku=%s action=%s", sku, action
-            )
+            logger.exception("PimImporter audit failed sku=%s action=%s", sku, action)
 
 
 def _safe_repr(value: Any) -> Any:

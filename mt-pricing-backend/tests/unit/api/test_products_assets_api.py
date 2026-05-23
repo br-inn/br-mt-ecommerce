@@ -154,8 +154,10 @@ def _build_app(
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
+
                 async def _allow(_call=call) -> _FakeUser:  # noqa: ARG001
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -182,16 +184,18 @@ def _mock_asset_service(assets: list | None = None) -> Any:
     svc = MagicMock()
     _assets = assets or []
     svc.list_for_product = AsyncMock(return_value=_assets)
-    svc.generate_signed_upload_url = MagicMock(return_value={
-        "storage_path": "products/MT-V-038/photos/abc_img.jpg",
-        "upload_url": "https://fake-storage.local/product-images/...",
-        "token": "fake-token",
-        "method": "PUT",
-        "headers": {"Content-Type": "image/jpeg"},
-        "expires_in": 600,
-        "bucket": "product-images",
-        "kind": "photo",
-    })
+    svc.generate_signed_upload_url = MagicMock(
+        return_value={
+            "storage_path": "products/MT-V-038/photos/abc_img.jpg",
+            "upload_url": "https://fake-storage.local/product-images/...",
+            "token": "fake-token",
+            "method": "PUT",
+            "headers": {"Content-Type": "image/jpeg"},
+            "expires_in": 600,
+            "bucket": "product-images",
+            "kind": "photo",
+        }
+    )
     svc.confirm_upload = AsyncMock(return_value=_make_asset())
     svc.set_primary = AsyncMock(return_value=_make_asset(is_primary=True))
     svc.archive = AsyncMock(return_value=_make_asset(status="archived"))
@@ -310,9 +314,7 @@ async def test_confirm_asset_upload_returns_201() -> None:
 
 async def test_confirm_asset_upload_422_on_service_error() -> None:
     svc = _mock_asset_service()
-    svc.confirm_upload = AsyncMock(
-        side_effect=AssetValidationError("bytes_size excede límite")
-    )
+    svc.confirm_upload = AsyncMock(side_effect=AssetValidationError("bytes_size excede límite"))
     app = _build_app(_FakeUser(), _mock_product_service(), svc)
     asset_id = uuid4()
 

@@ -62,7 +62,11 @@ def upgrade() -> None:
         sa.Column(
             "lifecycle_status",
             postgresql.ENUM(
-                "draft", "active", "deprecated", "replaced", "discontinued",
+                "draft",
+                "active",
+                "deprecated",
+                "replaced",
+                "discontinued",
                 name="lifecycle_status",
                 create_type=False,
             ),

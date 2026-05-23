@@ -5,6 +5,7 @@ US-F15-01-04 — Sprint 10 Wave 4.
 Requiere Neo4j local corriendo (bolt://localhost:17687).
 Ejecutar con: pytest -m neo4j_real tests/integration/services/comparator/
 """
+
 from __future__ import annotations
 
 from uuid import uuid4

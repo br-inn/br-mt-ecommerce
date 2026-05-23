@@ -33,15 +33,17 @@ _MOCK_TOOL_INPUT = {
         {"component": "seal", "material": "nbr"},
     ],
     "dimensions": [
-        {"dn_label": "1/4\"", "values": {"L": 54.0, "H": 57.0}},
-        {"dn_label": "1/2\"", "values": {"L": 63.0, "H": 64.0}},
+        {"dn_label": '1/4"', "values": {"L": 54.0, "H": 57.0}},
+        {"dn_label": '1/2"', "values": {"L": 63.0, "H": 64.0}},
     ],
     "model_gaps": ["tabla par de apriete"],
     "confidence": 0.92,
 }
 
 
-def _make_mock_response(name: str = "extract_product_fields", data: dict | None = None) -> MagicMock:
+def _make_mock_response(
+    name: str = "extract_product_fields", data: dict | None = None
+) -> MagicMock:
     block = MagicMock()
     block.type = "tool_use"
     block.name = name
@@ -96,7 +98,7 @@ def test_format_tables_empty():
 
 
 def test_format_tables_with_data():
-    tables = [{"page": 1, "headers": ["DN", "L", "H"], "rows": [["1/2\"", "63", "64"]]}]
+    tables = [{"page": 1, "headers": ["DN", "L", "H"], "rows": [['1/2"', "63", "64"]]}]
     s = _format_tables(tables)
     assert "DN" in s
     assert "63" in s
@@ -107,7 +109,10 @@ async def test_page_classification_with_mock(monkeypatch):
     monkeypatch.setenv("MT_LIVE_NETWORK", "true")
     mock_client = AsyncMock()
     mock_client.messages.create = AsyncMock(
-        return_value=_make_mock_response("classify_pdf_page", {"kind": "dimension_drawing", "confidence": 0.9, "description": "test"})
+        return_value=_make_mock_response(
+            "classify_pdf_page",
+            {"kind": "dimension_drawing", "confidence": 0.9, "description": "test"},
+        )
     )
     extractor = FichaEnrichmentExtractor(api_key="sk-test")
     fake_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100

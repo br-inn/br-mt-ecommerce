@@ -95,8 +95,8 @@ class ReviseService:
         pricing_service: PricingServiceReviseProtocol | None = None,
     ) -> None:
         self.session = session
-        self.pricing_service: PricingServiceReviseProtocol = (
-            pricing_service or PricingService(session)
+        self.pricing_service: PricingServiceReviseProtocol = pricing_service or PricingService(
+            session
         )
         self.audit = AuditRepository(session)
 
@@ -125,9 +125,7 @@ class ReviseService:
         delta_pct: Decimal | None = None
         if old_amount and Decimal(old_amount) > 0:
             try:
-                delta_pct = (Decimal(new_amount) - Decimal(old_amount)) / Decimal(
-                    old_amount
-                )
+                delta_pct = (Decimal(new_amount) - Decimal(old_amount)) / Decimal(old_amount)
             except (ArithmeticError, ValueError):  # pragma: no cover
                 delta_pct = None
 
