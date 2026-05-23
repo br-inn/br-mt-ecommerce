@@ -22,10 +22,9 @@ Cobertura BDD (≥6 casos cubriendo todos los AC del trigger):
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
@@ -40,8 +39,9 @@ pytestmark = [pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     """``alembic upgrade head`` antes de los tests del módulo."""
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
@@ -52,13 +52,13 @@ def _migrate(postgres_container: str) -> None:
 # Fixtures de soporte — productos, suppliers, schemes, fx_rates ya seeded por
 # las migraciones (010 + 017). Sólo necesitamos un SKU dummy para FK.
 # ---------------------------------------------------------------------------
-async def _ensure_test_sku(session: "AsyncSession", sku: str = "TEST-COST-001") -> str:
+async def _ensure_test_sku(session: AsyncSession, sku: str = "TEST-COST-001") -> str:
     """Inserta un product mínimo si no existe y retorna su sku."""
     await session.execute(
         text(
             """
-            INSERT INTO products (sku, name_en, family, brand, data_quality)
-            VALUES (:sku, 'Test Cost SKU', 'ball_valve', 'TestBrand', 'complete')
+            INSERT INTO products (sku, family, brand, data_quality)
+            VALUES (:sku, 'ball_valve', 'TestBrand', 'complete')
             ON CONFLICT (sku) DO NOTHING
             """
         ),
@@ -68,7 +68,7 @@ async def _ensure_test_sku(session: "AsyncSession", sku: str = "TEST-COST-001") 
 
 
 async def _ensure_test_supplier(
-    session: "AsyncSession", code: str = "TEST_SUP_FX"
+    session: AsyncSession, code: str = "TEST_SUP_FX"
 ) -> str:
     await session.execute(
         text(
@@ -83,12 +83,12 @@ async def _ensure_test_supplier(
     return code
 
 
-async def _purge_costs(session: "AsyncSession", sku: str) -> None:
+async def _purge_costs(session: AsyncSession, sku: str) -> None:
     await session.execute(text("DELETE FROM costs WHERE sku = :sku"), {"sku": sku})
 
 
 async def _insert_cost(
-    session: "AsyncSession",
+    session: AsyncSession,
     *,
     sku: str,
     scheme_code: str,
@@ -134,7 +134,7 @@ async def _insert_cost(
     return str(res.scalar_one())
 
 
-async def _row_by_id(session: "AsyncSession", row_id: str) -> dict:
+async def _row_by_id(session: AsyncSession, row_id: str) -> dict:
     res = await session.execute(
         text(
             """
@@ -152,10 +152,10 @@ async def _row_by_id(session: "AsyncSession", row_id: str) -> dict:
 
 
 async def _ensure_eur_aed_rate(
-    session: "AsyncSession", *, rate: float = 4.29, effective_from: datetime | None = None
+    session: AsyncSession, *, rate: float = 4.29, effective_from: datetime | None = None
 ) -> str:
     """Asegura un rate EUR→AED vigente. Retorna su id."""
-    eff = effective_from or datetime(2026, 1, 1, tzinfo=timezone.utc)
+    eff = effective_from or datetime(2026, 1, 1, tzinfo=UTC)
     # Check if there's already an active rate covering effective_from.
     res = await session.execute(
         text(
@@ -190,12 +190,12 @@ async def _ensure_eur_aed_rate(
 # AC-1 — trigger estampa fx_rate_id automáticamente (currency_origin='EUR')
 # ---------------------------------------------------------------------------
 async def test_trigger_stamps_fx_rate_id_when_currency_eur(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
 
     cost_id = await _insert_cost(
         db_session,
@@ -214,12 +214,12 @@ async def test_trigger_stamps_fx_rate_id_when_currency_eur(
 # AC-2 — fx_rate_id explícito se respeta y NO se sobrescribe
 # ---------------------------------------------------------------------------
 async def test_explicit_fx_rate_id_is_preserved(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     fx_a = await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
 
     cost_id = await _insert_cost(
         db_session,
@@ -238,7 +238,7 @@ async def test_explicit_fx_rate_id_is_preserved(
 # AC-3 — sin rate vigente para currency_origin → trigger falla
 # ---------------------------------------------------------------------------
 async def test_missing_fx_rate_raises_with_canonical_code(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
@@ -258,7 +258,7 @@ async def test_missing_fx_rate_raises_with_canonical_code(
         text("DELETE FROM fx_rates WHERE from_currency='GBP' AND to_currency='AED'")
     )
 
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
     with pytest.raises((IntegrityError, InternalError, Exception)) as ei:
         await _insert_cost(
             db_session,
@@ -275,11 +275,11 @@ async def test_missing_fx_rate_raises_with_canonical_code(
 # AC-1 (bis) — currency='AED' → fx_rate_id permanece NULL, no falla
 # ---------------------------------------------------------------------------
 async def test_aed_origin_keeps_fx_rate_id_null(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
 
     cost_id = await _insert_cost(
         db_session,
@@ -297,12 +297,12 @@ async def test_aed_origin_keeps_fx_rate_id_null(
 # AC-4 — scheme_landed_aed se calcula automáticamente desde el breakdown
 # ---------------------------------------------------------------------------
 async def test_scheme_landed_aed_computed_on_insert(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
 
     cost_id = await _insert_cost(
         db_session,
@@ -329,12 +329,12 @@ async def test_scheme_landed_aed_computed_on_insert(
 # AC-6 — UPDATE de breakdown recalcula scheme_landed_aed
 # ---------------------------------------------------------------------------
 async def test_update_breakdown_recomputes_landed_aed(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
 
     cost_id = await _insert_cost(
         db_session,
@@ -367,12 +367,12 @@ async def test_update_breakdown_recomputes_landed_aed(
 # UNIQUE parcial — sólo 1 active por (sku, scheme_code, supplier_code).
 # ---------------------------------------------------------------------------
 async def test_unique_active_constraint_prevents_duplicate_active(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
 
     await _insert_cost(
         db_session,
@@ -402,11 +402,11 @@ async def test_unique_active_constraint_prevents_duplicate_active(
 # ---------------------------------------------------------------------------
 # AC-5 — fx_inferred=true persiste correctamente para audit
 # ---------------------------------------------------------------------------
-async def test_fx_inferred_flag_is_persisted(db_session: "AsyncSession") -> None:
+async def test_fx_inferred_flag_is_persisted(db_session: AsyncSession) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    eff = datetime(2026, 6, 12, tzinfo=UTC)
 
     cost_id = await _insert_cost(
         db_session,

@@ -6,7 +6,8 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, exists, func, or_, select, update as sa_update
+from sqlalchemy import and_, exists, func, literal_column, or_, select
+from sqlalchemy import update as sa_update
 from sqlalchemy.orm import joinedload, noload, selectinload
 
 from app.db.enums import DataQuality
@@ -256,31 +257,33 @@ class ProductRepository(BaseRepository[Product]):
             )
             if dialect == "postgresql":
                 # Documento ponderado: sku 'A', name_en 'B', family 'C', brand 'D'.
+                # literal_column evita que asyncpg envíe el peso como VARCHAR bind;
+                # setweight requiere "char", no character varying.
                 ts_doc = func.setweight(
                     func.to_tsvector(
                         "simple", func.coalesce(Product.sku, "")
                     ),
-                    "A",
+                    literal_column("'A'::\"char\""),
                 ).op("||")(
                     func.setweight(
                         func.to_tsvector(
                             "simple", func.coalesce(en_name_sql, "")
                         ),
-                        "B",
+                        literal_column("'B'::\"char\""),
                     )
                 ).op("||")(
                     func.setweight(
                         func.to_tsvector(
                             "simple", func.coalesce(Product.family, "")
                         ),
-                        "C",
+                        literal_column("'C'::\"char\""),
                     )
                 ).op("||")(
                     func.setweight(
                         func.to_tsvector(
                             "simple", func.coalesce(Product.brand, "")
                         ),
-                        "D",
+                        literal_column("'D'::\"char\""),
                     )
                 )
                 ts_query = func.websearch_to_tsquery("simple", search)
@@ -458,7 +461,7 @@ class ProductTranslationRepository(BaseRepository[ProductTranslation]):
         from sqlalchemy.dialects.postgresql import insert as pg_insert
 
         insert_values = {"sku": sku, "lang": lang, **fields}
-        update_values = {k: v for k, v in fields.items()}
+        update_values = dict(fields)
 
         stmt = (
             pg_insert(ProductTranslation)

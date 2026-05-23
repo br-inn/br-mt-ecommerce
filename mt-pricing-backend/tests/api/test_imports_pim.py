@@ -226,7 +226,6 @@ async def test_apply_respects_manual_locked_fields(
     sku = "TST-LOCK-0000"
     pre_payload = {
         "sku": sku,
-        "name_en": "preexisting",
         "family": "valves_ball",
         "dn": "DN15",
         "pn": "PN16",
@@ -245,6 +244,7 @@ async def test_apply_respects_manual_locked_fields(
     # action=update, y NO tocar dn (no viene en payload del importer; si vinera,
     # lo skipearía).
     from openpyxl import Workbook
+
     from app.services.importer.column_mapper import EXPECTED_HEADERS
 
     wb = Workbook()

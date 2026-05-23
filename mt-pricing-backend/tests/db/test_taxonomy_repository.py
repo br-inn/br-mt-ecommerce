@@ -93,7 +93,7 @@ def _migrated_db(alembic_sync_url: str) -> str:
 
 class TestTaxonomyTypeRepository:
     async def test_list_registry_returns_4_system_types(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import TaxonomyTypeRepository
 
@@ -110,7 +110,7 @@ class TestTaxonomyTypeRepository:
         assert set(system_slugs) >= {"division", "series", "tier", "material"}
 
     async def test_get_by_slug(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import TaxonomyTypeRepository
 
@@ -123,7 +123,7 @@ class TestTaxonomyTypeRepository:
         assert missing is None
 
     async def test_create_new_type(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import TaxonomyTypeRepository
 
@@ -139,16 +139,16 @@ class TestTaxonomyTypeRepository:
         assert new_type.active is True
 
     async def test_cannot_modify_slug_of_system_type(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import TaxonomyTypeRepository
 
         repo = TaxonomyTypeRepository(db_session)
         with pytest.raises(ValueError, match="is_system"):
-            await repo.update("division", slug="business_line")
+            await repo.update("division", value_kind="enum_open")
 
     async def test_cannot_delete_system_type(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import TaxonomyTypeRepository
 
@@ -164,7 +164,7 @@ class TestTaxonomyTypeRepository:
 
 class TestTaxonomyNodeRepository:
     async def test_create_node_with_multi_parents(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import (
             TaxonomyNodeRepository,
@@ -199,7 +199,7 @@ class TestTaxonomyNodeRepository:
         assert p2.id in ancestor_ids
 
     async def test_resolve_slug_follows_alias(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import (
             TaxonomyNodeRepository,
@@ -233,7 +233,7 @@ class TestTaxonomyNodeRepository:
         assert found_by_alias.id == node.id
 
     async def test_descendants_via_closure(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import (
             TaxonomyNodeRepository,
@@ -271,7 +271,7 @@ class TestTaxonomyNodeRepository:
         assert {d.id for d in immediate} == {b.id}
 
     async def test_soft_delete_sets_valid_until(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from app.repositories.taxonomy import (
             TaxonomyNodeRepository,
@@ -301,7 +301,7 @@ class TestTaxonomyNodeRepository:
 
 class TestProductTaxonomyLinkRepository:
     async def test_link_and_list_for_product(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from sqlalchemy import text
 
@@ -316,8 +316,8 @@ class TestProductTaxonomyLinkRepository:
         await db_session.execute(
             text(
                 """
-                INSERT INTO products (sku, name_en, family, brand_id, family_id)
-                SELECT :sku, 'Test', 'ball_valve',
+                INSERT INTO products (sku, family, brand_id, family_id)
+                SELECT :sku, 'ball_valve',
                        (SELECT id FROM brands WHERE code = 'default'),
                        (SELECT id FROM families WHERE code = 'default')
                 """
@@ -352,7 +352,7 @@ class TestProductTaxonomyLinkRepository:
         assert links[0].role == "belongs_to"
 
     async def test_unlink_soft(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from sqlalchemy import text
 
@@ -366,8 +366,8 @@ class TestProductTaxonomyLinkRepository:
         await db_session.execute(
             text(
                 """
-                INSERT INTO products (sku, name_en, family, brand_id, family_id)
-                SELECT :sku, 'Test', 'ball_valve',
+                INSERT INTO products (sku, family, brand_id, family_id)
+                SELECT :sku, 'ball_valve',
                        (SELECT id FROM brands WHERE code = 'default'),
                        (SELECT id FROM families WHERE code = 'default')
                 """
@@ -415,7 +415,7 @@ class TestBackfillFromLegacy:
     """Verifica que mig. 050 pobló taxonomy_nodes desde tablas legacy."""
 
     async def test_divisions_backfilled(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from sqlalchemy import text
 
@@ -438,7 +438,7 @@ class TestBackfillFromLegacy:
         assert "industrial" in slugs
 
     async def test_normalize_slug_function_exists(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from sqlalchemy import text
 
@@ -451,7 +451,7 @@ class TestBackfillFromLegacy:
         assert normalized == "some_name_foo"
 
     async def test_normalize_slug_handles_leading_digit(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         from sqlalchemy import text
 
@@ -462,7 +462,7 @@ class TestBackfillFromLegacy:
         assert normalized.startswith("n_")  # prefix para evitar regex violation
 
     async def test_sync_trigger_on_division_insert(
-        self, _migrated_db: str, db_session: "AsyncSession"
+        self, _migrated_db: str, db_session: AsyncSession
     ) -> None:
         """Insert en `divisions` debe reflejarse en `taxonomy_nodes`."""
         from sqlalchemy import text

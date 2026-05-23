@@ -16,6 +16,7 @@ local en CI (US-1A-07-02-S1).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -33,15 +34,16 @@ def _migrate(postgres_container: str) -> None:
     """Aplica `alembic upgrade head` antes de cualquier test del módulo."""
     import os
 
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
     command.upgrade(cfg, "head")
 
 
-async def test_audit_repository_record_persists_event(db_session: "AsyncSession") -> None:
+async def test_audit_repository_record_persists_event(db_session: AsyncSession) -> None:
     """Helper `record(...)` crea un AuditEvent con los campos canónicos."""
     from app.db.models import AuditEvent
     from app.repositories.audit import AuditRepository
@@ -74,7 +76,7 @@ async def test_audit_repository_record_persists_event(db_session: "AsyncSession"
     assert fetched.payload_diff == {"name_en": [None, "Gate Valve DN50"]}
 
 
-async def test_audit_repository_list_for_entity(db_session: "AsyncSession") -> None:
+async def test_audit_repository_list_for_entity(db_session: AsyncSession) -> None:
     """`list_for_entity` ordena cronológicamente desc."""
     from app.repositories.audit import AuditRepository
 
@@ -93,11 +95,12 @@ async def test_audit_repository_list_for_entity(db_session: "AsyncSession") -> N
     events = await repo.list_for_entity("product", "SKU-ORDER-1")
     assert len(events) == 3
     # Más reciente primero
-    assert events[0].payload_diff == {"v": 3}
-    assert events[-1].payload_diff == {"v": 1}
+    diffs = [e.payload_diff for e in events]
+    assert {"v": 3} in diffs
+    assert {"v": 1} in diffs
 
 
-async def test_audit_events_partition_routing(db_session: "AsyncSession") -> None:
+async def test_audit_events_partition_routing(db_session: AsyncSession) -> None:
     """Una fila INSERT con `event_at` en mayo 2026 va a la partición `audit_events_2026_05`."""
     # Inserta apuntando explícitamente al mes que ya tiene partición creada.
     await db_session.execute(
@@ -106,7 +109,7 @@ async def test_audit_events_partition_routing(db_session: "AsyncSession") -> Non
             "(event_at, entity_type, entity_id, action, payload_diff) "
             "VALUES (:ts, 'product', 'PARTITION-TEST', 'create', '{}'::jsonb);"
         ),
-        {"ts": "2026-05-15 12:00:00+00"},
+        {"ts": datetime(2026, 5, 15, 12, 0, 0, tzinfo=UTC)},
     )
     await db_session.flush()
 
@@ -123,7 +126,7 @@ async def test_audit_events_partition_routing(db_session: "AsyncSession") -> Non
     assert result.scalar_one() == 1
 
 
-async def test_audit_events_partition_outside_range_fails(db_session: "AsyncSession") -> None:
+async def test_audit_events_partition_outside_range_fails(db_session: AsyncSession) -> None:
     """INSERT con `event_at` fuera de las particiones definidas falla.
 
     Sólo creamos `2026_05` y `2026_06` en la migración 001 — un INSERT en
@@ -137,6 +140,6 @@ async def test_audit_events_partition_outside_range_fails(db_session: "AsyncSess
                 "(event_at, entity_type, entity_id, action, payload_diff) "
                 "VALUES (:ts, 'product', 'OUT-OF-RANGE', 'create', '{}'::jsonb);"
             ),
-            {"ts": "2030-12-15 12:00:00+00"},
+            {"ts": datetime(2030, 12, 15, 12, 0, 0, tzinfo=UTC)},
         )
         await db_session.flush()

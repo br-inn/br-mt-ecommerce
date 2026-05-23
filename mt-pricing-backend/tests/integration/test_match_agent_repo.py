@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.match_agent import MatchAgentConfig, MatchAgentDecision
+from app.db.models.match_agent import MatchAgentConfig
 from app.repositories.match_agent import (
     MatchAgentConfigRepository,
     MatchAgentDecisionRepository,
@@ -43,13 +43,13 @@ async def match_candidate_id(db_session: AsyncSession) -> uuid.UUID:
     # La FK tiene ondelete=CASCADE pero podemos desactivar FK checks en Postgres
     # o insertar directamente un candidato de prueba.
     # Insertamos un candidato mínimo para satisfacer la FK.
-    from app.db.models.match_candidate import MatchCandidate
-
     # Necesitamos un product_sku que exista en products ó desactivar FK.
     # Usamos DEFERRABLE + SET CONSTRAINTS DEFERRED si está disponible;
     # si no, creamos un candidato con un sku cualquiera deshabilitando FK checks.
     # La alternativa más portable: insertar directamente con text() y SET LOCAL.
     from sqlalchemy import text
+
+    from app.db.models.match_candidate import MatchCandidate
 
     await db_session.execute(text("SET LOCAL session_replication_role = 'replica'"))
 
@@ -115,7 +115,7 @@ async def test_record_decision(
         verdict="auto_validate",
         mode="shadow",
         applied=False,
-        signal="vlm_judge",
+        signal="conformal",
         score=90,
     )
     assert decision.id is not None
@@ -133,7 +133,7 @@ async def test_count_shadow_after_record(
         verdict="auto_validate",
         mode="shadow",
         applied=False,
-        signal="vlm_judge",
+        signal="conformal",
         score=90,
     )
     assert await repo.count_shadow() == 1
@@ -149,7 +149,7 @@ async def test_latest_for_candidate(
         verdict="auto_discard",
         mode="shadow",
         applied=False,
-        signal="llm_query",
+        signal="bootstrap",
         score=20,
     )
     latest = await repo.latest_for_candidate(match_candidate_id)
@@ -168,7 +168,7 @@ async def test_set_human_outcome(
         verdict="auto_validate",
         mode="shadow",
         applied=False,
-        signal="vlm_judge",
+        signal="conformal",
         score=88,
     )
     await repo.set_human_outcome(match_candidate_id, "validated")
@@ -187,7 +187,7 @@ async def test_shadow_precision_with_data(
         verdict="auto_validate",
         mode="shadow",
         applied=False,
-        signal="vlm_judge",
+        signal="conformal",
         score=88,
     )
     decision.human_outcome = "validated"

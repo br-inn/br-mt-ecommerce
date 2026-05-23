@@ -113,7 +113,6 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 def _create_payload(sku: str) -> dict[str, Any]:
     return {
         "sku": sku,
-        "name_en": f"Product {sku}",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
@@ -121,12 +120,9 @@ def _create_payload(sku: str) -> dict[str, Any]:
     }
 
 
-def _put_payload(name_en: str = "Renamed Product") -> dict[str, Any]:
+def _put_payload() -> dict[str, Any]:
     """Body completo para PUT — incluye todos los campos editables."""
     return {
-        "name_en": name_en,
-        "description_en": "PUT description",
-        "marketing_copy_en": None,
         "family": "valves_gate",
         "subfamily": None,
         "type": None,
@@ -142,10 +138,8 @@ def _put_payload(name_en: str = "Renamed Product") -> dict[str, Any]:
         "packaging": {},
         "intrastat_code": None,
         "erp_name": None,
-        "image_url": None,
         "data_quality": "partial",
         "manual_locked_fields": [],
-        "active": True,
     }
 
 
@@ -168,7 +162,6 @@ async def test_put_happy_path_returns_200_with_etag(
     )
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["name_en"] == "Renamed Product"
     assert body["material"] == "ss316"
     assert "etag" in {k.lower() for k in r.headers}
 
@@ -289,7 +282,7 @@ async def test_patch_data_quality_complete_requires_fields(
 
     sku = "MT-V-DQ-02"
     # Crear producto sin material/dn/pn — incompleto para `complete`.
-    minimal = {"sku": sku, "name_en": "Half product", "family": "x"}
+    minimal = {"sku": sku, "family": "x"}
     await client.post("/api/v1/products", json=minimal, headers=headers)
 
     r = await client.patch(

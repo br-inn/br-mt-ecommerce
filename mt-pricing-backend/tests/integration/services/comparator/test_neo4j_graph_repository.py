@@ -7,16 +7,19 @@ Ejecutar con: pytest -m neo4j_real tests/integration/services/comparator/
 """
 from __future__ import annotations
 
-import pytest
 from uuid import uuid4
+
+import pytest
+
+pytest.importorskip("neo4j")
 
 pytestmark = pytest.mark.neo4j_real
 
 
 @pytest.fixture
 def neo4j_repo(neo4j_driver):
-    from app.services.graphrag.adapters.neo4j_real import Neo4jGraphStore
     from app.services.comparator.graph_repository import Neo4jGraphRepository
+    from app.services.graphrag.adapters.neo4j_real import Neo4jGraphStore
 
     store = Neo4jGraphStore(neo4j_driver, database="neo4j")
     return Neo4jGraphRepository(graph_store=store)

@@ -68,7 +68,9 @@ async def _seed_admin(session: AsyncSession) -> tuple[UUID, str]:
             perm_ids.append(p.id)
         else:
             perm_ids.append(existing.id)
-    role = (await session.execute(select(Role).where(Role.code == "pim_admin"))).scalar_one_or_none()
+    role = (
+        await session.execute(select(Role).where(Role.code == "pim_admin"))
+    ).scalar_one_or_none()
     if role is None:
         role = Role(code="pim_admin", name="pim_admin", permissions_snapshot=perms_codes)
         session.add(role)
@@ -109,7 +111,6 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 def _payload(sku: str) -> dict[str, Any]:
     return {
         "sku": sku,
-        "name_en": f"Product {sku}",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",

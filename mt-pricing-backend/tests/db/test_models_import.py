@@ -27,7 +27,7 @@ def test_all_models_importable_and_registered() -> None:
         # Products
         "products",
         "product_translations",
-        "product_images",
+        "product_assets",
         # Audit
         "audit_events",
         # Jobs / scheduler
@@ -63,7 +63,14 @@ def test_models_public_api_exports() -> None:
 
 def test_db_layer_public_surface() -> None:
     """`from app.db import Base, get_db_session, make_engine` resuelve."""
-    from app.db import Base, dispose_engine, get_db_session, get_engine, get_sessionmaker, make_engine
+    from app.db import (
+        Base,
+        dispose_engine,
+        get_db_session,
+        get_engine,
+        get_sessionmaker,
+        make_engine,
+    )
 
     assert callable(make_engine)
     assert callable(get_engine)
@@ -86,14 +93,13 @@ def test_products_table_has_required_columns() -> None:
     required = {
         "sku",
         "internal_id",
-        "name_en",
         "family",
         "brand",
         "dn",
         "pn",
         "material",
         "specs",
-        "active",
+        "lifecycle_status",
         "data_quality",
         "created_at",
         "updated_at",

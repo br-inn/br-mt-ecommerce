@@ -105,14 +105,15 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 
 
 def _payload(sku: str, **kw: Any) -> dict[str, Any]:
-    base = {
+    base: dict[str, Any] = {
         "sku": sku,
-        "name_en": f"Brass valve {sku}",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
         "pn": "PN16",
     }
+    # name_en is no longer a product column (mig 065: moved to product_translations)
+    kw.pop("name_en", None)
     base.update(kw)
     return base
 

@@ -183,7 +183,6 @@ async def reader_user(db_session: AsyncSession) -> tuple[UUID, str]:
 def _valid_payload(sku: str = "MT-V-038") -> dict[str, Any]:
     return {
         "sku": sku,
-        "name_en": "Brass ball valve DN15 PN16",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
@@ -224,7 +223,7 @@ async def test_create_product_minimal(
     assert res.status_code == 201, res.text
     body = res.json()
     assert body["sku"] == "MT-V-038"
-    assert body["name_en"] == "Brass ball valve DN15 PN16"
+    assert body["name_en"] is None  # name_en now in product_translations (mig 065)
     assert body["family"] == "valves_ball"
     assert body["data_quality"] == "partial"
     assert body["active"] is True
@@ -299,14 +298,14 @@ async def test_update_product_partial(
     await client.post("/api/v1/products", json=_valid_payload("MT-V-040"), headers=headers)
     res = await client.patch(
         "/api/v1/products/MT-V-040",
-        json={"marketing_copy_en": "Premium DN15 brass ball valve"},
+        json={"erp_name": "Premium DN15 brass ball valve"},
         headers=headers,
     )
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["marketing_copy_en"] == "Premium DN15 brass ball valve"
-    # No cambian otros campos
-    assert body["name_en"] == "Brass ball valve DN15 PN16"
+    assert body["erp_name"] == "Premium DN15 brass ball valve"
+    # name_en now comes from product_translations (mig 065)
+    assert body["name_en"] is None
 
 
 @pytest.mark.integration
@@ -342,13 +341,8 @@ async def test_search_products_by_sku_substring(
     uid, email = admin_user
     headers = _auth_headers(uid, email)
     # Seed 3 productos con SKU prefix MT-V-
-    for sku, name in (
-        ("MT-V-100", "Ball valve DN15"),
-        ("MT-V-101", "Ball valve DN20"),
-        ("MT-OTHER", "Y-strainer"),
-    ):
+    for sku in ("MT-V-100", "MT-V-101", "MT-OTHER"):
         payload = _valid_payload(sku)
-        payload["name_en"] = name
         await client.post("/api/v1/products", json=payload, headers=headers)
 
     res = await client.get(

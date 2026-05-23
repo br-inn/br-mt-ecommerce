@@ -100,8 +100,9 @@ async def test_first_login_bootstraps_user_row(
     db_session: AsyncSession,
 ) -> None:
     """Primera vez que un Supabase user se autentica → row en `public.users`."""
-    from app.db.models.user import User
     from sqlalchemy import select
+
+    from app.db.models.user import User
 
     user_id = str(uuid4())
     token = _emit_jwt(sub=user_id, email="alice@mt.ae", full_name="Alice Test")
@@ -175,23 +176,32 @@ async def test_assign_role_then_get_me_returns_permissions(
     db_session: AsyncSession,
 ) -> None:
     """Tras assign_role, /me devuelve permisos efectivos del rol."""
-    from app.db.models.user import Permission, Role, RolePermission, User
     from sqlalchemy import select
 
-    # Seed manual de un rol con un permiso (los seeds reales viven en migraciones).
-    perm = Permission(code="products:read", description="Read products")
-    db_session.add(perm)
-    await db_session.flush()
-    role = Role(
-        code="comercial",
-        name="Comercial",
-        description="Sales role",
-        permissions_snapshot=["products:read"],
-    )
-    db_session.add(role)
-    await db_session.flush()
-    db_session.add(RolePermission(role_id=role.id, permission_id=perm.id))
-    await db_session.flush()
+    from app.db.models.user import Permission, Role, RolePermission, User
+
+    # Las migraciones ya seedean "products:read" y rol "comercial"; los reutilizamos.
+    perm = (
+        await db_session.execute(select(Permission).where(Permission.code == "products:read"))
+    ).scalar_one_or_none()
+    if perm is None:
+        perm = Permission(code="products:read", description="Read products")
+        db_session.add(perm)
+        await db_session.flush()
+    role = (
+        await db_session.execute(select(Role).where(Role.code == "comercial"))
+    ).scalar_one_or_none()
+    if role is None:
+        role = Role(
+            code="comercial",
+            name="Comercial",
+            description="Sales role",
+            permissions_snapshot=["products:read"],
+        )
+        db_session.add(role)
+        await db_session.flush()
+        db_session.add(RolePermission(role_id=role.id, permission_id=perm.id))
+        await db_session.flush()
 
     # User con role asignado directamente.
     user_id = uuid4()

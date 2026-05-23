@@ -321,17 +321,6 @@ def map_row(
         if v:
             payload[k] = v
 
-    # name_en es NOT NULL en el schema. Si no vino algo plausible, derivamos
-    # de erp_name (sprint0 Task 3 decisión: backfill con erp_name; data_quality
-    # cae a 'partial').
-    if "name_en" not in payload:
-        erp = payload.get("erp_name")
-        if erp:
-            payload["name_en"] = erp
-        else:
-            # name_en no derivable → marcar error para el differ.
-            errors.append("name_en no derivable (erp_name vacío y no provisto).")
-
     return payload, errors
 
 

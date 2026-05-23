@@ -313,8 +313,8 @@ class TestConstraints:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO products (sku, name_en, family, brand_id, family_id)
-                        SELECT 'TEST-LINK-001', 'Test Product', 'ball_valve',
+                        INSERT INTO products (sku, family, brand_id, family_id)
+                        SELECT 'TEST-LINK-001', 'ball_valve',
                                (SELECT id FROM brands WHERE code = 'default'),
                                (SELECT id FROM families WHERE code = 'default')
                         ON CONFLICT DO NOTHING
