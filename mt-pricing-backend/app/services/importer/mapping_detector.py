@@ -181,15 +181,30 @@ Available transforms:
 """
 
 
-def suggest_mapping(
+async def suggest_mapping(
     headers: list[str],
     sample_rows: list[list[Any]],
+    api_key: str = "",
 ) -> list[ColumnMappingItem]:
     """Llama a Claude para proponer el mapeo de columnas Excel → campos product.
 
-    Devuelve lista vacía si el LLM falla o devuelve JSON inválido (tolerante).
+    Devuelve lista de _skip (confidence=0) si el LLM falla o la key no está
+    disponible, permitiendo al usuario mapear manualmente.
     """
     import anthropic
+
+    if not api_key:
+        logger.warning("suggest_mapping: ANTHROPIC_API_KEY no configurada — fallback manual")
+        return [
+            ColumnMappingItem(
+                excel_col=h,
+                target_field="_skip",
+                transform="text",
+                confidence=0.0,
+                notes="ANTHROPIC_API_KEY no configurada — mapeo manual requerido",
+            )
+            for h in headers
+        ]
 
     # Tabla columna → valores de muestra (todas las columnas, no truncadas).
     col_samples: list[str] = []
@@ -222,10 +237,10 @@ def suggest_mapping(
     )
 
     try:
-        client = anthropic.Anthropic()
-        message = client.messages.create(
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        message = await client.messages.create(
             model=_LLM_MODEL,
-            max_tokens=4096,
+            max_tokens=8192,
             messages=[{"role": "user", "content": prompt}],
         )
         text = message.content[0].text.strip()  # type: ignore[union-attr]

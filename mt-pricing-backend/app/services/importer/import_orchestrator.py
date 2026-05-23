@@ -172,6 +172,7 @@ class ImportOrchestrator:
         source_path: Path,
         mapping: list[ColumnMappingItem] | None = None,
         header_row_index: int = 0,
+        api_key: str = "",
     ) -> OrchestratorResult:
         from app.services.importer.mapping_detector import detect_header_row, suggest_mapping
 
@@ -179,7 +180,7 @@ class ImportOrchestrator:
         if mapping is None:
             detected_idx, headers, samples = detect_header_row(xlsx_bytes)
             header_row_index = detected_idx
-            mapping = suggest_mapping(headers, samples)
+            mapping = await suggest_mapping(headers, samples, api_key=api_key)
 
         result = await self.run_sync(xlsx_bytes, mapping, header_row_index=header_row_index)
         await self._session.commit()

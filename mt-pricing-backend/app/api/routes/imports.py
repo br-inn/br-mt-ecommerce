@@ -121,7 +121,11 @@ async def analyze_import(
 
     try:
         header_idx, headers, samples = detect_header_row(file_bytes)
-        proposed = suggest_mapping(headers, samples)
+        proposed = await suggest_mapping(
+            headers,
+            samples,
+            api_key=settings.ANTHROPIC_API_KEY.get_secret_value(),
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=422,
