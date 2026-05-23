@@ -99,7 +99,7 @@ class CompetitorBrand(UuidPkMixin, TimestampMixin, Base):
 
 
 class BrandExtractor(UuidPkMixin, TimestampMixin, Base):
-    """Mapeo de atributos generado por LLM por marca × marketplace (US-SCR-05-01).
+    """Mapeo de atributos generado por LLM por marca x marketplace (US-SCR-05-01).
 
     Generado una vez en Bootstrap mode via Claude; reutilizado sin LLM en cada
     monitoring scrape. ``attribute_map`` traduce labels de Amazon al schema
