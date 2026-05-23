@@ -238,3 +238,69 @@ async def test_add_recipe_to_source(client_rw: AsyncClient) -> None:
     )
     assert recipe_resp.status_code == 201, recipe_resp.text
     assert recipe_resp.json()["version"] == 1
+
+
+@pytest.mark.api
+@pytest.mark.asyncio
+async def test_patch_source_updates_fields(client_rw: AsyncClient) -> None:
+    r = await client_rw.post(
+        "/api/v1/scraper-sources",
+        json={
+            "name": "patch-test",
+            "slug": "patch-test",
+            "base_url": "https://example.com/s",
+            "destination_profile": "competitor_price",
+            "fetch_mode": "static",
+        },
+    )
+    assert r.status_code == 201, r.text
+    source_id = r.json()["id"]
+
+    r2 = await client_rw.patch(
+        f"/api/v1/scraper-sources/{source_id}",
+        json={"name": "patched-name", "status": "testing"},
+    )
+    assert r2.status_code == 200, r2.text
+    data = r2.json()
+    assert data["name"] == "patched-name"
+    assert data["status"] == "testing"
+
+
+@pytest.mark.api
+@pytest.mark.asyncio
+async def test_list_recipes_empty_then_populated(client_rw: AsyncClient) -> None:
+    r = await client_rw.post(
+        "/api/v1/scraper-sources",
+        json={
+            "name": "recipe-list-test",
+            "slug": "recipe-list-test",
+            "base_url": "https://example.com/s",
+            "destination_profile": "competitor_price",
+            "fetch_mode": "static",
+        },
+    )
+    assert r.status_code == 201, r.text
+    source_id = r.json()["id"]
+
+    r2 = await client_rw.get(f"/api/v1/scraper-sources/{source_id}/recipes")
+    assert r2.status_code == 200
+    assert r2.json() == []
+
+    r3 = await client_rw.post(
+        f"/api/v1/scraper-sources/{source_id}/recipes",
+        json={
+            "recipe": {
+                "url_templates": {"search": "https://example.com/s?q={query}"},
+                "list_item_selector": "div.item",
+                "fields": [{"name": "price", "selector": ".price", "type": "currency"}],
+            }
+        },
+    )
+    assert r3.status_code == 201, r3.text
+
+    r4 = await client_rw.get(f"/api/v1/scraper-sources/{source_id}/recipes")
+    assert r4.status_code == 200
+    recipes = r4.json()
+    assert len(recipes) == 1
+    assert recipes[0]["version"] == 1
+    assert "created_at" in recipes[0]
