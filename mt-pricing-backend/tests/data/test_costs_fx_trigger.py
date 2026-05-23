@@ -57,8 +57,10 @@ async def _ensure_test_sku(session: AsyncSession, sku: str = "TEST-COST-001") ->
     await session.execute(
         text(
             """
-            INSERT INTO products (sku, family, brand, data_quality)
-            VALUES (:sku, 'ball_valve', 'TestBrand', 'complete')
+            INSERT INTO products (sku, family, brand, data_quality, brand_id, family_id)
+            SELECT :sku, 'ball_valve', 'TestBrand', 'complete',
+                   (SELECT id FROM brands WHERE code = 'default'),
+                   (SELECT id FROM families WHERE code = 'default')
             ON CONFLICT (sku) DO NOTHING
             """
         ),

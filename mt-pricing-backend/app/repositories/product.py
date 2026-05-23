@@ -13,7 +13,9 @@ from sqlalchemy.orm import joinedload, noload, selectinload
 from app.db.enums import DataQuality
 from app.db.models.product import Product, ProductBoreDimension, ProductImage, ProductTranslation
 from app.db.models.vocabularies import (
+    Brand,
     Division,
+    Family,
     Material,
     ProductDivision,
     Series,
@@ -35,6 +37,60 @@ class ProductRepository(BaseRepository[Product]):
     model = Product
     pk_field = "sku"
     soft_delete_field = "deleted_at"
+
+    async def create(self, **kwargs: Any) -> Product:
+        """Resolve brand/family text → FK UUIDs before INSERT.
+
+        Migration 048 made brand_id + family_id NOT NULL. Callers such as the
+        PIM importer pass `brand="MT"` (string) but not `brand_id` (UUID).
+        This override looks up or creates the Brand/Family row so the INSERT
+        never hits a NotNullViolationError.
+        """
+        if not kwargs.get("brand_id"):
+            brand_name: str = kwargs.get("brand") or "MT"
+            brand_row = (
+                await self.session.execute(
+                    select(Brand).where(
+                        or_(
+                            func.lower(Brand.code) == brand_name.lower(),
+                            func.lower(Brand.name) == brand_name.lower(),
+                        )
+                    )
+                )
+            ).scalar_one_or_none()
+            if brand_row is not None:
+                kwargs["brand_id"] = brand_row.id
+            else:
+                new_brand = Brand(
+                    code=brand_name.lower().replace(" ", "_"), name=brand_name
+                )
+                self.session.add(new_brand)
+                await self.session.flush()
+                kwargs["brand_id"] = new_brand.id
+
+        if not kwargs.get("family_id"):
+            family_name: str = kwargs.get("family") or "unclassified"
+            family_row = (
+                await self.session.execute(
+                    select(Family).where(
+                        or_(
+                            func.lower(Family.code) == family_name.lower(),
+                            func.lower(Family.name) == family_name.lower(),
+                        )
+                    )
+                )
+            ).scalar_one_or_none()
+            if family_row is not None:
+                kwargs["family_id"] = family_row.id
+            else:
+                new_family = Family(
+                    code=family_name.lower().replace(" ", "_"), name=family_name
+                )
+                self.session.add(new_family)
+                await self.session.flush()
+                kwargs["family_id"] = new_family.id
+
+        return await super().create(**kwargs)
 
     async def search_by_sku(self, sku: str) -> Product | None:
         return await self.get(sku)

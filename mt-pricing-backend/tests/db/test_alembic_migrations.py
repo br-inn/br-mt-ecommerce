@@ -85,52 +85,62 @@ def test_alembic_upgrade_head_then_downgrade_then_upgrade(alembic_sync_url: str)
 
 
 def test_products_constraints_enforced(alembic_sync_url: str, postgres_container: str) -> None:
-    """US-1A-02-01-S1 — UNIQUE(sku), NOT NULL(name_en), CHECK(data_quality)."""
-    # Asume que el test anterior dejó la BD en `head`. Si no, upgrade.
+    """US-1A-02-01-S1 — UNIQUE(sku/PK), brand_id NOT NULL, CHECK(data_quality).
+
+    name_en was removed in Fase B (mig 065) and replaced by erp_name + translations.
+    brand_id + family_id are NOT NULL since mig 048.
+    """
     _run_migration("upgrade", "head", alembic_sync_url)
 
     from sqlalchemy import create_engine, text
     from sqlalchemy.exc import IntegrityError
 
+    _INSERT_TMPL = """
+        INSERT INTO products (sku, family, brand_id, family_id)
+        SELECT :sku, :family,
+               (SELECT id FROM brands WHERE code = 'default'),
+               (SELECT id FROM families WHERE code = 'default')
+    """
+
     engine = create_engine(alembic_sync_url)
     try:
+        # Successful insert
         with engine.begin() as conn:
-            conn.execute(
-                text(
-                    "INSERT INTO products (sku, name_en, family) "
-                    "VALUES ('TEST-V-001', 'Test Valve', 'gate_valve');"
-                )
-            )
-
-        # NOT NULL name_en
-        with engine.begin() as conn, pytest.raises(IntegrityError):
-            conn.execute(
-                text(
-                    "INSERT INTO products (sku, name_en, family) "
-                    "VALUES ('TEST-V-002', NULL, 'ball_valve');"
-                )
-            )
+            conn.execute(text(_INSERT_TMPL), {"sku": "TEST-V-001", "family": "gate_valve"})
 
         # UNIQUE sku (PK)
         with engine.begin() as conn, pytest.raises(IntegrityError):
-            conn.execute(
-                text(
-                    "INSERT INTO products (sku, name_en, family) "
-                    "VALUES ('TEST-V-001', 'Dup', 'gate_valve');"
-                )
-            )
+            conn.execute(text(_INSERT_TMPL), {"sku": "TEST-V-001", "family": "gate_valve"})
 
         # CHECK data_quality (valor inválido)
         with engine.begin() as conn, pytest.raises(IntegrityError):
             conn.execute(
                 text(
-                    "INSERT INTO products (sku, name_en, family, data_quality) "
-                    "VALUES ('TEST-V-003', 'Bad', 'gate_valve', 'NOT_A_VALID_QUALITY');"
+                    """
+                    INSERT INTO products (sku, family, data_quality, brand_id, family_id)
+                    SELECT 'TEST-V-003', 'gate_valve', 'NOT_A_VALID_QUALITY',
+                           (SELECT id FROM brands WHERE code = 'default'),
+                           (SELECT id FROM families WHERE code = 'default')
+                    """
                 )
             )
 
-        # Cleanup
+        # brand_id NOT NULL (mig 048)
+        with engine.begin() as conn, pytest.raises(IntegrityError):
+            conn.execute(
+                text(
+                    "INSERT INTO products (sku, family) VALUES ('TEST-V-004', 'gate_valve');"
+                )
+            )
+
+        # Cleanup — disable soft-delete trigger for test teardown
         with engine.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete")
+            )
             conn.execute(text("DELETE FROM products WHERE sku LIKE 'TEST-V-%';"))
+            conn.execute(
+                text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete")
+            )
     finally:
         engine.dispose()

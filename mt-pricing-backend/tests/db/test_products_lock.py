@@ -32,6 +32,15 @@ def _migrate(postgres_container: str) -> None:
     command.upgrade(cfg, "head")
 
 
+_INSERT_PRODUCT_SQL = """
+    INSERT INTO products (sku, family, brand_id, family_id)
+    SELECT :sku, :family,
+           (SELECT id FROM brands WHERE code = 'default'),
+           (SELECT id FROM families WHERE code = 'default')
+    ON CONFLICT (sku) DO NOTHING
+"""
+
+
 # --------------------------------------------------------------------------
 # Soft-delete trigger
 # --------------------------------------------------------------------------
@@ -39,9 +48,9 @@ async def test_delete_product_blocked_by_trigger(db_session: AsyncSession) -> No
     """DELETE en products lanza exception con mensaje explicativo."""
     from sqlalchemy.exc import DBAPIError
 
-    # Insertar primero
     await db_session.execute(
-        text("INSERT INTO products (sku, family) VALUES ('LOCK-V-001', 'gate_valve');")
+        text(_INSERT_PRODUCT_SQL),
+        {"sku": "LOCK-V-001", "family": "gate_valve"},
     )
     await db_session.flush()
 
@@ -57,10 +66,8 @@ async def test_delete_product_blocked_by_trigger(db_session: AsyncSession) -> No
 async def test_soft_deactivate_product_works(db_session: AsyncSession) -> None:
     """UPDATE active=false (soft-delete pattern) sigue funcionando normalmente."""
     await db_session.execute(
-        text(
-            "INSERT INTO products (sku, family, lifecycle_status) "
-            "VALUES ('LOCK-V-002', 'ball_valve', 'active');"
-        )
+        text(_INSERT_PRODUCT_SQL),
+        {"sku": "LOCK-V-002", "family": "ball_valve"},
     )
     await db_session.flush()
 
@@ -80,23 +87,28 @@ async def test_soft_deactivate_product_works(db_session: AsyncSession) -> None:
 # --------------------------------------------------------------------------
 async def test_manual_locked_fields_default_empty_array(db_session: AsyncSession) -> None:
     """Columna manual_locked_fields default '{}'::text[] (array vacío, NOT NULL)."""
-    from app.db.models import Product
-
-    p = Product(sku="LOCK-V-003", family="gate_valve")
-    db_session.add(p)
+    await db_session.execute(
+        text(_INSERT_PRODUCT_SQL),
+        {"sku": "LOCK-V-003", "family": "gate_valve"},
+    )
     await db_session.flush()
-    await db_session.refresh(p)
 
-    assert p.manual_locked_fields == []
+    row = await db_session.execute(
+        text("SELECT manual_locked_fields FROM products WHERE sku = 'LOCK-V-003';")
+    )
+    assert row.scalar_one() == []
 
 
 async def test_manual_locked_fields_append_and_query(db_session: AsyncSession) -> None:
     """Append valores a manual_locked_fields persiste y array operators funcionan."""
     await db_session.execute(
         text(
-            "INSERT INTO products (sku, family, manual_locked_fields) "
-            "VALUES ('LOCK-V-004', 'gate_valve', "
-            "        ARRAY['name_en','description_en']::text[]);"
+            """
+            INSERT INTO products (sku, family, manual_locked_fields, brand_id, family_id)
+            SELECT 'LOCK-V-004', 'gate_valve', ARRAY['name_en','description_en']::text[],
+                   (SELECT id FROM brands WHERE code = 'default'),
+                   (SELECT id FROM families WHERE code = 'default')
+            """
         )
     )
     await db_session.flush()
@@ -121,8 +133,12 @@ async def test_manual_locked_fields_not_null_constraint(db_session: AsyncSession
     with pytest.raises(IntegrityError):
         await db_session.execute(
             text(
-                "INSERT INTO products (sku, family, manual_locked_fields) "
-                "VALUES ('LOCK-V-005', 'gate_valve', NULL);"
+                """
+                INSERT INTO products (sku, family, manual_locked_fields, brand_id, family_id)
+                SELECT 'LOCK-V-005', 'gate_valve', NULL,
+                       (SELECT id FROM brands WHERE code = 'default'),
+                       (SELECT id FROM families WHERE code = 'default')
+                """
             )
         )
         await db_session.flush()

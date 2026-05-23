@@ -317,18 +317,59 @@ async def make_product(db_session: AsyncSession) -> Callable[..., Any]:
 
     Encapsula el contrato del modelo: lifecycle_status en lugar de active,
     sin name_en (hybrid_property read-only), sin active (hybrid_property).
+    Resuelve brand_id + family_id automáticamente (mig 048: NOT NULL).
 
     Uso:
         product = await make_product("MT-V-001")
         product = await make_product("MT-V-002", lifecycle_status="deprecated")
         product = await make_product("MT-V-003", family="valves_gate", data_quality="partial")
     """
+    from sqlalchemy import func, or_, select
+
     from app.db.models.product import Product
+    from app.db.models.vocabularies import Brand, Family
+
+    async def _get_or_create_brand(brand_name: str) -> Any:
+        row = (
+            await db_session.execute(
+                select(Brand).where(
+                    or_(
+                        func.lower(Brand.code) == brand_name.lower(),
+                        func.lower(Brand.name) == brand_name.lower(),
+                    )
+                )
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return row.id
+        b = Brand(code=brand_name.lower().replace(" ", "_"), name=brand_name)
+        db_session.add(b)
+        await db_session.flush()
+        return b.id
+
+    async def _get_or_create_family(family_name: str) -> Any:
+        row = (
+            await db_session.execute(
+                select(Family).where(
+                    or_(
+                        func.lower(Family.code) == family_name.lower(),
+                        func.lower(Family.name) == family_name.lower(),
+                    )
+                )
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return row.id
+        f = Family(code=family_name.lower().replace(" ", "_"), name=family_name)
+        db_session.add(f)
+        await db_session.flush()
+        return f.id
 
     async def _factory(
         sku: str,
         *,
         family: str = "valves_ball",
+        brand: str = "MT",
         lifecycle_status: str = "active",
         data_quality: str = "complete",
         erp_name: str | None = None,
@@ -341,9 +382,14 @@ async def make_product(db_session: AsyncSession) -> Callable[..., Any]:
                     f"make_product: '{forbidden}' es hybrid_property read-only. "
                     f"Usa 'lifecycle_status' (no 'active') y 'erp_name' (no 'name_en')."
                 )
+        if "brand_id" not in kwargs:
+            kwargs["brand_id"] = await _get_or_create_brand(brand)
+        if "family_id" not in kwargs:
+            kwargs["family_id"] = await _get_or_create_family(family)
         p = Product(
             sku=sku,
             family=family,
+            brand=brand,
             lifecycle_status=lifecycle_status,
             data_quality=data_quality,
             erp_name=erp_name,
