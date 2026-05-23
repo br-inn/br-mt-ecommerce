@@ -15,4 +15,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP EXTENSION IF EXISTS vector")
+    # Extension managed by mig 001 which deliberately does not drop extensions.
+    # Dropping here would fail with dependent objects (competitor_listings.embedding,
+    # unmatched_offers.embedding) and is not safe during downgrade base.
+    pass
