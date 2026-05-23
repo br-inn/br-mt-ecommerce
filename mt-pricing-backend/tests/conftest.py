@@ -15,6 +15,21 @@ Convenciones:
 
 from __future__ import annotations
 
+import os
+import pathlib
+import subprocess
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import TYPE_CHECKING, Any
+
+import pytest
+import pytest_asyncio
+
+if TYPE_CHECKING:
+    from celery import Celery
+    from httpx import AsyncClient
+    from redis.asyncio import Redis
+    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+
 # =============================================================================
 # CONTRATO DEL MODELO — Referencia para escribir tests correctamente
 # =============================================================================
@@ -56,21 +71,6 @@ from __future__ import annotations
 #   ❌  override require_permissions(perm) — crea nuevo objeto cada llamada
 #       (falla silenciosamente por identidad de objeto)
 # =============================================================================
-
-import os
-import pathlib
-import subprocess
-from collections.abc import AsyncIterator, Callable, Iterator
-from typing import TYPE_CHECKING, Any
-
-import pytest
-import pytest_asyncio
-
-if TYPE_CHECKING:
-    from celery import Celery
-    from httpx import AsyncClient
-    from redis.asyncio import Redis
-    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 # --- Force test env BEFORE importing app modules ----------------------------
 os.environ.setdefault("ENV", "development")

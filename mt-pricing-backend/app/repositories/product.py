@@ -182,7 +182,7 @@ class ProductRepository(BaseRepository[Product]):
         # ---- Stage 3 filters (Wave 11) ---------------------------------------
         if division_code is not None:
             # EXISTS subquery sobre product_divisions JOIN divisions ON code.
-            sub = (
+            sub_div = (
                 select(ProductDivision.product_sku)
                 .join(Division, Division.id == ProductDivision.division_id)
                 .where(
@@ -190,7 +190,7 @@ class ProductRepository(BaseRepository[Product]):
                     Division.code == division_code,
                 )
             )
-            clauses.append(exists(sub))
+            clauses.append(exists(sub_div))
         if series_id is not None:
             # Acepta UUID o SLUG (registry-aware). Si parsea como UUID se usa
             # directo contra la FK; de lo contrario se resuelve por `series.code`.
@@ -202,11 +202,11 @@ class ProductRepository(BaseRepository[Product]):
                 else:
                     # Lookup contra tabla legacy `series.code` — mig 050 garantiza
                     # que el slug del registry === series.code (vía normalize_slug).
-                    sub = select(Series.id).where(
+                    sub_series = select(Series.id).where(
                         Series.id == Product.series_id,
                         Series.code == series_id,
                     )
-                    clauses.append(exists(sub))
+                    clauses.append(exists(sub_series))
         if material_id is not None:
             if isinstance(material_id, UUID):
                 clauses.append(Product.material_id == material_id)
@@ -214,14 +214,14 @@ class ProductRepository(BaseRepository[Product]):
                 if _is_uuid(material_id):
                     clauses.append(Product.material_id == UUID(material_id))
                 else:
-                    sub = select(Material.id).where(
+                    sub_material = select(Material.id).where(
                         Material.id == Product.material_id,
                         Material.code == material_id,
                     )
-                    clauses.append(exists(sub))
+                    clauses.append(exists(sub_material))
         if tier_code is not None:
             # JOIN series → series_tiers para filtrar por tier.code.
-            sub = (
+            sub_tier = (
                 select(Series.id)
                 .join(SeriesTier, SeriesTier.id == Series.tier_id)
                 .where(
@@ -229,7 +229,7 @@ class ProductRepository(BaseRepository[Product]):
                     SeriesTier.code == tier_code,
                 )
             )
-            clauses.append(exists(sub))
+            clauses.append(exists(sub_tier))
 
         # Translation status: requiere subquery sobre product_translations.
         if translation_status:

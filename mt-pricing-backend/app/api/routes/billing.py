@@ -228,7 +228,7 @@ async def reverse_invoice(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/dunning", response_model=list[dict])
+@router.get("/dunning", response_model=list[dict[str, Any]])
 async def get_dunning(
     session: DbSession,
     current_user: CurrentUser,
@@ -311,7 +311,7 @@ async def retry_e_invoice(
 # US-ERP-05-05 — AR Aging + Payment Promises
 # ---------------------------------------------------------------------------
 
-_AsOfDateQ = Annotated[date | None, Query(default=None)]
+_AsOfDateQ = Annotated[date | None, Query()]
 
 
 @router.get("/ar-aging", response_model=ARAgingReport)
