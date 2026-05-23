@@ -1,12 +1,13 @@
-"""Tests para mapping_detector.detect_header_row."""
+"""Tests para mapping_detector.detect_header_row y suggest_mapping."""
 
 from __future__ import annotations
 
 import io
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import openpyxl
+import pytest
 
 from app.services.importer.mapping_detector import detect_header_row, suggest_mapping
 
@@ -64,7 +65,8 @@ def test_detect_header_row_returns_up_to_5_samples():
     assert len(samples) <= 5
 
 
-def test_suggest_mapping_parses_llm_response():
+@pytest.mark.asyncio
+async def test_suggest_mapping_parses_llm_response():
     """suggest_mapping parsea la respuesta JSON del LLM correctamente."""
     fake_json = json.dumps(
         [
@@ -94,12 +96,13 @@ def test_suggest_mapping_parses_llm_response():
     mock_message = MagicMock()
     mock_message.content = [MagicMock(text=fake_json)]
 
-    with patch("anthropic.Anthropic") as MockAnthropicCls:
+    with patch("anthropic.AsyncAnthropic") as MockAnthropicCls:
         mock_client = MockAnthropicCls.return_value
-        mock_client.messages.create.return_value = mock_message
-        result = suggest_mapping(
+        mock_client.messages.create = AsyncMock(return_value=mock_message)
+        result = await suggest_mapping(
             headers=["SKU", "Familia", "Peso neto (kg)"],
             sample_rows=[["1010", "Valvulas", 0.5]],
+            api_key="test-key",
         )
 
     assert len(result) == 3
@@ -109,17 +112,19 @@ def test_suggest_mapping_parses_llm_response():
     assert result[0].confidence == 0.99
 
 
-def test_suggest_mapping_falls_back_on_invalid_json():
+@pytest.mark.asyncio
+async def test_suggest_mapping_falls_back_on_invalid_json():
     """Si el LLM devuelve JSON inválido, retorna _skip fallback por cada columna."""
     mock_message = MagicMock()
     mock_message.content = [MagicMock(text="esto no es json")]
 
-    with patch("anthropic.Anthropic") as MockAnthropicCls:
+    with patch("anthropic.AsyncAnthropic") as MockAnthropicCls:
         mock_client = MockAnthropicCls.return_value
-        mock_client.messages.create.return_value = mock_message
-        result = suggest_mapping(
+        mock_client.messages.create = AsyncMock(return_value=mock_message)
+        result = await suggest_mapping(
             headers=["SKU", "Familia"],
             sample_rows=[["1010", "Valvulas"]],
+            api_key="test-key",
         )
 
     # Fallback returns one _skip entry per header (confidence 0) so the UI
@@ -131,7 +136,8 @@ def test_suggest_mapping_falls_back_on_invalid_json():
     assert result[1].excel_col == "Familia"
 
 
-def test_suggest_mapping_strips_markdown_fence():
+@pytest.mark.asyncio
+async def test_suggest_mapping_strips_markdown_fence():
     """suggest_mapping extrae JSON de respuestas con code fence markdown."""
     fake_json = json.dumps(
         [
@@ -148,10 +154,27 @@ def test_suggest_mapping_strips_markdown_fence():
     mock_message = MagicMock()
     mock_message.content = [MagicMock(text=fenced)]
 
-    with patch("anthropic.Anthropic") as MockAnthropicCls:
+    with patch("anthropic.AsyncAnthropic") as MockAnthropicCls:
         mock_client = MockAnthropicCls.return_value
-        mock_client.messages.create.return_value = mock_message
-        result = suggest_mapping(headers=["SKU"], sample_rows=[["1010"]])
+        mock_client.messages.create = AsyncMock(return_value=mock_message)
+        result = await suggest_mapping(
+            headers=["SKU"],
+            sample_rows=[["1010"]],
+            api_key="test-key",
+        )
 
     assert len(result) == 1
     assert result[0].excel_col == "SKU"
+
+
+@pytest.mark.asyncio
+async def test_suggest_mapping_returns_skip_when_no_api_key():
+    """Sin api_key configurada retorna fallback _skip sin llamar al LLM."""
+    result = await suggest_mapping(
+        headers=["SKU", "Familia"],
+        sample_rows=[["1010", "Valvulas"]],
+        api_key="",
+    )
+    assert len(result) == 2
+    assert all(r.target_field == "_skip" for r in result)
+    assert all(r.confidence == 0.0 for r in result)
