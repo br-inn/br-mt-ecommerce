@@ -6,13 +6,16 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, exists, func, or_, select, update as sa_update
+from sqlalchemy import and_, exists, func, literal_column, or_, select
+from sqlalchemy import update as sa_update
 from sqlalchemy.orm import joinedload, noload, selectinload
 
 from app.db.enums import DataQuality
 from app.db.models.product import Product, ProductBoreDimension, ProductImage, ProductTranslation
 from app.db.models.vocabularies import (
+    Brand,
     Division,
+    Family,
     Material,
     ProductDivision,
     Series,
@@ -35,6 +38,56 @@ class ProductRepository(BaseRepository[Product]):
     pk_field = "sku"
     soft_delete_field = "deleted_at"
 
+    async def create(self, **kwargs: Any) -> Product:
+        """Resolve brand/family text → FK UUIDs before INSERT.
+
+        Migration 048 made brand_id + family_id NOT NULL. Callers such as the
+        PIM importer pass `brand="MT"` (string) but not `brand_id` (UUID).
+        This override looks up or creates the Brand/Family row so the INSERT
+        never hits a NotNullViolationError.
+        """
+        if not kwargs.get("brand_id"):
+            brand_name: str = kwargs.get("brand") or "MT"
+            brand_row = (
+                await self.session.execute(
+                    select(Brand).where(
+                        or_(
+                            func.lower(Brand.code) == brand_name.lower(),
+                            func.lower(Brand.name) == brand_name.lower(),
+                        )
+                    )
+                )
+            ).scalar_one_or_none()
+            if brand_row is not None:
+                kwargs["brand_id"] = brand_row.id
+            else:
+                new_brand = Brand(code=brand_name.lower().replace(" ", "_"), name=brand_name)
+                self.session.add(new_brand)
+                await self.session.flush()
+                kwargs["brand_id"] = new_brand.id
+
+        if not kwargs.get("family_id"):
+            family_name: str = kwargs.get("family") or "unclassified"
+            family_row = (
+                await self.session.execute(
+                    select(Family).where(
+                        or_(
+                            func.lower(Family.code) == family_name.lower(),
+                            func.lower(Family.name) == family_name.lower(),
+                        )
+                    )
+                )
+            ).scalar_one_or_none()
+            if family_row is not None:
+                kwargs["family_id"] = family_row.id
+            else:
+                new_family = Family(code=family_name.lower().replace(" ", "_"), name=family_name)
+                self.session.add(new_family)
+                await self.session.flush()
+                kwargs["family_id"] = new_family.id
+
+        return await super().create(**kwargs)
+
     async def search_by_sku(self, sku: str) -> Product | None:
         return await self.get(sku)
 
@@ -46,11 +99,7 @@ class ProductRepository(BaseRepository[Product]):
         """Like get_by_sku but eager-loads product.model for matching pipeline."""
         from sqlalchemy import select
 
-        stmt = (
-            select(Product)
-            .options(joinedload(Product.model))
-            .where(Product.sku == sku)
-        )
+        stmt = select(Product).options(joinedload(Product.model)).where(Product.sku == sku)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -72,9 +121,7 @@ class ProductRepository(BaseRepository[Product]):
             .options(
                 selectinload(Product.translations),
                 selectinload(Product.assets),
-                selectinload(Product.product_divisions).selectinload(
-                    ProductDivision.division
-                ),
+                selectinload(Product.product_divisions).selectinload(ProductDivision.division),
                 joinedload(Product.model),
             )
         )
@@ -181,7 +228,7 @@ class ProductRepository(BaseRepository[Product]):
         # ---- Stage 3 filters (Wave 11) ---------------------------------------
         if division_code is not None:
             # EXISTS subquery sobre product_divisions JOIN divisions ON code.
-            sub = (
+            sub_div = (
                 select(ProductDivision.product_sku)
                 .join(Division, Division.id == ProductDivision.division_id)
                 .where(
@@ -189,7 +236,7 @@ class ProductRepository(BaseRepository[Product]):
                     Division.code == division_code,
                 )
             )
-            clauses.append(exists(sub))
+            clauses.append(exists(sub_div))
         if series_id is not None:
             # Acepta UUID o SLUG (registry-aware). Si parsea como UUID se usa
             # directo contra la FK; de lo contrario se resuelve por `series.code`.
@@ -201,11 +248,11 @@ class ProductRepository(BaseRepository[Product]):
                 else:
                     # Lookup contra tabla legacy `series.code` — mig 050 garantiza
                     # que el slug del registry === series.code (vía normalize_slug).
-                    sub = select(Series.id).where(
+                    sub_series = select(Series.id).where(
                         Series.id == Product.series_id,
                         Series.code == series_id,
                     )
-                    clauses.append(exists(sub))
+                    clauses.append(exists(sub_series))
         if material_id is not None:
             if isinstance(material_id, UUID):
                 clauses.append(Product.material_id == material_id)
@@ -213,14 +260,14 @@ class ProductRepository(BaseRepository[Product]):
                 if _is_uuid(material_id):
                     clauses.append(Product.material_id == UUID(material_id))
                 else:
-                    sub = select(Material.id).where(
+                    sub_material = select(Material.id).where(
                         Material.id == Product.material_id,
                         Material.code == material_id,
                     )
-                    clauses.append(exists(sub))
+                    clauses.append(exists(sub_material))
         if tier_code is not None:
             # JOIN series → series_tiers para filtrar por tier.code.
-            sub = (
+            sub_tier = (
                 select(Series.id)
                 .join(SeriesTier, SeriesTier.id == Series.tier_id)
                 .where(
@@ -228,7 +275,7 @@ class ProductRepository(BaseRepository[Product]):
                     SeriesTier.code == tier_code,
                 )
             )
-            clauses.append(exists(sub))
+            clauses.append(exists(sub_tier))
 
         # Translation status: requiere subquery sobre product_translations.
         if translation_status:
@@ -256,40 +303,37 @@ class ProductRepository(BaseRepository[Product]):
             )
             if dialect == "postgresql":
                 # Documento ponderado: sku 'A', name_en 'B', family 'C', brand 'D'.
-                ts_doc = func.setweight(
-                    func.to_tsvector(
-                        "simple", func.coalesce(Product.sku, "")
-                    ),
-                    "A",
-                ).op("||")(
+                # literal_column evita que asyncpg envíe el peso como VARCHAR bind;
+                # setweight requiere "char", no character varying.
+                ts_doc = (
                     func.setweight(
-                        func.to_tsvector(
-                            "simple", func.coalesce(en_name_sql, "")
-                        ),
-                        "B",
+                        func.to_tsvector("simple", func.coalesce(Product.sku, "")),
+                        literal_column("'A'::\"char\""),
                     )
-                ).op("||")(
-                    func.setweight(
-                        func.to_tsvector(
-                            "simple", func.coalesce(Product.family, "")
-                        ),
-                        "C",
+                    .op("||")(
+                        func.setweight(
+                            func.to_tsvector("simple", func.coalesce(en_name_sql, "")),
+                            literal_column("'B'::\"char\""),
+                        )
                     )
-                ).op("||")(
-                    func.setweight(
-                        func.to_tsvector(
-                            "simple", func.coalesce(Product.brand, "")
-                        ),
-                        "D",
+                    .op("||")(
+                        func.setweight(
+                            func.to_tsvector("simple", func.coalesce(Product.family, "")),
+                            literal_column("'C'::\"char\""),
+                        )
+                    )
+                    .op("||")(
+                        func.setweight(
+                            func.to_tsvector("simple", func.coalesce(Product.brand, "")),
+                            literal_column("'D'::\"char\""),
+                        )
                     )
                 )
                 ts_query = func.websearch_to_tsquery("simple", search)
                 clauses.append(ts_doc.op("@@")(ts_query))
             else:
                 term = f"%{search}%"
-                clauses.append(
-                    or_(Product.sku.ilike(term), en_name_sql.ilike(term))
-                )
+                clauses.append(or_(Product.sku.ilike(term), en_name_sql.ilike(term)))
 
         if clauses:
             stmt = stmt.where(and_(*clauses))
@@ -316,9 +360,7 @@ class ProductRepository(BaseRepository[Product]):
             rows = rows[:limit]
         return rows, next_cursor, total
 
-    async def search_by_text(
-        self, query: str, *, limit: int = 10
-    ) -> Sequence[Product]:
+    async def search_by_text(self, query: str, *, limit: int = 10) -> Sequence[Product]:
         """Full-text simple: pg_trgm sobre product_translations(lang='en').name + ILIKE sobre sku.
 
         Usa JOIN directo sobre product_translations para que el planner pueda
@@ -458,7 +500,7 @@ class ProductTranslationRepository(BaseRepository[ProductTranslation]):
         from sqlalchemy.dialects.postgresql import insert as pg_insert
 
         insert_values = {"sku": sku, "lang": lang, **fields}
-        update_values = {k: v for k, v in fields.items()}
+        update_values = dict(fields)
 
         stmt = (
             pg_insert(ProductTranslation)

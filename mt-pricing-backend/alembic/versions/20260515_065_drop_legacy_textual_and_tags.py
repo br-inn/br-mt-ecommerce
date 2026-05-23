@@ -31,6 +31,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260515_065"
@@ -82,14 +83,10 @@ def upgrade() -> None:
     #        depende de UPDATE OF name_en, description_en.
     if dialect == "postgresql":
         op.execute(
-            sa.text(
-                "DROP TRIGGER IF EXISTS trg_translations_stale_on_master_edit ON products"
-            )
+            sa.text("DROP TRIGGER IF EXISTS trg_translations_stale_on_master_edit ON products")
         )
         op.execute(
-            sa.text(
-                "DROP FUNCTION IF EXISTS mark_translations_stale_on_master_edit() CASCADE"
-            )
+            sa.text("DROP FUNCTION IF EXISTS mark_translations_stale_on_master_edit() CASCADE")
         )
 
         # 2.0b — Columna GENERATED `search_tsv` (mig 003/008) referencia
@@ -170,12 +167,9 @@ def downgrade() -> None:
         "products",
         sa.Column(
             "tags",
-            sa.dialects.postgresql.ARRAY(sa.Text())
-            if dialect == "postgresql"
-            else sa.Text(),
+            sa.dialects.postgresql.ARRAY(sa.Text()) if dialect == "postgresql" else sa.Text(),
             nullable=False,
-            server_default=sa.text("'{}'::text[]") if dialect == "postgresql"
-            else sa.text("'[]'"),
+            server_default=sa.text("'{}'::text[]") if dialect == "postgresql" else sa.text("'[]'"),
         ),
     )
 

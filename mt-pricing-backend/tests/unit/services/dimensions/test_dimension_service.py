@@ -146,9 +146,7 @@ class TestStandardService:
     async def test_create_ok(self) -> None:
         session = _fake_session()
         svc = StandardService(session)
-        row = await svc.create(
-            {"code": "ASTM A105", "edition": "", "title_en": "X"}
-        )
+        row = await svc.create({"code": "ASTM A105", "edition": "", "title_en": "X"})
         assert row is not None
         session.add.assert_called_once()
         session.commit.assert_awaited()
@@ -239,9 +237,7 @@ class TestDimensionServiceRows:
         # → insert path.
         session = _fake_session(get_returns=product, scalar_result=None)
         svc = DimensionService(session)
-        out = await svc.upsert_row(
-            product_sku="SKU-1", size_label="DN50", dn=50
-        )
+        out = await svc.upsert_row(product_sku="SKU-1", size_label="DN50", dn=50)
         assert out is not None
         session.add.assert_called_once()
 
@@ -251,9 +247,7 @@ class TestDimensionServiceRows:
         existing_row = _make_row("SKU-1")
         session = _fake_session(get_returns=product, scalar_result=existing_row)
         svc = DimensionService(session)
-        out = await svc.upsert_row(
-            product_sku="SKU-1", size_label="DN50", dn=80, order_index=2
-        )
+        out = await svc.upsert_row(product_sku="SKU-1", size_label="DN50", dn=80, order_index=2)
         assert out is existing_row
         assert existing_row.dn == 80
         assert existing_row.order_index == 2
@@ -303,9 +297,7 @@ class TestDimensionServiceCells:
 
         svc = DimensionService(session)
         with pytest.raises(DimensionDomainError) as exc:
-            await svc.set_cell(
-                row.id, column.id, value_number=Decimal("1")
-            )
+            await svc.set_cell(row.id, column.id, value_number=Decimal("1"))
         assert exc.value.code == "dimension_cell_family_mismatch"
         assert exc.value.status_code == 409
 
@@ -327,9 +319,7 @@ class TestDimensionServiceCells:
         session.execute = AsyncMock(return_value=exec_result)
 
         svc = DimensionService(session)
-        out = await svc.set_cell(
-            row.id, column.id, value_number=Decimal("100")
-        )
+        out = await svc.set_cell(row.id, column.id, value_number=Decimal("100"))
         assert out is not None
         session.add.assert_called_once()
 

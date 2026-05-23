@@ -24,7 +24,7 @@ from __future__ import annotations
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.repositories.channel_listings import (
@@ -41,7 +41,6 @@ from app.services.channel_mirror.ports import (
     LiveListing,
     PublishResult,
 )
-
 
 CanonicalLoader = Callable[[str], Awaitable[dict[str, Any]]]
 
@@ -158,7 +157,7 @@ class MirrorService:
             stock_qty=live.stock_qty,
             rating=live.rating,
             reviews_count=live.reviews_count,
-            last_sync_at=live.fetched_at or datetime.now(tz=timezone.utc),
+            last_sync_at=live.fetched_at or datetime.now(tz=UTC),
         )
 
         total_duration = int((time.perf_counter() - t0) * 1000)

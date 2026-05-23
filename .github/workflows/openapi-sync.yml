@@ -44,7 +44,7 @@ jobs:
       UV_VERSION: "0.4.18"
       SPEC_PATH: _bmad-output/planning-artifacts/mt-api-contract-openapi.json
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -85,7 +85,7 @@ jobs:
       run:
         working-directory: mt-pricing-frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:

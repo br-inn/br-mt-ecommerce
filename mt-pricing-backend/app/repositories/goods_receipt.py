@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -142,7 +141,7 @@ class GoodsReceiptRepository:
         await self.session.refresh(gr, ["po_line_id"])
         # Re-query con eager load para devolver po_line
         gr_loaded = await self.get(gr.id)
-        assert gr_loaded is not None  # noqa: S101
+        assert gr_loaded is not None
         return gr_loaded
 
     async def _update_po_status(self, po: PurchaseOrder) -> None:
@@ -165,9 +164,7 @@ class GoodsReceiptRepository:
         stmt = (
             select(GoodsReceipt)
             .options(
-                selectinload(GoodsReceipt.po_line).selectinload(
-                    PurchaseOrderLine.purchase_order
-                )
+                selectinload(GoodsReceipt.po_line).selectinload(PurchaseOrderLine.purchase_order)
             )
             .where(GoodsReceipt.id == gr_id)
         )
@@ -212,9 +209,7 @@ class GoodsReceiptRepository:
         limit: int = 50,
     ) -> tuple[list[GoodsReceipt], str | None]:
         stmt = select(GoodsReceipt).options(
-            selectinload(GoodsReceipt.po_line).selectinload(
-                PurchaseOrderLine.purchase_order
-            )
+            selectinload(GoodsReceipt.po_line).selectinload(PurchaseOrderLine.purchase_order)
         )
 
         clauses: list[Any] = []
@@ -224,9 +219,7 @@ class GoodsReceiptRepository:
             clauses.append(GoodsReceipt.po_line_id.in_(sub))
         if po_id:
             # Filtra por PO — todas las líneas de ese PO
-            sub_po = select(PurchaseOrderLine.id).where(
-                PurchaseOrderLine.po_id == po_id
-            )
+            sub_po = select(PurchaseOrderLine.id).where(PurchaseOrderLine.po_id == po_id)
             clauses.append(GoodsReceipt.po_line_id.in_(sub_po))
         if status_filter:
             clauses.append(GoodsReceipt.status == status_filter)
@@ -289,5 +282,5 @@ class GoodsReceiptRepository:
 
         # Devolver con eager load
         loaded = await self.get(gr_id)
-        assert loaded is not None  # noqa: S101
+        assert loaded is not None
         return loaded

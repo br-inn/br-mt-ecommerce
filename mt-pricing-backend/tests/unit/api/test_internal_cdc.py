@@ -6,6 +6,7 @@ Estrategia:
 - Cubrimos: 202 sin secret configurado, 401 con secret incorrecto,
   202 con secret correcto, y que .delay() se llama con los args correctos.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -42,9 +43,7 @@ async def test_cdc_product_202_no_secret_configured() -> None:
         mock_task = MagicMock()
         mock_task.delay = MagicMock()
 
-        with patch(
-            "app.api.routes.internal_cdc.sync_product_to_kg", mock_task
-        ):
+        with patch("app.api.routes.internal_cdc.sync_product_to_kg", mock_task):
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
@@ -72,9 +71,7 @@ async def test_cdc_product_401_wrong_secret() -> None:
     with patch("app.api.routes.internal_cdc.settings") as mock_settings:
         mock_settings.INTERNAL_CDC_SECRET = "correct-secret"
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.post(
                 "/api/v1/internal/cdc/product",
                 json={
@@ -99,9 +96,7 @@ async def test_cdc_product_202_correct_secret() -> None:
         mock_task = MagicMock()
         mock_task.delay = MagicMock()
 
-        with patch(
-            "app.api.routes.internal_cdc.sync_product_to_kg", mock_task
-        ):
+        with patch("app.api.routes.internal_cdc.sync_product_to_kg", mock_task):
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
@@ -116,9 +111,7 @@ async def test_cdc_product_202_correct_secret() -> None:
                 )
 
     assert resp.status_code == 202
-    mock_task.delay.assert_called_once_with(
-        product_id="prod-999", operation="update"
-    )
+    mock_task.delay.assert_called_once_with(product_id="prod-999", operation="update")
 
 
 @pytest.mark.asyncio
@@ -132,9 +125,7 @@ async def test_cdc_product_delete_operation() -> None:
         mock_task = MagicMock()
         mock_task.delay = MagicMock()
 
-        with patch(
-            "app.api.routes.internal_cdc.sync_product_to_kg", mock_task
-        ):
+        with patch("app.api.routes.internal_cdc.sync_product_to_kg", mock_task):
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
@@ -148,6 +139,4 @@ async def test_cdc_product_delete_operation() -> None:
                 )
 
     assert resp.status_code == 202
-    mock_task.delay.assert_called_once_with(
-        product_id="prod-del-001", operation="delete"
-    )
+    mock_task.delay.assert_called_once_with(product_id="prod-del-001", operation="delete")

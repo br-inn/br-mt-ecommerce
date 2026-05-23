@@ -17,22 +17,22 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("neo4j")
+
 # Ruta al script relativa al root del proyecto (un nivel sobre mt-pricing-backend)
-_SCRIPT = str(
-    Path(__file__).parents[5] / "scripts" / "seed_kg_materials.py"
-)
+_SCRIPT = str(Path(__file__).parents[5] / "scripts" / "seed_kg_materials.py")
 
 
 @pytest.mark.neo4j_real
 class TestKgSeed:
-    def test_seed_creates_nodes(self, neo4j_driver) -> None:  # noqa: ANN001
+    def test_seed_creates_nodes(self, neo4j_driver) -> None:
         """Seed crea nodos Material en Neo4j."""
         subprocess.run([sys.executable, _SCRIPT], check=True)
         with neo4j_driver.session() as s:
             result = s.run("MATCH (n:Material) RETURN count(n) AS cnt").single()
             assert result["cnt"] > 500
 
-    def test_seed_is_idempotent(self, neo4j_driver) -> None:  # noqa: ANN001
+    def test_seed_is_idempotent(self, neo4j_driver) -> None:
         """Segunda ejecución no duplica nodos."""
         subprocess.run([sys.executable, _SCRIPT], check=True)
         with neo4j_driver.session() as s:
@@ -42,7 +42,7 @@ class TestKgSeed:
             count2 = s.run("MATCH (n:Material) RETURN count(n) AS cnt").single()["cnt"]
         assert count1 == count2
 
-    def test_dry_run_no_writes(self, neo4j_driver) -> None:  # noqa: ANN001
+    def test_dry_run_no_writes(self, neo4j_driver) -> None:
         """--dry-run no escribe nada en Neo4j."""
         with neo4j_driver.session() as s:
             count_before = s.run("MATCH (n) RETURN count(n) AS cnt").single()["cnt"]

@@ -19,7 +19,7 @@ Lógica de scoring:
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Vocabulario de sinónimos — migrado íntegro de match_scorer_v2.py
@@ -189,7 +189,7 @@ def _matches_any(needle: str, synonyms: list[str]) -> bool:
     return False
 
 
-def _classify_term(text: str, synonym_map: dict[str, list[str]]) -> Optional[str]:
+def _classify_term(text: str, synonym_map: dict[str, list[str]]) -> str | None:
     """Devuelve la clase canónica para un texto libre."""
     if not text:
         return None
@@ -201,7 +201,7 @@ def _classify_term(text: str, synonym_map: dict[str, list[str]]) -> Optional[str
     return None
 
 
-def _extract_size_inches(text: str) -> Optional[str]:
+def _extract_size_inches(text: str) -> str | None:
     """Encuentra la primera medida en pulgadas: '1/2"', '1 1/2"', '2"'."""
     if not text:
         return None
@@ -211,7 +211,7 @@ def _extract_size_inches(text: str) -> Optional[str]:
     return None
 
 
-def _extract_dn(text: str) -> Optional[int]:
+def _extract_dn(text: str) -> int | None:
     if not text:
         return None
     m = re.search(r"\bDN\s*(\d+)\b", text, re.I)
@@ -220,7 +220,7 @@ def _extract_dn(text: str) -> Optional[int]:
     return None
 
 
-def _extract_pn(text: str) -> Optional[int]:
+def _extract_pn(text: str) -> int | None:
     if not text:
         return None
     m = re.search(r"\bPN[ -]?(\d{1,3})\b", text, re.I)
@@ -299,22 +299,14 @@ def _build_mt_rec(product_data: dict[str, Any]) -> dict[str, Any]:
     # Sección excel
     excel: dict[str, Any] = {
         "ean_individual": ean,
-        "medidas_clean": (
-            attrs.get("medidas_clean")
-            or attrs.get("size")
-            or str(web["size_in"])
-        ),
+        "medidas_clean": (attrs.get("medidas_clean") or attrs.get("size") or str(web["size_in"])),
         "material_intrastat_guess": attrs.get("material_intrastat_guess") or "",
     }
 
     # Sección ficha
     ficha: dict[str, Any] = {
         "alloy_codes": alloy_codes,
-        "pressure_pn": (
-            product_data.get("pn")
-            or attrs.get("pn")
-            or attrs.get("pressure_pn")
-        ),
+        "pressure_pn": (product_data.get("pn") or attrs.get("pn") or attrs.get("pressure_pn")),
         "end_connection": _build_end_connection_list(product_data, attrs),
         "materials": attrs.get("materials") or {},
     }
@@ -328,9 +320,7 @@ def _build_mt_rec(product_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _build_end_connection_list(
-    product_data: dict[str, Any], attrs: dict[str, Any]
-) -> list[str]:
+def _build_end_connection_list(product_data: dict[str, Any], attrs: dict[str, Any]) -> list[str]:
     """Construye lista canónica de end connections del producto MT."""
     raw = (
         attrs.get("end_connection")
@@ -455,7 +445,12 @@ def score_match(
         if _matches_any(amz_blob, VALVE_TYPE_SYNONYMS[mt_valve_canon]):
             breakdown["valve_type"] = (True, 20, 30, f"{mt_valve_canon} encontrado en título")
         else:
-            breakdown["valve_type"] = (False, 0, 30, f"{mt_valve_canon} no encontrado en ningún campo")
+            breakdown["valve_type"] = (
+                False,
+                0,
+                30,
+                f"{mt_valve_canon} no encontrado en ningún campo",
+            )
     else:
         breakdown["valve_type"] = (None, 0, 0, "categoría no clasificable")
 
@@ -466,7 +461,7 @@ def score_match(
         if c:
             mt_mats.add(c)
     for comp_mats in (ficha.get("materials") or {}).values():
-        for m in (comp_mats or []):
+        for m in comp_mats or []:
             c = _classify_term(str(m), MATERIAL_SYNONYMS) if m not in MATERIAL_SYNONYMS else m
             if c:
                 mt_mats.add(c)
@@ -592,8 +587,8 @@ def score_match(
         ]
     ).lower()
 
-    matched_competitor: Optional[dict[str, Any]] = None
-    matched_dropshipper: Optional[str] = None
+    matched_competitor: dict[str, Any] | None = None
+    matched_dropshipper: str | None = None
 
     for alias, comp_info in _COMPETITOR_BRANDS.items():
         if alias in amz_brand_blob:
@@ -613,7 +608,7 @@ def score_match(
             True,
             bonus,
             20,
-            f'{matched_competitor["brand_canonical"]} (tier {tier} peer fabricator)',
+            f"{matched_competitor['brand_canonical']} (tier {tier} peer fabricator)",
         )
     elif matched_dropshipper:
         breakdown["competitor"] = (
@@ -639,8 +634,8 @@ def score_match(
 
 
 __all__ = [
-    "VALVE_TYPE_SYNONYMS",
-    "MATERIAL_SYNONYMS",
     "END_CONNECTION_SYNONYMS",
+    "MATERIAL_SYNONYMS",
+    "VALVE_TYPE_SYNONYMS",
     "score_match",
 ]

@@ -10,10 +10,10 @@ from app.services.compatibility.compatibility_service import (
 )
 
 __all__ = [
-    "CompatibilityService",
     "CompatibilityDomainError",
-    "CompatibilitySkuNotFoundError",
-    "CompatibilitySelfLoopError",
     "CompatibilityDuplicateError",
     "CompatibilityNotFoundError",
+    "CompatibilitySelfLoopError",
+    "CompatibilityService",
+    "CompatibilitySkuNotFoundError",
 ]

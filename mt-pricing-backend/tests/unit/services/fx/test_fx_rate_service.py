@@ -15,7 +15,7 @@ Cobertura sin trigger (los AC del trigger van en `tests/data/test_fx_rates_trigg
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -65,7 +65,7 @@ def _make_fx_row(
         from_currency=from_c,
         to_currency=to_c,
         rate=Decimal(str(rate)),
-        effective_from=effective_from or datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=effective_from or datetime(2026, 4, 1, tzinfo=UTC),
         effective_to=effective_to,
         source="manual",
     )
@@ -128,9 +128,7 @@ def _build_service(
     rate_row: FXRate | None = None,
     flush_raises: Exception | None = None,
 ) -> tuple[FXRateService, list[dict]]:
-    session = _make_session(
-        currencies=currencies, rate_row=rate_row, flush_raises=flush_raises
-    )
+    session = _make_session(currencies=currencies, rate_row=rate_row, flush_raises=flush_raises)
     svc = FXRateService(session)
     audit_calls: list[dict] = []
 
@@ -146,7 +144,7 @@ def _build_service(
 # ---------------------------------------------------------------------------
 async def test_rate_at_identity_returns_one_without_db_hit() -> None:
     svc, _ = _build_service()
-    result = await svc.rate_at("AED", "AED", datetime.now(timezone.utc))
+    result = await svc.rate_at("AED", "AED", datetime.now(UTC))
     assert result.rate == Decimal("1")
     assert result.from_currency == "AED"
     assert result.to_currency == "AED"
@@ -158,14 +156,14 @@ async def test_rate_at_identity_returns_one_without_db_hit() -> None:
 async def test_rate_at_returns_existing_row() -> None:
     row = _make_fx_row(from_c="EUR", to_c="AED", rate=4.29)
     svc, _ = _build_service(rate_row=row)
-    out = await svc.rate_at("EUR", "AED", datetime.now(timezone.utc))
+    out = await svc.rate_at("EUR", "AED", datetime.now(UTC))
     assert out is row
 
 
 async def test_rate_at_missing_raises() -> None:
     svc, _ = _build_service(rate_row=None)
     with pytest.raises(FXRateNotFoundError) as ei:
-        await svc.rate_at("EUR", "AED", datetime.now(timezone.utc))
+        await svc.rate_at("EUR", "AED", datetime.now(UTC))
     assert ei.value.code == "fx_rate_not_found_at_effective_at"
 
 
@@ -184,7 +182,7 @@ async def test_create_rate_rejects_non_positive_rate() -> None:
             from_code="EUR",
             to_code="AED",
             rate=Decimal("0"),
-            effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 6, 12, tzinfo=UTC),
             actor=_FakeUser(),
         )
 
@@ -201,7 +199,7 @@ async def test_create_rate_rejects_inactive_currency() -> None:
             from_code="EUR",
             to_code="AED",
             rate=Decimal("4.18"),
-            effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 6, 12, tzinfo=UTC),
             actor=_FakeUser(),
         )
     assert ei.value.code == "fx_invalid_currency"
@@ -214,7 +212,7 @@ async def test_create_rate_unknown_currency_rejected() -> None:
             from_code="ZZZ",
             to_code="AED",
             rate=Decimal("1.5"),
-            effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 6, 12, tzinfo=UTC),
             actor=_FakeUser(),
         )
 
@@ -235,7 +233,7 @@ async def test_create_rate_identity_forces_rate_one() -> None:
         from_code="AED",
         to_code="AED",
         rate=Decimal("999"),
-        effective_from=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 4, 1, tzinfo=UTC),
         actor=_FakeUser(),
     )
 
@@ -245,15 +243,13 @@ async def test_create_rate_identity_forces_rate_one() -> None:
 
 
 async def test_create_rate_allow_retroactive_requires_reason() -> None:
-    svc, _ = _build_service(
-        currencies={"EUR": _FakeCurrency("EUR"), "AED": _FakeCurrency("AED")}
-    )
+    svc, _ = _build_service(currencies={"EUR": _FakeCurrency("EUR"), "AED": _FakeCurrency("AED")})
     with pytest.raises(FXRateDomainError) as ei:
         await svc.create_rate(
             from_code="EUR",
             to_code="AED",
             rate=Decimal("4.18"),
-            effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 6, 12, tzinfo=UTC),
             actor=_FakeUser(),
             allow_retroactive=True,
             reason=None,
@@ -278,7 +274,7 @@ async def test_create_rate_translates_trigger_retroactive_error() -> None:
             from_code="EUR",
             to_code="AED",
             rate=Decimal("4.18"),
-            effective_from=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 1, 1, tzinfo=UTC),
             actor=_FakeUser(),
         )
     assert ei.value.code == "fx_retroactive_not_allowed"
@@ -294,7 +290,7 @@ async def test_create_rate_happy_path_emits_audit() -> None:
         from_code="eur",
         to_code="aed",
         rate=Decimal("4.18"),
-        effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 6, 12, tzinfo=UTC),
         source="manual",
         actor=user,
     )

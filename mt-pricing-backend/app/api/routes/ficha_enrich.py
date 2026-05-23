@@ -7,6 +7,7 @@ POST /products/{sku}/ficha-enrich/preview
 POST /products/{sku}/ficha-enrich/apply
     Aplica campos seleccionados a la lista de SKUs indicada.
 """
+
 from __future__ import annotations
 
 import re
@@ -51,7 +52,7 @@ _MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB
 
 def _extract_series_prefix(filename: str, anchor_sku: str) -> str:
     """Extrae el prefijo de serie: MTFT_4097.pdf → '4097'. Fallback: primeros N-3 chars del SKU."""
-    match = re.search(r'MTFT[_\-]?(\d+)', filename, re.IGNORECASE)
+    match = re.search(r"MTFT[_\-]?(\d+)", filename, re.IGNORECASE)
     if match:
         return match.group(1)
     # Fallback: asume que los últimos 3 dígitos son el tamaño (ej. 015 = DN15)
@@ -61,9 +62,7 @@ def _extract_series_prefix(filename: str, anchor_sku: str) -> str:
 async def _find_series_products(session: AsyncSession, prefix: str) -> list[Product]:
     """Busca todos los productos cuyo SKU empieza con el prefijo de serie."""
     result = await session.execute(
-        _sa_select(Product)
-        .where(Product.sku.like(f"{prefix}%"))
-        .order_by(Product.sku)
+        _sa_select(Product).where(Product.sku.like(f"{prefix}%")).order_by(Product.sku)
     )
     return list(result.scalars().all())
 
@@ -96,13 +95,19 @@ async def preview_ficha_enrich(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> FichaEnrichPreviewResponse:
     if file.filename is None:
-        raise HTTPException(status_code=422, detail={"code": "missing_filename", "title": "Filename requerido"})
+        raise HTTPException(
+            status_code=422, detail={"code": "missing_filename", "title": "Filename requerido"}
+        )
 
     pdf_bytes = await file.read()
     if len(pdf_bytes) > _MAX_PDF_BYTES:
-        raise HTTPException(status_code=413, detail={"code": "pdf_too_large", "title": "PDF > 50 MB"})
+        raise HTTPException(
+            status_code=413, detail={"code": "pdf_too_large", "title": "PDF > 50 MB"}
+        )
     if not pdf_bytes.lstrip().startswith(b"%PDF"):
-        raise HTTPException(status_code=422, detail={"code": "not_a_pdf", "title": "El archivo no es un PDF válido"})
+        raise HTTPException(
+            status_code=422, detail={"code": "not_a_pdf", "title": "El archivo no es un PDF válido"}
+        )
 
     # Verificar que el SKU anchor existe
     anchor = await _load_product_or_404(session, sku)
@@ -150,7 +155,10 @@ async def apply_ficha_enrich(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> FichaEnrichApplyResponse:
     if not body.apply_to_skus:
-        raise HTTPException(status_code=422, detail={"code": "no_skus", "title": "apply_to_skus no puede estar vacío"})
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "no_skus", "title": "apply_to_skus no puede estar vacío"},
+        )
 
     series = _extract_series_prefix(body.apply_to_skus[0], sku)
     results: list[SkuApplyResult] = []
@@ -162,12 +170,14 @@ async def apply_ficha_enrich(
             results.append(result)
         except HTTPException as exc:
             if exc.status_code == 404:
-                results.append(SkuApplyResult(
-                    sku=target_sku,
-                    applied_fields=[],
-                    skipped_fields=[],
-                    warnings=[f"SKU no encontrado"],
-                ))
+                results.append(
+                    SkuApplyResult(
+                        sku=target_sku,
+                        applied_fields=[],
+                        skipped_fields=[],
+                        warnings=["SKU no encontrado"],
+                    )
+                )
             else:
                 raise
 
@@ -189,13 +199,19 @@ async def preview_ficha_series(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> FichaSeriesPreviewResponse:
     if file.filename is None:
-        raise HTTPException(status_code=422, detail={"code": "missing_filename", "title": "Filename requerido"})
+        raise HTTPException(
+            status_code=422, detail={"code": "missing_filename", "title": "Filename requerido"}
+        )
 
     pdf_bytes = await file.read()
     if len(pdf_bytes) > _MAX_PDF_BYTES:
-        raise HTTPException(status_code=413, detail={"code": "pdf_too_large", "title": "PDF > 50 MB"})
+        raise HTTPException(
+            status_code=413, detail={"code": "pdf_too_large", "title": "PDF > 50 MB"}
+        )
     if not pdf_bytes.lstrip().startswith(b"%PDF"):
-        raise HTTPException(status_code=422, detail={"code": "not_a_pdf", "title": "No es un PDF válido"})
+        raise HTTPException(
+            status_code=422, detail={"code": "not_a_pdf", "title": "No es un PDF válido"}
+        )
 
     filename_series = extract_series_prefix(file.filename)
 
@@ -262,7 +278,9 @@ async def apply_ficha_series(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> FichaSeriesApplyResponse:
     if not body.apply_to_skus:
-        raise HTTPException(status_code=422, detail={"code": "no_skus", "title": "apply_to_skus vacío"})
+        raise HTTPException(
+            status_code=422, detail={"code": "no_skus", "title": "apply_to_skus vacío"}
+        )
 
     results: list[SkuApplyResult] = []
     skus_created: list[str] = []
@@ -270,6 +288,7 @@ async def apply_ficha_series(
 
     # Determinar cuáles existen
     from sqlalchemy import select as _select
+
     existing_result = await session.execute(
         _select(Product).where(Product.sku.in_(body.apply_to_skus))
     )
@@ -283,10 +302,14 @@ async def apply_ficha_series(
                 results.append(result)
                 skus_updated.append(target_sku)
             except HTTPException as exc:
-                results.append(SkuApplyResult(
-                    sku=target_sku, applied_fields=[], skipped_fields=[],
-                    warnings=[f"Error {exc.status_code}: {exc.detail}"],
-                ))
+                results.append(
+                    SkuApplyResult(
+                        sku=target_sku,
+                        applied_fields=[],
+                        skipped_fields=[],
+                        warnings=[f"Error {exc.status_code}: {exc.detail}"],
+                    )
+                )
         else:
             variant_of = body.variant_links.get(target_sku)
             result = await create_product_from_extraction(
@@ -303,7 +326,10 @@ async def apply_ficha_series(
 
     # Write model-level data (dimensions, P/T curves, certificates, flow data)
     from app.services.ficha_enrichment.model_writer import write_model_data
-    await write_model_data(session, body.series, body.extraction, variant_series=body.variant_series)
+
+    await write_model_data(
+        session, body.series, body.extraction, variant_series=body.variant_series
+    )
 
     document_id: str | None = None
     if body.save_document and body.pdf_filename:

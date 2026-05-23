@@ -178,9 +178,7 @@ class AmazonSPApiAdapter:
                 return resp.json()
         raise RuntimeError("unreachable")
 
-    async def pull_listing(
-        self, sku: str, external_id: str | None = None
-    ) -> LiveListing:
+    async def pull_listing(self, sku: str, external_id: str | None = None) -> LiveListing:
         if not self._live_enabled() or not self._has_credentials():
             return await self._stub.pull_listing(sku, external_id=external_id)
 

@@ -38,6 +38,7 @@ def session_no_product() -> AsyncMock:
 
 # ---- _ensure_product ----------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_ensure_product_not_found_raises(session_no_product: AsyncMock) -> None:
     svc = ComponentsService(session_no_product)
@@ -48,6 +49,7 @@ async def test_ensure_product_not_found_raises(session_no_product: AsyncMock) ->
 
 
 # ---- Materials ----------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_materials_calls_repo(session_with_product: AsyncMock) -> None:
@@ -103,6 +105,7 @@ async def test_replace_materials_calls_repo(session_with_product: AsyncMock) -> 
 
 
 # ---- Connections --------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_connections_calls_repo(session_with_product: AsyncMock) -> None:
@@ -163,6 +166,7 @@ async def test_replace_connections_calls_repo(session_with_product: AsyncMock) -
 
 
 # ---- Domain errors ------------------------------------------------------------
+
 
 def test_components_domain_error_attrs() -> None:
     err = ComponentsDomainError("foo", "bar baz", 409)

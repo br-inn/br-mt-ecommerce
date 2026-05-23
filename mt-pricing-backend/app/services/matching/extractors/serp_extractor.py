@@ -106,7 +106,7 @@ def extract_top_results(html: str, top_n: int = 3) -> list[dict[str, Any]]:
 
     try:
         tree = HTMLParser(html)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
     # Primary selector: data-component-type is the stable Amazon hook.
@@ -115,9 +115,7 @@ def extract_top_results(html: str, top_n: int = 3) -> list[dict[str, Any]]:
     # Fallback: any div with data-asin (older layouts).
     if not cards:
         cards = [
-            n
-            for n in tree.css("div[data-asin]")
-            if (n.attributes.get("data-asin") or "").strip()
+            n for n in tree.css("div[data-asin]") if (n.attributes.get("data-asin") or "").strip()
         ]
 
     results: list[dict[str, Any]] = []

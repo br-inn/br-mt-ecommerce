@@ -33,7 +33,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20260507_020"
@@ -55,20 +54,15 @@ _VALID_STATUSES: tuple[str, ...] = (
 def upgrade() -> None:
     # ----- Columnas nuevas (idempotente — usamos IF NOT EXISTS) -----
     op.execute(
-        "ALTER TABLE product_translations "
-        "ADD COLUMN IF NOT EXISTS staleness_reason TEXT NULL"
+        "ALTER TABLE product_translations ADD COLUMN IF NOT EXISTS staleness_reason TEXT NULL"
     )
     op.execute(
-        "ALTER TABLE product_translations "
-        "ADD COLUMN IF NOT EXISTS rejection_reason TEXT NULL"
+        "ALTER TABLE product_translations ADD COLUMN IF NOT EXISTS rejection_reason TEXT NULL"
     )
 
     # ----- Reemplaza CHECK constraint del estado -----
     # Drop si existe (creado en 20260506_001) y recrea con la nueva lista.
-    op.execute(
-        "ALTER TABLE product_translations "
-        "DROP CONSTRAINT IF EXISTS ck_translations_status"
-    )
+    op.execute("ALTER TABLE product_translations DROP CONSTRAINT IF EXISTS ck_translations_status")
     statuses_csv = ",".join(f"'{s}'" for s in _VALID_STATUSES)
     op.execute(
         "ALTER TABLE product_translations "
@@ -100,10 +94,7 @@ def upgrade() -> None:
         """
     )
 
-    op.execute(
-        "DROP TRIGGER IF EXISTS trg_translations_stale_on_master_edit "
-        "ON products"
-    )
+    op.execute("DROP TRIGGER IF EXISTS trg_translations_stale_on_master_edit ON products")
     op.execute(
         """
         CREATE TRIGGER trg_translations_stale_on_master_edit
@@ -115,25 +106,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DROP TRIGGER IF EXISTS trg_translations_stale_on_master_edit "
-        "ON products"
-    )
-    op.execute(
-        "DROP FUNCTION IF EXISTS mark_translations_stale_on_master_edit()"
-    )
-    op.execute(
-        "ALTER TABLE product_translations "
-        "DROP CONSTRAINT IF EXISTS ck_translations_status"
-    )
+    op.execute("DROP TRIGGER IF EXISTS trg_translations_stale_on_master_edit ON products")
+    op.execute("DROP FUNCTION IF EXISTS mark_translations_stale_on_master_edit()")
+    op.execute("ALTER TABLE product_translations DROP CONSTRAINT IF EXISTS ck_translations_status")
     op.execute(
         "ALTER TABLE product_translations "
         "ADD CONSTRAINT ck_translations_status "
         "CHECK (status IN ('pending','draft','approved'))"
     )
-    op.execute(
-        "ALTER TABLE product_translations DROP COLUMN IF EXISTS rejection_reason"
-    )
-    op.execute(
-        "ALTER TABLE product_translations DROP COLUMN IF EXISTS staleness_reason"
-    )
+    op.execute("ALTER TABLE product_translations DROP COLUMN IF EXISTS rejection_reason")
+    op.execute("ALTER TABLE product_translations DROP COLUMN IF EXISTS staleness_reason")

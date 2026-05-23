@@ -11,16 +11,16 @@ Usa mocks de AsyncSession — sin DB real.
 from __future__ import annotations
 
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.services.pricing.digest_service import DigestService
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_session(status_rows: list[tuple[str, int]], escalated_count: int) -> AsyncMock:
     """Construye un AsyncSession mock con resultados configurados.
@@ -33,24 +33,21 @@ def _make_session(status_rows: list[tuple[str, int]], escalated_count: int) -> A
     # Primera llamada → result del GROUP BY status
     mock_result_status = MagicMock()
     mock_result_status.__iter__ = MagicMock(
-        return_value=iter(
-            [MagicMock(status=s, cnt=c) for s, c in status_rows]
-        )
+        return_value=iter([MagicMock(status=s, cnt=c) for s, c in status_rows])
     )
 
     # Segunda llamada → result del count escalados
     mock_result_esc = MagicMock()
     mock_result_esc.scalar_one_or_none = MagicMock(return_value=escalated_count)
 
-    session.execute = AsyncMock(
-        side_effect=[mock_result_status, mock_result_esc]
-    )
+    session.execute = AsyncMock(side_effect=[mock_result_status, mock_result_esc])
     return session
 
 
 # ---------------------------------------------------------------------------
 # Escenario 1: sin prices el día
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_daily_summary_empty_day() -> None:
@@ -71,6 +68,7 @@ async def test_get_daily_summary_empty_day() -> None:
 # ---------------------------------------------------------------------------
 # Escenario 2: con prices pending_review
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_daily_summary_with_pending_review() -> None:
@@ -97,6 +95,7 @@ async def test_get_daily_summary_with_pending_review() -> None:
 # Escenario 3: con prices escalados
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_daily_summary_with_escalated() -> None:
     """Con prices escalados → conteo escalados refleja el valor correcto."""
@@ -122,6 +121,7 @@ async def test_get_daily_summary_with_escalated() -> None:
 # ---------------------------------------------------------------------------
 # Escenario bonus: fecha correctamente formateada
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_daily_summary_date_format() -> None:

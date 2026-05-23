@@ -1,11 +1,13 @@
 """Aplica los campos extraídos de una ficha técnica al producto en DB."""
+
 from __future__ import annotations
 
 import hashlib
 import logging
 from typing import Any
 
-from sqlalchemy import delete as _sa_delete, select
+from sqlalchemy import delete as _sa_delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.ficha_enrich import FichaEnrichApplyRequest, SkuApplyResult
@@ -14,13 +16,23 @@ from app.services.ficha_enrichment.differ import _specs_to_dict
 logger = logging.getLogger(__name__)
 
 _PATCHABLE_SCALAR_FIELDS = {
-    "family", "subfamily", "type", "material", "dn", "pn", "connection", "brand",
-    "weight", "weight_unit", "temp_min_c", "temp_max_c", "pressure_max_bar",
+    "family",
+    "subfamily",
+    "type",
+    "material",
+    "dn",
+    "pn",
+    "connection",
+    "brand",
+    "weight",
+    "weight_unit",
+    "temp_min_c",
+    "temp_max_c",
+    "pressure_max_bar",
 }
 
 
 class FichaEnrichmentApplier:
-
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -74,6 +86,7 @@ class FichaEnrichmentApplier:
         # of the SKU (SKU format: SSSS + DN zero-padded to 3 digits, e.g. 4097015 → DN15).
         if request.apply_scalars:
             from app.services.ficha_enrichment.series_resolver import dn_to_size
+
             effective_dn = product.dn
             if not effective_dn:
                 try:
@@ -161,10 +174,19 @@ class FichaEnrichmentApplier:
         result = await self._session.execute(select(Product).where(Product.sku == sku))
         return result.scalar_one_or_none()
 
-    _VALID_COMPONENT_KINDS = frozenset({
-        "body", "closure", "seat", "gasket", "screen",
-        "actuator_housing", "stem", "handle", "other",
-    })
+    _VALID_COMPONENT_KINDS = frozenset(
+        {
+            "body",
+            "closure",
+            "seat",
+            "gasket",
+            "screen",
+            "actuator_housing",
+            "stem",
+            "handle",
+            "other",
+        }
+    )
 
     async def _replace_materials(self, sku: str, materials: list[Any]) -> None:
         # ProductMaterial in components.py — PK: (product_sku, component, position)
@@ -217,9 +239,7 @@ class FichaEnrichmentApplier:
             )
         await self._session.flush()
 
-    async def _upsert_translations(
-        self, sku: str, translations: list[Any], actor: Any
-    ) -> None:
+    async def _upsert_translations(self, sku: str, translations: list[Any], actor: Any) -> None:
         # ProductTranslation columns: sku, lang, name, description, marketing_copy,
         # status, translated_by (UUID FK to users.id), translated_at, etc.
         from app.db.models.product import ProductTranslation
@@ -230,7 +250,9 @@ class FichaEnrichmentApplier:
                 await self._session.execute(
                     select(ProductTranslation).where(ProductTranslation.sku == sku)
                 )
-            ).scalars().all()
+            )
+            .scalars()
+            .all()
         }
         for t in translations:
             if not t.name and not t.description:
@@ -260,12 +282,16 @@ class FichaEnrichmentApplier:
         from app.db.models.dimensions import PressureTemperaturePoint
 
         existing = (
-            await self._session.execute(
-                select(PressureTemperaturePoint).where(
-                    PressureTemperaturePoint.product_sku == sku
+            (
+                await self._session.execute(
+                    select(PressureTemperaturePoint).where(
+                        PressureTemperaturePoint.product_sku == sku
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for row in existing:
             await self._session.delete(row)
         await self._session.flush()
@@ -291,8 +317,8 @@ class FichaEnrichmentApplier:
         # bytes_size, hash_sha256, caption, status, created_by (UUID)
         # kind CHECK: photo|banner|datasheet_pdf|exploded_3d|section_drawing|
         #             dimension_drawing|certificate_pdf|video_link|external_url|mirror_url
-        from app.services.importer_datasheets.vision_extractor import _render_pdf_pages
         from app.db.models.product import ProductAsset
+        from app.services.importer_datasheets.vision_extractor import _render_pdf_pages
 
         pngs = _render_pdf_pages(pdf_bytes, max_pages=20, resolution=150)
         uploaded: list[str] = []
@@ -306,8 +332,9 @@ class FichaEnrichmentApplier:
             storage_path = f"datasheets/{sku}/{asset_meta.asset_kind}_p{idx}_{sha}.png"
 
             try:
-                from app.core.config import settings
                 from supabase import create_client
+
+                from app.core.config import settings
 
                 sb = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
                 sb.storage.from_("product-images").upload(

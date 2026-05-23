@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260508_040"
@@ -26,19 +27,11 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column("product_translations", sa.Column("meta_title", sa.Text(), nullable=True))
-    op.add_column(
-        "product_translations", sa.Column("meta_description", sa.Text(), nullable=True)
-    )
-    op.add_column(
-        "product_translations", sa.Column("applications_text", sa.Text(), nullable=True)
-    )
-    op.add_column(
-        "product_translations", sa.Column("technical_limits", sa.Text(), nullable=True)
-    )
+    op.add_column("product_translations", sa.Column("meta_description", sa.Text(), nullable=True))
+    op.add_column("product_translations", sa.Column("applications_text", sa.Text(), nullable=True))
+    op.add_column("product_translations", sa.Column("technical_limits", sa.Text(), nullable=True))
     op.add_column("product_translations", sa.Column("notes", sa.Text(), nullable=True))
-    op.add_column(
-        "product_translations", sa.Column("marketing_features", sa.Text(), nullable=True)
-    )
+    op.add_column("product_translations", sa.Column("marketing_features", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:

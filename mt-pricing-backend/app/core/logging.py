@@ -26,24 +26,26 @@ from structlog.types import EventDict, Processor
 from app.core.config import settings
 
 # Campos que SIEMPRE se redactan si aparecen en el event_dict.
-_REDACTED_KEYS: frozenset[str] = frozenset({
-    "password",
-    "passwd",
-    "secret",
-    "token",
-    "access_token",
-    "refresh_token",
-    "jwt",
-    "api_key",
-    "apikey",
-    "service_role_key",
-    "anon_key",
-    "authorization",
-    "cookie",
-    "set-cookie",
-    "x-api-key",
-    "x-supabase-auth",
-})
+_REDACTED_KEYS: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "access_token",
+        "refresh_token",
+        "jwt",
+        "api_key",
+        "apikey",
+        "service_role_key",
+        "anon_key",
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "x-api-key",
+        "x-supabase-auth",
+    }
+)
 
 
 def _mask_email(value: str) -> str:

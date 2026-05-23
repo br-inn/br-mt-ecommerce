@@ -1,4 +1,5 @@
 """Task periódica que analiza performance de reglas y genera sugerencias IA."""
+
 from __future__ import annotations
 
 import asyncio
@@ -29,8 +30,8 @@ def analyze_rule_performance() -> dict[str, Any]:
         from sqlalchemy.pool import NullPool
 
         from app.core.config import settings
-        from app.repositories.taxonomy_profile import TaxonomyProfileRepository
         from app.repositories.match_rule_stat import MatchRuleStatRepository
+        from app.repositories.taxonomy_profile import TaxonomyProfileRepository
         from app.services.rule_engine.analyzer import analyze_and_suggest
 
         engine = create_async_engine(

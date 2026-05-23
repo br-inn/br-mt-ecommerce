@@ -107,9 +107,7 @@ def _mk_labels(n: int, base: datetime) -> list[_FakeLabel]:
 async def test_train_raises_when_below_min_samples() -> None:
     repo = _FakeGoldenRepo(labels=[])
     storage = _FakeStorage()
-    trainer = CalibratorTrainer(
-        golden_repo=repo, storage=storage, min_samples=50
-    )
+    trainer = CalibratorTrainer(golden_repo=repo, storage=storage, min_samples=50)
     with pytest.raises(CalibratorTrainingNotReady) as exc_info:
         await trainer.train()
     assert exc_info.value.found == 0
@@ -121,13 +119,9 @@ async def test_train_persists_calibrator_with_metrics() -> None:
     labels = _mk_labels(60, base)
     repo = _FakeGoldenRepo(labels=labels)
     storage = _FakeStorage()
-    trainer = CalibratorTrainer(
-        golden_repo=repo, storage=storage, min_samples=50
-    )
+    trainer = CalibratorTrainer(golden_repo=repo, storage=storage, min_samples=50)
     user_id = uuid4()
-    result = await trainer.train(
-        version="v-test-1", trained_by=user_id, clock=base
-    )
+    result = await trainer.train(version="v-test-1", trained_by=user_id, clock=base)
     assert result.trained_on_count == 60
     assert result.version == "v-test-1"
     assert len(storage.saves) == 1
@@ -147,9 +141,7 @@ async def test_train_default_version_uses_clock_timestamp() -> None:
     labels = _mk_labels(60, base)
     repo = _FakeGoldenRepo(labels=labels)
     storage = _FakeStorage()
-    trainer = CalibratorTrainer(
-        golden_repo=repo, storage=storage, min_samples=50
-    )
+    trainer = CalibratorTrainer(golden_repo=repo, storage=storage, min_samples=50)
     result = await trainer.train(clock=base)
     assert result.version == "s5-20260507143000"
 
@@ -168,15 +160,12 @@ async def test_train_metrics_after_should_be_better_or_equal() -> None:
             judged_at=base + timedelta(minutes=i),
         )
         for i, score in enumerate(
-            [0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
-            * 5  # 60 samples
+            [0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95] * 5  # 60 samples
         )
     ]
     repo = _FakeGoldenRepo(labels=labels)
     storage = _FakeStorage()
-    trainer = CalibratorTrainer(
-        golden_repo=repo, storage=storage, min_samples=50
-    )
+    trainer = CalibratorTrainer(golden_repo=repo, storage=storage, min_samples=50)
     result = await trainer.train(clock=base)
     assert result.brier_after <= result.brier_before + 1e-9
 
@@ -209,9 +198,7 @@ async def test_train_auto_promote_triggers_when_ece_improves() -> None:
         )
     repo = _FakeGoldenRepo(labels=labels)
     storage = _FakeStorage()
-    trainer = CalibratorTrainer(
-        golden_repo=repo, storage=storage, min_samples=50
-    )
+    trainer = CalibratorTrainer(golden_repo=repo, storage=storage, min_samples=50)
     result = await trainer.train(auto_promote=True, clock=base)
     assert result.ece_after <= result.ece_before
     if (
@@ -241,9 +228,7 @@ async def test_train_auto_promote_skips_when_no_improvement() -> None:
         )
     repo = _FakeGoldenRepo(labels=labels)
     storage = _FakeStorage()
-    trainer = CalibratorTrainer(
-        golden_repo=repo, storage=storage, min_samples=50
-    )
+    trainer = CalibratorTrainer(golden_repo=repo, storage=storage, min_samples=50)
     result = await trainer.train(auto_promote=True, clock=base)
     # Ya estaba bien calibrado → no debería haber promotion.
     assert result.auto_promoted is False
@@ -254,9 +239,7 @@ async def test_train_default_since_uses_90_day_window() -> None:
     base = datetime(2026, 5, 1, tzinfo=UTC)
     repo = _FakeGoldenRepo(labels=_mk_labels(60, base))
     storage = _FakeStorage()
-    trainer = CalibratorTrainer(
-        golden_repo=repo, storage=storage, min_samples=50
-    )
+    trainer = CalibratorTrainer(golden_repo=repo, storage=storage, min_samples=50)
     await trainer.train(clock=base)
     assert len(repo.list_calls) == 1
     since = repo.list_calls[0]

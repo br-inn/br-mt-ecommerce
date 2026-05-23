@@ -25,14 +25,14 @@ from app.repositories.user import (
 )
 
 __all__ = [
-    "BaseRepository",
     "AuditRepository",
+    "BaseRepository",
     "JobDefinitionRepository",
     "JobRunRepository",
-    "ProductRepository",
-    "ProductImageRepository",
-    "ProductTranslationRepository",
     "PermissionRepository",
+    "ProductImageRepository",
+    "ProductRepository",
+    "ProductTranslationRepository",
     "RoleRepository",
     "UserRepository",
 ]

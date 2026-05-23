@@ -11,9 +11,10 @@ Indexes: period+fy, account+date, source_module+doc_id, journal_date
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260527_112"
 down_revision = "20260527_111"
@@ -28,7 +29,12 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "financial_entries",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("entry_number", sa.Text(), nullable=False),
         sa.Column("journal_date", sa.Date(), nullable=False),
         sa.Column("posting_period", sa.Integer(), nullable=False),
@@ -37,9 +43,24 @@ def upgrade() -> None:
         sa.Column("source_module", sa.Text(), nullable=True),
         sa.Column("source_document", sa.Text(), nullable=True),
         sa.Column("source_document_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("gl_account_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("gl_accounts.id"), nullable=False),
-        sa.Column("cost_center_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("cost_centers.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("profit_center_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("profit_centers.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "gl_account_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("gl_accounts.id"),
+            nullable=False,
+        ),
+        sa.Column(
+            "cost_center_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("cost_centers.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "profit_center_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("profit_centers.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("debit_amount", sa.Numeric(18, 4), server_default="0", nullable=False),
         sa.Column("credit_amount", sa.Numeric(18, 4), server_default="0", nullable=False),
         sa.Column("currency_code", sa.CHAR(3), server_default="AED", nullable=False),
@@ -47,12 +68,37 @@ def upgrade() -> None:
         sa.Column("fx_rate", sa.Numeric(14, 6), server_default="1", nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("reference", sa.Text(), nullable=True),
-        sa.Column("preparer_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("reviewer_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("approver_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "preparer_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "reviewer_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "approver_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("is_reversed", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("reversal_entry_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("financial_entries.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "reversal_entry_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("financial_entries.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "entry_type IN ('MANUAL','SYSTEM','REVERSAL','ACCRUAL','FX_REVAL')",
             name="ck_financial_entries_entry_type",
@@ -63,7 +109,9 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("debit_amount >= 0", name="ck_financial_entries_debit_pos"),
         sa.CheckConstraint("credit_amount >= 0", name="ck_financial_entries_credit_pos"),
-        sa.CheckConstraint("debit_amount > 0 OR credit_amount > 0", name="ck_financial_entries_nonzero"),
+        sa.CheckConstraint(
+            "debit_amount > 0 OR credit_amount > 0", name="ck_financial_entries_nonzero"
+        ),
         sa.UniqueConstraint("entry_number", name="uq_financial_entries_number"),
     )
 

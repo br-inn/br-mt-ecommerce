@@ -25,6 +25,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260513_053"
@@ -35,10 +36,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # Drop CHECK constraint ck_products_image_status si existe (idempotente).
-    op.execute(
-        "ALTER TABLE public.products "
-        "DROP CONSTRAINT IF EXISTS ck_products_image_status"
-    )
+    op.execute("ALTER TABLE public.products DROP CONSTRAINT IF EXISTS ck_products_image_status")
 
     # Drop columnas legacy en products (todas IF EXISTS para idempotencia).
     op.execute("ALTER TABLE public.products DROP COLUMN IF EXISTS image_url")
@@ -68,9 +66,7 @@ def downgrade() -> None:
         sa.Column("image_url", sa.Text(), nullable=True),
     )
     # Restablece el server_default + CHECK constraint históricos.
-    op.execute(
-        "UPDATE public.products SET image_status = 'missing' WHERE image_status IS NULL"
-    )
+    op.execute("UPDATE public.products SET image_status = 'missing' WHERE image_status IS NULL")
     op.alter_column(
         "products",
         "image_status",

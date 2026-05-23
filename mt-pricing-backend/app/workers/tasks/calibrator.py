@@ -43,9 +43,7 @@ async def _run_retrain(auto_promote: bool, since_days: int | None) -> dict[str, 
             golden_repo = GoldenLabelRepository(session)
             calibrator_repo = CalibratorVersionRepository(session)
             storage = CalibratorStorage(calibrator_repo)
-            trainer = CalibratorTrainer(
-                golden_repo=golden_repo, storage=storage
-            )
+            trainer = CalibratorTrainer(golden_repo=golden_repo, storage=storage)
 
             since = None
             if since_days is not None:
@@ -80,7 +78,7 @@ async def _run_retrain(auto_promote: bool, since_days: int | None) -> dict[str, 
     bind=True,
     acks_late=True,
 )
-def retrain_nightly(  # noqa: ANN001
+def retrain_nightly(
     self,
     auto_promote: bool = True,
     since_days: int | None = 90,
@@ -91,10 +89,8 @@ def retrain_nightly(  # noqa: ANN001
     Asia/Dubai daily, when seeded — TODO Sprint 5+).
     """
     try:
-        result = asyncio.run(
-            _run_retrain(auto_promote=auto_promote, since_days=since_days)
-        )
-    except Exception as exc:  # noqa: BLE001
+        result = asyncio.run(_run_retrain(auto_promote=auto_promote, since_days=since_days))
+    except Exception as exc:
         logger.exception("calibrator.retrain.failed", extra={"error": str(exc)})
         raise
     logger.info("calibrator.retrain.done", extra=result)

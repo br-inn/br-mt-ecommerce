@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from app.services.matching.judge_dispatcher import (
-    DispatchResult,
     JudgeDispatcher,
     _MonthCounter,
 )
@@ -127,7 +126,9 @@ async def test_cost_cap_breaker(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_invalid_backend_flag_falls_back_to_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("JUDGE_BACKEND", "garbage")
     fake = _FakeJudge(JudgeResult("match", 0.95, "ok"))
-    d = JudgeDispatcher(backends={"openai": fake, "anthropic": _FakeJudge(JudgeResult("reject", 0.9, "x"))})
+    d = JudgeDispatcher(
+        backends={"openai": fake, "anthropic": _FakeJudge(JudgeResult("reject", 0.9, "x"))}
+    )
     res = await d.dispatch(canonical_image_url="a", candidate_image_url="b")
     assert res.verdict == "match"
     assert res.backends_used == ["openai"]

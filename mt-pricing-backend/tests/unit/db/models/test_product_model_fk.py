@@ -1,4 +1,5 @@
 """Test that Product has model_id attribute (pure Python, no DB)."""
+
 from sqlalchemy import inspect as sa_inspect
 
 from app.db.models.product import Product

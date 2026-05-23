@@ -51,9 +51,7 @@ class InvalidFXCurrencyError(FXRateDomainError):
     def __init__(self, currency: str) -> None:
         super().__init__(
             code="fx_invalid_currency",
-            message=(
-                f"Moneda {currency!r} no existe o no está activa en `currencies`."
-            ),
+            message=(f"Moneda {currency!r} no existe o no está activa en `currencies`."),
             status_code=422,
         )
 
@@ -95,9 +93,7 @@ class FXRateNotFoundError(FXRateDomainError):
     def __init__(self, *, from_code: str, to_code: str, at: datetime) -> None:
         super().__init__(
             code="fx_rate_not_found_at_effective_at",
-            message=(
-                f"No existe rate vigente {from_code}→{to_code} a {at.isoformat()}."
-            ),
+            message=(f"No existe rate vigente {from_code}→{to_code} a {at.isoformat()}."),
             status_code=422,
         )
 

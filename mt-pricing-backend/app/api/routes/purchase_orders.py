@@ -133,6 +133,7 @@ async def get_purchase_order(
     po = await repo.get_detail(po_id)
     if po is None:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=404,
             detail={"code": "po_not_found", "title": "Purchase Order no existe"},

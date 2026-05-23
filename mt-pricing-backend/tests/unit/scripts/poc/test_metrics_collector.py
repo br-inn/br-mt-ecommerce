@@ -17,16 +17,8 @@ Cobertura:
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
-
-import pytest
 
 from scripts.poc.metrics_collector import (
-    AC_COV_MIN,
-    AC_ECE_MAX,
-    AC_FN_MAX,
-    AC_FP_MAX,
     CandidateRecord,
     MarketplaceMetrics,
     MetricsCollector,
@@ -35,10 +27,10 @@ from scripts.poc.metrics_collector import (
     _is_failure,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_record(
     sku: str = "MTBR001",
@@ -62,6 +54,7 @@ def _make_record(
 # ---------------------------------------------------------------------------
 # MarketplaceMetrics — propiedades derivadas
 # ---------------------------------------------------------------------------
+
 
 class TestMarketplaceMetrics:
     def test_precision_zero_denom(self):
@@ -95,7 +88,10 @@ class TestMarketplaceMetrics:
             marketplace="test",
             n_skus=100,
             skus_with_peer=95,  # cobertura=95% >= 90%
-            tp=50, fp=0, tn=40, fn=2,  # FP=0%, FN=2/52≈3.8%
+            tp=50,
+            fp=0,
+            tn=40,
+            fn=2,  # FP=0%, FN=2/52≈3.8%
             ece=0.01,
         )
         ac = m.passes_ac()
@@ -111,7 +107,10 @@ class TestMarketplaceMetrics:
             marketplace="test",
             n_skus=100,
             skus_with_peer=95,
-            tp=10, fp=5, tn=10, fn=0,
+            tp=10,
+            fp=5,
+            tn=10,
+            fn=0,
             ece=0.01,
         )
         assert m.passes_ac()["fp_rate_ok"] is False
@@ -129,6 +128,7 @@ class TestMarketplaceMetrics:
 # ---------------------------------------------------------------------------
 # MetricsCollector — compute con labels reales
 # ---------------------------------------------------------------------------
+
 
 class TestMetricsCollectorWithRealLabels:
     def _make_collector(self) -> MetricsCollector:
@@ -155,10 +155,10 @@ class TestMetricsCollectorWithRealLabels:
 
     def test_mixed_tp_fp_tn_fn(self):
         c = MetricsCollector(n_skus_total=4, use_stubs=True)
-        c.add(_make_record(sku="A", kind="peer", score=90, label="accept"))   # TP
-        c.add(_make_record(sku="B", kind="peer", score=85, label="reject"))   # FP
-        c.add(_make_record(sku="C", kind="drop", score=50, label="reject"))   # TN
-        c.add(_make_record(sku="D", kind="drop", score=55, label="accept"))   # FN
+        c.add(_make_record(sku="A", kind="peer", score=90, label="accept"))  # TP
+        c.add(_make_record(sku="B", kind="peer", score=85, label="reject"))  # FP
+        c.add(_make_record(sku="C", kind="drop", score=50, label="reject"))  # TN
+        c.add(_make_record(sku="D", kind="drop", score=55, label="accept"))  # FN
         metrics = c.compute()
         m = metrics.marketplaces[0]
         assert m.tp == 1
@@ -179,6 +179,7 @@ class TestMetricsCollectorWithRealLabels:
 # ---------------------------------------------------------------------------
 # MetricsCollector — inferencia sintética (sin label)
 # ---------------------------------------------------------------------------
+
 
 class TestSyntheticLabelInference:
     def test_high_score_peer_becomes_tp(self):
@@ -209,6 +210,7 @@ class TestSyntheticLabelInference:
 # MetricsCollector — múltiples canales
 # ---------------------------------------------------------------------------
 
+
 class TestMultiChannel:
     def test_separate_metrics_per_channel(self):
         c = MetricsCollector(n_skus_total=2, use_stubs=True)
@@ -234,6 +236,7 @@ class TestMultiChannel:
 # ---------------------------------------------------------------------------
 # Coverage (skus_with_peer)
 # ---------------------------------------------------------------------------
+
 
 class TestCoverage:
     def test_coverage_counts_unique_skus_with_peer(self):
@@ -269,6 +272,7 @@ class TestCoverage:
 # ---------------------------------------------------------------------------
 # Export
 # ---------------------------------------------------------------------------
+
 
 class TestExport:
     def _sample_metrics(self) -> tuple[MetricsCollector, PocMetrics]:
@@ -307,6 +311,7 @@ class TestExport:
 # ---------------------------------------------------------------------------
 # G4 Report
 # ---------------------------------------------------------------------------
+
 
 class TestG4Report:
     def _perfect_metrics(self) -> PocMetrics:
@@ -368,13 +373,12 @@ class TestG4Report:
 # Fix W-4: _collect_failures con falsy non-bool
 # ---------------------------------------------------------------------------
 
+
 class TestCollectFailures:
     def test_failures_falsy_non_bool(self):
         """0 y 0.0 son falsy pero no False — no deben ser fallos (fix W-4)."""
         result = _collect_failures({"ok": 0, "fail": False, "good": 0.0})
-        assert result == ["fail"], (
-            f"Solo 'fail' (bool False) debe ser un fallo, got {result!r}"
-        )
+        assert result == ["fail"], f"Solo 'fail' (bool False) debe ser un fallo, got {result!r}"
 
     def test_collect_failures_empty(self):
         """Sin fallos → lista vacía."""
@@ -403,6 +407,7 @@ class TestCollectFailures:
 # ---------------------------------------------------------------------------
 # Errors tracking
 # ---------------------------------------------------------------------------
+
 
 class TestErrorTracking:
     def test_errors_propagate_to_metrics(self):

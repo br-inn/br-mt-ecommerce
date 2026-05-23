@@ -12,14 +12,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
-from uuid import UUID
 
 from app.workers.worker import celery_app
 
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -36,7 +35,7 @@ def _run_async(coro: Any) -> Any:  # noqa: ANN401
     max_retries=3,
     default_retry_delay=60,
 )
-def re_evaluate_backorders(self: Any) -> dict[str, Any]:  # noqa: ANN401
+def re_evaluate_backorders(self: Any) -> dict[str, Any]:
     """Re-evalúa SO lines en backorder y confirma reservas cuando hay ATP.
 
     Cron: cada 30 minutos (configurado en job_definitions).
@@ -140,7 +139,8 @@ def auto_release_credit_holds(self: Any, dry_run: bool = False) -> dict[str, Any
     """
     from decimal import Decimal as _Decimal
 
-    from sqlalchemy import func as _func, select as _select
+    from sqlalchemy import func as _func
+    from sqlalchemy import select as _select
 
     from app.core.database import AsyncSessionLocal
     from app.db.models.sales import CustomerCreditLimit, CustomerOpenItem, SalesOrder
@@ -163,7 +163,9 @@ def auto_release_credit_holds(self: Any, dry_run: bool = False) -> dict[str, Any
                     continue
 
                 open_r = await session.execute(
-                    _select(_func.coalesce(_func.sum(CustomerOpenItem.amount), _Decimal("0"))).where(
+                    _select(
+                        _func.coalesce(_func.sum(CustomerOpenItem.amount), _Decimal("0"))
+                    ).where(
                         CustomerOpenItem.customer_id == so.customer_id,
                         CustomerOpenItem.status != "paid",
                     )

@@ -24,7 +24,7 @@ _SYSTEM_PROMPT = (
     "1. ALWAYS write in English — never Arabic or Spanish.\n"
     "2. Use 5-8 words maximum — focused queries outperform long ones on Amazon.\n"
     "3. Include in priority order: product type (ball valve, gate valve, Y strainer…), "
-    "material (brass, stainless steel, cast iron…), size in inches (1/2\", 3/4\", 1\"…), "
+    'material (brass, stainless steel, cast iron…), size in inches (1/2", 3/4", 1"…), '
     "pressure rating (PN30, PN16…) only when it differentiates the product.\n"
     "4. Always append 'industrial' to anchor results in the correct Amazon segment.\n"
     "5. For M-F (male-female) end connections: include 'male female' — it filters well.\n"
@@ -132,7 +132,7 @@ async def generate_amazon_query(product_data: dict[str, Any]) -> str | None:
     except anthropic.APIError as exc:
         logger.exception("llm_query_generator: Anthropic API error: %s", exc)
         return None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("llm_query_generator: unexpected error: %s", exc)
         return None
 

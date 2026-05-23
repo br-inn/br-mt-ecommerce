@@ -67,9 +67,7 @@ class JobStats(BaseModel):
 
     enabled: int = Field(ge=0, description="JobDefinitions con enabled=true.")
     runs_24h: int = Field(ge=0, description="JobRuns iniciadas en 24h.")
-    failures_24h: int = Field(
-        ge=0, description="JobRuns con status='failed' iniciadas en 24h."
-    )
+    failures_24h: int = Field(ge=0, description="JobRuns con status='failed' iniciadas en 24h.")
 
 
 class DashboardStatsResponse(BaseModel):

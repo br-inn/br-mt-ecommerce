@@ -9,13 +9,15 @@ Tabla:
   generado una vez por Claude por marca × marketplace y reutilizado sin LLM en
   cada monitoring scrape posterior.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260519_150"
 down_revision: str = "20260519_149"
@@ -114,7 +116,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP TRIGGER IF EXISTS trg_scraper_brand_extractors_updated_at ON scraper_brand_extractors")
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_scraper_brand_extractors_updated_at ON scraper_brand_extractors"
+    )
     op.execute("DROP FUNCTION IF EXISTS scraper_brand_extractors_updated_at()")
     op.drop_index("ix_brand_extractor_brand_marketplace", table_name="scraper_brand_extractors")
     op.drop_table("scraper_brand_extractors")

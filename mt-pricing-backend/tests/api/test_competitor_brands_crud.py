@@ -1,10 +1,10 @@
 """Integration tests para /competitor-brands CRUD."""
+
 from __future__ import annotations
 
 import os
 import time
 from collections.abc import AsyncIterator
-from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -25,6 +25,7 @@ os.environ["JWT_ALGORITHM"] = "HS256"
 # Clear settings cache so the env overrides take effect
 try:
     from app.core import config as _cfg
+
     _cfg.get_settings.cache_clear()
     _cfg.settings = _cfg.get_settings()
 except Exception:
@@ -46,14 +47,16 @@ def _migrate(postgres_container: str) -> None:
     a psycopg (sync) para alembic.
     """
     import sqlalchemy as _sa
-    from alembic import command
     from alembic.config import Config
     from sqlalchemy import text
+
+    from alembic import command
 
     # Derive sync URL from the asyncpg URL passed as argument
     sync_url = postgres_container.replace("postgresql+asyncpg://", "postgresql+psycopg://")
     # Override settings singleton so env.py picks up the testcontainer URL
     from app.core import config as _app_cfg
+
     _app_cfg.get_settings.cache_clear()
     os.environ["DATABASE_URL"] = postgres_container
     os.environ["ALEMBIC_DATABASE_URL"] = sync_url
@@ -63,10 +66,12 @@ def _migrate(postgres_container: str) -> None:
     # the updated settings (hs256 mode + HS256 algorithm + correct secret) and
     # not the cached object bound at import time (.env may set ES256/jwks).
     import app.api.deps as _deps
+
     _deps.settings = _app_cfg.settings
     # Also patch app.core.jwks if it was already imported (avoid JWKS fetch)
     try:
         import app.core.jwks as _jwks
+
         _jwks._settings = _app_cfg.settings  # type: ignore[attr-defined]
     except Exception:
         pass
@@ -122,9 +127,7 @@ def _emit_jwt(*, sub: str, email: str) -> str:
     )
 
 
-async def _seed_user_with_perms(
-    session: AsyncSession, perms_codes: list[str]
-) -> tuple[UUID, str]:
+async def _seed_user_with_perms(session: AsyncSession, perms_codes: list[str]) -> tuple[UUID, str]:
     from app.db.models.user import Permission, Role, RolePermission, User
 
     perm_ids = []
@@ -184,11 +187,11 @@ async def client_rw(postgres_container: str) -> AsyncIterator[AsyncClient]:
     engine = create_async_engine(postgres_container, echo=False)
     async with engine.connect() as conn:
         await conn.begin()
-        sm = async_sessionmaker(bind=conn, expire_on_commit=False)
+        sm = async_sessionmaker(
+            bind=conn, expire_on_commit=False, join_transaction_mode="create_savepoint"
+        )
         async with sm() as session:
-            uid, email = await _seed_user_with_perms(
-                session, ["products:write", "products:read"]
-            )
+            uid, email = await _seed_user_with_perms(session, ["products:write", "products:read"])
             await session.flush()
 
             async def _override() -> AsyncIterator[AsyncSession]:
@@ -198,9 +201,7 @@ async def client_rw(postgres_container: str) -> AsyncIterator[AsyncClient]:
             try:
                 token = _emit_jwt(sub=str(uid), email=email)
                 transport = ASGITransport(app=app)
-                async with AsyncClient(
-                    transport=transport, base_url="http://testserver"
-                ) as ac:
+                async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
                     ac.headers["Authorization"] = f"Bearer {token}"
                     yield ac
             finally:
@@ -237,9 +238,7 @@ async def test_create_brand_duplicate_name_returns_409(client_rw: AsyncClient) -
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_list_brands(client_rw: AsyncClient) -> None:
-    await client_rw.post(
-        "/api/v1/competitor-brands/", json={"name": "Crane List Test"}
-    )
+    await client_rw.post("/api/v1/competitor-brands/", json={"name": "Crane List Test"})
     resp = await client_rw.get("/api/v1/competitor-brands/")
     assert resp.status_code == 200, resp.text
     names = [b["name"] for b in resp.json()]
@@ -249,9 +248,7 @@ async def test_list_brands(client_rw: AsyncClient) -> None:
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_patch_brand(client_rw: AsyncClient) -> None:
-    create_resp = await client_rw.post(
-        "/api/v1/competitor-brands/", json={"name": "PatchBrand"}
-    )
+    create_resp = await client_rw.post("/api/v1/competitor-brands/", json={"name": "PatchBrand"})
     assert create_resp.status_code == 201, create_resp.text
     brand_id = create_resp.json()["id"]
     patch_resp = await client_rw.patch(

@@ -9,9 +9,9 @@ Cubre:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -49,9 +49,7 @@ class _FakeListingsRepo:
     def __init__(self) -> None:
         self.store: dict[tuple[str, str], _FakeListing] = {}
 
-    async def get_by_channel_sku(
-        self, channel_code: str, sku: str
-    ) -> _FakeListing | None:
+    async def get_by_channel_sku(self, channel_code: str, sku: str) -> _FakeListing | None:
         return self.store.get((channel_code, sku))
 
     async def upsert(self, **kwargs: Any) -> _FakeListing:
@@ -96,9 +94,7 @@ class _FakeAdapter:
         self.push_calls: int = 0
         self.last_push_payload: dict[str, Any] | None = None
 
-    async def pull_listing(
-        self, sku: str, external_id: str | None = None
-    ) -> LiveListing:
+    async def pull_listing(self, sku: str, external_id: str | None = None) -> LiveListing:
         self.pull_calls += 1
         return self._listing
 
@@ -156,7 +152,7 @@ async def test_sync_persists_listing_and_logs_two_events() -> None:
         stock_qty=312,
         rating=4.6,
         reviews_count=184,
-        fetched_at=datetime.now(tz=timezone.utc),
+        fetched_at=datetime.now(tz=UTC),
     )
     adapter = _FakeAdapter("amazon_uae", live_listing)
     service, listings_repo, events_repo = _make_service(
@@ -267,9 +263,7 @@ async def test_publish_logs_push_event_and_calls_adapter() -> None:
     )
     await service.sync("amazon_uae", "MTV-1004")
 
-    result = await service.publish(
-        "amazon_uae", "MTV-1004", fields=["material"]
-    )
+    result = await service.publish("amazon_uae", "MTV-1004", fields=["material"])
     assert result.ok is True
     assert result.submission_id == "sub_xyz"
     assert adapter.push_calls == 1
@@ -284,9 +278,7 @@ async def test_publish_no_prior_listing_raises() -> None:
     canonical = {"brand": "x"}
     adapter = _FakeAdapter(
         "amazon_uae",
-        LiveListing(
-            channel_code="amazon_uae", external_id="", sku="X", fields={}
-        ),
+        LiveListing(channel_code="amazon_uae", external_id="", sku="X", fields={}),
     )
     service, _, _ = _make_service(
         canonical_db={"X": canonical},

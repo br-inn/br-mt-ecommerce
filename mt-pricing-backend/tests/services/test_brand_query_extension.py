@@ -1,4 +1,5 @@
 """Unit tests para la extensión de Query con dept + category_node."""
+
 from __future__ import annotations
 
 from urllib.parse import quote_plus
@@ -37,6 +38,7 @@ def test_query_with_category_node():
 
 def test_query_frozen_still_works():
     import dataclasses
+
     q = Query(text="Kitz", source="amazon_uae", type="brand", dept="industrial")
     assert dataclasses.is_dataclass(q)
 

@@ -3,6 +3,7 @@
 Hallazgo: ficha_enrich.py tenía await session.commit() explícito en el handler,
 rompiendo la atomicidad de la transacción.
 """
+
 from __future__ import annotations
 
 import os
@@ -49,9 +50,7 @@ async def _seed_admin(session: AsyncSession) -> tuple[str, str]:
     perm_ids = []
     for code in perms_codes:
         existing = (
-            await session.execute(
-                select(Permission).where(Permission.code == code)
-            )
+            await session.execute(select(Permission).where(Permission.code == code))
         ).scalar_one_or_none()
         if existing is None:
             from app.db.models.user import Permission as P
@@ -63,9 +62,7 @@ async def _seed_admin(session: AsyncSession) -> tuple[str, str]:
         else:
             perm_ids.append(existing.id)
 
-    role = (
-        await session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one_or_none()
+    role = (await session.execute(select(Role).where(Role.code == "admin"))).scalar_one_or_none()
     if role is None:
         role = Role(code="admin", name="admin", permissions_snapshot=perms_codes)
         session.add(role)

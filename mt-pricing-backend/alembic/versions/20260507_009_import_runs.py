@@ -21,8 +21,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260507_009"
 down_revision: str | None = "20260507_008"
@@ -87,9 +88,7 @@ def upgrade() -> None:
         ),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "triggered_by", postgresql.UUID(as_uuid=True), nullable=True
-        ),
+        sa.Column("triggered_by", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("celery_task_id", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
@@ -119,9 +118,7 @@ def upgrade() -> None:
             name="ck_import_runs_status",
         ),
     )
-    op.create_index(
-        "idx_import_runs_status", "import_runs", ["status"], unique=False
-    )
+    op.create_index("idx_import_runs_status", "import_runs", ["status"], unique=False)
     op.create_index(
         "idx_import_runs_type_created",
         "import_runs",

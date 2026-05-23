@@ -23,6 +23,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_gr_event(gr_id: str = "abcdef1234567890") -> GoodsReceivedEvent:
     return GoodsReceivedEvent(
         gr_id=gr_id,
@@ -55,6 +56,7 @@ def _make_map_event() -> MAPUpdatedEvent:
 # ---------------------------------------------------------------------------
 # NoOpAdapter tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_push_goods_receipt_returns_ref() -> None:
@@ -94,6 +96,7 @@ async def test_push_map_update_returns_none() -> None:
 # ---------------------------------------------------------------------------
 # Factory tests
 # ---------------------------------------------------------------------------
+
 
 def test_factory_returns_noop_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """get_erp_adapter() retorna NoOpAdapter cuando ERP_ADAPTER='noop'."""

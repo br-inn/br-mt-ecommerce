@@ -56,15 +56,11 @@ class DisplayPairService:
 
         if prior_a is not None and prior_a != sku_b:
             await self.session.execute(
-                update(Product)
-                .where(Product.sku == prior_a)
-                .values(display_pair_sku=None)
+                update(Product).where(Product.sku == prior_a).values(display_pair_sku=None)
             )
         if prior_b is not None and prior_b != sku_a:
             await self.session.execute(
-                update(Product)
-                .where(Product.sku == prior_b)
-                .values(display_pair_sku=None)
+                update(Product).where(Product.sku == prior_b).values(display_pair_sku=None)
             )
 
         # Set simétrico.
@@ -87,8 +83,6 @@ class DisplayPairService:
             update(Product).where(Product.sku == sku).values(display_pair_sku=None)
         )
         await self.session.execute(
-            update(Product)
-            .where(Product.sku == partner_sku)
-            .values(display_pair_sku=None)
+            update(Product).where(Product.sku == partner_sku).values(display_pair_sku=None)
         )
         await self.session.commit()

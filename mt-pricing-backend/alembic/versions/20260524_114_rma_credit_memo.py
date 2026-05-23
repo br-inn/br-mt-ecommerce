@@ -8,6 +8,7 @@ Create Date: 2026-05-24
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers
@@ -44,7 +45,12 @@ def upgrade() -> None:
             server_default=sa.text("'requested'"),
         ),
         sa.Column("reason", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id", name="pk_rma_headers"),
         sa.UniqueConstraint("rma_number", name="uq_rma_number"),
         sa.CheckConstraint(
@@ -127,7 +133,12 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("'pending'"),
         ),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id", name="pk_credit_memos"),
         sa.UniqueConstraint("memo_number", name="uq_credit_memo_number"),
         sa.CheckConstraint(

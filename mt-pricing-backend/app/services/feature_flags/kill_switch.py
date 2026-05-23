@@ -100,9 +100,7 @@ class KillSwitch:
             set_local_flag,
         )
 
-        await self.flag_service.set_flag(
-            FLAG_KILL_SWITCH, True, updated_by=updated_by
-        )
+        await self.flag_service.set_flag(FLAG_KILL_SWITCH, True, updated_by=updated_by)
         engage()  # in-memory sync
         set_local_flag(FLAG_KILL_SWITCH, True)
         logger.warning(
@@ -121,9 +119,7 @@ class KillSwitch:
             set_local_flag,
         )
 
-        await self.flag_service.set_flag(
-            FLAG_KILL_SWITCH, False, updated_by=updated_by
-        )
+        await self.flag_service.set_flag(FLAG_KILL_SWITCH, False, updated_by=updated_by)
         disengage()
         set_local_flag(FLAG_KILL_SWITCH, False)
         logger.info(
@@ -141,7 +137,7 @@ class KillSwitch:
 
         try:
             value = await self.flag_service.is_enabled(FLAG_KILL_SWITCH)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "kill_switch.hydrate_failed",
                 extra={"error": str(exc)},

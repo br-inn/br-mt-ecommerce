@@ -7,20 +7,20 @@ Endpoints:
 
 RBAC: products:read en todos.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
-from app.db.models.match_candidate import MatchCandidate
 from app.db.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ async def get_price_intelligence_dashboard(
     Calcula desde price_daily_stats para el rango de fechas dado.
     Si no se especifica rango → últimos 30 días.
     """
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     date_to = date_to or now
     date_from = date_from or (now - timedelta(days=30))
 
@@ -113,7 +113,9 @@ async def get_price_intelligence_dashboard(
     price_position_rank = None
     if mt_price_aed and mkt_avg and mkt_avg > 0:
         mt_dec = Decimal(str(mt_price_aed))
-        price_gap_pct = round(float((mt_dec - Decimal(str(mkt_avg))) / Decimal(str(mkt_avg)) * 100), 2)
+        price_gap_pct = round(
+            float((mt_dec - Decimal(str(mkt_avg))) / Decimal(str(mkt_avg)) * 100), 2
+        )
         price_index = round(float(mt_dec / Decimal(str(mkt_avg)) * 100), 2)
     if mt_price_aed and mkt_min and mkt_avg and mkt_avg > 0:
         price_position_rank = round(float(Decimal(str(mkt_min)) / Decimal(str(mkt_avg)) * 100), 1)
@@ -207,10 +209,14 @@ async def get_brand_listings(
             "sku": row["sku"],
             "marketplace": row["marketplace"],
             "competitor_title": row["competitor_title"],
-            "competitor_price_aed": float(row["competitor_price_aed"]) if row["competitor_price_aed"] else None,
+            "competitor_price_aed": float(row["competitor_price_aed"])
+            if row["competitor_price_aed"]
+            else None,
             "score": row["score"],
             "status": row["status"],
-            "calibrated_confidence": float(row["calibrated_confidence"]) if row["calibrated_confidence"] else None,
+            "calibrated_confidence": float(row["calibrated_confidence"])
+            if row["calibrated_confidence"]
+            else None,
         }
         for row in rows
     ]
@@ -239,7 +245,7 @@ async def get_matching_quality(
     Bins: [0-0.2, 0.2-0.4, 0.4-0.6, 0.6-0.8, 0.8-1.0].
     Solo incluye match_candidates con updated_at >= 7 días atrás.
     """
-    seven_days_ago = datetime.now(tz=timezone.utc) - timedelta(days=7)
+    seven_days_ago = datetime.now(tz=UTC) - timedelta(days=7)
 
     histogram_sql = text("""
         SELECT
@@ -267,9 +273,9 @@ async def get_matching_quality(
         }
 
     histogram = [
-        {"bin": "0.0-0.5",  "count": int(row["bin_0_50"]   or 0)},
-        {"bin": "0.5-0.7",  "count": int(row["bin_50_70"]  or 0)},
-        {"bin": "0.7-0.85", "count": int(row["bin_70_85"]  or 0)},
+        {"bin": "0.0-0.5", "count": int(row["bin_0_50"] or 0)},
+        {"bin": "0.5-0.7", "count": int(row["bin_50_70"] or 0)},
+        {"bin": "0.7-0.85", "count": int(row["bin_70_85"] or 0)},
         {"bin": "0.85-1.0", "count": int(row["bin_85_100"] or 0)},
     ]
 

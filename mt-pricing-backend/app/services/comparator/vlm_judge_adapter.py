@@ -61,9 +61,7 @@ def _validate_image_url(
     try:
         parsed = urlparse(url)
     except Exception:
-        logger.error(
-            "comparator.vlm_judge: URL inválida param=%s sku=%s", param_name, sku
-        )
+        logger.error("comparator.vlm_judge: URL inválida param=%s sku=%s", param_name, sku)
         return False
     if parsed.scheme not in _ALLOWED_IMAGE_SCHEMES:
         logger.error(
@@ -245,8 +243,7 @@ class ClaudeVlmJudgeAdapter(VlmJudgePort):
             rationale=parsed.reasoning,
             deal_breakers_triggered=tuple(parsed.deal_breakers_triggered),
             image_regions=tuple(
-                {str(k): str(v) for k, v in region.items()}
-                for region in parsed.image_regions
+                {str(k): str(v) for k, v in region.items()} for region in parsed.image_regions
             ),
         )
 

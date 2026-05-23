@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
-
 from uuid import UUID
 
 from sqlalchemy import and_, exists, func, or_, select
@@ -65,17 +64,32 @@ class ProductFilters:
     # Reserved for parent/variant filters in later iterations.
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "ProductFilters":
+    def from_dict(cls, d: dict[str, Any]) -> ProductFilters:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
     def has_any_active(self) -> bool:
         return any(
             getattr(self, name) not in (None, False)
             for name in (
-                "family", "subfamily", "type_", "brand", "material", "dn", "pn", "data_quality",
-                "active", "has_image", "lifecycle_status",
-                "translation_status", "created_after", "created_before", "search",
-                "division_code", "series_id", "material_id", "tier_code",
+                "family",
+                "subfamily",
+                "type_",
+                "brand",
+                "material",
+                "dn",
+                "pn",
+                "data_quality",
+                "active",
+                "has_image",
+                "lifecycle_status",
+                "translation_status",
+                "created_after",
+                "created_before",
+                "search",
+                "division_code",
+                "series_id",
+                "material_id",
+                "tier_code",
             )
         )
 
@@ -240,11 +254,7 @@ async def _count_by_column(
         .limit(limit)
     )
     rows = (await session.execute(stmt)).all()
-    return [
-        FacetBucket(value=str(r.v), count=int(r.c))
-        for r in rows
-        if r.v is not None
-    ]
+    return [FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None]
 
 
 async def _enum_counts(
@@ -255,11 +265,7 @@ async def _enum_counts(
     exclude_field: str,
 ) -> dict[str, int]:
     clauses = build_product_clauses(filters, exclude={exclude_field})
-    stmt = (
-        select(column.label("v"), func.count().label("c"))
-        .where(and_(*clauses))
-        .group_by(column)
-    )
+    stmt = select(column.label("v"), func.count().label("c")).where(and_(*clauses)).group_by(column)
     rows = (await session.execute(stmt)).all()
     return {str(r.v): int(r.c) for r in rows if r.v is not None}
 
@@ -274,11 +280,7 @@ async def _active_counts(
     """
     clauses = build_product_clauses(filters, exclude={"active"})
     active_expr = (Product.lifecycle_status == "active").label("v")
-    stmt = (
-        select(active_expr, func.count().label("c"))
-        .where(and_(*clauses))
-        .group_by(active_expr)
-    )
+    stmt = select(active_expr, func.count().label("c")).where(and_(*clauses)).group_by(active_expr)
     rows = (await session.execute(stmt)).all()
     return {str(bool(r.v)): int(r.c) for r in rows}
 
@@ -317,17 +319,13 @@ async def _translation_status_counts(
         )
         .join(
             ProductTranslation,
-            (ProductTranslation.sku == Product.sku)
-            & (ProductTranslation.lang == lang),
+            (ProductTranslation.sku == Product.sku) & (ProductTranslation.lang == lang),
             isouter=True,
         )
         .where(and_(*base_clauses))
     ).subquery()
 
-    counts_stmt = (
-        select(sub_stmt.c.status, func.count())
-        .group_by(sub_stmt.c.status)
-    )
+    counts_stmt = select(sub_stmt.c.status, func.count()).group_by(sub_stmt.c.status)
 
     base_total_res = await session.execute(base_total_stmt)
     counts_res = await session.execute(counts_stmt)
@@ -350,7 +348,9 @@ async def _count_division(
     """Counts por division.code (M:N) — refinement no destructivo."""
     clauses = build_product_clauses(filters, exclude={"division"})
     stmt = (
-        select(Division.code.label("v"), func.count(ProductDivision.product_sku.distinct()).label("c"))
+        select(
+            Division.code.label("v"), func.count(ProductDivision.product_sku.distinct()).label("c")
+        )
         .select_from(Product)
         .join(ProductDivision, ProductDivision.product_sku == Product.sku)
         .join(Division, Division.id == ProductDivision.division_id)
@@ -360,9 +360,7 @@ async def _count_division(
         .limit(limit)
     )
     rows = (await session.execute(stmt)).all()
-    return [
-        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
-    ]
+    return [FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None]
 
 
 async def _count_series(
@@ -383,9 +381,7 @@ async def _count_series(
         .limit(limit)
     )
     rows = (await session.execute(stmt)).all()
-    return [
-        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
-    ]
+    return [FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None]
 
 
 async def _count_tier(
@@ -407,9 +403,7 @@ async def _count_tier(
         .limit(limit)
     )
     rows = (await session.execute(stmt)).all()
-    return [
-        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
-    ]
+    return [FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None]
 
 
 async def _count_material_curated(
@@ -430,9 +424,7 @@ async def _count_material_curated(
         .limit(limit)
     )
     rows = (await session.execute(stmt)).all()
-    return [
-        FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None
-    ]
+    return [FacetBucket(value=str(r.v), count=int(r.c)) for r in rows if r.v is not None]
 
 
 async def _total(session: AsyncSession | AsyncConnection, filters: ProductFilters) -> int:
@@ -449,9 +441,7 @@ async def _total_unfiltered(session: AsyncSession | AsyncConnection) -> int:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-async def compute_facets(
-    session: AsyncSession, filters: ProductFilters
-) -> FacetsResponse:
+async def compute_facets(session: AsyncSession, filters: ProductFilters) -> FacetsResponse:
     """Compute all dimensions in parallel with non-destructive refinements.
 
     Cada dimensión corre en una **conexión propia** del pool (``engine.connect``)
@@ -489,13 +479,27 @@ async def compute_facets(
         tier_code,
         material_curated,
     ) = await asyncio.gather(
-        _on_conn(lambda c: _count_by_column(c, Product.family, filters, exclude_field="family", limit=50)),
-        _on_conn(lambda c: _count_by_column(c, Product.subfamily, filters, exclude_field="subfamily", limit=80)),
-        _on_conn(lambda c: _count_by_column(c, Product.type, filters, exclude_field="type", limit=120)),
-        _on_conn(lambda c: _count_by_column(c, Product.material, filters, exclude_field="material", limit=50)),
+        _on_conn(
+            lambda c: _count_by_column(c, Product.family, filters, exclude_field="family", limit=50)
+        ),
+        _on_conn(
+            lambda c: _count_by_column(
+                c, Product.subfamily, filters, exclude_field="subfamily", limit=80
+            )
+        ),
+        _on_conn(
+            lambda c: _count_by_column(c, Product.type, filters, exclude_field="type", limit=120)
+        ),
+        _on_conn(
+            lambda c: _count_by_column(
+                c, Product.material, filters, exclude_field="material", limit=50
+            )
+        ),
         _on_conn(lambda c: _count_by_column(c, Product.dn, filters, exclude_field="dn", limit=50)),
         _on_conn(lambda c: _count_by_column(c, Product.pn, filters, exclude_field="pn", limit=20)),
-        _on_conn(lambda c: _enum_counts(c, Product.data_quality, filters, exclude_field="data_quality")),
+        _on_conn(
+            lambda c: _enum_counts(c, Product.data_quality, filters, exclude_field="data_quality")
+        ),
         _on_conn(lambda c: _active_counts(c, filters)),
         _on_conn(lambda c: _has_image_counts(c, filters)),
         _on_conn(lambda c: _translation_status_counts(c, filters, "es")),

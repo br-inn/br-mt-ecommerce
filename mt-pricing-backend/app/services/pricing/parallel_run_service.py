@@ -13,13 +13,11 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import UTC, date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models.pricing import Price
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +68,23 @@ class ParallelRunService:
             }
         """
         day_start = datetime(
-            target_date.year, target_date.month, target_date.day,
-            0, 0, 0, tzinfo=timezone.utc,
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            0,
+            0,
+            0,
+            tzinfo=UTC,
         )
         day_end = datetime(
-            target_date.year, target_date.month, target_date.day,
-            23, 59, 59, 999999, tzinfo=timezone.utc,
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            23,
+            59,
+            59,
+            999999,
+            tzinfo=UTC,
         )
 
         # 1. Leer prices activos del día
@@ -90,7 +99,7 @@ class ParallelRunService:
         flagged_count = sum(1 for item in items if item["flagged"])
         report = {
             "date": target_date.isoformat(),
-            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+            "generated_at": datetime.now(tz=UTC).isoformat(),
             "total_skus": len(items),
             "flagged": flagged_count,
             "items": items,
@@ -156,10 +165,7 @@ class ParallelRunService:
             day_end=day_end,
         )
         result = await self.session.execute(stmt)
-        return {
-            (row.sku, row.channel): Decimal(str(row.amount_aed))
-            for row in result
-        }
+        return {(row.sku, row.channel): Decimal(str(row.amount_aed)) for row in result}
 
     async def _fetch_excel_refs(
         self, day_start: datetime, day_end: datetime
@@ -178,10 +184,7 @@ class ParallelRunService:
             """
         ).bindparams(day_start=day_start, day_end=day_end)
         result = await self.session.execute(stmt)
-        return {
-            (row.sku, row.channel): Decimal(str(row.reference_price_aed))
-            for row in result
-        }
+        return {(row.sku, row.channel): Decimal(str(row.reference_price_aed)) for row in result}
 
     @staticmethod
     def _compute_diff(
@@ -218,9 +221,9 @@ class ParallelRunService:
             if excel_val == 0:
                 deviation = Decimal("0")
             else:
-                deviation = (
-                    abs(app_val - excel_val) / excel_val * Decimal("100")
-                ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                deviation = (abs(app_val - excel_val) / excel_val * Decimal("100")).quantize(
+                    Decimal("0.0001"), rounding=ROUND_HALF_UP
+                )
 
             flagged = deviation > DEVIATION_THRESHOLD_PCT
             items.append(

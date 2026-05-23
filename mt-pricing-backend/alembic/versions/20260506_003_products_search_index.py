@@ -38,9 +38,7 @@ def upgrade() -> None:
         ) STORED;
         """
     )
-    op.execute(
-        "CREATE INDEX idx_products_search_tsv ON products USING gin (search_tsv);"
-    )
+    op.execute("CREATE INDEX idx_products_search_tsv ON products USING gin (search_tsv);")
 
 
 def downgrade() -> None:

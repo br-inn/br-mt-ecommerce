@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol, runtime_checkable
 
 
@@ -21,7 +21,7 @@ class PmoEvent:
 
     event_name: str
     payload: dict[str, Any]
-    emitted_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    emitted_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     source: str = "mt-pricing-backend"
     correlation_id: str | None = None
 

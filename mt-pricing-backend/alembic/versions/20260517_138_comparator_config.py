@@ -4,13 +4,16 @@ Revision ID: 20260517_138
 Revises: 20260517_137
 Create Date: 2026-05-17
 """
+
 from __future__ import annotations
 
-from alembic import op
+import uuid
+from datetime import UTC, datetime
+
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
-import uuid
-from datetime import datetime, timezone
+
+from alembic import op
 
 revision = "20260517_138"
 down_revision = "20260517_137"
@@ -21,7 +24,11 @@ SEED = [
     ("peer_threshold", 70, "Score mínimo para clasificar candidato como peer"),
     ("drop_threshold", 40, "Score mínimo para clasificar candidato como drop"),
     ("g1_median_multiplier", 1.10, "Multiplicador sobre mediana peer-group para precio G1"),
-    ("g2_multipliers", {"default": 2.5, "stainless": 3.0, "cast_iron": 2.0}, "Multiplicadores G2 por subtipo material"),
+    (
+        "g2_multipliers",
+        {"default": 2.5, "stainless": 3.0, "cast_iron": 2.0},
+        "Multiplicadores G2 por subtipo material",
+    ),
     ("hitl_value_threshold_aed", 1000, "Valor mínimo AED para encolar en HITL"),
 ]
 
@@ -33,12 +40,22 @@ def upgrade() -> None:
         sa.Column("key", sa.Text(), nullable=False),
         sa.Column("value", JSONB(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("key", name="uq_comparator_config_key"),
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     op.bulk_insert(
         sa.table(
             "comparator_config",

@@ -115,9 +115,7 @@ def test_exactly_eight_en_duplicates_inactive(alembic_sync_url: str) -> None:
             inactive_codes = {
                 row[0]
                 for row in conn.execute(
-                    text(
-                        "SELECT code FROM materials WHERE active = false ORDER BY code;"
-                    )
+                    text("SELECT code FROM materials WHERE active = false ORDER BY code;")
                 ).all()
             }
     finally:
@@ -151,8 +149,7 @@ def test_all_active_materials_have_family_kind(alembic_sync_url: str) -> None:
         engine.dispose()
 
     assert missing == [], (
-        f"Esperado 0 materials activos sin family_kind, encontrados: "
-        f"{[row[0] for row in missing]}."
+        f"Esperado 0 materials activos sin family_kind, encontrados: {[row[0] for row in missing]}."
     )
 
 

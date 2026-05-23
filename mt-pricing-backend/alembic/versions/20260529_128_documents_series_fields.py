@@ -1,7 +1,9 @@
 """Extend documents (doc_number, series_id, signatory) + series (thread_standard, revision)"""
+
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "20260529_128"

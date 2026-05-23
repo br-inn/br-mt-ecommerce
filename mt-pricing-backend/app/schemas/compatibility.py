@@ -76,7 +76,7 @@ class ProductCompatibilityBase(BaseModel):
     dn_max: int | None = Field(default=None, ge=0, le=10000)
 
     @model_validator(mode="after")
-    def _validate_dn_range(self) -> "ProductCompatibilityBase":
+    def _validate_dn_range(self) -> ProductCompatibilityBase:
         if self.dn_min is not None and self.dn_max is not None:
             if self.dn_max < self.dn_min:
                 raise ValueError("dn_max debe ser >= dn_min")

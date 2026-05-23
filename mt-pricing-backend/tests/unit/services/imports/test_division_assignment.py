@@ -40,11 +40,10 @@ def _mk_division(code: str, _id: UUID | None = None) -> MagicMock:
 async def test_noop_when_codes_empty() -> None:
     """Lista vacía o None → no toca repos ni BD."""
     session = _mk_session()
-    with patch(
-        "app.services.imports.division_assignment.DivisionRepo"
-    ) as DR, patch(
-        "app.services.imports.division_assignment.ProductDivisionRepo"
-    ) as PDR:
+    with (
+        patch("app.services.imports.division_assignment.DivisionRepo") as DR,
+        patch("app.services.imports.division_assignment.ProductDivisionRepo") as PDR,
+    ):
         result_empty = await assign_divisions(session, "SKU1", [])
         result_none = await assign_divisions(session, "SKU1", None)
     assert result_empty == 0
@@ -65,12 +64,15 @@ async def test_creates_link_when_code_exists() -> None:
     pd_repo.get_link = AsyncMock(return_value=None)
     pd_repo.link = AsyncMock(return_value=MagicMock())
 
-    with patch(
-        "app.services.imports.division_assignment.DivisionRepo",
-        return_value=div_repo,
-    ), patch(
-        "app.services.imports.division_assignment.ProductDivisionRepo",
-        return_value=pd_repo,
+    with (
+        patch(
+            "app.services.imports.division_assignment.DivisionRepo",
+            return_value=div_repo,
+        ),
+        patch(
+            "app.services.imports.division_assignment.ProductDivisionRepo",
+            return_value=pd_repo,
+        ),
     ):
         n = await assign_divisions(session, "SKU1", ["hidrosanitario"])
 
@@ -92,12 +94,15 @@ async def test_idempotency_second_call_creates_zero() -> None:
     pd_repo.get_link = AsyncMock(side_effect=[None, existing_link])
     pd_repo.link = AsyncMock(return_value=MagicMock())
 
-    with patch(
-        "app.services.imports.division_assignment.DivisionRepo",
-        return_value=div_repo,
-    ), patch(
-        "app.services.imports.division_assignment.ProductDivisionRepo",
-        return_value=pd_repo,
+    with (
+        patch(
+            "app.services.imports.division_assignment.DivisionRepo",
+            return_value=div_repo,
+        ),
+        patch(
+            "app.services.imports.division_assignment.ProductDivisionRepo",
+            return_value=pd_repo,
+        ),
     ):
         n1 = await assign_divisions(session, "SKU1", ["hidrosanitario"])
         n2 = await assign_divisions(session, "SKU1", ["hidrosanitario"])
@@ -120,13 +125,17 @@ async def test_unknown_code_skips_with_warning(
     pd_repo.get_link = AsyncMock(return_value=None)
     pd_repo.link = AsyncMock(return_value=MagicMock())
 
-    with patch(
-        "app.services.imports.division_assignment.DivisionRepo",
-        return_value=div_repo,
-    ), patch(
-        "app.services.imports.division_assignment.ProductDivisionRepo",
-        return_value=pd_repo,
-    ), caplog.at_level(logging.WARNING):
+    with (
+        patch(
+            "app.services.imports.division_assignment.DivisionRepo",
+            return_value=div_repo,
+        ),
+        patch(
+            "app.services.imports.division_assignment.ProductDivisionRepo",
+            return_value=pd_repo,
+        ),
+        caplog.at_level(logging.WARNING),
+    ):
         n = await assign_divisions(session, "SKU1", ["bogus_code"])
 
     assert n == 0
@@ -150,16 +159,17 @@ async def test_multiple_codes_partial_unknown() -> None:
     pd_repo.get_link = AsyncMock(return_value=None)
     pd_repo.link = AsyncMock(return_value=MagicMock())
 
-    with patch(
-        "app.services.imports.division_assignment.DivisionRepo",
-        return_value=div_repo,
-    ), patch(
-        "app.services.imports.division_assignment.ProductDivisionRepo",
-        return_value=pd_repo,
+    with (
+        patch(
+            "app.services.imports.division_assignment.DivisionRepo",
+            return_value=div_repo,
+        ),
+        patch(
+            "app.services.imports.division_assignment.ProductDivisionRepo",
+            return_value=pd_repo,
+        ),
     ):
-        n = await assign_divisions(
-            session, "SKU1", ["industrial", "bogus", "industrial"]
-        )
+        n = await assign_divisions(session, "SKU1", ["industrial", "bogus", "industrial"])
 
     # `industrial` se crea una vez; `bogus` skip; el segundo `industrial` ya
     # estaba en cache pero como get_link se mockea para devolver None siempre,
@@ -182,19 +192,18 @@ async def test_cache_avoids_redundant_get_by_code() -> None:
     pd_repo.link = AsyncMock(return_value=MagicMock())
 
     cache: dict[str, Any] = {}
-    with patch(
-        "app.services.imports.division_assignment.DivisionRepo",
-        return_value=div_repo,
-    ), patch(
-        "app.services.imports.division_assignment.ProductDivisionRepo",
-        return_value=pd_repo,
+    with (
+        patch(
+            "app.services.imports.division_assignment.DivisionRepo",
+            return_value=div_repo,
+        ),
+        patch(
+            "app.services.imports.division_assignment.ProductDivisionRepo",
+            return_value=pd_repo,
+        ),
     ):
-        await assign_divisions(
-            session, "SKU1", ["hidrosanitario"], code_id_cache=cache
-        )
-        await assign_divisions(
-            session, "SKU2", ["hidrosanitario"], code_id_cache=cache
-        )
+        await assign_divisions(session, "SKU1", ["hidrosanitario"], code_id_cache=cache)
+        await assign_divisions(session, "SKU2", ["hidrosanitario"], code_id_cache=cache)
 
     # get_by_code llamado SOLO una vez (segunda call usa el cache).
     assert div_repo.get_by_code.await_count == 1
@@ -213,12 +222,15 @@ async def test_empty_string_codes_filtered() -> None:
     pd_repo.get_link = AsyncMock(return_value=None)
     pd_repo.link = AsyncMock(return_value=MagicMock())
 
-    with patch(
-        "app.services.imports.division_assignment.DivisionRepo",
-        return_value=div_repo,
-    ), patch(
-        "app.services.imports.division_assignment.ProductDivisionRepo",
-        return_value=pd_repo,
+    with (
+        patch(
+            "app.services.imports.division_assignment.DivisionRepo",
+            return_value=div_repo,
+        ),
+        patch(
+            "app.services.imports.division_assignment.ProductDivisionRepo",
+            return_value=pd_repo,
+        ),
     ):
         n = await assign_divisions(session, "SKU1", ["", "  ", None])  # type: ignore[list-item]
 

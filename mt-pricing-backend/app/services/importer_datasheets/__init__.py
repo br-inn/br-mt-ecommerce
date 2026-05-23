@@ -40,8 +40,8 @@ from app.services.importer_datasheets.spec_parser import (
 )
 
 __all__ = [
-    "ApplyDatasheetsResult",
     "DATASHEET_KIND_PREFIXES",
+    "ApplyDatasheetsResult",
     "DatasheetApplier",
     "DatasheetSpecs",
     "DatasheetsRunState",

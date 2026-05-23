@@ -10,11 +10,12 @@ Cambios en ``hitl_queue``:
 - ``is_first_appearance BOOLEAN NOT NULL DEFAULT false`` — true si el SKU nunca antes
   había aparecido en match_candidates.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
-from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision = "20260602_142"

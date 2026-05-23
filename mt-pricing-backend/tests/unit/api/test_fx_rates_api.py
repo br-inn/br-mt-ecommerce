@@ -14,7 +14,7 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -23,11 +23,11 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
-from app.api.routes.fx_rates import get_fx_rate_service, router as fx_router
+from app.api.deps import get_current_user, get_db_session
+from app.api.routes.fx_rates import get_fx_rate_service
+from app.api.routes.fx_rates import router as fx_router
 from app.services.fx import (
     FXRateRetroactiveBlockedError,
-    FXRateService,
 )
 from app.services.fx.fx_rate_service import FXRatePositiveError, InvalidFXCurrencyError
 
@@ -57,7 +57,7 @@ class _FakeFXRate:
         self.effective_to = effective_to
         self.source = source
         self.created_by = created_by
-        self.created_at = datetime.now(tz=timezone.utc)
+        self.created_at = datetime.now(tz=UTC)
 
 
 class _FakeRole:
@@ -147,13 +147,13 @@ def _build_app(
             if call is not None and getattr(call, "__name__", "") == "_check":
                 if perms_ok:
 
-                    async def _allow(_call=call):  # noqa: ARG001
+                    async def _allow(_call=call):
                         return user
 
                     app.dependency_overrides[call] = _allow
                 else:
 
-                    async def _deny(_call=call):  # noqa: ARG001
+                    async def _deny(_call=call):
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail={
@@ -304,7 +304,7 @@ async def test_get_fx_rates_with_filters() -> None:
             from_c="EUR",
             to_c="AED",
             rate=Decimal("4.18"),
-            effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 6, 12, tzinfo=UTC),
         )
     )
     svc.rows.append(
@@ -312,7 +312,7 @@ async def test_get_fx_rates_with_filters() -> None:
             from_c="USD",
             to_c="AED",
             rate=Decimal("3.67"),
-            effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 6, 12, tzinfo=UTC),
         )
     )
     user = _FakeUser(["fx:read"])

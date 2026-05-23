@@ -30,7 +30,6 @@ from app.db.models.user import User
 from app.schemas.common import ProblemDetails
 from app.schemas.dimensions import (
     ActuationCodeResponse,
-    DimensionCellCreate,
     DimensionCellPatch,
     DimensionCellResponse,
     DimensionColumnCreate,
@@ -148,9 +147,7 @@ async def get_product_dimensions(
         composite = await service.get_table_for_product(sku)
     except DimensionDomainError as e:
         _raise_domain(e)
-    columns = [
-        DimensionColumnResponse.model_validate(c) for c in composite["columns"]
-    ]
+    columns = [DimensionColumnResponse.model_validate(c) for c in composite["columns"]]
     rows: list[DimensionRowWithCells] = []
     for r in composite["rows"]:
         rows.append(
@@ -192,10 +189,7 @@ async def get_product_pt_curve(
     return PressureTemperatureCurveResponse(
         product_sku=composite["product_sku"],
         series_variant_code=composite["series_variant_code"],
-        points=[
-            PressureTemperaturePointResponse.model_validate(p)
-            for p in composite["points"]
-        ],
+        points=[PressureTemperaturePointResponse.model_validate(p) for p in composite["points"]],
     )
 
 
@@ -294,16 +288,14 @@ async def admin_create_dimension_column(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_dimension_column(
-    family_id: UUID,  # noqa: ARG001 — kept for URL stability
+    family_id: UUID,
     column_id: UUID,
     data: DimensionColumnPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: DimensionService = Depends(get_dimension_service),
 ) -> DimensionColumnResponse:
     try:
-        row = await service.patch_column(
-            column_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_column(column_id, data.model_dump(exclude_unset=True))
     except DimensionDomainError as e:
         _raise_domain(e)
     return DimensionColumnResponse.model_validate(row)
@@ -317,7 +309,7 @@ async def admin_patch_dimension_column(
     responses={404: {"model": ProblemDetails}, 409: {"model": ProblemDetails}},
 )
 async def admin_delete_dimension_column(
-    family_id: UUID,  # noqa: ARG001
+    family_id: UUID,
     column_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: DimensionService = Depends(get_dimension_service),
@@ -372,7 +364,7 @@ async def admin_create_dimension_row(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_dimension_row(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     row_id: UUID,
     data: DimensionRowPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
@@ -393,7 +385,7 @@ async def admin_patch_dimension_row(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_dimension_row(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     row_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: DimensionService = Depends(get_dimension_service),
@@ -415,7 +407,7 @@ async def admin_delete_dimension_row(
     },
 )
 async def admin_upsert_dimension_cell(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     row_id: UUID,
     column_id: UUID,
     data: DimensionCellPatch,
@@ -471,16 +463,14 @@ async def admin_add_pt_point(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_pt_point(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     point_id: UUID,
     data: PressureTemperaturePointPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: PressureTemperatureService = Depends(get_pt_service),
 ) -> PressureTemperaturePointResponse:
     try:
-        row = await service.patch_point(
-            point_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_point(point_id, data.model_dump(exclude_unset=True))
     except DimensionDomainError as e:
         _raise_domain(e)
     return PressureTemperaturePointResponse.model_validate(row)
@@ -494,7 +484,7 @@ async def admin_patch_pt_point(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_pt_point(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     point_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: PressureTemperatureService = Depends(get_pt_service),

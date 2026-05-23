@@ -7,12 +7,14 @@ Estrategia:
 - Se overridean las dependencias `get_db_session`, `get_current_user`,
   `require_permissions(...)` y la factory `get_match_service` para devolver
   fakes en memoria.
+- `ProductRepository` se parchea a nivel de módulo para que el endpoint
+  `/refresh` pueda verificar si el SKU existe sin necesitar DB real.
+- `refresh_sku_task` se parchea para evitar dependencia de Celery/Redis.
 - El servicio fake reusa el mismo MatchService real, pero conectado al
-  in-memory repo (truco: no usa la session). Así ejercitamos la lógica
-  ENTERA del router (cursor, mapping, transiciones).
+  in-memory repo. Así ejercitamos la lógica ENTERA del router.
 
 Cobertura:
-- ``POST /matches/{sku}/refresh`` devuelve 200 + 8 candidatos para SKU canned.
+- ``POST /matches/{sku}/refresh`` devuelve 202 para SKU canned.
 - ``GET /matches`` filtra por sku/status/channel.
 - ``GET /matches/{id}`` devuelve detalle con scoring breakdown poblado.
 - ``POST /matches/{id}/validate`` cambia status.
@@ -24,18 +26,19 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
-from app.api.routes.matches import get_match_service, router as matches_router
+from app.api.deps import get_current_user, get_db_session
+from app.api.routes.matches import get_match_service
+from app.api.routes.matches import router as matches_router
 from app.services.matching.match_service import MatchService
 
 pytestmark = pytest.mark.unit
@@ -75,7 +78,7 @@ class _FakeMatchRow:
         self.validated_by: UUID | None = None
         self.validated_at: datetime | None = None
         self.discarded_reason: str | None = None
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.created_at = now
         self.updated_at = now
 
@@ -97,9 +100,7 @@ class _InMemoryMatchRepo:
         return None
 
     async def upsert_candidate(self, **kw: Any) -> _FakeMatchRow:
-        existing = await self.find_by_external(
-            kw["product_sku"], kw["channel"], kw["external_id"]
-        )
+        existing = await self.find_by_external(kw["product_sku"], kw["channel"], kw["external_id"])
         if existing:
             for f in (
                 "title",
@@ -154,7 +155,7 @@ class _InMemoryMatchRepo:
             return None
         row.status = "validated"
         row.validated_by = user_id
-        row.validated_at = datetime.now(tz=timezone.utc)
+        row.validated_at = datetime.now(tz=UTC)
         row.discarded_reason = None
         return row
 
@@ -190,10 +191,6 @@ class _FakeUser:
         self.id: UUID = uuid4()
         self.email = "tester@mt.ae"
         self.is_active = True
-        # `permissions_snapshot` cubre el path de `require_permissions`.
-        # Sprint 5 (US-1A-07-04): rutas migradas a permisos dedicados
-        # `matches:read|write`. Mantenemos `products:*` por si futuros tests
-        # cubren rutas legacy.
         self.role = _FakeRole(
             [
                 "products:read",
@@ -207,11 +204,14 @@ class _FakeUser:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+_DEFAULT_PRODUCTS: dict[str, _FakeProduct] = {"MTBR4001050": _FakeProduct("MTBR4001050")}
+
+
 def _make_service_for_router(
     *, products: dict[str, _FakeProduct] | None = None
 ) -> tuple[MatchService, _InMemoryMatchRepo]:
-    products = products or {"MTBR4001050": _FakeProduct("MTBR4001050")}
-    fake_session = MagicMock()
+    products = products if products is not None else dict(_DEFAULT_PRODUCTS)
+    fake_session = AsyncMock()
     svc = MatchService(fake_session)
     repo = _InMemoryMatchRepo()
     svc._matches_repo = repo  # type: ignore[assignment]
@@ -219,43 +219,88 @@ def _make_service_for_router(
     return svc, repo
 
 
+def _populate_repo(
+    repo: _InMemoryMatchRepo,
+    sku: str = "MTBR4001050",
+    count: int = 5,
+    *,
+    with_scoring: bool = False,
+) -> None:
+    """Adds fake candidates directly to the in-memory repo."""
+    for i in range(count):
+        specs: dict[str, Any] = {}
+        if with_scoring:
+            specs = {
+                "_scoring": {
+                    "total": 87,
+                    "breakdown": {"dn": 1.0, "pn": 1.0, "material": 1.0},
+                    "weights": {"dn": 0.3, "pn": 0.2, "material": 0.2},
+                    "notes": [],
+                }
+            }
+        repo.rows.append(
+            _FakeMatchRow(
+                product_sku=sku,
+                channel="amazon_uae" if i % 2 == 0 else "noon_uae",
+                external_id=f"EXT-{i:03d}",
+                title=f"Candidate {i}",
+                kind="peer",
+                score=80,
+                specs_jsonb=specs,
+            )
+        )
+
+
 def _build_app(
-    service: MatchService, user: _FakeUser
+    service: MatchService,
+    user: _FakeUser,
+    products: dict[str, _FakeProduct] | None = None,
 ) -> FastAPI:
     app = FastAPI()
     app.include_router(matches_router, prefix="/api/v1")
 
-    async def _override_db():  # pragma: no cover — dummy
-        yield None
+    # Patch ProductRepository so refresh endpoint can look up SKUs without real DB.
+    _prods = products if products is not None else dict(_DEFAULT_PRODUCTS)
+    import app.repositories.product as _product_repo_mod
 
-    async def _override_user():
+    class _FakeProductRepo:
+        def __init__(self, _session: Any) -> None:
+            pass
+
+        async def get_by_sku(self, sku: str) -> _FakeProduct | None:
+            return _prods.get(sku)
+
+    _product_repo_mod.ProductRepository = _FakeProductRepo  # type: ignore[assignment]
+
+    # Patch Celery task so refresh endpoint doesn't need a broker.
+    import app.workers.tasks.comparator as _comparator_mod
+
+    _mock_task = MagicMock()
+    _mock_task.apply_async.return_value.id = "test-task-id"
+    _comparator_mod.refresh_sku_task = _mock_task  # type: ignore[attr-defined]
+
+    async def _override_db() -> Any:
+        yield MagicMock()  # session not actually used (ProductRepository is patched above)
+
+    async def _override_user() -> _FakeUser:
         return user
-
-    def _override_perms(*_codes: str):
-        async def _ok():
-            return user
-
-        return _ok
 
     app.dependency_overrides[get_db_session] = _override_db
     app.dependency_overrides[get_current_user] = _override_user
-    # require_permissions(...) returns a fresh callable per call site; we
-    # need to override the *result* function used at registration time. The
-    # simplest path is to override `get_current_user` and patch
-    # `require_permissions` factory by replacing the dependency at runtime.
-    # FastAPI lets us inject by callable identity — `require_permissions`
-    # returns a closure each time. We instead override its *output* via the
-    # same trick used in other tests: register the closure used by each
-    # endpoint. Since closures are unique per call, we walk the router
-    # dependencies and override them.
+
     for route in matches_router.routes:
-        for dependency in getattr(route, "dependant", None).dependencies if getattr(route, "dependant", None) else []:
+        dependant = getattr(route, "dependant", None)
+        if dependant is None:
+            continue
+        for dependency in dependant.dependencies:
             call = dependency.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call):  # noqa: ARG001
+
+                async def _allow(_call: Any = call) -> _FakeUser:
                     return user
 
                 app.dependency_overrides[call] = _allow
+
     app.dependency_overrides[get_match_service] = lambda: service
     return app
 
@@ -268,40 +313,39 @@ async def _client(app: FastAPI) -> AsyncClient:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
-async def test_refresh_returns_8_candidates_for_canned_sku() -> None:
-    svc, repo = _make_service_for_router()
+async def test_refresh_returns_202_for_canned_sku() -> None:
+    svc, _ = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
     async with await _client(app) as ac:
         resp = await ac.post("/api/v1/matches/MTBR4001050/refresh")
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 202, resp.text
     body = resp.json()
     assert body["sku"] == "MTBR4001050"
-    assert body["refreshed_count"] == 8
-    assert len(body["candidates"]) == 8
-    assert len(repo.rows) == 8
+    assert body["task_id"] == "test-task-id"
+    assert body["task_status"] == "queued"
+    assert body["refreshed_count"] == 0  # empty repo when refresh was enqueued
+    assert body["candidates"] == []
 
 
 async def test_refresh_unknown_sku_returns_404() -> None:
     svc, _ = _make_service_for_router(products={})
     user = _FakeUser()
-    app = _build_app(svc, user)
+    app = _build_app(svc, user, products={})
     async with await _client(app) as ac:
         resp = await ac.post("/api/v1/matches/UNKNOWN/refresh")
     assert resp.status_code == 404
     body = resp.json()
-    assert body["detail"]["code"] == "match_sku_not_found"
+    assert body["detail"]["code"] == "sku_not_found"
 
 
 async def test_list_matches_filters_by_sku_and_status() -> None:
-    svc, _ = _make_service_for_router()
+    svc, repo = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
+    _populate_repo(repo, count=5)
     async with await _client(app) as ac:
-        await ac.post("/api/v1/matches/MTBR4001050/refresh")
-        resp = await ac.get(
-            "/api/v1/matches?sku=MTBR4001050&status=pending&channel=amazon_uae"
-        )
+        resp = await ac.get("/api/v1/matches?sku=MTBR4001050&status=pending&channel=amazon_uae")
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert all(c["channel"] == "amazon_uae" for c in body["items"])
@@ -313,9 +357,9 @@ async def test_get_detail_includes_scoring_breakdown() -> None:
     svc, repo = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
+    _populate_repo(repo, count=1, with_scoring=True)
+    target_id = repo.rows[0].id
     async with await _client(app) as ac:
-        await ac.post("/api/v1/matches/MTBR4001050/refresh")
-        target_id = repo.rows[0].id
         resp = await ac.get(f"/api/v1/matches/{target_id}")
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -338,9 +382,9 @@ async def test_validate_endpoint_changes_status() -> None:
     svc, repo = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
+    _populate_repo(repo, count=1)
+    target_id = repo.rows[0].id
     async with await _client(app) as ac:
-        await ac.post("/api/v1/matches/MTBR4001050/refresh")
-        target_id = repo.rows[0].id
         resp = await ac.post(f"/api/v1/matches/{target_id}/validate")
     assert resp.status_code == 200
     body = resp.json()
@@ -352,9 +396,9 @@ async def test_discard_endpoint_records_reason() -> None:
     svc, repo = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
+    _populate_repo(repo, count=1)
+    target_id = repo.rows[0].id
     async with await _client(app) as ac:
-        await ac.post("/api/v1/matches/MTBR4001050/refresh")
-        target_id = repo.rows[-1].id
         resp = await ac.post(
             f"/api/v1/matches/{target_id}/discard",
             json={"reason": "wrong DN"},
@@ -369,9 +413,9 @@ async def test_validate_then_discard_returns_409() -> None:
     svc, repo = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
+    _populate_repo(repo, count=1)
+    target_id = repo.rows[0].id
     async with await _client(app) as ac:
-        await ac.post("/api/v1/matches/MTBR4001050/refresh")
-        target_id = repo.rows[0].id
         await ac.post(f"/api/v1/matches/{target_id}/validate")
         resp = await ac.post(f"/api/v1/matches/{target_id}/discard")
     assert resp.status_code == 409
@@ -380,11 +424,11 @@ async def test_validate_then_discard_returns_409() -> None:
 
 
 async def test_list_matches_with_pagination_cursor() -> None:
-    svc, _ = _make_service_for_router()
+    svc, repo = _make_service_for_router()
     user = _FakeUser()
     app = _build_app(svc, user)
+    _populate_repo(repo, count=6)
     async with await _client(app) as ac:
-        await ac.post("/api/v1/matches/MTBR4001050/refresh")
         # limit=3 → debe haber un cursor para la siguiente página.
         r1 = await ac.get("/api/v1/matches?limit=3")
         assert r1.status_code == 200

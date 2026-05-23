@@ -72,9 +72,7 @@ def _render_table(data: dict) -> str:
     ]
 
     def _fmt_row(cells: tuple) -> str:
-        return "| " + " | ".join(
-            str(c).ljust(col_widths[i]) for i, c in enumerate(cells)
-        ) + " |"
+        return "| " + " | ".join(str(c).ljust(col_widths[i]) for i, c in enumerate(cells)) + " |"
 
     sep = "+" + "+".join("-" * (w + 2) for w in col_widths) + "+"
     header = _fmt_row(("Gap", "Count", "Pct %", "Sample SKUs"))
@@ -100,6 +98,7 @@ async def _run(args: argparse.Namespace) -> None:
     if _dotenv_path.exists():
         try:
             from dotenv import load_dotenv
+
             load_dotenv(_dotenv_path, override=False)
         except ImportError:
             pass  # python-dotenv no instalado — se asume que env vars ya están en entorno.

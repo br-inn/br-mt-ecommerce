@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Protocol
 
 logger = logging.getLogger(__name__)
@@ -39,9 +39,7 @@ class ImageSearchResult:
 # ---------------------------------------------------------------------------
 class ImageEmbeddingBackend(Protocol):
     async def index_image(self, product_id: str, image_url: str) -> bool: ...
-    async def search_similar(
-        self, image_url: str, top_k: int = 10
-    ) -> list[ImageSearchResult]: ...
+    async def search_similar(self, image_url: str, top_k: int = 10) -> list[ImageSearchResult]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -54,9 +52,7 @@ class StubBackend:
         logger.debug("clip.stub.index_image product_id=%s url=%s", product_id, image_url)
         return True
 
-    async def search_similar(
-        self, image_url: str, top_k: int = 10
-    ) -> list[ImageSearchResult]:
+    async def search_similar(self, image_url: str, top_k: int = 10) -> list[ImageSearchResult]:
         logger.debug("clip.stub.search_similar url=%s top_k=%d", image_url, top_k)
         return []
 
@@ -91,9 +87,7 @@ class Neo4jCLIPBackend:
         )
         return True
 
-    async def search_similar(
-        self, image_url: str, top_k: int = 10
-    ) -> list[ImageSearchResult]:
+    async def search_similar(self, image_url: str, top_k: int = 10) -> list[ImageSearchResult]:
         # TODO: generar embedding de imagen de query, buscar en Neo4j vector index
         logger.debug(
             "clip.neo4j.search_similar (stub) url=%s top_k=%d neo4j_uri=%s",

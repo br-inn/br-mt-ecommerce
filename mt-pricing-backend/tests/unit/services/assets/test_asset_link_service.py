@@ -75,8 +75,9 @@ class _FakeAsset:
 # ---------------------------------------------------------------------------
 # Session builder
 # ---------------------------------------------------------------------------
-def _make_session(scalar_one_or_none_seq: list[Any] | None = None,
-                  scalars_all_seq: list[list[Any]] | None = None) -> Any:
+def _make_session(
+    scalar_one_or_none_seq: list[Any] | None = None, scalars_all_seq: list[list[Any]] | None = None
+) -> Any:
     """Mock AsyncSession; cada execute() devuelve siguiente valor de la cola."""
     session = MagicMock()
     session.add = MagicMock()

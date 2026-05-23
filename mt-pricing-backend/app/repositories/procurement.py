@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -11,7 +10,6 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.db.models.procurement import (
     ApprovalDecision,
@@ -22,13 +20,12 @@ from app.db.models.procurement import (
 from app.schemas.procurement import (
     PRCreate,
     VendorConditionCreate,
-    VendorConditionUpdate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def _next_pr_number(session: AsyncSession) -> str:
     """Genera PR-YYYYMMDD-NNNN incremental por día."""
@@ -36,10 +33,7 @@ async def _next_pr_number(session: AsyncSession) -> str:
 
     today = date.today().strftime("%Y%m%d")
     prefix = f"PR-{today}-"
-    stmt = (
-        select(func.count())
-        .where(PurchaseRequisition.pr_number.like(f"{prefix}%"))
-    )
+    stmt = select(func.count()).where(PurchaseRequisition.pr_number.like(f"{prefix}%"))
     count = int((await session.execute(stmt)).scalar_one() or 0)
     return f"{prefix}{count + 1:04d}"
 
@@ -64,15 +58,14 @@ def _active_pir_clause(vendor_id: str, product_sku: str) -> Any:
 # PurchaseRequisition
 # ---------------------------------------------------------------------------
 
+
 class ProcurementRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     # --- PR CRUD ------------------------------------------------------------
 
-    async def create_pr(
-        self, data: PRCreate, *, requester_id: UUID
-    ) -> PurchaseRequisition:
+    async def create_pr(self, data: PRCreate, *, requester_id: UUID) -> PurchaseRequisition:
         pr_number = await _next_pr_number(self.session)
         pr = PurchaseRequisition(
             pr_number=pr_number,
@@ -156,13 +149,11 @@ class ProcurementRepository:
                 f"aprobador: {role_info}, timeout: {rule.timeout_hours}h]"
             ).strip()
 
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
-    async def approve_pr(
-        self, pr_id: UUID, *, approver_id: UUID
-    ) -> PurchaseRequisition:
+    async def approve_pr(self, pr_id: UUID, *, approver_id: UUID) -> PurchaseRequisition:
         pr = await self._get_or_404(pr_id)
         if pr.status != "pending_approval":
             raise HTTPException(
@@ -180,7 +171,7 @@ class ProcurementRepository:
         )
         self.session.add(decision)
         pr.status = "approved"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
@@ -205,7 +196,7 @@ class ProcurementRepository:
         )
         self.session.add(decision)
         pr.status = "rejected"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
@@ -220,15 +211,13 @@ class ProcurementRepository:
                 },
             )
         pr.status = "cancelled"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
     # --- Approval rules -----------------------------------------------------
 
-    async def _match_approval_rule(
-        self, pr: PurchaseRequisition
-    ) -> ApprovalRule | None:
+    async def _match_approval_rule(self, pr: PurchaseRequisition) -> ApprovalRule | None:
         amount = pr.estimated_amount or Decimal("0")
         stmt = (
             select(ApprovalRule)
@@ -260,9 +249,7 @@ class ProcurementRepository:
         await self.session.flush()
         return rule
 
-    async def update_approval_rule(
-        self, rule_id: UUID, payload: dict[str, Any]
-    ) -> ApprovalRule:
+    async def update_approval_rule(self, rule_id: UUID, payload: dict[str, Any]) -> ApprovalRule:
         rule = await self.get_approval_rule(rule_id)
         if rule is None:
             raise HTTPException(
@@ -312,6 +299,7 @@ class ProcurementRepository:
             clauses.append(VendorProductCondition.product_sku == product_sku)
         if active_only:
             from datetime import date as _date
+
             today = _date.today()
             clauses.append(VendorProductCondition.is_active.is_(True))
             clauses.append(VendorProductCondition.valid_from <= today)
@@ -326,9 +314,7 @@ class ProcurementRepository:
         stmt = stmt.order_by(VendorProductCondition.valid_from.desc())
         return list((await self.session.execute(stmt)).scalars().all())
 
-    async def create_vendor_condition(
-        self, data: VendorConditionCreate
-    ) -> VendorProductCondition:
+    async def create_vendor_condition(self, data: VendorConditionCreate) -> VendorProductCondition:
         from datetime import date as _date
 
         vc = VendorProductCondition(
@@ -385,8 +371,9 @@ class ProcurementRepository:
             )
         return pr
 
-    async def convert_pr_to_po(self, pr_id: UUID, created_by: UUID | None = None) -> "PurchaseOrder":
+    async def convert_pr_to_po(self, pr_id: UUID, created_by: UUID | None = None) -> PurchaseOrder:
         import datetime as _dt
+
         from app.db.models.inventory import PurchaseOrder
 
         pr = await self._get_or_404(pr_id)
@@ -414,7 +401,7 @@ class ProcurementRepository:
         await self.session.flush()
 
         pr.status = "converted_to_po"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=_dt.UTC)
         await self.session.flush()
         await self.session.refresh(po)
         return po

@@ -58,9 +58,7 @@ class ComponentsService:
         observations: str | None = None,
     ) -> ProductMaterial:
         await self._ensure_product(sku)
-        return await self.materials.upsert(
-            sku, component, position, material, observations
-        )
+        return await self.materials.upsert(sku, component, position, material, observations)
 
     async def delete_material(self, sku: str, component: str, position: int) -> None:
         await self._ensure_product(sku)

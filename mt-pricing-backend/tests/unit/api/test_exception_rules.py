@@ -11,11 +11,11 @@ Cobertura (6 tests):
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -31,6 +31,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class _FakeRole:
     def __init__(self, code: str, perms: list[str]) -> None:
@@ -58,7 +59,7 @@ def _make_rule(
     scheme_code: str | None = None,
     created_offset_hours: int = 0,
 ) -> Any:
-    now = datetime.now(tz=timezone.utc) - timedelta(hours=created_offset_hours)
+    now = datetime.now(tz=UTC) - timedelta(hours=created_offset_hours)
     return SimpleNamespace(
         id=uuid4(),
         code=code,
@@ -120,9 +121,9 @@ class _FakeRepo:
                 and r.id != rule_id
             ):
                 r.active = False
-                r.effective_to = datetime.now(tz=timezone.utc)
+                r.effective_to = datetime.now(tz=UTC)
         rule.active = True
-        rule.effective_from = datetime.now(tz=timezone.utc)
+        rule.effective_from = datetime.now(tz=UTC)
         rule.effective_to = None
         self.activated.append(rule_id)
         return rule
@@ -143,6 +144,7 @@ class _FakeAuditRepo:
 # ---------------------------------------------------------------------------
 # App factory — overrides deps + monkeypatches repo constructors
 # ---------------------------------------------------------------------------
+
 
 def _make_app(
     user: _FakeUser,
@@ -168,11 +170,13 @@ def _make_app(
             missing = set(required) - snapshot
             if missing:
                 from fastapi import HTTPException
+
                 raise HTTPException(
                     status_code=403,
                     detail={"code": "permission_denied", "missing": sorted(missing)},
                 )
             return user
+
         return _check
 
     app.dependency_overrides[require_permissions] = _perms_factory  # type: ignore[assignment]

@@ -19,13 +19,12 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models.product import Product
 from app.db.models.user import User
 from app.repositories.audit import AuditRepository
 from app.repositories.product import ProductRepository
@@ -138,7 +137,9 @@ async def _apply_one(
         )
         if division_codes and diff.sku:
             await assign_divisions(
-                session, diff.sku, division_codes,
+                session,
+                diff.sku,
+                division_codes,
                 code_id_cache=division_code_cache,
             )
         return "created"
@@ -151,7 +152,7 @@ async def _apply_one(
         for f, change in diff.diff.items():
             setattr(existing, f, change["to"])
         existing.updated_by = actor.id
-        existing.updated_at = datetime.now(tz=timezone.utc)
+        existing.updated_at = datetime.now(tz=UTC)
         await session.flush()
         await audit.record(
             entity_type="product",
@@ -164,7 +165,9 @@ async def _apply_one(
         )
         if division_codes and diff.sku:
             await assign_divisions(
-                session, diff.sku, division_codes,
+                session,
+                diff.sku,
+                division_codes,
                 code_id_cache=division_code_cache,
             )
         return "updated"
@@ -206,24 +209,29 @@ async def apply_diffs_chunked(
     )
     div_code_cache: dict[str, Any] = {}
 
-    result = ApplyResult(total_rows=len(diffs), started_at=datetime.now(tz=timezone.utc))
+    result = ApplyResult(total_rows=len(diffs), started_at=datetime.now(tz=UTC))
 
     async for chunk_idx, start_row, end_row, chunk in _chunked(diffs, chunk_size):
         chunk_res = ChunkResult(chunk_index=chunk_idx, start_row=start_row, end_row=end_row)
         try:
-            async with session.begin_nested() as savepoint:  # noqa: F841
+            async with session.begin_nested() as savepoint:
                 for d in chunk:
                     try:
                         action = await _apply_one(
-                            session, repo, audit, d, actor,
+                            session,
+                            repo,
+                            audit,
+                            d,
+                            actor,
                             run_id=run_id,
                             division_codes=effective_div_codes,
                             division_code_cache=div_code_cache,
                         )
-                    except Exception:  # noqa: BLE001 — fila individual no debe matar chunk si controlable
+                    except Exception:
                         logger.exception(
                             "Importer apply: row %s sku=%s failed",
-                            d.row_index, d.sku,
+                            d.row_index,
+                            d.sku,
                         )
                         chunk_res.errors += 1
                         # Re-raise para hacer rollback del chunk completo (el
@@ -240,7 +248,7 @@ async def apply_diffs_chunked(
                         chunk_res.no_change += 1
                     elif action == "errors":
                         chunk_res.errors += 1
-        except Exception as exc:  # noqa: BLE001 — chunk-level rollback intencional
+        except Exception as exc:
             chunk_res.failed = True
             chunk_res.failure_reason = f"{type(exc).__name__}: {exc!s}"
             # El savepoint ya hizo rollback al salir del with por excepción.
@@ -260,7 +268,7 @@ async def apply_diffs_chunked(
                     },
                     reason=f"PIM import run {run_id} chunk {chunk_idx}",
                 )
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("Importer: failed to audit chunk failure")
 
         # Audit summary del chunk (siempre — éxito o fallo).
@@ -284,12 +292,12 @@ async def apply_diffs_chunked(
                 },
                 reason=f"PIM import run {run_id} chunk {chunk_idx} summary",
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("Importer: failed to audit chunk summary")
 
         result.chunks.append(chunk_res)
 
-    result.finished_at = datetime.now(tz=timezone.utc)
+    result.finished_at = datetime.now(tz=UTC)
     return result
 
 

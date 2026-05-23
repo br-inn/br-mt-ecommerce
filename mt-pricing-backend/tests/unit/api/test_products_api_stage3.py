@@ -18,7 +18,7 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -27,13 +27,14 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
-from app.api.routes.products import get_product_service, router as products_router
+from app.api.deps import get_current_user, get_db_session
+from app.api.routes.products import get_product_service
+from app.api.routes.products import router as products_router
 from app.services.products.product_service import ProductService
 
 pytestmark = pytest.mark.unit
 
-NOW = datetime.now(tz=timezone.utc)
+NOW = datetime.now(tz=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +115,9 @@ def _fake_product_orm(
     p.tags = []
     p.video_url = None
     p.external_url = None
+    p.model_id = None
+    p.model = None
+    p.gtin = None
     # Stage 3
     p.series_id = series_id
     p.material_id = material_id
@@ -137,9 +141,10 @@ def _build_app(user: _FakeUser, product_svc: ProductService) -> FastAPI:
     app.include_router(products_router, prefix="/api/v1")
 
     fake_session = MagicMock()
+
     # session.execute → AsyncMock devolviendo Result vacío con .all() y
     # .scalar_one_or_none() apropiados.
-    async def _execute(*_a: Any, **_k: Any) -> Any:  # noqa: ANN401
+    async def _execute(*_a: Any, **_k: Any) -> Any:
         result = MagicMock()
         result.all.return_value = []
         result.scalar_one_or_none.return_value = None
@@ -165,8 +170,10 @@ def _build_app(user: _FakeUser, product_svc: ProductService) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call):  # noqa: ARG001
+
+                async def _allow(_call=call):
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -186,6 +193,7 @@ def _mock_svc() -> ProductService:
 # ---------------------------------------------------------------------------
 # Tests — list with new Stage 3 query params
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_products_stage3_division_filter_passes_to_service() -> None:
@@ -250,8 +258,7 @@ async def test_list_products_stage3_combined_filters() -> None:
     app = _build_app(user, svc)
     async with await _client(app) as ac:
         resp = await ac.get(
-            f"/api/v1/products?division=industrial&series_id={sid}"
-            f"&material_id={mid}&tier_code=gold"
+            f"/api/v1/products?division=industrial&series_id={sid}&material_id={mid}&tier_code=gold"
         )
     assert resp.status_code == 200
     kwargs = svc.list_products.await_args.kwargs
@@ -285,6 +292,7 @@ async def test_list_products_stage3_response_includes_division_codes_default_emp
 # Tests — detail response shape (Stage 3)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_product_detail_stage3_keys_present() -> None:
     user = _FakeUser()
@@ -310,6 +318,7 @@ async def test_get_product_detail_stage3_keys_present() -> None:
 # ---------------------------------------------------------------------------
 # Tests — query param signature: no 422 (matches validation contract)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_products_stage3_invalid_series_id_too_long_returns_422() -> None:

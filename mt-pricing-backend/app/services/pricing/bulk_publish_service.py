@@ -84,9 +84,7 @@ class BulkPublishService:
         queue_publisher: QueuePublisher | None = None,
     ) -> None:
         self.session = session
-        self.pricing_service: PricingServiceProtocol = (
-            pricing_service or PricingService(session)
-        )
+        self.pricing_service: PricingServiceProtocol = pricing_service or PricingService(session)
         self.queue_publisher = queue_publisher
         self.audit = AuditRepository(session)
 
@@ -105,9 +103,7 @@ class BulkPublishService:
             try:
                 price = await self.pricing_service.export(pid, actor)
             except PricingDomainError as exc:
-                logger.warning(
-                    "bulk_publish: domain error price_id=%s code=%s", pid, exc.code
-                )
+                logger.warning("bulk_publish: domain error price_id=%s code=%s", pid, exc.code)
                 result.errors.append(
                     {
                         "price_id": str(pid),
@@ -130,7 +126,7 @@ class BulkPublishService:
                     )
                     return result
                 continue
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.exception("bulk_publish: unexpected error price_id=%s", pid)
                 result.errors.append(
                     {
@@ -148,11 +144,9 @@ class BulkPublishService:
             if self.queue_publisher is not None:
                 try:
                     accepted = await self.queue_publisher(price.id)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     accepted = False
-                    logger.exception(
-                        "bulk_publish: queue publisher raised price_id=%s", price.id
-                    )
+                    logger.exception("bulk_publish: queue publisher raised price_id=%s", price.id)
                     await self.audit.record(
                         entity_type="price",
                         entity_id=str(price.id),

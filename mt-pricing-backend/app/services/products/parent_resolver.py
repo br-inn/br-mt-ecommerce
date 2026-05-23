@@ -49,9 +49,7 @@ class DepthExceededError(ParentResolverError):
 
 class ParentNotFoundError(ParentResolverError):
     def __init__(self, parent_sku: str) -> None:
-        super().__init__(
-            "parent_not_found", f"parent product '{parent_sku}' does not exist", 404
-        )
+        super().__init__("parent_not_found", f"parent product '{parent_sku}' does not exist", 404)
 
 
 class ParentResolver:
@@ -96,25 +94,19 @@ class ParentResolver:
         - parent.is_parent = exists any other product with parent_sku=parent.
         """
         # Re-leer self para conocer parent_sku actual.
-        result = await self.session.execute(
-            select(Product.parent_sku).where(Product.sku == sku)
-        )
+        result = await self.session.execute(select(Product.parent_sku).where(Product.sku == sku))
         parent_sku = result.scalar_one_or_none()
 
         # Marca self.is_variant.
         await self.session.execute(
-            update(Product)
-            .where(Product.sku == sku)
-            .values(is_variant=parent_sku is not None)
+            update(Product).where(Product.sku == sku).values(is_variant=parent_sku is not None)
         )
 
         if parent_sku:
             # Recompute padre.is_parent (debería ser true si tiene al menos
             # una variante — esta misma).
             await self.session.execute(
-                update(Product)
-                .where(Product.sku == parent_sku)
-                .values(is_parent=True)
+                update(Product).where(Product.sku == parent_sku).values(is_parent=True)
             )
 
     # ---- Resolution (fallback chain) --------------------------------------
@@ -134,9 +126,7 @@ class ParentResolver:
         if own:
             return own, None
         # Fallback: ¿variante con padre?
-        result = await self.session.execute(
-            select(Product.parent_sku).where(Product.sku == sku)
-        )
+        result = await self.session.execute(select(Product.parent_sku).where(Product.sku == sku))
         parent_sku = result.scalar_one_or_none()
         if not parent_sku:
             return [], None
@@ -150,23 +140,29 @@ class ParentResolver:
         self, sku: str
     ) -> tuple[Sequence[ProductTranslation], str | None]:
         own = (
-            await self.session.execute(
-                select(ProductTranslation).where(ProductTranslation.sku == sku)
+            (
+                await self.session.execute(
+                    select(ProductTranslation).where(ProductTranslation.sku == sku)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if own:
             return own, None
-        result = await self.session.execute(
-            select(Product.parent_sku).where(Product.sku == sku)
-        )
+        result = await self.session.execute(select(Product.parent_sku).where(Product.sku == sku))
         parent_sku = result.scalar_one_or_none()
         if not parent_sku:
             return [], None
         inherited = (
-            await self.session.execute(
-                select(ProductTranslation).where(ProductTranslation.sku == parent_sku)
+            (
+                await self.session.execute(
+                    select(ProductTranslation).where(ProductTranslation.sku == parent_sku)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return inherited, (parent_sku if inherited else None)
 
     async def resolve_specs(self, sku: str) -> tuple[dict[str, Any], str | None]:

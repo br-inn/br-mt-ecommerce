@@ -138,9 +138,9 @@ async def run_scraper(
 
     from celery import group as celery_group
 
-    job = celery_group(
-        scrape_sku_task.s(sku, force=body.force) for sku in skus
-    ).apply_async(queue="comparator")
+    job = celery_group(scrape_sku_task.s(sku, force=body.force) for sku in skus).apply_async(
+        queue="comparator"
+    )
 
     # Persistir el GroupResult para que pueda ser recuperado por id
     job.save()

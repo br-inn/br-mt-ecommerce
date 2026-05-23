@@ -10,11 +10,13 @@ Cambios en ``gl_accounts``:
 - Seed: actualiza normal_balance en cuentas existentes por account_type.
 - Seed ampliado: ~30 cuentas adicionales cubriendo rangos 1xxx-6xxx para llegar a 50+.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20260602_141"
@@ -59,18 +61,21 @@ def upgrade() -> None:
     # 3. Actualizar normal_balance en cuentas existentes según account_type
     #    ASSET, EXPENSE → DEBIT  |  LIABILITY, EQUITY, REVENUE, CONTRA → CREDIT
     # ------------------------------------------------------------------
-    op.execute(text("""
+    op.execute(
+        text("""
         UPDATE gl_accounts
         SET normal_balance = CASE
             WHEN account_type IN ('ASSET', 'EXPENSE') THEN 'DEBIT'
             ELSE 'CREDIT'
         END
-    """))
+    """)
+    )
 
     # ------------------------------------------------------------------
     # 4. Seed ampliado — ~30 cuentas adicionales (rangos 1xxx-6xxx)
     # ------------------------------------------------------------------
-    op.execute(text("""
+    op.execute(
+        text("""
         INSERT INTO gl_accounts (account_code, account_name, account_type, normal_balance, is_reconciling)
         VALUES
             -- 1000-1999 Assets
@@ -124,12 +129,14 @@ def upgrade() -> None:
             ('6200', 'Corporate Income Tax',               'EXPENSE',   'DEBIT',  false),
             ('6210', 'FX Revaluation Loss',                'EXPENSE',   'DEBIT',  false)
         ON CONFLICT (account_code) DO NOTHING
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:
     # Remove only the seed accounts added in this migration (by code range)
-    op.execute(text("""
+    op.execute(
+        text("""
         DELETE FROM gl_accounts WHERE account_code IN (
             '1010','1020','1030','1100','1110','1200','1210','1220',
             '1300','1310','1400','1410','1500','1510',
@@ -140,7 +147,8 @@ def downgrade() -> None:
             '6010','6020','6030','6040','6050','6060','6070',
             '6080','6090','6100','6200','6210'
         )
-    """))
+    """)
+    )
     op.drop_column("gl_accounts", "is_active")
     op.drop_constraint("ck_gl_accounts_normal_balance", "gl_accounts", type_="check")
     op.drop_column("gl_accounts", "normal_balance")

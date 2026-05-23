@@ -9,10 +9,7 @@ Estrategia:
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -29,6 +26,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------
+
 
 class _FakeRole:
     def __init__(self, perms: list[str]) -> None:
@@ -88,14 +86,14 @@ def _build_app(rows: list[MagicMock]) -> FastAPI:
 
     fake_user = _FakeUser()
 
-    async def _override_session():  # noqa: ANN202
+    async def _override_session():
         result_mock = MagicMock()
         result_mock.fetchall.return_value = rows
         session = AsyncMock()
         session.execute = AsyncMock(return_value=result_mock)
         yield session
 
-    async def _override_user():  # noqa: ANN202
+    async def _override_user():
         return fake_user
 
     app.dependency_overrides[get_db_session] = _override_session
@@ -106,6 +104,7 @@ def _build_app(rows: list[MagicMock]) -> FastAPI:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestAuditVerifyEndpoint:
     @pytest.mark.asyncio
@@ -123,9 +122,7 @@ class TestAuditVerifyEndpoint:
         from_str = (_BASE_TIME).isoformat()
         to_str = (_BASE_TIME + timedelta(days=1)).isoformat()
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(
                 "/api/v1/audit/verify",
                 params={"from": from_str, "to": to_str},
@@ -156,9 +153,7 @@ class TestAuditVerifyEndpoint:
         from_str = (_BASE_TIME).isoformat()
         to_str = (_BASE_TIME + timedelta(days=1)).isoformat()
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(
                 "/api/v1/audit/verify",
                 params={"from": from_str, "to": to_str},
@@ -177,9 +172,7 @@ class TestAuditVerifyEndpoint:
         from_str = (_BASE_TIME - timedelta(days=8)).isoformat()
         to_str = _BASE_TIME.isoformat()
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(
                 "/api/v1/audit/verify",
                 params={"from": from_str, "to": to_str},

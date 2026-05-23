@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models.product import ProductAsset
-from app.schemas.assets import AssetKind, allowed_mimes_for_kind, max_bytes_for_kind
+from app.schemas.assets import allowed_mimes_for_kind, max_bytes_for_kind
 
 
 # ---------------------------------------------------------------------------
@@ -126,9 +126,7 @@ class AssetService:
 
     async def get_by_id(self, asset_id: UUID) -> ProductAsset | None:
         """Fetch single asset by id."""
-        result = await self.session.execute(
-            select(ProductAsset).where(ProductAsset.id == asset_id)
-        )
+        result = await self.session.execute(select(ProductAsset).where(ProductAsset.id == asset_id))
         return result.scalar_one_or_none()
 
     async def get_for_product(self, sku: str, asset_id: UUID) -> ProductAsset | None:
@@ -198,7 +196,7 @@ class AssetService:
 
             client = get_supabase_admin()
             signed = client.storage.from_(bucket).create_signed_upload_url(storage_path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {
                 "storage_path": storage_path,
                 "upload_url": (
@@ -213,10 +211,7 @@ class AssetService:
             }
 
         upload_url = (
-            signed.get("signed_url")
-            or signed.get("signedURL")
-            or signed.get("signedUrl")
-            or ""
+            signed.get("signed_url") or signed.get("signedURL") or signed.get("signedUrl") or ""
         )
         token = signed.get("token", "")
         return {
@@ -253,9 +248,7 @@ class AssetService:
         if mime_type is not None:
             allowed = allowed_mimes_for_kind(kind)
             if allowed and mime_type not in allowed:
-                raise AssetValidationError(
-                    f"mime_type '{mime_type}' no válido para kind '{kind}'"
-                )
+                raise AssetValidationError(f"mime_type '{mime_type}' no válido para kind '{kind}'")
         # Validate bytes_size if provided.
         if bytes_size is not None:
             max_bytes = max_bytes_for_kind(kind)
@@ -307,9 +300,7 @@ class AssetService:
         await self.session.refresh(asset)
         return asset
 
-    async def _set_primary_exclusive(
-        self, sku: str, kind: str, primary_id: UUID
-    ) -> None:
+    async def _set_primary_exclusive(self, sku: str, kind: str, primary_id: UUID) -> None:
         """Demote all except primary_id; set primary_id.is_primary=True."""
         # Demote others.
         await self.session.execute(
@@ -323,15 +314,11 @@ class AssetService:
         )
         # Promote.
         await self.session.execute(
-            update(ProductAsset)
-            .where(ProductAsset.id == primary_id)
-            .values(is_primary=True)
+            update(ProductAsset).where(ProductAsset.id == primary_id).values(is_primary=True)
         )
 
     # ------------------------------------------------------------ Archive
-    async def archive(
-        self, asset_id: UUID, sku: str, actor_id: UUID | None = None
-    ) -> ProductAsset:
+    async def archive(self, asset_id: UUID, sku: str, actor_id: UUID | None = None) -> ProductAsset:
         """Soft-archive an asset."""
         asset = await self.get_for_product(sku, asset_id)
         if asset is None:

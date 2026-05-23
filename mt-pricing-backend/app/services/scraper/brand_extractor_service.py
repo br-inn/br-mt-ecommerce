@@ -8,11 +8,12 @@ Flujo:
   Bootstrap: fetch 3-5 ASINs → raw_pairs → Claude → JSON mapping → DB
   Monitoring: DB → JSON mapping → apply(raw_pairs) → specs canónico
 """
+
 from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
@@ -175,9 +176,7 @@ class BrandExtractorService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_mapping(
-        self, brand_id: UUID, marketplace: str
-    ) -> dict[str, Any] | None:
+    async def get_mapping(self, brand_id: UUID, marketplace: str) -> dict[str, Any] | None:
         """Load cached attribute_map for brand × marketplace. Returns None if not found."""
         from app.db.models.comparator import BrandExtractor
 
@@ -195,7 +194,7 @@ class BrandExtractorService:
         await self._session.execute(
             update(BrandExtractor)
             .where(BrandExtractor.id == extractor.id)
-            .values(last_used_at=datetime.now(timezone.utc))
+            .values(last_used_at=datetime.now(UTC))
         )
         return extractor.attribute_map or {}
 
@@ -208,10 +207,11 @@ class BrandExtractorService:
         generated_by: str,
     ) -> None:
         """Upsert the attribute_map for brand × marketplace."""
-        from app.db.models.comparator import BrandExtractor
         from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-        now = datetime.now(timezone.utc)
+        from app.db.models.comparator import BrandExtractor
+
+        now = datetime.now(UTC)
         stmt = pg_insert(BrandExtractor).values(
             brand_id=brand_id,
             marketplace=marketplace,
@@ -260,11 +260,11 @@ class BrandExtractorService:
         """Generate mapping via Claude and persist. Returns the generated attribute_map."""
         logger.info(
             "Generating brand extractor for %s/%s (%d samples)",
-            brand_name, marketplace, len(sample_raw_pairs),
+            brand_name,
+            marketplace,
+            len(sample_raw_pairs),
         )
-        attribute_map = await generate_mapping_via_claude(
-            brand_name, marketplace, sample_raw_pairs
-        )
+        attribute_map = await generate_mapping_via_claude(brand_name, marketplace, sample_raw_pairs)
         if attribute_map:
             await self.save_mapping(
                 brand_id=brand_id,
@@ -275,7 +275,9 @@ class BrandExtractorService:
             )
             logger.info(
                 "Brand extractor saved for %s/%s: %d mappings",
-                brand_name, marketplace, len(attribute_map),
+                brand_name,
+                marketplace,
+                len(attribute_map),
             )
         else:
             logger.warning("Empty mapping generated for %s/%s", brand_name, marketplace)

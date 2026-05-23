@@ -269,4 +269,4 @@ Si la decisión fuera DEFER, los siguientes componentes **ya existen** listos pa
     return content
 
 
-__all__ = ["generate_g4_report", "_verdict", "_is_failure"]
+__all__ = ["_is_failure", "_verdict", "generate_g4_report"]

@@ -22,9 +22,8 @@ from __future__ import annotations
 import csv
 import json
 import logging
-from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, timezone
-from decimal import Decimal
+from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -37,10 +36,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_SYNTHETIC_ACCEPT_THRESHOLD = 70
 
 # Umbrales de aceptación (Acceptance Criteria del story)
-AC_FP_MAX = 0.02    # FP rate < 2%
-AC_FN_MAX = 0.10    # FN rate < 10%
-AC_ECE_MAX = 0.05   # ECE < 5%
-AC_COV_MIN = 0.90   # cobertura >= 90%
+AC_FP_MAX = 0.02  # FP rate < 2%
+AC_FN_MAX = 0.10  # FN rate < 10%
+AC_ECE_MAX = 0.05  # ECE < 5%
+AC_COV_MIN = 0.90  # cobertura >= 90%
 
 
 @dataclass
@@ -50,9 +49,9 @@ class CandidateRecord:
     sku: str
     channel: str
     external_id: str
-    kind: str                        # peer | drop | unknown
-    score: int                       # 0-100
-    label: str | None = None         # accept | reject | skip | None
+    kind: str  # peer | drop | unknown
+    score: int  # 0-100
+    label: str | None = None  # accept | reject | skip | None
     calibrated_confidence: float | None = None
 
 
@@ -154,9 +153,7 @@ class PocMetrics:
         # ECE agregada = media ponderada por candidatos.
         total_cands = sum(m.n_candidates for m in self.marketplaces)
         if total_cands and self.marketplaces:
-            agg.ece = sum(
-                m.ece * m.n_candidates for m in self.marketplaces
-            ) / total_cands
+            agg.ece = sum(m.ece * m.n_candidates for m in self.marketplaces) / total_cands
         return agg
 
     def as_dict(self) -> dict[str, Any]:
@@ -274,9 +271,7 @@ class MetricsCollector:
 
             # Para ECE: usar calibrated_confidence si existe, sino score/100.
             pred_prob = (
-                r.calibrated_confidence
-                if r.calibrated_confidence is not None
-                else r.score / 100.0
+                r.calibrated_confidence if r.calibrated_confidence is not None else r.score / 100.0
             )
             predictions.append(pred_prob)
             labels_bin.append(1 if is_positive_gt else 0)
@@ -324,10 +319,21 @@ class MetricsCollector:
         rows = [m.as_dict() for m in metrics.marketplaces] + [agg.as_dict()]
 
         flat_keys = [
-            "marketplace", "n_skus", "n_candidates",
-            "tp", "fp", "tn", "fn",
-            "precision", "recall", "fp_rate", "fn_rate",
-            "ece", "cobertura", "skus_with_peer", "all_ac_pass",
+            "marketplace",
+            "n_skus",
+            "n_candidates",
+            "tp",
+            "fp",
+            "tn",
+            "fn",
+            "precision",
+            "recall",
+            "fp_rate",
+            "fn_rate",
+            "ece",
+            "cobertura",
+            "skus_with_peer",
+            "all_ac_pass",
         ]
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=flat_keys, extrasaction="ignore")

@@ -17,10 +17,9 @@ Cobertura (US-1A-04-03):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -31,6 +30,8 @@ from app.api.deps import get_current_user, get_db_session
 from app.api.routes.costs import (
     get_cost_service,
     products_costs_router,
+)
+from app.api.routes.costs import (
     router as costs_router,
 )
 from app.services.costs.breakdown_validator import MissingRequiredField
@@ -54,19 +55,15 @@ class _FakeCost:
         self.supplier_code: str | None = kw.get("supplier_code")
         self.currency_origin: str = kw.get("currency_origin", "EUR")
         self.fx_rate_id: UUID | None = kw.get("fx_rate_id")
-        self.effective_at: datetime = kw.get(
-            "effective_at", datetime(2026, 6, 12, tzinfo=timezone.utc)
-        )
+        self.effective_at: datetime = kw.get("effective_at", datetime(2026, 6, 12, tzinfo=UTC))
         self.breakdown: dict[str, Any] = kw.get("breakdown", {})
-        self.scheme_landed_aed: Decimal | None = kw.get(
-            "scheme_landed_aed", Decimal("60.918")
-        )
+        self.scheme_landed_aed: Decimal | None = kw.get("scheme_landed_aed", Decimal("60.918"))
         self.status: str = kw.get("status", "active")
         self.version: int = kw.get("version", 1)
         self.fx_inferred: bool = kw.get("fx_inferred", False)
         self.created_by: UUID | None = kw.get("created_by")
         self.updated_by: UUID | None = kw.get("updated_by")
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.created_at = kw.get("created_at", now)
         self.updated_at = kw.get("updated_at", now)
 
@@ -89,9 +86,7 @@ class _FakeCostService:
         if self.behavior == "missing_required":
             raise MissingRequiredField("fob_eur")
         if self.behavior == "fx_missing":
-            raise FXRateNotFoundAtEffectiveAt(
-                "No FX rate for EUR -> AED at 2026-06-12"
-            )
+            raise FXRateNotFoundAtEffectiveAt("No FX rate for EUR -> AED at 2026-06-12")
         cost = _FakeCost(
             sku=kw["sku"],
             scheme_code=kw["scheme_code"],
@@ -105,14 +100,10 @@ class _FakeCostService:
         self.created.append(kw)
         warnings: list[dict[str, str]] = []
         if "weird_extra" in kw["breakdown"]:
-            warnings.append(
-                {"code": "unknown_breakdown_field", "field": "weird_extra"}
-            )
+            warnings.append({"code": "unknown_breakdown_field", "field": "weird_extra"})
         return CreateCostResult(cost=cost, warnings=warnings)
 
-    async def update_cost(
-        self, cost_id: UUID, **kw: Any
-    ) -> CreateCostResult:
+    async def update_cost(self, cost_id: UUID, **kw: Any) -> CreateCostResult:
         if self.behavior == "cost_not_found":
             raise CostNotFound(str(cost_id))
         prev = self.costs.get(cost_id)
@@ -132,17 +123,13 @@ class _FakeCostService:
         self.updated.append({"id": str(cost_id), **kw})
         return CreateCostResult(cost=new, warnings=[])
 
-    async def list_for_sku(
-        self, sku: str, *, only_active: bool = False
-    ) -> list[_FakeCost]:
+    async def list_for_sku(self, sku: str, *, only_active: bool = False) -> list[_FakeCost]:
         out = [c for c in self.costs.values() if c.sku == sku]
         if only_active:
             out = [c for c in out if c.status == "active"]
         return out
 
-    async def missing_cost_skus(
-        self, scheme_code: str, *, limit: int = 1000
-    ) -> list[str]:
+    async def missing_cost_skus(self, scheme_code: str, *, limit: int = 1000) -> list[str]:
         return ["MT-V-001", "MT-V-002"]
 
 
@@ -186,7 +173,8 @@ def _build_app(svc: _FakeCostService, user: _FakeUser) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call):  # noqa: ARG001
+
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow
@@ -296,9 +284,7 @@ async def test_put_costs_404_when_id_unknown() -> None:
     user = _FakeUser()
     app = _build_app(svc, user)
     async with await _client(app) as ac:
-        resp = await ac.put(
-            f"/api/v1/costs/{uuid4()}", json={"breakdown": {"fob_eur": 1}}
-        )
+        resp = await ac.put(f"/api/v1/costs/{uuid4()}", json={"breakdown": {"fob_eur": 1}})
     assert resp.status_code == 404
     assert resp.json()["detail"]["code"] == "cost_not_found"
 

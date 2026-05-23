@@ -16,8 +16,8 @@ from app.schemas.components import (
     ProductMaterialsReplaceRequest,
 )
 
-
 # ---- ProductMaterial ----------------------------------------------------------
+
 
 def test_material_create_happy() -> None:
     m = ProductMaterialCreate(component="body", position=0, material="stainless_steel_316l")
@@ -76,6 +76,7 @@ def test_materials_replace_empty_array_ok() -> None:
 
 # ---- ProductConnection --------------------------------------------------------
 
+
 def test_connection_create_happy() -> None:
     c = ProductConnectionCreate(
         position=1,
@@ -104,9 +105,7 @@ def test_connection_invalid_type_rejected() -> None:
 
 
 def test_connection_threading_optional() -> None:
-    c = ProductConnectionCreate(
-        position=1, connection_type="threaded", threading="BSP"
-    )
+    c = ProductConnectionCreate(position=1, connection_type="threaded", threading="BSP")
     assert c.threading == "BSP"
 
 
@@ -116,22 +115,28 @@ def test_connection_patch_partial() -> None:
 
 
 def test_connections_replace_request_max_8() -> None:
-    items = [
-        ProductConnectionCreate(position=i, connection_type="flange") for i in range(1, 9)
-    ]
+    items = [ProductConnectionCreate(position=i, connection_type="flange") for i in range(1, 9)]
     ProductConnectionsReplaceRequest(items=items)
     with pytest.raises(ValidationError):
         ProductConnectionsReplaceRequest(
-            items=items
-            + [ProductConnectionCreate(position=9, connection_type="flange")]
+            items=items + [ProductConnectionCreate(position=9, connection_type="flange")]
         )
 
 
 # ---- Response shape -----------------------------------------------------------
 
+
 def test_response_models_have_expected_fields() -> None:
     mat_fields = set(ProductMaterialResponse.model_fields.keys())
-    assert {"product_sku", "component", "position", "material", "observations", "created_at", "updated_at"} <= mat_fields
+    assert {
+        "product_sku",
+        "component",
+        "position",
+        "material",
+        "observations",
+        "created_at",
+        "updated_at",
+    } <= mat_fields
 
     conn_fields = set(ProductConnectionResponse.model_fields.keys())
     assert {

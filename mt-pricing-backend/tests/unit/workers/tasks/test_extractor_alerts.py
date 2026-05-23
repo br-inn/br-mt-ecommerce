@@ -6,10 +6,12 @@ Strategy:
   actualización de alerta existente.
 - Valida el endpoint GET /extractor/coverage-stats y PATCH /alerts/{id}/resolve.
 """
+
 from __future__ import annotations
 
+from datetime import UTC
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -24,6 +26,7 @@ _DELTA_THRESHOLD_PP = Decimal("20.00")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_extractor(hit_rate: Decimal) -> MagicMock:
     ext = MagicMock()
@@ -52,6 +55,7 @@ def _make_alert(
 
 
 # ── Tests: lógica de umbral ───────────────────────────────────────────────────
+
 
 class TestAlertThresholdLogic:
     """Valida la lógica de umbral 0.60 y delta_pp calculado."""
@@ -91,6 +95,7 @@ class TestAlertThresholdLogic:
 
 # ── Tests: _evaluate_extractor_alerts ────────────────────────────────────────
 
+
 class TestEvaluateExtractorAlerts:
     """Valida que _evaluate_extractor_alerts crea/actualiza alertas correctamente."""
 
@@ -116,10 +121,11 @@ class TestEvaluateExtractorAlerts:
         mock_session.execute.side_effect = [ext_result, alert_result]
 
         # Simular la lógica de _evaluate_extractor_alerts
-        from app.db.models.comparator import ExtractorAlert
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc)
+        from app.db.models.comparator import ExtractorAlert
+
+        now = datetime.now(UTC)
         alerts_modified = 0
         extractors = ext_result.scalars().all()
 
@@ -128,14 +134,16 @@ class TestEvaluateExtractorAlerts:
             if e.hit_rate < _MIN_RATE:
                 if existing is None:
                     delta = (_BASELINE - e.hit_rate) * 100
-                    mock_session.add(ExtractorAlert(
-                        brand_id=e.brand_id,
-                        marketplace=e.marketplace,
-                        triggered_at=now,
-                        hit_rate_now=e.hit_rate,
-                        hit_rate_baseline=_BASELINE,
-                        delta_pp=delta,
-                    ))
+                    mock_session.add(
+                        ExtractorAlert(
+                            brand_id=e.brand_id,
+                            marketplace=e.marketplace,
+                            triggered_at=now,
+                            hit_rate_now=e.hit_rate,
+                            hit_rate_baseline=_BASELINE,
+                            delta_pp=delta,
+                        )
+                    )
                     alerts_modified += 1
 
         assert alerts_modified == 1
@@ -168,13 +176,12 @@ class TestEvaluateExtractorAlerts:
     def test_no_alert_when_no_extractors(self) -> None:
         """Sin extractors → 0 alertas."""
         extractors: list = []
-        alerts_modified = sum(
-            1 for e in extractors if e.hit_rate < _MIN_RATE
-        )
+        alerts_modified = sum(1 for e in extractors if e.hit_rate < _MIN_RATE)
         assert alerts_modified == 0
 
 
 # ── Tests: coverage-stats endpoint ───────────────────────────────────────────
+
 
 class TestCoverageStatsEndpoint:
     """Valida la lógica del endpoint GET /extractor/coverage-stats."""
@@ -217,18 +224,19 @@ class TestCoverageStatsEndpoint:
 
 # ── Tests: resolve alert endpoint ─────────────────────────────────────────────
 
+
 class TestResolveAlertEndpoint:
     """Valida la lógica del PATCH /alerts/{id}/resolve."""
 
     @pytest.mark.asyncio
     async def test_sets_resolved_at(self) -> None:
         """Resolver una alerta activa → resolved_at se actualiza."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         alert = _make_alert()
         assert alert.resolved_at is None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         alert.resolved_at = now
         alert.resolved_by = None
 

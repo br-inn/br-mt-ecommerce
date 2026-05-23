@@ -18,10 +18,12 @@ al constraint en migración 141.
 En esta migración se usa account_type = 'EXPENSE' para COGS y OPEX diferenciados
 por account_code (5xxx vs 6xxx) para que la vista funcione sin romper el constraint.
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20260602_140"
@@ -76,10 +78,12 @@ _DROP_MV = "DROP MATERIALIZED VIEW IF EXISTS mv_copa_summary"
 
 def upgrade() -> None:
     op.execute(text(_CREATE_MV))
-    op.execute(text(
-        "CREATE UNIQUE INDEX uix_copa_summary "
-        "ON mv_copa_summary(pc_code, fiscal_year, posting_period)"
-    ))
+    op.execute(
+        text(
+            "CREATE UNIQUE INDEX uix_copa_summary "
+            "ON mv_copa_summary(pc_code, fiscal_year, posting_period)"
+        )
+    )
 
 
 def downgrade() -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select, update
@@ -55,7 +55,7 @@ class NotificationsRepository:
             .where(Notification.id == notification_id)
             .where(Notification.recipient_user_id == recipient_user_id)
             .where(Notification.seen_at.is_(None))
-            .values(seen_at=datetime.now(tz=timezone.utc))
+            .values(seen_at=datetime.now(tz=UTC))
         )
         result = await self.session.execute(stmt)
         return result.rowcount or 0

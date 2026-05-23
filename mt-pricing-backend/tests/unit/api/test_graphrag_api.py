@@ -22,6 +22,8 @@ from app.api.deps import get_current_user, get_db_session
 from app.api.routes.graphrag import (
     get_cdc_dispatcher,
     get_graph_store,
+)
+from app.api.routes.graphrag import (
     router as graphrag_router,
 )
 from app.services.graphrag.adapters.neo4j_stub import Neo4jStubGraphStore
@@ -102,7 +104,7 @@ def _build_app(
             call = dependency.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow
@@ -111,13 +113,21 @@ def _build_app(
     import app.api.routes.graphrag as graphrag_route_mod
 
     class _FakeCdcRepo:
-        def __init__(self, _session):  # noqa: ANN001
+        def __init__(self, _session):
             pass
 
         async def count_by_status(self) -> dict[str, int]:
             return cdc_counts
 
     graphrag_route_mod.CdcEventsRepository = _FakeCdcRepo  # type: ignore[attr-defined,assignment]
+
+    # health endpoint calls get_graph_repository() directly (not as a dep),
+    # so we patch the module-level reference to delegate to the stub store.
+    class _FakeGraphRepo:
+        async def health_check(self) -> dict[str, Any]:
+            return store.health_check()
+
+    graphrag_route_mod.get_graph_repository = lambda: _FakeGraphRepo()  # type: ignore[assignment]
 
     return app
 

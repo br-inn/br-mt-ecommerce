@@ -8,7 +8,7 @@ Patrones (alineados con SupplierService):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -20,7 +20,6 @@ from app.db.models.pricing import Price
 from app.db.models.product import Product
 from app.db.models.user import User
 from app.repositories.audit import AuditRepository
-from app.repositories.product import ProductRepository
 from app.repositories.pricing import (
     ChannelRepository,
     CostRepository,
@@ -29,6 +28,7 @@ from app.repositories.pricing import (
     PriceApprovalEventRepository,
     PriceRepository,
 )
+from app.repositories.product import ProductRepository
 from app.services.pricing.exception_evaluator import ExceptionEvaluator
 from app.services.pricing.rule_engine import (
     EUR_TO_AED_DEFAULT,
@@ -97,7 +97,7 @@ class CostNotFound(PricingDomainError):
 
 
 class PriceNotFound(PricingDomainError):
-    def __init__(self, price_id: Any) -> None:  # noqa: ANN401
+    def __init__(self, price_id: Any) -> None:
         super().__init__("price_not_found", f"Precio {price_id} no existe.", 404)
 
 
@@ -134,9 +134,7 @@ def _snapshot_price(p: Price) -> dict[str, Any]:
         v = getattr(p, f, None)
         if v is None:
             out[f] = None
-        elif isinstance(v, (UUID, datetime)):
-            out[f] = str(v)
-        elif isinstance(v, Decimal):
+        elif isinstance(v, (UUID, datetime)) or isinstance(v, Decimal):
             out[f] = str(v)
         else:
             out[f] = v
@@ -245,9 +243,7 @@ class PricingService:
 
         fx_rate = await self._resolve_fx()
 
-        prev_price = await self.prices.get_active_for(
-            product.sku, channel.id, scheme_code
-        )
+        prev_price = await self.prices.get_active_for(product.sku, channel.id, scheme_code)
 
         active_rules = list(await self.exceptions.list_active())
 
@@ -304,9 +300,7 @@ class PricingService:
         await self.session.flush()  # asigna id
 
         # Marcar precios anteriores como expirados
-        await self.prices.supersede_previous(
-            product.sku, channel.id, scheme_code, new_price.id
-        )
+        await self.prices.supersede_previous(product.sku, channel.id, scheme_code, new_price.id)
 
         # Aplicar transición draft → next_status
         try:
@@ -333,9 +327,7 @@ class PricingService:
         await self.session.flush()
         return new_price
 
-    async def approve(
-        self, price_id: UUID, actor: User, reason: str | None = None
-    ) -> Price:
+    async def approve(self, price_id: UUID, actor: User, reason: str | None = None) -> Price:
         price = await self.get_price(price_id)
         before = _snapshot_price(price)
         try:
@@ -381,9 +373,7 @@ class PricingService:
         await self.session.flush()
         return price
 
-    async def revise(
-        self, price_id: UUID, actor: User, new_amount: Decimal, reason: str
-    ) -> Price:
+    async def revise(self, price_id: UUID, actor: User, new_amount: Decimal, reason: str) -> Price:
         if not reason:
             raise PricingDomainError(
                 "reason_required", "Razón obligatoria para revisar precio.", 422
@@ -397,7 +387,9 @@ class PricingService:
         # Recalcular margen si tenemos cost breakdown
         cost = await self.costs.get_active_for(price.product_sku, price.scheme_code)
         if cost is not None and cost.total > 0:
-            price.margin_pct = (new_amount - cost.total) / new_amount if new_amount > 0 else Decimal("0")
+            price.margin_pct = (
+                (new_amount - cost.total) / new_amount if new_amount > 0 else Decimal("0")
+            )
         try:
             event = transition(
                 price,
@@ -489,9 +481,7 @@ class PricingService:
 
         return {"approved": approved_ids}
 
-    async def recalculate_for_product(
-        self, product_id: UUID | str, actor: User
-    ) -> list[Price]:
+    async def recalculate_for_product(self, product_id: UUID | str, actor: User) -> list[Price]:
         """Re-propone precios para todas las (channel × scheme) activas del SKU."""
         # product_id puede ser sku o internal_id UUID
         product: Product | None
@@ -560,13 +550,13 @@ class PricingService:
 
 
 __all__ = [
+    "ChannelDeprecated",
+    "ChannelNotFound",
+    "CostNotFound",
+    "PriceNotFound",
     "PricingDomainError",
     "PricingService",
     "ProductNotFound",
-    "ChannelNotFound",
-    "ChannelDeprecated",
     "SchemeNotFound",
-    "CostNotFound",
-    "PriceNotFound",
     "TransitionError",
 ]

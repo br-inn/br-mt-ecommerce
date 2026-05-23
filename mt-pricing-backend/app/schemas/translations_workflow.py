@@ -8,12 +8,10 @@ mantiene `schemas/products.py`. Reusan el shape de `ProductTranslationResponse`.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-from typing import Annotated
-
 
 # Estados expuestos por la state machine completa S3.
 TranslationWorkflowStatus = Literal[

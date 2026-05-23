@@ -14,7 +14,7 @@ secciones en OpenAPI.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -89,9 +89,7 @@ async def bulk_publish(
     user: Annotated[User, Depends(require_permissions("prices:export"))],
     service: Annotated[BulkPublishService, Depends(get_bulk_publish_service)],
 ) -> BulkPublishResponse:
-    result = await service.publish(
-        data.price_ids, user, rollback_on_error=data.rollback_on_error
-    )
+    result = await service.publish(data.price_ids, user, rollback_on_error=data.rollback_on_error)
     payload = result.to_dict()
     return BulkPublishResponse.model_validate(payload)
 
@@ -117,7 +115,7 @@ async def recalc_batch(
     # Import diferido para evitar ciclos / facilitar mocking en tests.
     try:
         from app.workers.tasks.pricing import recalculate_sku_task
-    except Exception as exc:  # pragma: no cover  # noqa: BLE001
+    except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=503,
             detail={

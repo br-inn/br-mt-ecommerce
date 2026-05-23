@@ -38,8 +38,9 @@ class RisFactory:
 
         try:
             from app.core.config import get_settings
+
             settings = get_settings()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("ris.factory: settings import failed: %s", exc)
             return NoopRisAdapter()
 
@@ -83,9 +84,11 @@ class RisFactory:
         try:
             from app.services.feature_flags.flag_service import (
                 FLAG_REVERSE_IMAGE_SEARCH,
+            )
+            from app.services.feature_flags.flag_service import (
                 is_enabled as flag_is_enabled,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("ris.factory: flag_service import failed: %s", exc)
             return False
         return flag_is_enabled(FLAG_REVERSE_IMAGE_SEARCH)

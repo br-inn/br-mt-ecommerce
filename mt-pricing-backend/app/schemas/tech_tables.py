@@ -16,7 +16,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
 TechTableKind = Literal["materials_matrix", "dimensions_by_dn", "pressure_temperature"]
 TechTableSource = Literal["manual", "imported_pdf", "imported_excel"]
 
@@ -49,16 +48,14 @@ class DimensionsByDnData(BaseModel):
     rows: list[DimensionsByDnRow] = Field(default_factory=list, max_length=64)
 
     @model_validator(mode="after")
-    def _check_columns_consistency(self) -> "DimensionsByDnData":
+    def _check_columns_consistency(self) -> DimensionsByDnData:
         # Each row's measures keys should be a subset of columns when columns is provided.
         if self.columns:
             allowed = set(self.columns)
             for r in self.rows:
                 unknown = set(r.measures) - allowed
                 if unknown:
-                    raise ValueError(
-                        f"row dn={r.dn!r} has unknown measure(s): {sorted(unknown)}"
-                    )
+                    raise ValueError(f"row dn={r.dn!r} has unknown measure(s): {sorted(unknown)}")
         return self
 
 
@@ -88,7 +85,7 @@ class ProductTechTableCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=512)
 
     @model_validator(mode="after")
-    def _validate_data_per_kind(self) -> "ProductTechTableCreate":
+    def _validate_data_per_kind(self) -> ProductTechTableCreate:
         try:
             if self.kind == "materials_matrix":
                 MaterialsMatrixData.model_validate(self.data)

@@ -18,17 +18,19 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from app.core.config import settings
 
-_SENSITIVE_KEYS: frozenset[str] = frozenset({
-    "password",
-    "secret",
-    "token",
-    "access_token",
-    "refresh_token",
-    "jwt",
-    "api_key",
-    "authorization",
-    "cookie",
-})
+_SENSITIVE_KEYS: frozenset[str] = frozenset(
+    {
+        "password",
+        "secret",
+        "token",
+        "access_token",
+        "refresh_token",
+        "jwt",
+        "api_key",
+        "authorization",
+        "cookie",
+    }
+)
 
 
 def _scrub(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str, Any] | None:

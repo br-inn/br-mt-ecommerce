@@ -24,8 +24,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision: str = "20260516_067"
 down_revision: str | None = "20260515_066"
@@ -130,9 +131,7 @@ def upgrade() -> None:
 
         for group_code, attr_code, order_index, is_required in rows:
             attr_row = bind.execute(
-                text(
-                    "SELECT id FROM attribute_definitions WHERE code = :code"
-                ),
+                text("SELECT id FROM attribute_definitions WHERE code = :code"),
                 {"code": attr_code},
             ).fetchone()
             if attr_row is None:
@@ -165,10 +164,7 @@ def upgrade() -> None:
             )
             inserted += 1
 
-    print(
-        f"[mig 067] EAV template seed done: inserted={inserted} "
-        f"skipped={skipped}"
-    )
+    print(f"[mig 067] EAV template seed done: inserted={inserted} skipped={skipped}")
 
 
 def downgrade() -> None:

@@ -57,7 +57,7 @@ class ComparatorServiceFactory:
             from app.services.feature_flags.flag_service import (
                 is_enabled as flag_is_enabled,
             )
-        except Exception as exc:  # noqa: BLE001 — feature_flags opcional en tests
+        except Exception as exc:
             logger.warning("comparator.factory: flag_service import failed: %s", exc)
             return False
         return flag_is_enabled(FLAG_COMPARATOR_ENABLED)
@@ -69,7 +69,7 @@ class ComparatorServiceFactory:
             from app.core.config import settings
 
             return settings.COMPARATOR_ADAPTER
-        except Exception as exc:  # noqa: BLE001 — config opcional en tests
+        except Exception as exc:
             logger.warning("comparator.factory: settings import failed: %s", exc)
             return "rag_only"
 
@@ -99,8 +99,7 @@ class ComparatorServiceFactory:
 
         # Valor desconocido — fallback seguro + warning
         logger.warning(
-            "comparator.factory: COMPARATOR_ADAPTER=%r desconocido; "
-            "usando rag_only como fallback",
+            "comparator.factory: COMPARATOR_ADAPTER=%r desconocido; usando rag_only como fallback",
             adapter_name,
         )
         return RagOnlyComparatorAdapter()
@@ -137,7 +136,7 @@ class VlmJudgeFactory:
 
             redis_url = str(_s.REDIS_URL)
             allowed_domains = frozenset(_s.VLM_ALLOWED_IMAGE_DOMAINS)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("comparator.vlm_judge_factory: settings import failed: %s", exc)
             redis_url = None
             allowed_domains = frozenset()
@@ -154,7 +153,7 @@ class VlmJudgeFactory:
             from app.services.feature_flags.flag_service import (
                 is_enabled as flag_is_enabled,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("comparator.vlm_judge_factory: flag_service import failed: %s", exc)
             return False
         return flag_is_enabled(FLAG_VLM_JUDGE_ENABLED)
@@ -165,9 +164,14 @@ class VlmJudgeFactory:
             from app.core.config import settings
 
             return settings.ANTHROPIC_API_KEY.get_secret_value()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("comparator.vlm_judge_factory: settings import failed: %s", exc)
             return ""
 
 
-__all__ = ["FLAG_COMPARATOR_ENABLED", "FLAG_VLM_JUDGE_ENABLED", "ComparatorServiceFactory", "VlmJudgeFactory"]
+__all__ = [
+    "FLAG_COMPARATOR_ENABLED",
+    "FLAG_VLM_JUDGE_ENABLED",
+    "ComparatorServiceFactory",
+    "VlmJudgeFactory",
+]

@@ -134,7 +134,7 @@ def _print_dry_run_table(
         print(header)
         print("  " + "-" * 68)
         for cat, mn, mx, cur in valid_rows:
-            print(f"  {cat:<30} {str(mn):>12} {str(mx):>12} {cur:>8}")
+            print(f"  {cat:<30} {mn!s:>12} {mx!s:>12} {cur:>8}")
     else:
         print("Sin filas válidas.")
     print()
@@ -156,33 +156,32 @@ async def _upsert_rows(
     inserted = 0
     updated = 0
 
-    async with get_sessionmaker()() as session:
-        async with session.begin():
-            for category_id, min_p10, max_p90, currency in valid_rows:
-                existing_result = await session.execute(
-                    select(PriceCalibrationRange).where(
-                        PriceCalibrationRange.category_id == category_id,
-                        PriceCalibrationRange.currency == currency,
+    async with get_sessionmaker()() as session, session.begin():
+        for category_id, min_p10, max_p90, currency in valid_rows:
+            existing_result = await session.execute(
+                select(PriceCalibrationRange).where(
+                    PriceCalibrationRange.category_id == category_id,
+                    PriceCalibrationRange.currency == currency,
+                )
+            )
+            existing = existing_result.scalar_one_or_none()
+
+            if existing is not None:
+                existing.expected_min_p10 = min_p10
+                existing.expected_max_p90 = max_p90
+                existing.updated_at = now
+                updated += 1
+            else:
+                session.add(
+                    PriceCalibrationRange(
+                        category_id=category_id,
+                        expected_min_p10=min_p10,
+                        expected_max_p90=max_p90,
+                        currency=currency,
+                        updated_at=now,
                     )
                 )
-                existing = existing_result.scalar_one_or_none()
-
-                if existing is not None:
-                    existing.expected_min_p10 = min_p10
-                    existing.expected_max_p90 = max_p90
-                    existing.updated_at = now
-                    updated += 1
-                else:
-                    session.add(
-                        PriceCalibrationRange(
-                            category_id=category_id,
-                            expected_min_p10=min_p10,
-                            expected_max_p90=max_p90,
-                            currency=currency,
-                            updated_at=now,
-                        )
-                    )
-                    inserted += 1
+                inserted += 1
 
     return {"inserted": inserted, "updated": updated, "skipped": 0}
 

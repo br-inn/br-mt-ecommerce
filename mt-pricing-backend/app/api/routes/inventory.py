@@ -49,7 +49,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db_session, require_permissions
 from app.db.models.user import User
 from app.repositories.inventory import InventoryRepository
-from app.schemas.common import ProblemDetails  # noqa: F401 — importado para openapi
+from app.schemas.common import ProblemDetails
 from app.schemas.inventory import (
     InventoryAvailabilityRead,
     InventoryLotQualityPatch,
@@ -63,7 +63,6 @@ from app.schemas.inventory import (
     StockMovementTypeRead,
 )
 from app.schemas.inventory_ops import (
-    AbcClassificationRunResult,
     CycleCountScheduleCreate,
     CycleCountScheduleRead,
     ExpiryAlertGroupRead,

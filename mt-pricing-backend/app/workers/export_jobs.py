@@ -12,7 +12,7 @@ Schedule: diario 02:00 UTC (06:00 Asia/Dubai) vía ``job_definitions`` (mig. 083
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -92,7 +92,7 @@ def _run_capture(sync_url: str) -> dict[str, Any]:
 
     return {
         "upserted": upserted,
-        "ran_at": datetime.now(tz=timezone.utc).isoformat(),
+        "ran_at": datetime.now(tz=UTC).isoformat(),
     }
 
 
@@ -109,7 +109,7 @@ def _run_capture(sync_url: str) -> dict[str, Any]:
     retry_jitter=True,
     max_retries=3,
 )
-def capture_last_good_exports(self: Any) -> dict[str, Any]:  # noqa: ANN401
+def capture_last_good_exports(self: Any) -> dict[str, Any]:
     """Para cada (channel_code, scheme_code) con exports completed, upserta el más reciente.
 
     Returns:

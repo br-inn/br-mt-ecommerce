@@ -40,9 +40,7 @@ class Neo4jStubGraphStore:
 
     # ------------------------------------------------------------------ utils
     @staticmethod
-    def _merge_props(
-        existing: Mapping[str, Any], incoming: Mapping[str, Any]
-    ) -> dict[str, Any]:
+    def _merge_props(existing: Mapping[str, Any], incoming: Mapping[str, Any]) -> dict[str, Any]:
         """Equivalente a Cypher ``SET n += $props`` — incoming pisa existing."""
         merged: dict[str, Any] = dict(existing)
         merged.update(incoming)
@@ -59,21 +57,15 @@ class Neo4jStubGraphStore:
                 self._nodes[key] = GraphNode(
                     label=node.label,
                     primary_key=node.primary_key,
-                    properties=self._merge_props(
-                        existing.properties, node.properties
-                    ),
+                    properties=self._merge_props(existing.properties, node.properties),
                 )
 
     def merge_edge(self, edge: GraphEdge) -> None:
         # Auto-creamos los endpoints si no existen — emula el patrón
         # `MERGE (a:Label {pk:$pk}) MERGE (b:Label {pk:$pk}) MERGE (a)-[r]->(b)`.
         with self._lock:
-            self.merge_node(
-                GraphNode(label=edge.src_label, primary_key=edge.src_pk)
-            )
-            self.merge_node(
-                GraphNode(label=edge.dst_label, primary_key=edge.dst_pk)
-            )
+            self.merge_node(GraphNode(label=edge.src_label, primary_key=edge.src_pk))
+            self.merge_node(GraphNode(label=edge.dst_label, primary_key=edge.dst_pk))
             ekey = (
                 edge.src_label,
                 edge.src_pk,
@@ -91,9 +83,7 @@ class Neo4jStubGraphStore:
                     type=edge.type,
                     dst_label=edge.dst_label,
                     dst_pk=edge.dst_pk,
-                    properties=self._merge_props(
-                        existing.properties, edge.properties
-                    ),
+                    properties=self._merge_props(existing.properties, edge.properties),
                 )
 
     def query_neighbors(

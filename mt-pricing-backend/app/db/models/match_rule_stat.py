@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from uuid import UUID
+
 from sqlalchemy import ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UuidPkMixin
 from app.db.types import UUID_PG

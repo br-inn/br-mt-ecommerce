@@ -102,7 +102,5 @@ class AuditChainSignature(UuidPkMixin, Base):
     signature: Mapped[str] = mapped_column(Text, nullable=False)
 
     rows_verified: Mapped[int] = mapped_column(Integer, nullable=False)
-    tampered_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    tampered_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)

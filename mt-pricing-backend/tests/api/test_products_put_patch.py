@@ -70,9 +70,7 @@ async def _seed_admin(session: AsyncSession) -> tuple[UUID, str]:
         await session.execute(select(Role).where(Role.code == "pim_admin"))
     ).scalar_one_or_none()
     if role is None:
-        role = Role(
-            code="pim_admin", name="pim_admin", permissions_snapshot=perms_codes
-        )
+        role = Role(code="pim_admin", name="pim_admin", permissions_snapshot=perms_codes)
         session.add(role)
         await session.flush()
         for pid in perm_ids:
@@ -80,9 +78,7 @@ async def _seed_admin(session: AsyncSession) -> tuple[UUID, str]:
         await session.flush()
     uid = uuid4()
     email = f"admin-{uid.hex[:6]}@mt.ae"
-    user = User(
-        id=uid, email=email, full_name="A", locale="es", is_active=True, role_id=role.id
-    )
+    user = User(id=uid, email=email, full_name="A", locale="es", is_active=True, role_id=role.id)
     session.add(user)
     await session.flush()
     return uid, email
@@ -113,7 +109,6 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 def _create_payload(sku: str) -> dict[str, Any]:
     return {
         "sku": sku,
-        "name_en": f"Product {sku}",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
@@ -121,12 +116,9 @@ def _create_payload(sku: str) -> dict[str, Any]:
     }
 
 
-def _put_payload(name_en: str = "Renamed Product") -> dict[str, Any]:
+def _put_payload() -> dict[str, Any]:
     """Body completo para PUT — incluye todos los campos editables."""
     return {
-        "name_en": name_en,
-        "description_en": "PUT description",
-        "marketing_copy_en": None,
         "family": "valves_gate",
         "subfamily": None,
         "type": None,
@@ -142,10 +134,8 @@ def _put_payload(name_en: str = "Renamed Product") -> dict[str, Any]:
         "packaging": {},
         "intrastat_code": None,
         "erp_name": None,
-        "image_url": None,
         "data_quality": "partial",
         "manual_locked_fields": [],
-        "active": True,
     }
 
 
@@ -158,26 +148,19 @@ async def test_put_happy_path_returns_200_with_etag(
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
     sku = "MT-V-PUT-01"
-    r = await client.post(
-        "/api/v1/products", json=_create_payload(sku), headers=headers
-    )
+    r = await client.post("/api/v1/products", json=_create_payload(sku), headers=headers)
     assert r.status_code == 201, r.text
 
-    r = await client.put(
-        f"/api/v1/products/{sku}", json=_put_payload(), headers=headers
-    )
+    r = await client.put(f"/api/v1/products/{sku}", json=_put_payload(), headers=headers)
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["name_en"] == "Renamed Product"
     assert body["material"] == "ss316"
     assert "etag" in {k.lower() for k in r.headers}
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_put_immutable_sku_returns_422(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_put_immutable_sku_returns_422(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
@@ -192,15 +175,11 @@ async def test_put_immutable_sku_returns_422(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_put_unknown_sku_returns_404(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_put_unknown_sku_returns_404(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
-    r = await client.put(
-        "/api/v1/products/MT-DOES-NOT-EXIST", json=_put_payload(), headers=headers
-    )
+    r = await client.put("/api/v1/products/MT-DOES-NOT-EXIST", json=_put_payload(), headers=headers)
     assert r.status_code == 404
 
 
@@ -261,9 +240,7 @@ async def test_put_respects_manual_locked_fields(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_patch_data_quality_happy_path(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_patch_data_quality_happy_path(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
@@ -289,7 +266,7 @@ async def test_patch_data_quality_complete_requires_fields(
 
     sku = "MT-V-DQ-02"
     # Crear producto sin material/dn/pn — incompleto para `complete`.
-    minimal = {"sku": sku, "name_en": "Half product", "family": "x"}
+    minimal = {"sku": sku, "family": "x"}
     await client.post("/api/v1/products", json=minimal, headers=headers)
 
     r = await client.patch(

@@ -13,12 +13,14 @@ Columnas añadidas:
 
 Seed: 5 condiciones estándar.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20260602_139"
@@ -117,7 +119,8 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     # 4. Seed — 5 condiciones estándar
     # ------------------------------------------------------------------
-    op.execute(text("""
+    op.execute(
+        text("""
         INSERT INTO payment_terms (code, name, net_days, discount_pct, discount_days)
         VALUES
             ('NET30',      'Net 30 Days',    30, 0.00,  0),
@@ -126,7 +129,8 @@ def upgrade() -> None:
             ('IMMEDIATE',  'Pago Inmediato',  0, 0.00,  0),
             ('2_10_NET30', '2% 10 Net 30',   30, 2.00, 10)
         ON CONFLICT (code) DO NOTHING
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:
@@ -135,8 +139,10 @@ def downgrade() -> None:
     op.drop_column("vendor_open_items", "discount_days")
     op.drop_index("idx_invoice_payment_terms_id", table_name="invoices")
     op.drop_column("invoices", "payment_terms_id")
-    op.execute(text(
-        "DELETE FROM payment_terms WHERE code IN "
-        "('NET30','NET60','NET90','IMMEDIATE','2_10_NET30')"
-    ))
+    op.execute(
+        text(
+            "DELETE FROM payment_terms WHERE code IN "
+            "('NET30','NET60','NET90','IMMEDIATE','2_10_NET30')"
+        )
+    )
     op.drop_table("payment_terms")

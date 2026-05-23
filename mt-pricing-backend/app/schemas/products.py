@@ -15,7 +15,6 @@ Notas de diseño:
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
@@ -31,14 +30,13 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.product_models import ProductModelResponse
-
 # Wave 1: import asset schemas — must be before ProductDetail definition.
 from app.schemas.assets import (
     ProductAssetConfirmRequest,
     ProductAssetResponse,
     ProductAssetUploadRequest,
 )
+from app.schemas.product_models import ProductModelResponse
 
 # Backward-compat aliases — deprecated, will be removed in Wave 2.
 ProductImageResponse = ProductAssetResponse
@@ -59,13 +57,31 @@ SKU_REGEX = r"^[A-Z0-9][A-Z0-9\-_]{2,63}$"
 #   - mismo para PN: "16", "PN16" → "16"
 # Esto desbloquea los filtros DN/PN del catálogo que antes daban 0 resultados.
 ALLOWED_DN: frozenset[str] = frozenset(
-    {"8", "10", "15", "20", "25", "32", "40", "50",
-     "65", "80", "100", "125", "150", "200", "250", "300"}
+    {
+        "8",
+        "10",
+        "15",
+        "20",
+        "25",
+        "32",
+        "40",
+        "50",
+        "65",
+        "80",
+        "100",
+        "125",
+        "150",
+        "200",
+        "250",
+        "300",
+    }
 )
 ALLOWED_PN: frozenset[str] = frozenset({"6", "10", "16", "20", "25", "30", "40", "63", "100"})
 ALLOWED_WEIGHT_UNITS: frozenset[str] = frozenset({"kg", "g", "lb"})
 ALLOWED_LANGS: frozenset[str] = frozenset({"es", "ar"})  # `en` es base, no se traduce
-ALLOWED_DATA_QUALITY: frozenset[str] = frozenset({"complete", "partial", "blocked", "migrated_demo"})
+ALLOWED_DATA_QUALITY: frozenset[str] = frozenset(
+    {"complete", "partial", "blocked", "migrated_demo"}
+)
 ALLOWED_TRANSLATION_STATUS: frozenset[str] = frozenset({"pending", "draft", "approved"})
 ALLOWED_IMAGE_MIME: frozenset[str] = frozenset(
     {"image/jpeg", "image/png", "image/webp", "image/avif"}
@@ -74,12 +90,8 @@ ALLOWED_IMAGE_MIME: frozenset[str] = frozenset(
 ALLOWED_LIFECYCLE_STATUS: frozenset[str] = frozenset(
     {"draft", "in_review", "active", "deprecated", "replaced", "discontinued"}
 )
-ALLOWED_MARKETS: frozenset[str] = frozenset(
-    {"UAE", "KSA", "MX", "ES", "GLOBAL", "US", "EU"}
-)
-ALLOWED_RELEASE_STATUS: frozenset[str] = frozenset(
-    {"draft", "active", "suspended", "discontinued"}
-)
+ALLOWED_MARKETS: frozenset[str] = frozenset({"UAE", "KSA", "MX", "ES", "GLOBAL", "US", "EU"})
+ALLOWED_RELEASE_STATUS: frozenset[str] = frozenset({"draft", "active", "suspended", "discontinued"})
 # Wave 2 — métodos de fabricación más comunes (no exhaustivo, validación blanda).
 ALLOWED_MANUFACTURING_METHOD: frozenset[str] = frozenset(
     {"forged", "cast", "machined", "welded", "molded", "extruded", "stamped", "sintered"}
@@ -170,7 +182,7 @@ class ProductBase(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _validate_temp_range(self) -> "ProductBase":
+    def _validate_temp_range(self) -> ProductBase:
         if (
             self.temp_min_c is not None
             and self.temp_max_c is not None
@@ -209,7 +221,9 @@ class ProductBase(BaseModel):
         if v is None:
             return v
         if v not in ALLOWED_WEIGHT_UNITS:
-            raise ValueError(f"weight_unit inválido: {v}; permitidos: {sorted(ALLOWED_WEIGHT_UNITS)}")
+            raise ValueError(
+                f"weight_unit inválido: {v}; permitidos: {sorted(ALLOWED_WEIGHT_UNITS)}"
+            )
         return v
 
     @field_validator("data_quality")
@@ -509,8 +523,8 @@ class ProductDetail(ProductResponse):
     images: list[ProductAssetResponse] = Field(default_factory=list)
     # ---- Stage 3 (Wave 11) — series/material/display pair eager-loaded ----
     # Use *_detail fields to avoid shadowing the scalar str fields on ProductResponse.
-    series_detail: "SeriesResponse | None" = None
-    material_detail: "MaterialResponse | None" = None
+    series_detail: SeriesResponse | None = None
+    material_detail: MaterialResponse | None = None
     display_pair: ProductMini | None = None
     model_detail: ProductModelResponse | None = None
 
@@ -611,7 +625,7 @@ class ProductUomConversionBase(BaseModel):
     is_active: bool = True
 
     @model_validator(mode="after")
-    def uom_pair_not_equal(self) -> "ProductUomConversionBase":
+    def uom_pair_not_equal(self) -> ProductUomConversionBase:
         if self.uom_from == self.uom_to:
             raise ValueError("uom_from and uom_to must be different")
         return self
@@ -717,6 +731,6 @@ class BoreDimensionRead(BaseModel):
 # Re-bind forward references — ProductDetail referencia translations/images
 # Import vocabularios al final (al pie) para evitar ciclo de import al cargar
 # `app.schemas.vocabularies`. Sólo se necesitan a la hora de model_rebuild.
-from app.schemas.vocabularies import MaterialResponse, SeriesResponse  # noqa: E402
+from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 
 ProductDetail.model_rebuild()

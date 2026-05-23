@@ -10,7 +10,7 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -21,6 +21,8 @@ from httpx import ASGITransport, AsyncClient
 from app.api.deps import get_current_user, get_db_session
 from app.api.routes.currencies import (
     get_currency_service,
+)
+from app.api.routes.currencies import (
     router as currencies_router,
 )
 from app.services.currencies import (
@@ -50,7 +52,7 @@ class _FakeCurrency:
         self.decimals = decimals
         self.is_base = is_base
         self.active = active
-        self.created_at = datetime.now(tz=timezone.utc)
+        self.created_at = datetime.now(tz=UTC)
 
 
 class _FakeRole:
@@ -134,13 +136,13 @@ def _build_app(
             if call is not None and getattr(call, "__name__", "") == "_check":
                 if perms_ok:
 
-                    async def _allow(_call=call):  # noqa: ARG001
+                    async def _allow(_call=call):
                         return user
 
                     app.dependency_overrides[call] = _allow
                 else:
 
-                    async def _deny(_call=call):  # noqa: ARG001
+                    async def _deny(_call=call):
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail={"code": "permission_denied", "title": "denied"},

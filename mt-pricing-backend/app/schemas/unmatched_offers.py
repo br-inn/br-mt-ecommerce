@@ -65,7 +65,7 @@ class UnmatchedOfferResponseWithEmbedding(UnmatchedOfferResponse):
         return self._embedding_present
 
     @classmethod
-    def from_orm_with_embedding(cls, obj: object) -> "UnmatchedOfferResponseWithEmbedding":
+    def from_orm_with_embedding(cls, obj: object) -> UnmatchedOfferResponseWithEmbedding:
         instance = cls.model_validate(obj)
         # Access the ORM-level attribute directly
         embedding_val = getattr(obj, "embedding", None)

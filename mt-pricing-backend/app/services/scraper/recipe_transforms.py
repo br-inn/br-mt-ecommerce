@@ -4,6 +4,7 @@ Cada transform es una operación pura y segura sobre un valor de texto extraído
 El escape hatch de snippets generados por LLM (híbrido B) NO está aquí — llega
 en una fase posterior con su sandbox dedicado.
 """
+
 from __future__ import annotations
 
 import re

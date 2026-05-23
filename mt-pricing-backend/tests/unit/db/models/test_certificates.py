@@ -1,6 +1,8 @@
 """Unit tests for Certificate ORM — pure Python (no DB)."""
+
 import uuid
 from datetime import date
+
 from app.db.models.certificates import Certificate, CertificateScope
 
 

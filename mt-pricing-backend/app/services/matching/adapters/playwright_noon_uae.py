@@ -103,13 +103,9 @@ def parse_noon_html(html: str) -> list[dict[str, Any]]:
             {
                 "noon_id": noon_id,
                 "title": (title_match.group(1).strip() if title_match else ""),
-                "title_ar": (
-                    ar_title_match.group(1).strip() if ar_title_match else None
-                ),
+                "title_ar": (ar_title_match.group(1).strip() if ar_title_match else None),
                 "brand": (brand_match.group(1).strip() if brand_match else None),
-                "price_aed": (
-                    price_match.group(1).replace(",", "") if price_match else None
-                ),
+                "price_aed": (price_match.group(1).replace(",", "") if price_match else None),
             }
         )
     return items
@@ -179,16 +175,12 @@ class PlaywrightNoonUaeFetcher:
         val = os.environ.get("MT_LIVE_NETWORK", "false").strip().lower()
         return val in {"1", "true", "yes", "on"}
 
-    async def fetch(
-        self, query: Query, *, sku: str | None = None
-    ) -> list[CandidateRaw]:
+    async def fetch(self, query: Query, *, sku: str | None = None) -> list[CandidateRaw]:
         if not self._live_enabled():
             return await self._stub.fetch(query, sku=sku)
 
         if self._browser_factory is None:
-            logger.warning(
-                "playwright.noon_uae: no browser_factory injected, fallback stub"
-            )
+            logger.warning("playwright.noon_uae: no browser_factory injected, fallback stub")
             return await self._stub.fetch(query, sku=sku)
 
         if self._cb.is_open():

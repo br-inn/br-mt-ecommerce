@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import sys
 
-from sqlalchemy import text
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 # ---------------------------------------------------------------------------
@@ -117,6 +116,7 @@ SEED_DATA: list[dict] = [
 # Runner
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     from app.core.config import settings
 
@@ -162,7 +162,9 @@ def main() -> None:
         session.commit()
 
     total = len(SEED_DATA)
-    print(f"manufacturers_whitelist seed OK — {total} rows procesados: {inserted} inserted, {updated} updated")
+    print(
+        f"manufacturers_whitelist seed OK — {total} rows procesados: {inserted} inserted, {updated} updated"
+    )
 
 
 if __name__ == "__main__":

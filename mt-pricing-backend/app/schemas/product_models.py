@@ -1,4 +1,5 @@
 """Pydantic v2 schemas para la jerarquía product_models (mig 126-127)."""
+
 from __future__ import annotations
 
 from datetime import date, datetime

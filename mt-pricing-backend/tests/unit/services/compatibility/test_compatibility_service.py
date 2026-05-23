@@ -20,7 +20,7 @@ Cobertura:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -30,8 +30,8 @@ from app.services.compatibility.compatibility_service import (
     CompatibilityDomainError,
     CompatibilityDuplicateError,
     CompatibilityNotFoundError,
-    CompatibilityService,
     CompatibilitySelfLoopError,
+    CompatibilityService,
     CompatibilitySkuNotFoundError,
 )
 
@@ -41,6 +41,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------
+
 
 class _FakeProduct:
     def __init__(self, sku: str) -> None:
@@ -318,9 +319,7 @@ async def test_add_link_propagates_owner_type_and_dn() -> None:
     """add_link Fase 5 propaga owner_type + dn_min/dn_max al repo."""
     p_a = _FakeProduct("MT-A-001")
     p_b = _FakeProduct("MT-KIT-001")
-    svc, repo, _, _ = _make_service(
-        products={"MT-A-001": p_a, "MT-KIT-001": p_b}
-    )
+    svc, repo, _, _ = _make_service(products={"MT-A-001": p_a, "MT-KIT-001": p_b})
     fake_link = _FakeLink("MT-A-001", "MT-KIT-001", "spare_part")
     repo.add_link = AsyncMock(return_value=fake_link)
 
@@ -344,9 +343,7 @@ async def test_add_link_rejects_dn_max_less_than_min() -> None:
     """add_link con dn_max < dn_min → CompatibilityDomainError 422."""
     p_a = _FakeProduct("MT-A-001")
     p_b = _FakeProduct("MT-KIT-002")
-    svc, _, _, _ = _make_service(
-        products={"MT-A-001": p_a, "MT-KIT-002": p_b}
-    )
+    svc, _, _, _ = _make_service(products={"MT-A-001": p_a, "MT-KIT-002": p_b})
 
     with pytest.raises(CompatibilityDomainError) as exc:
         await svc.add_link(

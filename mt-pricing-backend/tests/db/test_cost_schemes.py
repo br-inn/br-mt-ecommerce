@@ -41,15 +41,16 @@ _EXPECTED_COMPONENTS = {
 
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
     command.upgrade(cfg, "head")
 
 
-async def test_five_schemes_seeded(db_session: "AsyncSession") -> None:
+async def test_five_schemes_seeded(db_session: AsyncSession) -> None:
     """SELECT * FROM schemes — exactamente 5 filas."""
     rows = await db_session.execute(text("SELECT code FROM schemes ORDER BY code;"))
     codes = [r[0] for r in rows.all()]
@@ -58,13 +59,12 @@ async def test_five_schemes_seeded(db_session: "AsyncSession") -> None:
 
 @pytest.mark.parametrize("scheme_code,expected", list(_EXPECTED_COMPONENTS.items()))
 async def test_scheme_template_components(
-    db_session: "AsyncSession", scheme_code: str, expected: list[str]
+    db_session: AsyncSession, scheme_code: str, expected: list[str]
 ) -> None:
     """Cada esquema tiene su `cost_components_template.required` esperado."""
     row = await db_session.execute(
         text(
-            "SELECT cost_components_template->'required' FROM schemes "
-            "WHERE code = :code;"
+            "SELECT cost_components_template->'required' FROM schemes WHERE code = :code;"
         ).bindparams(code=scheme_code)
     )
     raw = row.scalar_one()
@@ -72,25 +72,21 @@ async def test_scheme_template_components(
     assert raw == expected, f"{scheme_code}: expected {expected}, got {raw}"
 
 
-async def test_scheme_code_check_constraint(db_session: "AsyncSession") -> None:
+async def test_scheme_code_check_constraint(db_session: AsyncSession) -> None:
     """CHECK ck_schemes_code rechaza valores fuera del enum."""
     from sqlalchemy.exc import IntegrityError
 
     with pytest.raises(IntegrityError):
         await db_session.execute(
-            text(
-                "INSERT INTO schemes (code, name) VALUES ('INVALID_SCHEME', 'Bad');"
-            )
+            text("INSERT INTO schemes (code, name) VALUES ('INVALID_SCHEME', 'Bad');")
         )
         await db_session.flush()
 
 
-async def test_scheme_pk_unique(db_session: "AsyncSession") -> None:
+async def test_scheme_pk_unique(db_session: AsyncSession) -> None:
     """Duplicar code='FBA' falla por PK."""
     from sqlalchemy.exc import IntegrityError
 
     with pytest.raises(IntegrityError):
-        await db_session.execute(
-            text("INSERT INTO schemes (code, name) VALUES ('FBA', 'Dup');")
-        )
+        await db_session.execute(text("INSERT INTO schemes (code, name) VALUES ('FBA', 'Dup');"))
         await db_session.flush()

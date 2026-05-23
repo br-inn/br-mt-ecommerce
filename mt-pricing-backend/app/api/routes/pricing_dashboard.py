@@ -15,7 +15,7 @@ Notas de diseño:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -47,7 +47,7 @@ async def get_pricing_dashboard_stats(
 
     Frontend refresca cada 60s (`refetchInterval: 60_000`).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     since_7d = now - timedelta(days=7)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -55,15 +55,11 @@ async def get_pricing_dashboard_stats(
     # 1. Conteos de estado actual (snapshot)
     # ------------------------------------------------------------------
     pending_review_count = await session.scalar(
-        select(func.count())
-        .select_from(Price)
-        .where(Price.status == "pending_review")
+        select(func.count()).select_from(Price).where(Price.status == "pending_review")
     )
 
     auto_approved_count = await session.scalar(
-        select(func.count())
-        .select_from(Price)
-        .where(Price.status == "auto_approved")
+        select(func.count()).select_from(Price).where(Price.status == "auto_approved")
     )
 
     approved_today_count = await session.scalar(
@@ -76,9 +72,7 @@ async def get_pricing_dashboard_stats(
     )
 
     escalated_count = await session.scalar(
-        select(func.count())
-        .select_from(Price)
-        .where(Price.escalated.is_(True))
+        select(func.count()).select_from(Price).where(Price.escalated.is_(True))
     )
 
     # ------------------------------------------------------------------
@@ -138,8 +132,7 @@ async def get_pricing_dashboard_stats(
 
     if lag_rows:
         total_lag_hours = sum(
-            (row.approved_at - row.pending_at).total_seconds() / 3600.0
-            for row in lag_rows
+            (row.approved_at - row.pending_at).total_seconds() / 3600.0 for row in lag_rows
         )
         avg_approval_lag_hours = round(total_lag_hours / len(lag_rows), 2)
     else:

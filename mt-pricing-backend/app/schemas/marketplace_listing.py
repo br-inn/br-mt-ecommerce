@@ -1,4 +1,5 @@
 """Pydantic schemas for product_marketplace_listings."""
+
 from __future__ import annotations
 
 from datetime import datetime

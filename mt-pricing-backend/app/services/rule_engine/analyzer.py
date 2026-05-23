@@ -1,9 +1,10 @@
 """Analiza métricas de una familia y genera sugerencias via Claude API."""
+
 from __future__ import annotations
 
 import logging
-from uuid import UUID
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,7 @@ FN_RATE_THRESHOLD = 0.20
 
 
 async def analyze_and_suggest(
-    session: "AsyncSession",
+    session: AsyncSession,
     taxonomy_profile_id: UUID,
     family: str,
     metrics: dict,
@@ -73,27 +74,23 @@ async def _call_claude(profile, metrics: dict, suggestion_type: str) -> tuple[st
 
         client = anthropic.Anthropic()
 
-        weights_str = "\n".join(
-            f"  - {k}: {v:.2f}" for k, v in profile.weights.items()
-        )
-        blockers_str = (
-            ", ".join(profile.hard_blockers) if profile.hard_blockers else "ninguno"
-        )
+        weights_str = "\n".join(f"  - {k}: {v:.2f}" for k, v in profile.weights.items())
+        blockers_str = ", ".join(profile.hard_blockers) if profile.hard_blockers else "ninguno"
 
         prompt = f"""Eres un experto en matching de productos industriales para distribuidores en Middle East.
 
 Familia de producto: {profile.family}
-Descripción: {profile.description or 'N/A'}
+Descripción: {profile.description or "N/A"}
 
 Pesos actuales del scoring:
 {weights_str}
 
 Hard blockers activos: {blockers_str}
 
-Métricas últimos {metrics.get('days', 30)} días:
-- Total matches generados: {metrics.get('total_matches', 0)}
-- Tasa de confirmación humana: {(metrics.get('confirmation_rate') or 0) * 100:.1f}%
-- Tasa de falsos positivos: {(metrics.get('fp_rate') or 0) * 100:.1f}%
+Métricas últimos {metrics.get("days", 30)} días:
+- Total matches generados: {metrics.get("total_matches", 0)}
+- Tasa de confirmación humana: {(metrics.get("confirmation_rate") or 0) * 100:.1f}%
+- Tasa de falsos positivos: {(metrics.get("fp_rate") or 0) * 100:.1f}%
 - Tipo de brecha detectada: {suggestion_type}
 
 Analiza el problema y propone UN ajuste concreto y específico a los pesos o blockers para mejorar el performance.

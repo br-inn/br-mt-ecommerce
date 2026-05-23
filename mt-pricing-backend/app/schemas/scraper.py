@@ -33,6 +33,4 @@ class ScrapeJobStatus(BaseModel):
     completed: int = Field(default=0, description="Tasks completadas con éxito.")
     total: int = Field(default=0, description="Total de tasks en el grupo.")
     failed: int = Field(default=0, description="Tasks fallidas.")
-    status: str = Field(
-        description="Estado general: pending | running | completed | failed."
-    )
+    status: str = Field(description="Estado general: pending | running | completed | failed.")

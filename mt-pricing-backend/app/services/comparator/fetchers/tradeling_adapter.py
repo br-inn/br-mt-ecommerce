@@ -6,10 +6,11 @@ listings de competidores en el canal B2B regional.
 
 US-F15-02-05.
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -141,7 +142,7 @@ class TradelingAdapter:
             except TradelingAuthError:
                 raise  # no capturar — se propaga al caller
 
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 # Incluye _RetryableTradelingError agotada (3 intentos) + errores de red
                 status_code: int | None = None
                 if isinstance(exc, _RetryableTradelingError):
@@ -177,9 +178,7 @@ class TradelingFetcherFactory:
         settings = get_settings()
         api_key = settings.TRADELING_API_KEY.get_secret_value()
         if not api_key:
-            logger.warning(
-                "TRADELING_API_KEY not set — Tradeling fetcher disabled"
-            )
+            logger.warning("TRADELING_API_KEY not set — Tradeling fetcher disabled")
             return None
         return TradelingAdapter(
             api_key=api_key,
@@ -203,7 +202,7 @@ def _normalize(item: dict[str, Any]) -> TradelingListing:
     price_amount: Decimal
     try:
         price_amount = Decimal(str(price_raw.get("amount", "0")))
-    except Exception:  # noqa: BLE001
+    except Exception:
         price_amount = Decimal("0")
 
     # brand.name
@@ -216,11 +215,7 @@ def _normalize(item: dict[str, Any]) -> TradelingListing:
 
     # images[].url
     images_raw = item.get("images", []) or []
-    image_urls = [
-        img["url"]
-        for img in images_raw
-        if isinstance(img, dict) and img.get("url")
-    ]
+    image_urls = [img["url"] for img in images_raw if isinstance(img, dict) and img.get("url")]
 
     return TradelingListing(
         external_id=str(item.get("id", "")),
@@ -244,27 +239,24 @@ async def _log_fetch_error(
 ) -> None:
     """Registra error en competitor_fetch_errors (best-effort, no lanza)."""
     try:
-        from app.db import get_sessionmaker  # noqa: PLC0415
-        from app.db.models.comparator import CompetitorFetchError  # noqa: PLC0415
+        from app.db import get_sessionmaker
+        from app.db.models.comparator import CompetitorFetchError
 
         session_factory = get_sessionmaker()
-        async with session_factory() as session:
-            async with session.begin():
-                session.add(
-                    CompetitorFetchError(
-                        asin=query,  # campo requerido — usamos query como identificador
-                        error_type=type(exc).__name__,
-                        error_message=(
-                            f"[source={source}]"
-                            + (f"[error_code={error_code}]" if error_code else "")
-                            + f" {str(exc)[:400]}"
-                        )[:500],
-                    )
+        async with session_factory() as session, session.begin():
+            session.add(
+                CompetitorFetchError(
+                    asin=query,  # campo requerido — usamos query como identificador
+                    error_type=type(exc).__name__,
+                    error_message=(
+                        f"[source={source}]"
+                        + (f"[error_code={error_code}]" if error_code else "")
+                        + f" {str(exc)[:400]}"
+                    )[:500],
                 )
-    except Exception:  # noqa: BLE001
-        logger.warning(
-            "tradeling_adapter: no se pudo registrar error en competitor_fetch_errors"
-        )
+            )
+    except Exception:
+        logger.warning("tradeling_adapter: no se pudo registrar error en competitor_fetch_errors")
 
 
 __all__ = [

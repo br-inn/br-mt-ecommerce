@@ -63,9 +63,7 @@ async def assign_divisions(
     div_repo = DivisionRepo(session)
     pd_repo = ProductDivisionRepo(session)
 
-    cache: dict[str, UUID | None] = (
-        code_id_cache if code_id_cache is not None else {}
-    )
+    cache: dict[str, UUID | None] = code_id_cache if code_id_cache is not None else {}
 
     created = 0
     for code in division_codes:

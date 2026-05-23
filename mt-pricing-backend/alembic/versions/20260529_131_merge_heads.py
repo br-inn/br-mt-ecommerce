@@ -4,6 +4,7 @@ Revision ID: 20260529_131
 Revises: 20260514_107, 20260529_130
 Create Date: 2026-05-15
 """
+
 from __future__ import annotations
 
 revision = "20260529_131"

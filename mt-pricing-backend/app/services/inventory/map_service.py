@@ -16,8 +16,7 @@ Flujo principal: `process_gr(gr_id)` →
 from __future__ import annotations
 
 import logging
-import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
@@ -134,7 +133,7 @@ class MAPService:
         )
 
         gr.status = "processed"
-        gr.processed_at = datetime.now(tz=timezone.utc)
+        gr.processed_at = datetime.now(tz=UTC)
         await self.session.flush()
 
         return pos
@@ -147,18 +146,13 @@ class MAPService:
         """Carga GR + po_line + po (para supplier_code). Adjunta atributos helper."""
         from app.db.models.inventory import PurchaseOrder
 
-        stmt = (
-            select(GoodsReceipt)
-            .where(GoodsReceipt.id == gr_id)
-        )
+        stmt = select(GoodsReceipt).where(GoodsReceipt.id == gr_id)
         result = await self.session.execute(stmt)
         gr = result.scalar_one_or_none()
         if gr is None:
             raise ValueError(f"GoodsReceipt {gr_id} not found")
 
-        pol_stmt = select(PurchaseOrderLine).where(
-            PurchaseOrderLine.id == gr.po_line_id
-        )
+        pol_stmt = select(PurchaseOrderLine).where(PurchaseOrderLine.id == gr.po_line_id)
         pol = (await self.session.execute(pol_stmt)).scalar_one()
 
         po_stmt = select(PurchaseOrder).where(PurchaseOrder.id == pol.po_id)
@@ -193,7 +187,7 @@ class MAPService:
         pol: Any,
     ) -> Decimal:
         """Determina el unit_cost_aed del GR usando prioridad definida en story."""
-        received_at = gr.received_at or datetime.now(tz=timezone.utc)
+        received_at = gr.received_at or datetime.now(tz=UTC)
 
         actual_breakdown: dict = gr.actual_breakdown or {}
         if actual_breakdown:
@@ -250,17 +244,13 @@ class MAPService:
         new_map: Decimal,
         last_gr_id: UUID,
     ) -> InventoryPosition:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Fetch current to compute new qty_on_hand.
         existing = await self._get_position(
             sku=sku, supplier_code=supplier_code, scheme_code=scheme_code
         )
-        new_qty = (
-            Decimal(str(existing.qty_on_hand)) + qty_delta
-            if existing
-            else qty_delta
-        )
+        new_qty = Decimal(str(existing.qty_on_hand)) + qty_delta if existing else qty_delta
 
         stmt = (
             pg_insert(InventoryPosition)
@@ -435,6 +425,7 @@ class MAPService:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _infer_currency(breakdown: dict) -> str:
     """Infiere la moneda de origen del breakdown por sus sufijos de clave.

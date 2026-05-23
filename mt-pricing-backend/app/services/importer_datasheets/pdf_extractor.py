@@ -95,14 +95,14 @@ def _decode_pdf_string(literal: bytes) -> str:
         i += 1
     try:
         return out.decode("utf-8", errors="replace")
-    except Exception:  # pragma: no cover  # noqa: BLE001
+    except Exception:  # pragma: no cover
         return out.decode("latin-1", errors="replace")
 
 
 def _extract_with_pdfplumber(payload: bytes) -> str | None:
     try:
-        import pdfplumber  # type: ignore  # noqa: I001
-    except Exception:  # noqa: BLE001
+        import pdfplumber  # type: ignore
+    except Exception:
         return None
     try:
         import io as _io
@@ -114,7 +114,7 @@ def _extract_with_pdfplumber(payload: bytes) -> str | None:
                 if txt.strip():
                     chunks.append(txt)
             return "\n".join(chunks)
-    except Exception as exc:  # pragma: no cover  # noqa: BLE001
+    except Exception as exc:  # pragma: no cover
         logger.warning("pdfplumber failed, fallback to manual: %s", exc)
         return None
 
@@ -122,10 +122,10 @@ def _extract_with_pdfplumber(payload: bytes) -> str | None:
 def _extract_with_pypdf(payload: bytes) -> str | None:
     try:
         from PyPDF2 import PdfReader  # type: ignore
-    except Exception:  # noqa: BLE001
+    except Exception:
         try:
             from pypdf import PdfReader  # type: ignore
-        except Exception:  # noqa: BLE001
+        except Exception:
             return None
     try:
         import io as _io
@@ -135,12 +135,12 @@ def _extract_with_pypdf(payload: bytes) -> str | None:
         for page in reader.pages:
             try:
                 txt = page.extract_text() or ""
-            except Exception:  # noqa: BLE001
+            except Exception:
                 txt = ""
             if txt.strip():
                 chunks.append(txt)
         return "\n".join(chunks)
-    except Exception as exc:  # pragma: no cover  # noqa: BLE001
+    except Exception as exc:  # pragma: no cover
         logger.warning("pypdf failed, fallback to manual: %s", exc)
         return None
 
@@ -170,7 +170,7 @@ def _extract_streams_plaintext(payload: bytes) -> bytes:
             try:
                 inflated = zlib.decompress(body)
                 out += b"\n" + inflated + b"\n"
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         cursor = e_idx + len(b"endstream")
     return bytes(out)
@@ -243,10 +243,7 @@ def extract_text_from_pdf(payload: bytes) -> str:
 
 def _normalize_table_row(row: list) -> list[str]:
     """Limpia una fila pdfplumber: None→'', strip, colapsa whitespace."""
-    return [
-        " ".join((cell or "").split()) if cell is not None else ""
-        for cell in row
-    ]
+    return [" ".join((cell or "").split()) if cell is not None else "" for cell in row]
 
 
 def _normalize_table(raw_rows: list[list]) -> dict | None:
@@ -278,8 +275,8 @@ def extract_tables_from_pdf(payload: bytes) -> list[dict]:
     if not payload or not payload.lstrip().startswith(_PDF_MAGIC):
         return []
     try:
-        import pdfplumber  # type: ignore  # noqa: I001
-    except Exception:  # noqa: BLE001
+        import pdfplumber  # type: ignore
+    except Exception:
         logger.info("pdfplumber unavailable — tables extraction skipped")
         return []
     try:
@@ -290,7 +287,7 @@ def extract_tables_from_pdf(payload: bytes) -> list[dict]:
             for page_idx, page in enumerate(pdf.pages, start=1):
                 try:
                     raw_tables = page.extract_tables() or []
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning("page %d extract_tables failed: %s", page_idx, exc)
                     continue
                 for raw in raw_tables:
@@ -298,7 +295,7 @@ def extract_tables_from_pdf(payload: bytes) -> list[dict]:
                     if norm is not None:
                         out.append({"page": page_idx, **norm})
         return out
-    except Exception as exc:  # pragma: no cover  # noqa: BLE001
+    except Exception as exc:  # pragma: no cover
         logger.warning("extract_tables_from_pdf failed: %s", exc)
         return []
 
@@ -351,13 +348,14 @@ def extract_pdf_metadata(payload: bytes) -> dict:
     page_count = 0
     parse_method = "manual_text"
     try:
-        import pdfplumber  # type: ignore
         import io as _io
+
+        import pdfplumber  # type: ignore
 
         with pdfplumber.open(_io.BytesIO(payload)) as pdf:  # pragma: no cover
             page_count = len(pdf.pages)
             parse_method = "pdfplumber"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         warnings.append(f"pdfplumber_unavailable: {exc.__class__.__name__}")
 
     try:

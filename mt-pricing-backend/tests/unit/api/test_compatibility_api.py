@@ -21,8 +21,7 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -30,8 +29,9 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
-from app.api.routes.products import get_compatibility_service, router as products_router
+from app.api.deps import get_current_user, get_db_session
+from app.api.routes.products import get_compatibility_service
+from app.api.routes.products import router as products_router
 from app.services.compatibility.compatibility_service import (
     CompatibilityDuplicateError,
     CompatibilityNotFoundError,
@@ -42,12 +42,13 @@ from app.services.compatibility.compatibility_service import (
 
 pytestmark = pytest.mark.unit
 
-NOW = datetime.now(tz=timezone.utc)
+NOW = datetime.now(tz=UTC)
 
 
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------
+
 
 class _FakeRole:
     def __init__(self, perms: list[str]) -> None:
@@ -94,6 +95,7 @@ class _FakeLink:
 # App builder
 # ---------------------------------------------------------------------------
 
+
 def _build_app(user: _FakeUser, compat_svc: CompatibilityService) -> FastAPI:
     app = FastAPI()
     app.include_router(products_router, prefix="/api/v1")
@@ -118,7 +120,8 @@ def _build_app(user: _FakeUser, compat_svc: CompatibilityService) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call):  # noqa: ARG001
+
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow
@@ -139,6 +142,7 @@ def _mock_svc() -> CompatibilityService:
 # ---------------------------------------------------------------------------
 # Tests — GET list
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_compatibility_empty() -> None:
@@ -177,9 +181,7 @@ async def test_list_compatibility_with_kind_filter() -> None:
 async def test_list_compatibility_product_not_found() -> None:
     user = _FakeUser()
     svc = _mock_svc()
-    svc.list_for_product = AsyncMock(
-        side_effect=CompatibilitySkuNotFoundError("MT-NOPE")
-    )
+    svc.list_for_product = AsyncMock(side_effect=CompatibilitySkuNotFoundError("MT-NOPE"))
 
     app = _build_app(user, svc)
     async with await _client(app) as ac:
@@ -191,6 +193,7 @@ async def test_list_compatibility_product_not_found() -> None:
 # ---------------------------------------------------------------------------
 # Tests — GET inverse
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_compatibility_inverse_ok() -> None:
@@ -212,6 +215,7 @@ async def test_list_compatibility_inverse_ok() -> None:
 # ---------------------------------------------------------------------------
 # Tests — POST
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_add_compatibility_created() -> None:
@@ -286,6 +290,7 @@ async def test_add_compatibility_sku_not_found_404() -> None:
 # Tests — DELETE
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_remove_compatibility_204() -> None:
     user = _FakeUser()
@@ -317,6 +322,7 @@ async def test_remove_compatibility_not_found_404() -> None:
 # ---------------------------------------------------------------------------
 # Tests — PUT replace all
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_replace_compatibility_200() -> None:

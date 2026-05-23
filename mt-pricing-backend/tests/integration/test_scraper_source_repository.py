@@ -28,7 +28,9 @@ _RECIPE_B = {"url_templates": {"search": "y"}, "fields": [{"name": "title", "sel
 
 async def _make_source(repo: ScraperSourceRepository, slug: str = "acme") -> "object":
     return await repo.create(
-        name="ACME", slug=slug, base_url="https://acme.example",
+        name="ACME",
+        slug=slug,
+        base_url="https://acme.example",
         destination_profile="competitor_price",
     )
 

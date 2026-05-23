@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 
 
@@ -16,7 +16,7 @@ _KEY_TEMPLATE = "mt:ris:daily_count:{date}"
 
 async def check_and_increment(redis: RedisLike, *, limit: int) -> bool:
     """Retorna True si se puede llamar (bajo el límite), False si se alcanzó."""
-    today = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(tz=UTC).strftime("%Y-%m-%d")
     key = _KEY_TEMPLATE.format(date=today)
     count = await redis.incr(key)
     if count == 1:

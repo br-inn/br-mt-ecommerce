@@ -10,9 +10,10 @@ Seeds: 6 cost centers + 3 profit centers
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260527_111"
 down_revision = "20260527_110"
@@ -26,16 +27,36 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "cost_centers",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("cc_code", sa.Text(), nullable=False),
         sa.Column("cc_name", sa.Text(), nullable=False),
-        sa.Column("parent_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("cost_centers.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "parent_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("cost_centers.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("cc_type", sa.Text(), nullable=True),
-        sa.Column("responsible_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "responsible_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("valid_from", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False),
         sa.Column("valid_to", sa.Date(), nullable=True),
         sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "cc_type IN ('PRODUCTION','SERVICE','ADMIN','SALES','IT')",
             name="ck_cost_centers_cc_type",
@@ -49,13 +70,28 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "profit_centers",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("pc_code", sa.Text(), nullable=False),
         sa.Column("pc_name", sa.Text(), nullable=False),
         sa.Column("business_area", sa.Text(), nullable=False),
-        sa.Column("responsible_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "responsible_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "business_area IN ('B2C','B2B','INTERNAL')",
             name="ck_profit_centers_business_area",

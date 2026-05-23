@@ -2,6 +2,7 @@
 
 Usa respx para mockear httpx sin tocar la red real.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -49,9 +50,7 @@ _SAMPLE_RESPONSE = {"items": [_SAMPLE_ITEM]}
 @respx.mock
 async def test_fetch_success_normalizes_response() -> None:
     """Mock 200 con JSON válido → lista de TradelingListing correctamente normalizada."""
-    respx.get(_SEARCH_URL).mock(
-        return_value=Response(200, json=_SAMPLE_RESPONSE)
-    )
+    respx.get(_SEARCH_URL).mock(return_value=Response(200, json=_SAMPLE_RESPONSE))
 
     adapter = TradelingAdapter(api_key="test-key-abc", rate_limit=100.0)
     results = await adapter.fetch(product_title="Wilo Pump", category_id="pumps")
@@ -77,9 +76,7 @@ async def test_fetch_uses_name_field_when_title_missing() -> None:
     """Si 'title' no existe, usa 'name' del item."""
     item = {**_SAMPLE_ITEM, "name": "Wilo Pump Alt Name"}
     item.pop("title")
-    respx.get(_SEARCH_URL).mock(
-        return_value=Response(200, json={"items": [item]})
-    )
+    respx.get(_SEARCH_URL).mock(return_value=Response(200, json={"items": [item]}))
 
     adapter = TradelingAdapter(api_key="test-key-abc", rate_limit=100.0)
     results = await adapter.fetch(product_title="Wilo Pump", category_id="pumps")
@@ -91,9 +88,7 @@ async def test_fetch_uses_name_field_when_title_missing() -> None:
 @respx.mock
 async def test_fetch_empty_items_returns_empty_list() -> None:
     """Respuesta con items vacíos retorna lista vacía."""
-    respx.get(_SEARCH_URL).mock(
-        return_value=Response(200, json={"items": []})
-    )
+    respx.get(_SEARCH_URL).mock(return_value=Response(200, json={"items": []}))
 
     adapter = TradelingAdapter(api_key="test-key-abc", rate_limit=100.0)
     results = await adapter.fetch(product_title="Wilo Pump", category_id="pumps")
@@ -106,9 +101,7 @@ async def test_fetch_empty_items_returns_empty_list() -> None:
 async def test_fetch_missing_optional_fields_use_defaults() -> None:
     """Campos opcionales ausentes usan valores por defecto seguros."""
     minimal_item = {"id": "TRD-MIN", "price": {"amount": "100"}}
-    respx.get(_SEARCH_URL).mock(
-        return_value=Response(200, json={"items": [minimal_item]})
-    )
+    respx.get(_SEARCH_URL).mock(return_value=Response(200, json={"items": [minimal_item]}))
 
     adapter = TradelingAdapter(api_key="test-key-abc", rate_limit=100.0)
     results = await adapter.fetch(product_title="Any", category_id="cat1")
@@ -177,9 +170,7 @@ async def test_fetch_5xx_retries_and_succeeds() -> None:
 @respx.mock
 async def test_fetch_exhausted_retries_returns_empty() -> None:
     """3 intentos fallidos consecutivos retorna [] (no lanza)."""
-    respx.get(_SEARCH_URL).mock(
-        return_value=Response(503, json={"error": "service_unavailable"})
-    )
+    respx.get(_SEARCH_URL).mock(return_value=Response(503, json={"error": "service_unavailable"}))
 
     with patch(
         "app.services.comparator.fetchers.tradeling_adapter._log_fetch_error",
@@ -263,7 +254,6 @@ async def test_fetch_no_api_key_returns_empty() -> None:
 
 def test_factory_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Settings sin TRADELING_API_KEY → factory retorna None."""
-    from app.core.config import get_settings
     from pydantic import SecretStr
 
     mock_settings = MagicMock()
@@ -303,9 +293,7 @@ def test_factory_returns_adapter_with_key(monkeypatch: pytest.MonkeyPatch) -> No
 @respx.mock
 async def test_fetch_price_is_decimal_not_float() -> None:
     """El precio retornado es siempre Decimal, nunca float."""
-    respx.get(_SEARCH_URL).mock(
-        return_value=Response(200, json=_SAMPLE_RESPONSE)
-    )
+    respx.get(_SEARCH_URL).mock(return_value=Response(200, json=_SAMPLE_RESPONSE))
 
     adapter = TradelingAdapter(api_key="test-key", rate_limit=100.0)
     results = await adapter.fetch(product_title="Test", category_id="cat")
@@ -318,9 +306,7 @@ async def test_fetch_price_is_decimal_not_float() -> None:
 @respx.mock
 async def test_fetch_uses_results_key_as_fallback() -> None:
     """Respuesta con 'results' en lugar de 'items' también funciona."""
-    respx.get(_SEARCH_URL).mock(
-        return_value=Response(200, json={"results": [_SAMPLE_ITEM]})
-    )
+    respx.get(_SEARCH_URL).mock(return_value=Response(200, json={"results": [_SAMPLE_ITEM]}))
 
     adapter = TradelingAdapter(api_key="test-key", rate_limit=100.0)
     results = await adapter.fetch(product_title="Wilo", category_id="pumps")

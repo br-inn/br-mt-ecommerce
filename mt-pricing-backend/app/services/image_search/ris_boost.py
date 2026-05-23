@@ -20,9 +20,7 @@ _BOOST_AMOUNT = Decimal("0.15")
 _BOOST_CAP = Decimal("1.0")
 
 
-async def get_canonical_domains(
-    *, session: AsyncSession, product_sku: str
-) -> frozenset[str]:
+async def get_canonical_domains(*, session: AsyncSession, product_sku: str) -> frozenset[str]:
     """Obtiene dominios canónicos del fabricante del SKU vía manufacturers_whitelist.
 
     Flujo:
@@ -35,9 +33,7 @@ async def get_canonical_domains(
     — comportamiento graceful sin excepción.
     """
     # 1. Obtener brand del producto
-    product_result = await session.execute(
-        select(Product.brand).where(Product.sku == product_sku)
-    )
+    product_result = await session.execute(select(Product.brand).where(Product.sku == product_sku))
     brand: str | None = product_result.scalar_one_or_none()
 
     if not brand:
@@ -46,9 +42,9 @@ async def get_canonical_domains(
     # 2. Query manufacturers_whitelist: match por nombre (ILIKE) o por alias (ANY)
     stmt = select(ManufacturerWhitelist.canonical_domains).where(
         ManufacturerWhitelist.active.is_(True),
-        text(
-            "manufacturer_name ILIKE :brand OR :brand = ANY(brand_aliases)"
-        ).bindparams(brand=brand),
+        text("manufacturer_name ILIKE :brand OR :brand = ANY(brand_aliases)").bindparams(
+            brand=brand
+        ),
     )
     rows = await session.execute(stmt)
     all_domains: list[str] = []

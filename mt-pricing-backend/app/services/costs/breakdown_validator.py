@@ -61,9 +61,7 @@ class BreakdownValidationResult:
     errors: list[dict[str, str]] = field(default_factory=list)
 
 
-async def _get_template(
-    session: AsyncSession, scheme_code: str
-) -> dict[str, Any] | None:
+async def _get_template(session: AsyncSession, scheme_code: str) -> dict[str, Any] | None:
     """Lee `cost_components_template` del scheme. Retorna None si scheme no existe."""
     stmt = select(CostScheme).where(CostScheme.code == scheme_code)
     result = await session.execute(stmt)
@@ -130,9 +128,7 @@ async def validate_breakdown(
         for k in breakdown_keys - declared:
             warnings.append({"code": "unknown_breakdown_field", "field": k})
 
-    return BreakdownValidationResult(
-        valid=not errors, warnings=warnings, errors=errors
-    )
+    return BreakdownValidationResult(valid=not errors, warnings=warnings, errors=errors)
 
 
 def known_keys(declared: Iterable[str]) -> set[str]:

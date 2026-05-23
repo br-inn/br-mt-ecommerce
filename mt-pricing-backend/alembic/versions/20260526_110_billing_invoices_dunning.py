@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260526_110"
@@ -30,7 +31,9 @@ def upgrade() -> None:
         sa.Column("delivery_id", sa.UUID(), nullable=True),
         sa.Column("so_id", sa.UUID(), nullable=True),
         sa.Column("customer_id", sa.Text(), nullable=False),
-        sa.Column("invoice_date", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False),
+        sa.Column(
+            "invoice_date", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False
+        ),
         sa.Column("due_date", sa.Date(), nullable=True),
         sa.Column("subtotal", sa.Numeric(18, 4), nullable=True),
         sa.Column("tax_amount", sa.Numeric(18, 4), server_default=sa.text("0"), nullable=False),
@@ -39,10 +42,22 @@ def upgrade() -> None:
         sa.Column("status", sa.Text(), server_default=sa.text("'draft'"), nullable=False),
         sa.Column("accounting_document_id", sa.UUID(), nullable=True),
         sa.Column("payment_terms", sa.Text(), server_default=sa.text("'NET30'"), nullable=False),
-        sa.Column("e_invoice_status", sa.Text(), server_default=sa.text("'not_required'"), nullable=False),
+        sa.Column(
+            "e_invoice_status", sa.Text(), server_default=sa.text("'not_required'"), nullable=False
+        ),
         sa.Column("created_by", sa.UUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("invoice_number"),
         sa.CheckConstraint(
@@ -132,7 +147,9 @@ def upgrade() -> None:
         sa.Column("invoice_id", sa.UUID(), nullable=False),
         sa.Column("customer_id", sa.Text(), nullable=False),
         sa.Column("dunning_level", sa.Integer(), nullable=False),
-        sa.Column("sent_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "sent_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+        ),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["invoice_id"], ["invoices.id"], ondelete="CASCADE"),
@@ -156,7 +173,12 @@ def upgrade() -> None:
         sa.Column("xml_payload", sa.Text(), nullable=True),
         sa.Column("qr_code", sa.Text(), nullable=True),
         sa.Column("retry_count", sa.Integer(), server_default=sa.text("0"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
             "standard IN ('CFDI_4.0','ZATCA_PHASE2','UBL_2.1','PEPPOL')",
@@ -184,7 +206,12 @@ def upgrade() -> None:
         sa.Column("status", sa.Text(), server_default=sa.text("'active'"), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_by", sa.UUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
             "status IN ('active','kept','broken','cancelled')",

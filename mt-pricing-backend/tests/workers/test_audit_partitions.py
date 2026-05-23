@@ -11,7 +11,7 @@ Tests:
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -58,7 +58,7 @@ def test_month_bounds_december_rolls_year() -> None:
 def test_next_n_months_handles_year_rollover() -> None:
     from app.workers.audit_partitions import _next_n_months
 
-    ref = datetime(2026, 11, 15, tzinfo=timezone.utc)
+    ref = datetime(2026, 11, 15, tzinfo=UTC)
     months = _next_n_months(ref, 4)
     assert months == [(2026, 11), (2026, 12), (2027, 1), (2027, 2)]
 
@@ -67,7 +67,7 @@ def test_next_n_months_handles_year_rollover() -> None:
 def test_next_n_months_one_month() -> None:
     from app.workers.audit_partitions import _next_n_months
 
-    ref = datetime(2026, 5, 7, tzinfo=timezone.utc)
+    ref = datetime(2026, 5, 7, tzinfo=UTC)
     assert _next_n_months(ref, 1) == [(2026, 5)]
 
 
@@ -80,8 +80,9 @@ pytestmark_integration = [pytest.mark.integration]
 @pytest.fixture(scope="module")
 def _migrated_db(postgres_container: str) -> str:
     """Aplica `alembic upgrade head` y devuelve la URL sync."""
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     sync_url = os.environ["ALEMBIC_DATABASE_URL"]
     cfg = Config("alembic.ini")
@@ -136,9 +137,7 @@ def test_ensure_partitions_creates_missing(
 
 
 @pytest.mark.integration
-def test_ensure_partitions_idempotent(
-    monkeypatch: pytest.MonkeyPatch, _migrated_db: str
-) -> None:
+def test_ensure_partitions_idempotent(monkeypatch: pytest.MonkeyPatch, _migrated_db: str) -> None:
     """Segunda ejecución no crea duplicados — todas reportadas como `existing`."""
     from app.workers import audit_partitions
 
@@ -154,7 +153,5 @@ def test_ensure_partitions_idempotent(
     # Segunda corrida idéntica.
     result2 = audit_partitions.ensure_partitions.run(months_ahead=3)
 
-    assert result2["created"] == [], (
-        f"Idempotencia rota: segunda corrida creó {result2['created']}"
-    )
+    assert result2["created"] == [], f"Idempotencia rota: segunda corrida creó {result2['created']}"
     assert len(result2["existing"]) == 3

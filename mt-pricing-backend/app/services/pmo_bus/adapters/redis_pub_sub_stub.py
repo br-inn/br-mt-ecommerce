@@ -41,7 +41,7 @@ class RedisPubSubStubPublisher(PmoEventPublisherPort):
 
     def __init__(
         self,
-        redis_client: _SyncRedisPublisher | "Redis",
+        redis_client: _SyncRedisPublisher | Redis,
         channel: str = DEFAULT_CHANNEL,
     ) -> None:
         self._redis = redis_client

@@ -6,23 +6,27 @@ Las excepciones de dominio se traducen a HTTPException en la capa de routes.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.product import Product, ProductImage, ProductTranslation
 from app.db.models.user import User
+from app.db.models.vocabularies import Brand, Family
 from app.repositories.audit import AuditRepository
 from app.repositories.product import (
     ProductImageRepository,
     ProductRepository,
     ProductTranslationRepository,
 )
-from app.services.specs.specs_validator import FieldError, SpecsValidationError, SpecsValidator
+from app.services.specs.specs_validator import SpecsValidationError, SpecsValidator
+
+_log = logging.getLogger(__name__)
 
 
 class ProductDomainError(Exception):
@@ -141,11 +145,7 @@ def _snapshot(obj: Product) -> dict[str, Any]:
 
 
 def _diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
-    return {
-        k: {"from": before.get(k), "to": after[k]}
-        for k in after
-        if before.get(k) != after[k]
-    }
+    return {k: {"from": before.get(k), "to": after[k]} for k in after if before.get(k) != after[k]}
 
 
 class ProductService:
@@ -162,6 +162,47 @@ class ProductService:
         self.images = ProductImageRepository(session)
         self.audit = AuditRepository(session)
         self.specs_validator = specs_validator
+
+    # ----------------------------------------- taxonomy FK resolution helpers
+    async def _resolve_or_create_brand_id(self, brand_name: str | None) -> UUID:
+        """Returns brand.id for brand_name, creating the brand row if absent."""
+        if not brand_name:
+            brand_name = "MT"
+        row = (
+            await self.session.execute(
+                select(Brand).where(
+                    (func.lower(Brand.code) == brand_name.lower())
+                    | (func.lower(Brand.name) == brand_name.lower())
+                )
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return row.id
+        _log.warning("Brand %r not found — creating on-the-fly", brand_name)
+        brand = Brand(code=brand_name.lower().replace(" ", "_"), name=brand_name)
+        self.session.add(brand)
+        await self.session.flush()
+        return brand.id
+
+    async def _resolve_or_create_family_id(self, family_code: str | None) -> UUID:
+        """Returns family.id for family_code, creating the family row if absent."""
+        if not family_code:
+            family_code = "unclassified"
+        row = (
+            await self.session.execute(
+                select(Family).where(
+                    (func.lower(Family.code) == family_code.lower())
+                    | (func.lower(Family.name) == family_code.lower())
+                )
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return row.id
+        _log.warning("Family %r not found — creating on-the-fly", family_code)
+        family = Family(code=family_code.lower().replace(" ", "_"), name=family_code)
+        self.session.add(family)
+        await self.session.flush()
+        return family.id
 
     # ------------------------------------------------------------------ Lookup
     async def get_product_by_id(self, sku: str) -> Product:
@@ -273,15 +314,18 @@ class ProductService:
         division_codes = data.pop("division_codes", None) or []
         # Fase B (mig 065): extrae textos EN para crear translation en lang='en'.
         en_translation = self._extract_en_translation_payload(data)
+        # Resolve NOT NULL FKs brand_id + family_id from text slugs (mig 048).
+        if "brand_id" not in data:
+            data["brand_id"] = await self._resolve_or_create_brand_id(data.get("brand"))
+        if "family_id" not in data:
+            data["family_id"] = await self._resolve_or_create_family_id(data.get("family"))
         prod = await self.products.create(
             **data,
             created_by=actor.id,
             updated_by=actor.id,
         )
         if en_translation is not None:
-            await self.translations.upsert(
-                sku=prod.sku, lang="en", **en_translation
-            )
+            await self.translations.upsert(sku=prod.sku, lang="en", **en_translation)
         if division_codes:
             from app.repositories.vocabularies import DivisionRepo, ProductDivisionRepo
 
@@ -301,9 +345,7 @@ class ProductService:
         )
         return prod
 
-    async def update_product(
-        self, sku: str, data: dict[str, Any], actor: User
-    ) -> Product:
+    async def update_product(self, sku: str, data: dict[str, Any], actor: User) -> Product:
         prod = await self.products.get_by_sku(sku)
         if prod is None or prod.deleted_at is not None:
             raise ProductNotFoundError(sku)
@@ -342,9 +384,7 @@ class ProductService:
         await self.session.flush()
         # Fase B: redirige textos EN legacy a product_translations(en).
         if en_translation is not None:
-            await self.translations.upsert(
-                sku=prod.sku, lang="en", **en_translation
-            )
+            await self.translations.upsert(sku=prod.sku, lang="en", **en_translation)
         after = _snapshot(prod)
         await self.audit.record(
             entity_type="product",
@@ -408,11 +448,11 @@ class ProductService:
         """
         ts = prod.updated_at
         if ts is None:
-            ts = datetime.now(tz=timezone.utc)
+            ts = datetime.now(tz=UTC)
         # Normaliza a UTC ISO con sufijo Z para evitar offsets ambiguos.
         if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-        return f'W/"{ts.astimezone(timezone.utc).isoformat()}"'
+            ts = ts.replace(tzinfo=UTC)
+        return f'W/"{ts.astimezone(UTC).isoformat()}"'
 
     async def replace_product(
         self,
@@ -472,12 +512,10 @@ class ProductService:
         prod.updated_by = actor.id
         # Forzamos updated_at a now() — algunos test backends no triggerean
         # `onupdate` cuando se persiste sin valor explícito.
-        prod.updated_at = datetime.now(tz=timezone.utc)
+        prod.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         if en_translation is not None:
-            await self.translations.upsert(
-                sku=prod.sku, lang="en", **en_translation
-            )
+            await self.translations.upsert(sku=prod.sku, lang="en", **en_translation)
         after = _snapshot(prod)
         diff = _diff(before, after)
         # Si nada cambió, igual emitimos audit (PUT semánticamente reemplaza
@@ -540,7 +578,8 @@ class ProductService:
 
         if new_value == "complete":
             missing = [
-                f for f in self._DATA_QUALITY_REQUIRED_FIELDS
+                f
+                for f in self._DATA_QUALITY_REQUIRED_FIELDS
                 if getattr(prod, f, None) in (None, "")
             ]
             if missing:
@@ -554,7 +593,7 @@ class ProductService:
 
         prod.data_quality = new_value
         prod.updated_by = actor.id
-        prod.updated_at = datetime.now(tz=timezone.utc)
+        prod.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         await self.audit.record(
             entity_type="product",
@@ -574,7 +613,7 @@ class ProductService:
         if prod is None or prod.deleted_at is not None:
             raise ProductNotFoundError(sku)
         before = _snapshot(prod)
-        prod.deleted_at = datetime.now(tz=timezone.utc)
+        prod.deleted_at = datetime.now(tz=UTC)
         # Fase B (mig 066): `active` ya no es columna; lifecycle_status='discontinued'
         # marca semánticamente que el SKU dejó de comercializarse.
         prod.lifecycle_status = "discontinued"
@@ -657,7 +696,7 @@ class ProductService:
             from app.workers.thumbnails import generate_thumbnails
 
             generate_thumbnails.delay(product_sku, storage_path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             # No romper el upload por fallo de enqueue.
             pass
 
@@ -686,9 +725,7 @@ class ProductService:
         )
         return img
 
-    async def delete_image(
-        self, product_sku: str, image_id: UUID, actor: User
-    ) -> None:
+    async def delete_image(self, product_sku: str, image_id: UUID, actor: User) -> None:
         img = await self.images.get_for_product(product_sku, image_id)
         if img is None:
             raise ProductDomainError(
@@ -733,10 +770,8 @@ class ProductService:
         # Si el caller especifica draft/approved, registramos translated_by/at.
         fields = dict(data)
         fields.setdefault("translated_by", actor.id)
-        fields.setdefault("translated_at", datetime.now(tz=timezone.utc))
-        row, created = await self.translations.upsert(
-            sku=product_sku, lang=lang, **fields
-        )
+        fields.setdefault("translated_at", datetime.now(tz=UTC))
+        row, created = await self.translations.upsert(sku=product_sku, lang=lang, **fields)
         await self.audit.record(
             entity_type="product_translation",
             entity_id=f"{product_sku}:{lang}",
@@ -791,7 +826,7 @@ class ProductService:
             )
         existing.status = "approved"
         existing.reviewed_by = actor.id
-        existing.reviewed_at = datetime.now(tz=timezone.utc)
+        existing.reviewed_at = datetime.now(tz=UTC)
         await self.session.flush()
         await self.audit.record(
             entity_type="product_translation",
@@ -829,9 +864,7 @@ class ProductService:
         if prod is None or prod.deleted_at is not None:
             raise ProductNotFoundError(product_sku)
 
-        stmt = select(ProductDatasheet).where(
-            ProductDatasheet.storage_path == storage_path
-        )
+        stmt = select(ProductDatasheet).where(ProductDatasheet.storage_path == storage_path)
         existing = (await self.session.execute(stmt)).scalar_one_or_none()
 
         run_uuid: UUID | None = None

@@ -1,8 +1,8 @@
 from app.schemas.ficha_enrich import (
     ExtractedScalars,
     ExtractedSpecs,
-    FichaExtractionResult,
     FichaEnrichApplyRequest,
+    FichaExtractionResult,
 )
 
 
@@ -32,9 +32,10 @@ def test_apply_request_defaults():
         extraction=FichaExtractionResult(
             scalars=ExtractedScalars(),
             specs=ExtractedSpecs(),
-        )
+        ),
+        apply_to_skus=[],
     )
     assert req.apply_scalars is True
     assert req.apply_translations is False
-    assert req.apply_assets is True
-    assert req.apply_pt_curve is True
+    assert req.apply_assets is False
+    assert req.apply_pt_curve is False

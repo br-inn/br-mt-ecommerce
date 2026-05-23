@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.services.pricing_export.publisher import ExportResult, PublishPayload
@@ -41,24 +41,28 @@ class NoonUAEAdapter:
         for idx, row in enumerate(payload.rows):
             sku = row.get("sku", "")
             if not sku:
-                errors.append({
-                    "field": "sku",
-                    "row": idx,
-                    "code": "MISSING_SKU",
-                    "message": f"Fila {idx}: campo 'sku' ausente o vacío.",
-                })
+                errors.append(
+                    {
+                        "field": "sku",
+                        "row": idx,
+                        "code": "MISSING_SKU",
+                        "message": f"Fila {idx}: campo 'sku' ausente o vacío.",
+                    }
+                )
             price = row.get("price_aed", 0)
             try:
                 price_val = float(price)
             except (TypeError, ValueError):
                 price_val = 0.0
             if price_val <= 0:
-                errors.append({
-                    "field": "price_aed",
-                    "row": idx,
-                    "code": "INVALID_PRICE",
-                    "message": f"Fila {idx}: 'price_aed' debe ser > 0 (recibido: {price!r}).",
-                })
+                errors.append(
+                    {
+                        "field": "price_aed",
+                        "row": idx,
+                        "code": "INVALID_PRICE",
+                        "message": f"Fila {idx}: 'price_aed' debe ser > 0 (recibido: {price!r}).",
+                    }
+                )
         return errors
 
     # ------------------------------------------------------------------
@@ -77,7 +81,7 @@ class NoonUAEAdapter:
             rows_blocked=0,
             submission_id=f"stub-noon-{uuid4()}",
             shadow_mode=True,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={"stub": True, "scheme_code": payload.scheme_code},
         )
 
@@ -117,7 +121,7 @@ class NoonUAEAdapter:
             rows_exported=rows_exported,
             rows_blocked=rows_blocked,
             shadow_mode=False,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={"stub": True, "scheme_code": payload.scheme_code},
         )
         return csv_bytes, result

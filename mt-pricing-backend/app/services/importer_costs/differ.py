@@ -123,14 +123,10 @@ async def _load_master_sets(
         result = await session.execute(select(Product.sku).where(Product.sku.in_(skus)))
         sku_set = {row[0] for row in result.all()}
     if schemes:
-        result = await session.execute(
-            select(CostScheme.code).where(CostScheme.code.in_(schemes))
-        )
+        result = await session.execute(select(CostScheme.code).where(CostScheme.code.in_(schemes)))
         scheme_set = {row[0] for row in result.all()}
     if suppliers:
-        result = await session.execute(
-            select(Supplier.code).where(Supplier.code.in_(suppliers))
-        )
+        result = await session.execute(select(Supplier.code).where(Supplier.code.in_(suppliers)))
         supplier_set = {row[0] for row in result.all()}
 
     return sku_set, scheme_set, supplier_set
@@ -167,9 +163,7 @@ async def compute_cost_diff(
     schemes = [r.scheme_code for r in valid_rows if r.scheme_code]
     suppliers = [r.supplier_code for r in valid_rows if r.supplier_code]
 
-    sku_set, scheme_set, supplier_set = await _load_master_sets(
-        session, skus, schemes, suppliers
-    )
+    sku_set, scheme_set, supplier_set = await _load_master_sets(session, skus, schemes, suppliers)
     active_costs = await _load_active_costs(
         session,
         [(r.sku, r.scheme_code, r.supplier_code) for r in valid_rows],  # type: ignore[misc]

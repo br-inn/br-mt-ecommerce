@@ -7,7 +7,6 @@ FastAPI ad-hoc app, no DB required.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -20,6 +19,8 @@ from app.api.routes.vocabularies import (
     admin_vocab_router,
     get_app_service,
     get_cert_service,
+)
+from app.api.routes.vocabularies import (
     router as vocab_router,
 )
 from app.services.vocabularies.vocabulary_service import (
@@ -191,9 +192,7 @@ class TestAdminCertifications:
         cert_svc = MagicMock(spec=CertificationService)
         app_svc = MagicMock(spec=ApplicationService)
         cert_svc.create = AsyncMock(
-            side_effect=VocabularyDomainError(
-                "Conflict", "certification_code_conflict", 409
-            )
+            side_effect=VocabularyDomainError("Conflict", "certification_code_conflict", 409)
         )
 
         test_app = _build_app(user, cert_svc, app_svc)

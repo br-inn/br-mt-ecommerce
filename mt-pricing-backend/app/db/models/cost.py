@@ -46,7 +46,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -56,7 +55,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.db.mixins import AuditMixin, TimestampMixin, UuidPkMixin
 from app.db.types import UUID_PG
-
 
 COST_STATUSES = ("active", "superseded")
 
@@ -95,26 +93,14 @@ class Cost(UuidPkMixin, TimestampMixin, AuditMixin, Base):
     breakdown: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    scheme_landed_aed: Mapped[Decimal | None] = mapped_column(
-        Numeric(14, 4), nullable=True
-    )
-    effective_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'active'")
-    )
-    fx_inferred: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
-    version: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("1")
-    )
+    scheme_landed_aed: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
+    fx_inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('active','superseded')", name="ck_costs_status"
-        ),
+        CheckConstraint("status IN ('active','superseded')", name="ck_costs_status"),
         CheckConstraint("version >= 1", name="ck_costs_version_pos"),
         CheckConstraint(
             "scheme_landed_aed IS NULL OR scheme_landed_aed >= 0",
@@ -169,4 +155,4 @@ class Cost(UuidPkMixin, TimestampMixin, AuditMixin, Base):
         return None if self.status == "active" else self.updated_at
 
 
-__all__ = ["Cost", "COST_STATUSES"]
+__all__ = ["COST_STATUSES", "Cost"]

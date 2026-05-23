@@ -8,6 +8,7 @@ Create Date: 2026-05-24
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers
@@ -27,10 +28,17 @@ def upgrade() -> None:
         sa.Column("customer_id", sa.Text(), nullable=False),
         sa.Column("credit_limit", sa.Numeric(18, 4), nullable=True),
         sa.Column("currency", sa.CHAR(3), nullable=False, server_default=sa.text("'AED'")),
-        sa.Column("credit_horizon_days", sa.Integer(), nullable=False, server_default=sa.text("30")),
+        sa.Column(
+            "credit_horizon_days", sa.Integer(), nullable=False, server_default=sa.text("30")
+        ),
         sa.Column("is_blocked", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("block_reason", sa.Text(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id", name="pk_customer_credit_limits"),
         sa.UniqueConstraint("customer_id", name="uq_credit_limit_customer"),
     )
@@ -63,7 +71,12 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("'open'"),
         ),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id", name="pk_customer_open_items"),
         sa.CheckConstraint(
             "document_type IN ('so','invoice')",

@@ -17,10 +17,10 @@ from app.services.image_search.ris_adapters import (
 )
 from app.services.image_search.ris_boost import apply_ris_boost
 
-
 # ---------------------------------------------------------------------------
 # T9.1 — test_noop_returns_empty_hits
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_noop_returns_empty_hits() -> None:
@@ -33,6 +33,7 @@ async def test_noop_returns_empty_hits() -> None:
 # ---------------------------------------------------------------------------
 # T9.1 — test_daily_limit_reached_returns_empty
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_daily_limit_reached_returns_empty() -> None:
@@ -50,6 +51,7 @@ async def test_daily_limit_reached_returns_empty() -> None:
 # ---------------------------------------------------------------------------
 # T9.1 — test_tineye_adapter_maps_response
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_tineye_adapter_maps_response() -> None:
@@ -80,6 +82,7 @@ async def test_tineye_adapter_maps_response() -> None:
 # ---------------------------------------------------------------------------
 # T9.1 — test_apply_ris_boost_canonical_match
 # ---------------------------------------------------------------------------
+
 
 def test_apply_ris_boost_canonical_match() -> None:
     hit = ReverseImageHit(

@@ -22,7 +22,11 @@ from typing import TYPE_CHECKING
 from app.core.config import settings
 from app.services.graphrag.adapters.neo4j_stub import (
     Neo4jStubGraphStore,
+)
+from app.services.graphrag.adapters.neo4j_stub import (
     get_default_graph_store as _get_stub,
+)
+from app.services.graphrag.adapters.neo4j_stub import (
     set_default_graph_store as _set_stub,
 )
 from app.services.graphrag.ports import GraphStorePort
@@ -34,12 +38,12 @@ logger = logging.getLogger(__name__)
 
 
 _lock = threading.RLock()
-_neo4j_driver: "Driver | None" = None
+_neo4j_driver: Driver | None = None
 _neo4j_store: GraphStorePort | None = None
 _override: GraphStorePort | None = None
 
 
-def _build_neo4j_driver() -> "Driver":
+def _build_neo4j_driver() -> Driver:
     """Inicializa el driver Neo4j desde settings. Lazy import."""
     from neo4j import GraphDatabase
 
@@ -105,7 +109,7 @@ def shutdown() -> None:
         if _neo4j_driver is not None:
             try:
                 _neo4j_driver.close()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("graphrag.factory.shutdown_failed: %s", exc)
             _neo4j_driver = None
             _neo4j_store = None

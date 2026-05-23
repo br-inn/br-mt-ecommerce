@@ -24,7 +24,7 @@ import asyncio
 import logging
 import os
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from urllib.parse import quote_plus
 from uuid import UUID
@@ -86,10 +86,14 @@ class CurlCffiAmazonUaeFetcher:
         # (single value) and then to the built-in default pool.
         _pool_str = os.environ.get("SCRAPER_IMPERSONATE_POOL", "")
         if _pool_str:
-            self._impersonate_pool: list[str] = [s.strip() for s in _pool_str.split(",") if s.strip()]
+            self._impersonate_pool: list[str] = [
+                s.strip() for s in _pool_str.split(",") if s.strip()
+            ]
         else:
             _single = os.environ.get("SCRAPER_IMPERSONATE", "")
-            self._impersonate_pool = [_single] if _single else ["chrome120", "chrome124", "chrome131"]
+            self._impersonate_pool = (
+                [_single] if _single else ["chrome120", "chrome124", "chrome131"]
+            )
         self._timeout: int = int(os.environ.get("SCRAPER_TIMEOUT", _DEFAULT_TIMEOUT))
         self._proxy: str | None = os.environ.get("SCRAPER_PROXY_URL") or None
         self._brand_id: UUID | None = brand_id
@@ -106,7 +110,7 @@ class CurlCffiAmazonUaeFetcher:
         Raises:
             ScraperBlockedError: if Amazon returns 403 or redirects to CAPTCHA.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         async with self._make_session() as session:
             serp_results = await self._fetch_serp(session, query)
@@ -123,16 +127,20 @@ class CurlCffiAmazonUaeFetcher:
                 pdp_specs = await self._fetch_pdp(session, asin)
 
                 price_raw = item.get("price_aed")
-                price_aed: Decimal | None = (
-                    price_raw if isinstance(price_raw, Decimal) else None
-                )
+                price_aed: Decimal | None = price_raw if isinstance(price_raw, Decimal) else None
 
                 title = str(item.get("title") or pdp_specs.get("title_pdp") or "")
 
                 # Build specs from PDP; fall back to regex extraction from the
                 # SERP title when Amazon served a bot-challenge page (empty PDP).
-                _ADMIN_KEYS = {"title_pdp", "canonical_url", "raw_pairs", "asin",
-                               "manufacturer_part_number", "model_number"}
+                _ADMIN_KEYS = {
+                    "title_pdp",
+                    "canonical_url",
+                    "raw_pairs",
+                    "asin",
+                    "manufacturer_part_number",
+                    "model_number",
+                }
                 specs = {k: v for k, v in pdp_specs.items() if k not in _ADMIN_KEYS}
 
                 # Apply brand-specific attribute mapping if available (US-SCR-05-01).
@@ -141,20 +149,23 @@ class CurlCffiAmazonUaeFetcher:
                 if _raw_pairs_for_mapping and self._brand_id:
                     try:
                         from app.services.scraper.brand_extractor_service import (
-                            BrandExtractorService, apply_mapping,
+                            apply_mapping,
                         )
+
                         _mapped = apply_mapping(self._brand_attribute_map, _raw_pairs_for_mapping)
                         if _mapped:
                             specs.update(_mapped)
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         pass  # fallback to generic extraction silently
 
                 if not specs and title:
                     raw_pairs: list[dict] = []
                     _extract_specs_from_title(title, raw_pairs)
                     from app.services.matching.extractors.pdp_extractor import (
-                        LABEL_TO_KEY, _normalize_label,
+                        LABEL_TO_KEY,
+                        _normalize_label,
                     )
+
                     for pair in raw_pairs:
                         key = LABEL_TO_KEY.get(_normalize_label(pair["label"]))
                         if key:
@@ -166,7 +177,7 @@ class CurlCffiAmazonUaeFetcher:
                     if pdp_price_raw:
                         try:
                             price_aed = Decimal(str(pdp_price_raw))
-                        except Exception:  # noqa: BLE001
+                        except Exception:
                             pass
 
                 candidates.append(
@@ -237,7 +248,7 @@ class CurlCffiAmazonUaeFetcher:
             return extract_pdp_specs(resp.text)
         except ScraperBlockedError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # PDP failures are non-fatal — return empty specs rather than
             # aborting the entire fetch.
             logger.warning(

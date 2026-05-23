@@ -45,29 +45,29 @@ logger = logging.getLogger(__name__)
 # Default denylist — se complementa con `settings.SSRF_EXTRA_BLOCKED_CIDRS`.
 # Servidor en AWS EC2: el IMDS endpoint 169.254.169.254 ya está bloqueado por el rango 169.254.0.0/16.
 _DEFAULT_BLOCKED_CIDRS_V4: Final[tuple[str, ...]] = (
-    "0.0.0.0/8",          # current network (RFC 1700)
-    "10.0.0.0/8",         # RFC 1918 private
-    "100.64.0.0/10",      # RFC 6598 carrier-grade NAT
-    "127.0.0.0/8",        # loopback
-    "169.254.0.0/16",     # link-local (incl. AWS/GCP IMDS 169.254.169.254)
-    "172.16.0.0/12",      # RFC 1918 private
-    "192.0.0.0/24",       # IETF protocol assignments
-    "192.0.2.0/24",       # TEST-NET-1
-    "192.168.0.0/16",     # RFC 1918 private
-    "198.18.0.0/15",      # benchmarking (RFC 2544)
-    "198.51.100.0/24",    # TEST-NET-2
-    "203.0.113.0/24",     # TEST-NET-3
-    "224.0.0.0/4",        # multicast
-    "240.0.0.0/4",        # reserved (incl. broadcast 255.255.255.255)
+    "0.0.0.0/8",  # current network (RFC 1700)
+    "10.0.0.0/8",  # RFC 1918 private
+    "100.64.0.0/10",  # RFC 6598 carrier-grade NAT
+    "127.0.0.0/8",  # loopback
+    "169.254.0.0/16",  # link-local (incl. AWS/GCP IMDS 169.254.169.254)
+    "172.16.0.0/12",  # RFC 1918 private
+    "192.0.0.0/24",  # IETF protocol assignments
+    "192.0.2.0/24",  # TEST-NET-1
+    "192.168.0.0/16",  # RFC 1918 private
+    "198.18.0.0/15",  # benchmarking (RFC 2544)
+    "198.51.100.0/24",  # TEST-NET-2
+    "203.0.113.0/24",  # TEST-NET-3
+    "224.0.0.0/4",  # multicast
+    "240.0.0.0/4",  # reserved (incl. broadcast 255.255.255.255)
 )
 _DEFAULT_BLOCKED_CIDRS_V6: Final[tuple[str, ...]] = (
-    "::/128",             # unspecified
-    "::1/128",            # loopback
-    "::ffff:0:0/96",      # IPv4-mapped — re-checked after extracting v4
-    "64:ff9b::/96",       # NAT64 well-known
-    "fc00::/7",           # ULA private
-    "fe80::/10",          # link-local
-    "ff00::/8",           # multicast
+    "::/128",  # unspecified
+    "::1/128",  # loopback
+    "::ffff:0:0/96",  # IPv4-mapped — re-checked after extracting v4
+    "64:ff9b::/96",  # NAT64 well-known
+    "fc00::/7",  # ULA private
+    "fe80::/10",  # link-local
+    "ff00::/8",  # multicast
 )
 
 ALLOWED_SCHEMES: Final[frozenset[str]] = frozenset({"https"})
@@ -217,11 +217,7 @@ def _is_pim_es_host(host: str) -> bool:
 
 def _detect_mime(prefix_bytes: bytes) -> str | None:
     """Detección por magic bytes — devuelve MIME o None."""
-    if (
-        len(prefix_bytes) >= 12
-        and prefix_bytes[:4] == b"RIFF"
-        and prefix_bytes[8:12] == b"WEBP"
-    ):
+    if len(prefix_bytes) >= 12 and prefix_bytes[:4] == b"RIFF" and prefix_bytes[8:12] == b"WEBP":
         return "image/webp"
     for mime, prefixes in _MAGIC_PREFIXES.items():
         if mime == "image/webp":
@@ -324,7 +320,11 @@ def safe_fetch_image(
     """
     import hashlib
 
-    max_bytes = max_bytes if max_bytes is not None else getattr(settings, "SSRF_MAX_BYTES", 10 * 1024 * 1024)
+    max_bytes = (
+        max_bytes
+        if max_bytes is not None
+        else getattr(settings, "SSRF_MAX_BYTES", 10 * 1024 * 1024)
+    )
     max_redirects = (
         max_redirects if max_redirects is not None else getattr(settings, "SSRF_MAX_REDIRECTS", 3)
     )

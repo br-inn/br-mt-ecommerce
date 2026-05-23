@@ -20,6 +20,7 @@ Endpoints:
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -295,7 +296,11 @@ async def approve_price(
     "/prices/{price_id}/reject",
     response_model=PriceResponse,
     summary="Rechaza precio con razón obligatoria",
-    responses={404: {"model": ProblemDetails}, 409: {"model": ProblemDetails}, 422: {"model": ProblemDetails}},
+    responses={
+        404: {"model": ProblemDetails},
+        409: {"model": ProblemDetails},
+        422: {"model": ProblemDetails},
+    },
 )
 async def reject_price(
     price_id: UUID,
@@ -323,9 +328,7 @@ async def revise_price(
     service: Annotated[PricingService, Depends(get_pricing_service)],
 ) -> PriceResponse:
     try:
-        price = await service.revise(
-            price_id, user, new_amount=data.new_amount, reason=data.reason
-        )
+        price = await service.revise(price_id, user, new_amount=data.new_amount, reason=data.reason)
     except PricingDomainError as exc:
         _raise_domain(exc)
     return PriceResponse.model_validate(price)
@@ -422,7 +425,7 @@ async def update_channel_state(
             status_code=404,
             detail={"code": "channel_not_found", "title": f"Canal {code!r} no existe"},
         )
-    from datetime import datetime, timezone as _tz
+    from datetime import datetime
 
     old_state = channel.state
     history = list(channel.state_history or [])
@@ -430,7 +433,7 @@ async def update_channel_state(
         {
             "from": old_state,
             "to": data.state,
-            "at": datetime.now(tz=_tz.utc).isoformat(),
+            "at": datetime.now(tz=UTC).isoformat(),
             "by": str(user.id),
             "reason": data.reason,
         }
@@ -493,9 +496,9 @@ async def create_fx_rate(
     repo = FXRateRepository(session)
 
     # Cierra el período del rate anterior (efectivo) si existe.
-    from datetime import datetime, timezone as _tz
+    from datetime import datetime
 
-    effective_from = data.effective_from or datetime.now(tz=_tz.utc)
+    effective_from = data.effective_from or datetime.now(tz=UTC)
     current = await repo.get_active(
         data.from_currency.upper(), data.to_currency.upper(), as_of=effective_from
     )

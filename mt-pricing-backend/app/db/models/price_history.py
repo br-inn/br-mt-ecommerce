@@ -5,6 +5,7 @@ las particiones físicas. El modelo SQLAlchemy apunta a la tabla padre
 ``price_history_raw`` para lecturas/escrituras; PG enruta automáticamente
 a la partición correcta al insertar.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -26,7 +27,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
 
@@ -61,9 +61,7 @@ class PriceHistoryRaw(Base):
     )
     marketplace: Mapped[str] = mapped_column(String(32), nullable=False)
     price_aed: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
-    currency: Mapped[str] = mapped_column(
-        String(3), nullable=False, server_default=text("'AED'")
-    )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'AED'"))
     scraped_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

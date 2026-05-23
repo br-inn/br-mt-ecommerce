@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from app.services.currencies.currency_service import (
+    CannotDeactivateBaseCurrencyError,
     CurrencyDomainError,
     CurrencyNotFoundError,
     CurrencyService,
-    CannotDeactivateBaseCurrencyError,
 )
 
 __all__ = [
-    "CurrencyService",
+    "CannotDeactivateBaseCurrencyError",
     "CurrencyDomainError",
     "CurrencyNotFoundError",
-    "CannotDeactivateBaseCurrencyError",
+    "CurrencyService",
 ]

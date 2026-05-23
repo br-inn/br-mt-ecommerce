@@ -104,6 +104,7 @@ def _sign_hash(last_hash: str, signing_key_b64: str) -> str:
 # Lógica de verificación (compartida con el endpoint GET /audit/verify)
 # ---------------------------------------------------------------------------
 
+
 def verify_chain_range(
     conn: Any,
     range_start: datetime,
@@ -170,6 +171,7 @@ def verify_chain_range(
 # Celery task
 # ---------------------------------------------------------------------------
 
+
 @celery_app.task(
     name="audit.nightly_integrity_check",
     queue="default",
@@ -179,7 +181,7 @@ def verify_chain_range(
     retry_backoff=True,
     retry_kwargs={"max_retries": 2},
 )
-def nightly_integrity_check(self: Any) -> dict[str, Any]:  # noqa: ANN001
+def nightly_integrity_check(self: Any) -> dict[str, Any]:
     """Verifica integridad del hash chain del día anterior y firma el último hash.
 
     Cron: 0 3 * * * Asia/Dubai (23:00 UTC). Registrado en job_definitions

@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -78,9 +78,7 @@ async def verify_basic_auth_or_token(
 
     # Intento 2: basic-auth.
     if credentials is not None:
-        user_ok = secrets.compare_digest(
-            credentials.username, settings.HEALTH_BASIC_AUTH_USER
-        )
+        user_ok = secrets.compare_digest(credentials.username, settings.HEALTH_BASIC_AUTH_USER)
         pass_ok = secrets.compare_digest(
             credentials.password,
             settings.HEALTH_BASIC_AUTH_PASSWORD.get_secret_value(),
@@ -112,7 +110,7 @@ async def liveness() -> dict[str, str]:
         "status": "ok",
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
     }
 
 
@@ -144,14 +142,12 @@ async def readiness() -> JSONResponse:
     }
     # Excluir checks "skipped" del cálculo de salud (downstream opcional sin URL).
     failed = [c for c in checks.values() if not c.get("ok") and not c.get("skipped")]
-    status_code = (
-        status.HTTP_200_OK if not failed else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
+    status_code = status.HTTP_200_OK if not failed else status.HTTP_503_SERVICE_UNAVAILABLE
     return JSONResponse(
         status_code=status_code,
         content={
             "status": "ok" if not failed else "degraded",
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "checks": checks,
         },
     )
@@ -186,13 +182,11 @@ async def deep_db() -> dict[str, Any]:
             "pool": {
                 "size": pool.size() if hasattr(pool, "size") else None,
                 "checked_in": pool.checkedin() if hasattr(pool, "checkedin") else None,
-                "checked_out": pool.checkedout()
-                if hasattr(pool, "checkedout")
-                else None,
+                "checked_out": pool.checkedout() if hasattr(pool, "checkedout") else None,
                 "overflow": pool.overflow() if hasattr(pool, "overflow") else None,
             },
         }
-    except Exception as exc:  # noqa: BLE001 — health debe ser robusto
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -210,15 +204,13 @@ async def deep_redis() -> dict[str, Any]:
             info = await client.info(section="server")
         # `info` puede venir como bytes-keyed dict — normalizar.
         version = info.get("redis_version") if isinstance(info, dict) else None
-        uptime = (
-            info.get("uptime_in_seconds") if isinstance(info, dict) else None
-        )
+        uptime = info.get("uptime_in_seconds") if isinstance(info, dict) else None
         return {
             "ok": bool(pong),
             "redis_version": version,
             "uptime_in_seconds": uptime,
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -241,7 +233,7 @@ async def deep_storage() -> dict[str, Any]:
             "bucket": bucket,
             "list_count": len(files) if files is not None else 0,
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {
             "ok": False,
             "bucket": bucket,
@@ -254,7 +246,8 @@ def _list_bucket_one_file(bucket: str) -> list[Any]:
     """Wrapper síncrono — supabase-py no es async."""
     client = get_supabase_admin()
     return client.storage.from_(bucket).list(
-        path="", options={"limit": 1}  # type: ignore[arg-type]
+        path="",
+        options={"limit": 1},  # type: ignore[arg-type]
     )
 
 
@@ -279,14 +272,14 @@ async def celery_health() -> dict[str, Any]:
         async with asyncio.timeout(2.0):
             keys = [f"mt:worker:heartbeat:{q}" for q in _CELERY_QUEUES]
             values = await client.mget(keys)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {
             "ok": False,
             "error": type(exc).__name__,
             "detail": str(exc)[:200],
         }
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for queue, raw in zip(_CELERY_QUEUES, values, strict=True):
         if not raw:
             heartbeats[queue] = {"alive": False, "last_seen": None, "age_seconds": None}
@@ -296,7 +289,7 @@ async def celery_health() -> dict[str, Any]:
         try:
             last_seen = datetime.fromisoformat(text_val)
             if last_seen.tzinfo is None:
-                last_seen = last_seen.replace(tzinfo=timezone.utc)
+                last_seen = last_seen.replace(tzinfo=UTC)
         except ValueError:
             heartbeats[queue] = {
                 "alive": False,
@@ -327,7 +320,7 @@ async def _check_db(*, timeout: float) -> dict[str, Any]:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
         return {"ok": True}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -338,7 +331,7 @@ async def _check_redis(*, timeout: float) -> dict[str, Any]:
         async with asyncio.timeout(timeout):
             pong = await client.ping()
         return {"ok": bool(pong)}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -355,10 +348,10 @@ async def _check_supabase_auth(*, timeout: float) -> dict[str, Any]:
         # Import diferido — sólo cargamos httpx si el chequeo está habilitado.
         import httpx
 
-        async with asyncio.timeout(timeout):  # noqa: SIM117 — timeout context separado
+        async with asyncio.timeout(timeout):
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.get(url)
         ok = 200 <= resp.status_code < 300
         return {"ok": ok, "status_code": resp.status_code}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}

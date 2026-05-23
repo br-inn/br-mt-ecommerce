@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "097"
@@ -30,10 +31,7 @@ def upgrade() -> None:
     # máxima compatibilidad usamos COMMIT / BEGIN explícito.
     # ------------------------------------------------------------------
     op.execute("COMMIT")
-    op.execute(
-        "ALTER TYPE lifecycle_status ADD VALUE IF NOT EXISTS 'in_review' "
-        "AFTER 'draft'"
-    )
+    op.execute("ALTER TYPE lifecycle_status ADD VALUE IF NOT EXISTS 'in_review' AFTER 'draft'")
     op.execute("BEGIN")
 
     # ------------------------------------------------------------------

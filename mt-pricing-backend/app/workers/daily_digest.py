@@ -15,7 +15,7 @@ import asyncio
 import logging
 import smtplib
 import ssl
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -36,9 +36,7 @@ DIGEST_NOTIFICATION_KIND = "pricing.daily_digest"
 MANAGER_ROLE_CODE = "gerente_comercial"
 
 # Ruta al template HTML (relativa al paquete)
-_TEMPLATE_PATH = (
-    Path(__file__).parent.parent / "templates" / "email" / "daily_digest.html"
-)
+_TEMPLATE_PATH = Path(__file__).parent.parent / "templates" / "email" / "daily_digest.html"
 
 
 def _render_email(summary: dict) -> str:
@@ -71,6 +69,7 @@ def _render_email(summary: dict) -> str:
 
     # Eliminar bloques de plantilla originales (template usa {% if %} que no procesamos)
     import re
+
     # Quitar bloques {% if ... %} ... {% endif %} del template
     template = re.sub(r"\{%.*?%\}", "", template, flags=re.DOTALL)
 
@@ -88,9 +87,8 @@ def _render_email(summary: dict) -> str:
 
     # Inyectar bloques condicionales tras la tabla
     template = template.replace(
-        '<a href=',
-        f"{pending_block}{escalated_block}"
-        '<a href=',
+        "<a href=",
+        f"{pending_block}{escalated_block}<a href=",
         1,
     )
     return template
@@ -183,7 +181,7 @@ async def _run_async(target_date: date) -> dict:
     max_retries=3,
 )
 def daily_digest(
-    self: Any,  # noqa: ANN401 — celery bound task
+    self: Any,
     target_date_iso: str | None = None,
 ) -> dict:
     """Genera y distribuye el digest diario de precios.
@@ -192,11 +190,7 @@ def daily_digest(
         target_date_iso: fecha ISO-8601 opcional (e.g. "2026-05-12"). Si None,
             usa la fecha UTC actual. Útil para re-runs manuales o tests.
     """
-    target = (
-        date.fromisoformat(target_date_iso)
-        if target_date_iso
-        else datetime.now(tz=timezone.utc).date()
-    )
+    target = date.fromisoformat(target_date_iso) if target_date_iso else datetime.now(tz=UTC).date()
     result = asyncio.run(_run_async(target))
     logger.info(
         "daily_digest: date=%s pending=%d auto_approved=%d approved=%d escalated=%d notifications=%d emails=%d",

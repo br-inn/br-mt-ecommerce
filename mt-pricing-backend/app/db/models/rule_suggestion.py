@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from uuid import UUID
+
 from sqlalchemy import CheckConstraint, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UuidPkMixin
 from app.db.types import UUID_PG
@@ -19,9 +22,7 @@ class RuleSuggestion(UuidPkMixin, TimestampMixin, Base):
     proposed_change: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'pending'")
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
 
     __table_args__ = (
         CheckConstraint(

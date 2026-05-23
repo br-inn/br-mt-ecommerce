@@ -29,8 +29,11 @@ async def test_scrape_source_async_upserts_listings(db_session):
 
     repo = ScraperSourceRepository(db_session)
     source = await repo.create(
-        name="ACME", slug="acme-task", base_url="https://acme.example",
-        destination_profile="competitor_price", competitor_brand_id=brand.id,
+        name="ACME",
+        slug="acme-task",
+        base_url="https://acme.example",
+        destination_profile="competitor_price",
+        competitor_brand_id=brand.id,
     )
     recipe_row = await repo.add_recipe(source.id, _RECIPE)
     await repo.set_recipe_live(recipe_row.id)

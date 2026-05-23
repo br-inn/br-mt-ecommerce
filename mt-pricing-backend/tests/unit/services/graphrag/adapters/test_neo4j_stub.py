@@ -72,11 +72,19 @@ def test_merge_edge_auto_creates_endpoints() -> None:
 def test_merge_edge_idempotent_props_merged() -> None:
     store = Neo4jStubGraphStore()
     e1 = GraphEdge(
-        src_label="A", src_pk="1", type="REL", dst_label="B", dst_pk="2",
+        src_label="A",
+        src_pk="1",
+        type="REL",
+        dst_label="B",
+        dst_pk="2",
         properties={"score": 10},
     )
     e2 = GraphEdge(
-        src_label="A", src_pk="1", type="REL", dst_label="B", dst_pk="2",
+        src_label="A",
+        src_pk="1",
+        type="REL",
+        dst_label="B",
+        dst_pk="2",
         properties={"weight": 0.5},
     )
     store.merge_edge(e1)
@@ -90,14 +98,20 @@ def test_query_neighbors_filters_by_edge_type() -> None:
     store = Neo4jStubGraphStore()
     store.merge_edge(
         GraphEdge(
-            src_label="P", src_pk="X",
-            type="MADE_OF", dst_label="M", dst_pk="brass",
+            src_label="P",
+            src_pk="X",
+            type="MADE_OF",
+            dst_label="M",
+            dst_pk="brass",
         )
     )
     store.merge_edge(
         GraphEdge(
-            src_label="P", src_pk="X",
-            type="BRANDED", dst_label="Mfr", dst_pk="Pegler",
+            src_label="P",
+            src_pk="X",
+            type="BRANDED",
+            dst_label="Mfr",
+            dst_pk="Pegler",
         )
     )
     only_made = store.query_neighbors("P", "X", edge_type="MADE_OF")
@@ -112,12 +126,8 @@ def test_query_neighbors_unknown_returns_empty() -> None:
 
 def test_delete_subgraph_removes_node_and_incident_edges() -> None:
     store = Neo4jStubGraphStore()
-    store.merge_edge(
-        GraphEdge(src_label="P", src_pk="X", type="R", dst_label="Q", dst_pk="Y")
-    )
-    store.merge_edge(
-        GraphEdge(src_label="Q", src_pk="Y", type="R2", dst_label="Z", dst_pk="W")
-    )
+    store.merge_edge(GraphEdge(src_label="P", src_pk="X", type="R", dst_label="Q", dst_pk="Y"))
+    store.merge_edge(GraphEdge(src_label="Q", src_pk="Y", type="R2", dst_label="Z", dst_pk="W"))
     store.delete_subgraph("Q", "Y")
     # Queda P y Z (auto-creado), no queda Q.
     assert store.edge_count == 0

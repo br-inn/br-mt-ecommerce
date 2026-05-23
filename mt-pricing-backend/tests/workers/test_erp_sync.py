@@ -28,8 +28,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---- Helpers -----------------------------------------------------------------
+
 
 def _make_event(
     *,
@@ -93,6 +93,7 @@ def _make_settings(adapter: str = "noop", secret: str = "") -> MagicMock:
 
 
 # ---- Tests -------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @pytest.mark.unit

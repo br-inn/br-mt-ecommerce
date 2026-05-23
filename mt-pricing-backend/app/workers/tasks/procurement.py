@@ -11,16 +11,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from app.workers.worker import celery_app
 
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -43,18 +42,16 @@ def check_approval_timeouts(self: Any) -> None:
 
 
 async def _do_check_timeouts() -> None:
-    from sqlalchemy import or_, select
+    from sqlalchemy import select
 
     from app.db.engine import get_sessionmaker
     from app.db.models.procurement import ApprovalDecision, ApprovalRule, PurchaseRequisition
 
     async with get_sessionmaker()() as session:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Cargar PRs en pending_approval
-        stmt = select(PurchaseRequisition).where(
-            PurchaseRequisition.status == "pending_approval"
-        )
+        stmt = select(PurchaseRequisition).where(PurchaseRequisition.status == "pending_approval")
         prs = list((await session.execute(stmt)).scalars().all())
 
         for pr in prs:
@@ -75,7 +72,7 @@ async def _do_check_timeouts() -> None:
             if rule.timeout_hours == 0:
                 continue
 
-            deadline = pr.updated_at.replace(tzinfo=timezone.utc) + timeout_delta
+            deadline = pr.updated_at.replace(tzinfo=UTC) + timeout_delta
             if now < deadline:
                 continue
 

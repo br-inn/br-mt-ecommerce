@@ -19,6 +19,21 @@
 - Secrets: `.env.local` en cada subproyecto (no Doppler)
 - Smoke tests contra `localhost:3000` (frontend) + `localhost:8000` (backend) + `localhost:54321` (supabase)
 
+### Pre-commit (backend)
+
+El backend tiene `.pre-commit-config.yaml` que ejecuta `ruff check --fix` + `ruff format` en cada commit.
+Instalarlo una sola vez en el entorno Linux/Mac del backend:
+
+```bash
+cd mt-pricing-backend
+pip install pre-commit        # o uv pip install pre-commit
+pre-commit install
+```
+
+Verificar manualmente: `pre-commit run --all-files`
+
+> En Windows el hook se omite (sin bash); la validación de ruff sigue corriendo en CI.
+
 ## Post-Change Deploy
 
 Antes de reportar una tarea completa, redesplegar los contenedores afectados:

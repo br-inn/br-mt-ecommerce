@@ -6,6 +6,7 @@ hard blockers (rechazo automático del match).
 
 El perfil ``_default`` se usa cuando no existe uno específico para la familia.
 """
+
 from __future__ import annotations
 
 from sqlalchemy import CheckConstraint, Text, text
@@ -30,9 +31,7 @@ class TaxonomyProfile(UuidPkMixin, TimestampMixin, Base):
     )
     description: Mapped[str | None] = mapped_column(Text)
 
-    __table_args__ = (
-        CheckConstraint("family != ''", name="ck_taxonomy_profiles_family_nonempty"),
-    )
+    __table_args__ = (CheckConstraint("family != ''", name="ck_taxonomy_profiles_family_nonempty"),)
 
 
 __all__ = ["TaxonomyProfile"]

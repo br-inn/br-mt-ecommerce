@@ -41,9 +41,7 @@ class _FakeRedis:
         self._buckets: dict[str, dict[str, float]] = {}
         self._fail = fail
 
-    def eval(  # noqa: ANN201 — match redis-py signature
-        self, script: str, num_keys: int, *args: Any
-    ) -> list[Any]:
+    def eval(self, script: str, num_keys: int, *args: Any) -> list[Any]:
         if self._fail:
             raise RuntimeError("simulated redis failure")
         keys = list(args[:num_keys])
@@ -54,9 +52,7 @@ class _FakeRedis:
         now = float(argv[2])
         cost = float(argv[3])
 
-        bucket = self._buckets.setdefault(
-            key, {"tokens": capacity, "ts": now}
-        )
+        bucket = self._buckets.setdefault(key, {"tokens": capacity, "ts": now})
         delta = max(0.0, now - bucket["ts"])
         tokens = min(capacity, bucket["tokens"] + delta * refill)
 
@@ -85,9 +81,7 @@ async def test_token_bucket_burst_then_denies() -> None:
 
     results = []
     for _ in range(5):
-        allowed, _tok, _retry = await limiter.check(
-            scope="default", client_id="alice", now=1000.0
-        )
+        allowed, _tok, _retry = await limiter.check(scope="default", client_id="alice", now=1000.0)
         results.append(allowed)
     assert results == [True, True, True, False, False]
 
@@ -109,12 +103,8 @@ async def test_token_bucket_refills_over_time() -> None:
     assert (a1, a2, a3) == (True, True, False)
 
     # Tras 2s deberían haberse repuesto 2 tokens.
-    a4, _tok, _r = await limiter.check(
-        scope="default", client_id="bob", now=102.0
-    )
-    a5, _tok, _r = await limiter.check(
-        scope="default", client_id="bob", now=102.0
-    )
+    a4, _tok, _r = await limiter.check(scope="default", client_id="bob", now=102.0)
+    a5, _tok, _r = await limiter.check(scope="default", client_id="bob", now=102.0)
     assert (a4, a5) == (True, True)
 
 
@@ -141,9 +131,7 @@ async def test_fails_open_on_redis_error() -> None:
     redis = _FakeRedis(fail=True)
     limiter = TokenBucketLimiter(redis)
 
-    allowed, tokens, retry = await limiter.check(
-        scope="default", client_id="ip:1.2.3.4"
-    )
+    allowed, tokens, retry = await limiter.check(scope="default", client_id="ip:1.2.3.4")
     assert allowed is True
     assert tokens == float(DEFAULT_POLICIES["default"].capacity)
     assert retry == 0.0

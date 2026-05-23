@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExtractedScalars(BaseModel):
     """Campos escalares extraídos del PDF — mapean 1:1 a ProductPatch."""
+
     model_config = ConfigDict(extra="allow")
 
     family: str | None = None
@@ -80,10 +82,11 @@ class ExtractedSpecs(BaseModel):
 
 class ExtractedCertificate(BaseModel):
     """Certificado emitido detectado en el PDF."""
+
     certification_code: str  # e.g. "ACS", "WRAS", "PZH", "CE"
     cert_number: str | None = None
     issuer: str | None = None
-    issued_at: str | None = None   # ISO date string "YYYY-MM-DD"
+    issued_at: str | None = None  # ISO date string "YYYY-MM-DD"
     expires_at: str | None = None  # ISO date string "YYYY-MM-DD"
     signatory_name: str | None = None
     signatory_role: str | None = None
@@ -91,6 +94,7 @@ class ExtractedCertificate(BaseModel):
 
 class ExtractedFlowData(BaseModel):
     """Coeficiente de flujo Kv/Cv + malla por DN."""
+
     dn_label: str
     kv: float | None = None
     cv: float | None = None
@@ -131,6 +135,7 @@ class FieldDiff(BaseModel):
 
 class SkuDiffResult(BaseModel):
     """Diffs de un SKU concreto dentro de la serie."""
+
     sku: str
     status: Literal["existing", "new"] = "existing"
     diffs: list[FieldDiff]
@@ -139,11 +144,11 @@ class SkuDiffResult(BaseModel):
 class FichaEnrichPreviewResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    sku: str          # SKU anchor (el del URL)
-    series: str       # prefijo de serie detectado, ej. "4097"
+    sku: str  # SKU anchor (el del URL)
+    series: str  # prefijo de serie detectado, ej. "4097"
     filename: str
     extraction: FichaExtractionResult
-    series_skus: list[SkuDiffResult]   # un entry por cada SKU de la serie
+    series_skus: list[SkuDiffResult]  # un entry por cada SKU de la serie
     model_gaps: list[str]
     page_count: int
     confidence: float
@@ -153,9 +158,7 @@ class FichaEnrichApplyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     extraction: FichaExtractionResult
-    apply_to_skus: list[str] = Field(
-        description="SKUs a los que aplicar. Vacío = ninguno."
-    )
+    apply_to_skus: list[str] = Field(description="SKUs a los que aplicar. Vacío = ninguno.")
     apply_scalars: bool = True
     apply_specs: bool = True
     apply_materials: bool = True
@@ -171,6 +174,7 @@ class FichaEnrichApplyRequest(BaseModel):
 
 class SkuApplyResult(BaseModel):
     """Resultado de aplicar la extracción a un SKU concreto."""
+
     sku: str
     applied_fields: list[str]
     skipped_fields: list[str]
@@ -186,6 +190,7 @@ class FichaEnrichApplyResponse(BaseModel):
 
 class SeriesGroupResult(BaseModel):
     """Grupo de serie base + variante de color opcional (ej. 4097 rojo + 40972 azul)."""
+
     base_series: str
     variant_series: str | None = None
     base_skus: list[SkuDiffResult]
@@ -194,12 +199,13 @@ class SeriesGroupResult(BaseModel):
 
 class FichaSeriesPreviewResponse(BaseModel):
     """Respuesta de preview serie-level (sin SKU anchor)."""
+
     model_config = ConfigDict(extra="ignore")
 
     series: str
     filename: str
     extraction: FichaExtractionResult
-    series_skus: list[SkuDiffResult]          # todos los SKUs flat (compat)
+    series_skus: list[SkuDiffResult]  # todos los SKUs flat (compat)
     series_groups: list[SeriesGroupResult] = Field(default_factory=list)  # agrupados
     detected_series: list[str] = Field(default_factory=list)
     model_gaps: list[str]
@@ -244,24 +250,24 @@ class FichaSeriesApplyResponse(BaseModel):
 
 
 __all__ = [
-    "ExtractedScalars",
-    "ExtractedMaterial",
-    "ExtractedDimensionRow",
-    "ExtractedTranslation",
-    "PageClassification",
     "ExtractedAsset",
-    "ExtractedSpecs",
     "ExtractedCertificate",
+    "ExtractedDimensionRow",
     "ExtractedFlowData",
-    "FichaExtractionResult",
-    "FieldDiff",
-    "SkuDiffResult",
-    "SeriesGroupResult",
-    "FichaEnrichPreviewResponse",
+    "ExtractedMaterial",
+    "ExtractedScalars",
+    "ExtractedSpecs",
+    "ExtractedTranslation",
     "FichaEnrichApplyRequest",
-    "SkuApplyResult",
     "FichaEnrichApplyResponse",
-    "FichaSeriesPreviewResponse",
+    "FichaEnrichPreviewResponse",
+    "FichaExtractionResult",
     "FichaSeriesApplyRequest",
     "FichaSeriesApplyResponse",
+    "FichaSeriesPreviewResponse",
+    "FieldDiff",
+    "PageClassification",
+    "SeriesGroupResult",
+    "SkuApplyResult",
+    "SkuDiffResult",
 ]

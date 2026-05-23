@@ -8,17 +8,16 @@ Tests — US-F15-02-03 (mig. 075):
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.services.image_search.ris_boost import get_canonical_domains
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_session(
     brand_for_sku: str | None,
@@ -37,9 +36,7 @@ def _make_session(
     # Resultado 2: iteración de filas de ManufacturerWhitelist.canonical_domains
     # rows retorna una lista de tuplas (domains_list,)
     whitelist_result = MagicMock()
-    whitelist_result.__iter__ = MagicMock(
-        return_value=iter([(row,) for row in whitelist_rows])
-    )
+    whitelist_result.__iter__ = MagicMock(return_value=iter([(row,) for row in whitelist_rows]))
 
     session.execute = AsyncMock(side_effect=[brand_scalar_result, whitelist_result])
     return session
@@ -48,6 +45,7 @@ def _make_session(
 # ---------------------------------------------------------------------------
 # T_DOMAINS_KNOWN_BRAND — fila existente → frozenset con dominios
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_canonical_domains_returns_frozenset_for_known_brand() -> None:
@@ -68,6 +66,7 @@ async def test_get_canonical_domains_returns_frozenset_for_known_brand() -> None
 # T_DOMAINS_UNKNOWN_BRAND — sin filas → frozenset()
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_canonical_domains_returns_empty_for_unknown_brand() -> None:
     """Dado un SKU cuyo brand no está en manufacturers_whitelist, retorna frozenset()."""
@@ -86,6 +85,7 @@ async def test_get_canonical_domains_returns_empty_for_unknown_brand() -> None:
 # T_DOMAINS_ALIAS_MATCH — match por alias → frozenset con dominios
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_canonical_domains_uses_brand_aliases() -> None:
     """Dado un SKU con brand='Heimeier' (alias de IMI), retorna dominios de IMI."""
@@ -103,6 +103,7 @@ async def test_get_canonical_domains_uses_brand_aliases() -> None:
 # ---------------------------------------------------------------------------
 # Edge case: brand es None → frozenset() sin llamar whitelist
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_canonical_domains_returns_empty_when_brand_is_none() -> None:

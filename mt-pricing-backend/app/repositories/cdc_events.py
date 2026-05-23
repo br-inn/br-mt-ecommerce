@@ -30,9 +30,7 @@ class CdcEventsRepository:
         payload: dict[str, Any] | None = None,
     ) -> CdcEvent:
         if action not in CDC_EVENT_ACTIONS:
-            raise ValueError(
-                f"action='{action}' no soportada. Esperaba {CDC_EVENT_ACTIONS}."
-            )
+            raise ValueError(f"action='{action}' no soportada. Esperaba {CDC_EVENT_ACTIONS}.")
         row = CdcEvent(
             entity_type=entity_type,
             entity_id=entity_id,

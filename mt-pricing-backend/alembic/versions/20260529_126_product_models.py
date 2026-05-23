@@ -1,9 +1,11 @@
 """product_models + model_dimension_rows + model_flow_data + model_tech_tables"""
+
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260529_126"
 down_revision = "20260528_125"
@@ -22,8 +24,18 @@ def upgrade() -> None:
         sa.Column("thread_standard", sa.String(32), nullable=True),
         sa.Column("active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
         sa.Column("variant_of_id", sa.UUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["series_id"], ["series.id"], ondelete="RESTRICT"),
         sa.ForeignKeyConstraint(["variant_of_id"], ["product_models.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
@@ -39,9 +51,16 @@ def upgrade() -> None:
         sa.Column("model_id", sa.UUID(), nullable=False),
         sa.Column("dn_mm", sa.Integer(), nullable=False),
         sa.Column("dn_secondary_mm", sa.Integer(), nullable=True),
-        sa.Column("dimensions", postgresql.JSONB(), server_default=sa.text("'{}'::jsonb"), nullable=False),
+        sa.Column(
+            "dimensions", postgresql.JSONB(), server_default=sa.text("'{}'::jsonb"), nullable=False
+        ),
         sa.Column("source", sa.Text(), server_default=sa.text("'manual'"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["model_id"], ["product_models.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("model_id", "dn_mm", "dn_secondary_mm", name="uq_model_dim_rows"),
@@ -57,7 +76,12 @@ def upgrade() -> None:
         sa.Column("kv", sa.Numeric(10, 3), nullable=True),
         sa.Column("cv", sa.Numeric(10, 3), nullable=True),
         sa.Column("mesh_mm", sa.Numeric(6, 2), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["model_id"], ["product_models.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("model_id", "dn_mm", "mesh_mm", name="uq_model_flow"),
@@ -72,8 +96,15 @@ def upgrade() -> None:
         sa.Column("gasket_material", sa.Text(), nullable=True),
         sa.Column("schema_version", sa.Text(), server_default=sa.text("'v1'"), nullable=False),
         sa.Column("source", sa.Text(), server_default=sa.text("'manual'"), nullable=False),
-        sa.Column("data", postgresql.JSONB(), server_default=sa.text("'{}'::jsonb"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "data", postgresql.JSONB(), server_default=sa.text("'{}'::jsonb"), nullable=False
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["model_id"], ["product_models.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("model_id", "kind", "gasket_material", name="uq_model_tech_table"),

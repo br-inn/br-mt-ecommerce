@@ -49,7 +49,7 @@ async def erp_health(
             "healthy": healthy,
             "checked_at": datetime.now(UTC).isoformat(),
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("[ERP:health] adapter=%s error=%s", settings.ERP_ADAPTER, exc)
         return {
             "adapter": settings.ERP_ADAPTER,

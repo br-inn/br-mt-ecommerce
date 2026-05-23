@@ -20,7 +20,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.inventory import (
-    GoodsReceipt,
     InventoryPosition,
     PurchaseOrder,
     PurchaseOrderLine,

@@ -11,7 +11,7 @@ notificación ni audit.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +49,7 @@ class EscalationService:
         El criterio usa `updated_at` (refresh por revise) como tiempo desde la
         última transición a `pending_review`, fallback a `created_at`.
         """
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=self.window_hours)
+        cutoff = datetime.now(tz=UTC) - timedelta(hours=self.window_hours)
         stmt = (
             select(Price)
             .where(Price.status == "pending_review")
@@ -94,7 +94,7 @@ class EscalationService:
             return {"price_id": str(price.id), "skipped": True, "reason": "already_escalated"}
 
         recipient, recipient_reason = await self._resolve_delegate(price.proposed_by)
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         price.escalated = True
         price.escalated_at = now
         await self.session.flush()

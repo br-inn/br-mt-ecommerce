@@ -19,7 +19,6 @@ RBAC: usa permisos existentes ``channels:read`` (listings/diff/sync-log) y
 from __future__ import annotations
 
 from typing import Annotated, Any
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy import select
@@ -51,7 +50,6 @@ from app.services.channel_mirror.mirror_service import (
     UnknownChannelError,
 )
 from app.services.channel_mirror.ports import ChannelMirrorPort
-
 
 router = APIRouter(prefix="/channels", tags=["Channel Mirror"])
 
@@ -236,9 +234,7 @@ async def get_channel_diff(
     except UnknownChannelError as e:
         _raise_400(str(e))
 
-    listing = await ChannelListingRepository(session).get_by_channel_sku(
-        channel_code, sku
-    )
+    listing = await ChannelListingRepository(session).get_by_channel_sku(channel_code, sku)
     return DiffResponse(
         channel_code=channel_code,
         sku=sku,
@@ -271,9 +267,7 @@ async def sync_channel_listing(
     service: MirrorService = Depends(get_mirror_service),
 ) -> DiffResponse:
     try:
-        outcome = await service.sync(
-            channel_code, sku, external_id=external_id
-        )
+        outcome = await service.sync(channel_code, sku, external_id=external_id)
     except CanonicalNotFoundError as e:
         _raise_404(str(e))
     except UnknownChannelError as e:

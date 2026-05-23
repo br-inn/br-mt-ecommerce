@@ -39,7 +39,7 @@ from typing import Any
 from uuid import UUID
 
 import openpyxl
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.engine import get_sessionmaker
@@ -541,9 +541,7 @@ async def main() -> None:
             material_es = r["material"] or "Otros"
             categoria = r["categoria"] or "OTHER"
 
-            family_code, family_name = SECTION_TO_FAMILY.get(
-                seccion, ("other", "Other")
-            )
+            family_code, family_name = SECTION_TO_FAMILY.get(seccion, ("other", "Other"))
             family = await ensure_family(s, family_code, family_name)
 
             sub_code = slugify(material_es)
@@ -582,7 +580,11 @@ async def main() -> None:
             if pim_row.get("INDIVIDUAL EAN CODE"):
                 packaging["ean_individual"] = str(pim_row["INDIVIDUAL EAN CODE"])
             dimensions: dict[str, Any] = {}
-            for src, key in [("High mm", "height_mm"), ("Wide mm", "width_mm"), ("Deep mm", "depth_mm")]:
+            for src, key in [
+                ("High mm", "height_mm"),
+                ("Wide mm", "width_mm"),
+                ("Deep mm", "depth_mm"),
+            ]:
                 if pim_row.get(src):
                     dimensions[key] = pim_row[src]
 

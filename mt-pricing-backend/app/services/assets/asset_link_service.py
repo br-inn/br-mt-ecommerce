@@ -58,8 +58,7 @@ class AssetLinkService:
         )
         if existing.scalar_one_or_none() is not None:
             raise AssetLinkDomainError(
-                f"AssetLink ya existe para "
-                f"({asset_id}, {owner_type}, {owner_id}, {role})",
+                f"AssetLink ya existe para ({asset_id}, {owner_type}, {owner_id}, {role})",
                 code="asset_link_conflict",
                 status_code=409,
             )
@@ -76,9 +75,7 @@ class AssetLinkService:
         return link
 
     # ---------------------------------------------------------------- Reads
-    async def list_links_for_owner(
-        self, owner_type: str, owner_id: str
-    ) -> list[AssetLink]:
+    async def list_links_for_owner(self, owner_type: str, owner_id: str) -> list[AssetLink]:
         """Lista todos los assets vinculados al owner, ordenados por order_index."""
         result = await self.session.execute(
             select(AssetLink)
@@ -100,9 +97,7 @@ class AssetLinkService:
         return list(result.scalars().all())
 
     async def get_link(self, link_id: UUID) -> AssetLink | None:
-        result = await self.session.execute(
-            select(AssetLink).where(AssetLink.id == link_id)
-        )
+        result = await self.session.execute(select(AssetLink).where(AssetLink.id == link_id))
         return result.scalar_one_or_none()
 
     # ---------------------------------------------------------------- Delete

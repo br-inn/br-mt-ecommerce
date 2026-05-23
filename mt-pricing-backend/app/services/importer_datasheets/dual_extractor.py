@@ -75,9 +75,7 @@ class DualExtractionResult:
 # Type aliases para facilitar mocking (ambos sync/async no importan — los
 # wrappers `_run_regex`/`_run_vision` los acomodan).
 RegexExtractorCallable = Callable[[bytes], DatasheetSpecs]
-VisionExtractCallable = Callable[
-    ..., Awaitable[VisionExtractionResult]
-]
+VisionExtractCallable = Callable[..., Awaitable[VisionExtractionResult]]
 
 
 # Confidence base para regex hits (S4 era binario — encontrado o no, así que
@@ -129,7 +127,7 @@ class DualExtractor:
             )
             result.error = f"regex_failed:{exc.code}"
             regex_specs = DatasheetSpecs()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("dual_extractor: regex extractor exception")
             result.error = f"regex_failed:{type(exc).__name__}"
             regex_specs = DatasheetSpecs()
@@ -139,14 +137,10 @@ class DualExtractor:
 
         # 2. Vision extractor (best-effort).
         try:
-            vision_result = await self._vision.extract(
-                pdf_bytes=pdf_bytes, filename=filename
-            )
-        except Exception as exc:  # noqa: BLE001
+            vision_result = await self._vision.extract(pdf_bytes=pdf_bytes, filename=filename)
+        except Exception as exc:
             logger.exception("dual_extractor: vision extractor exception")
-            vision_result = VisionExtractionResult(
-                error=f"vision_failed:{type(exc).__name__}"
-            )
+            vision_result = VisionExtractionResult(error=f"vision_failed:{type(exc).__name__}")
 
         result.vision_skipped = vision_result.skipped
         result.vision_skip_reason = vision_result.skip_reason
@@ -198,9 +192,7 @@ class DualExtractor:
         result.per_spec_confidence = per_spec_conf
         result.disagreement = disagreement
         if per_spec_conf:
-            result.overall_confidence = sum(per_spec_conf.values()) / len(
-                per_spec_conf
-            )
+            result.overall_confidence = sum(per_spec_conf.values()) / len(per_spec_conf)
         else:
             result.overall_confidence = 0.0
 
@@ -233,7 +225,7 @@ def _normalize(value: Any) -> str:
 
 
 __all__ = [
+    "SPEC_KEYS",
     "DualExtractionResult",
     "DualExtractor",
-    "SPEC_KEYS",
 ]

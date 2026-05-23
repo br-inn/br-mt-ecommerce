@@ -19,7 +19,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from app.services.matching.vlm_judge import (
@@ -63,14 +63,14 @@ class _MonthCounter:
     total_usd: float = 0.0
 
     def add(self, usd: float) -> None:
-        key = datetime.now(tz=timezone.utc).strftime("%Y-%m")
+        key = datetime.now(tz=UTC).strftime("%Y-%m")
         if key != self.month_key:
             self.month_key = key
             self.total_usd = 0.0
         self.total_usd += usd
 
     def current(self) -> float:
-        key = datetime.now(tz=timezone.utc).strftime("%Y-%m")
+        key = datetime.now(tz=UTC).strftime("%Y-%m")
         if key != self.month_key:
             return 0.0
         return self.total_usd
@@ -168,7 +168,7 @@ class JudgeDispatcher:
                     context=context,
                 )
                 return name, res
-            except Exception as exc:  # noqa: BLE001 — fail-safe wrap
+            except Exception as exc:
                 logger.exception("judge_dispatcher: %s failed: %s", name, exc)
                 return name, exc
 

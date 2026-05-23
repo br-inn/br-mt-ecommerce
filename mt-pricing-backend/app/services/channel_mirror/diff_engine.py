@@ -23,7 +23,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-
 # Status canonical (alineado con frontend `MirrorStatus` en
 # mt-pricing-frontend/app/(app)/canales/amazon-uae/page.tsx).
 DiffStatus = Literal["match", "drift", "missing", "queued"]
@@ -127,11 +126,11 @@ def canonical_vs_live(
         # Unión preservando orden: canonical primero, luego live-only.
         seen: set[str] = set()
         ordered: list[str] = []
-        for name in canonical.keys():
+        for name in canonical:
             if name not in seen:
                 ordered.append(name)
                 seen.add(name)
-        for name in live.keys():
+        for name in live:
             if name not in seen:
                 ordered.append(name)
                 seen.add(name)

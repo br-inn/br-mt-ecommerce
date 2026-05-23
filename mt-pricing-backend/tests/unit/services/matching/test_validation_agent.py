@@ -1,4 +1,5 @@
 """Tests de la función de decisión del MatchValidationAgent."""
+
 from __future__ import annotations
 
 from app.services.matching.validation_agent import AgentDecision, decide_verdict

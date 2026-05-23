@@ -41,6 +41,7 @@ _SAMPLE_LIMIT = 5
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _pct(count: int, total: int) -> float:
     if total == 0:
         return 0.0
@@ -57,6 +58,7 @@ async def _sample_skus(session: AsyncSession, stmt: Any, limit: int = _SAMPLE_LI
 # Service-level queries
 # ---------------------------------------------------------------------------
 
+
 async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
     """Ejecuta todas las queries de calidad y retorna el dict de respuesta."""
 
@@ -67,19 +69,16 @@ async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
     # 2. missing_name_en
     # SKUs donde NO existe una fila en product_translations con lang='en'
     # y name no vacío/NULL.
-    missing_name_en_stmt = (
-        select(Product.sku)
+    missing_name_en_stmt = select(Product.sku).where(
+        ~select(ProductTranslation.sku)
         .where(
-            ~select(ProductTranslation.sku)
-            .where(
-                ProductTranslation.sku == Product.sku,
-                ProductTranslation.lang == "en",
-                ProductTranslation.name.isnot(None),
-                ProductTranslation.name != "",
-            )
-            .correlate(Product)
-            .exists()
+            ProductTranslation.sku == Product.sku,
+            ProductTranslation.lang == "en",
+            ProductTranslation.name.isnot(None),
+            ProductTranslation.name != "",
         )
+        .correlate(Product)
+        .exists()
     )
     missing_name_en_count_result = await session.execute(
         select(func.count()).select_from(missing_name_en_stmt.subquery())
@@ -89,12 +88,7 @@ async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
 
     # 3. missing_specs
     # specs = '{}' o NULL
-    missing_specs_stmt = (
-        select(Product.sku)
-        .where(
-            (Product.specs == {}) | Product.specs.is_(None)
-        )
-    )
+    missing_specs_stmt = select(Product.sku).where((Product.specs == {}) | Product.specs.is_(None))
     missing_specs_count_result = await session.execute(
         select(func.count()).select_from(missing_specs_stmt.subquery())
     )
@@ -103,18 +97,15 @@ async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
 
     # 4. missing_images — product_assets tabla existe (ProductAsset).
     # Buscamos SKUs sin ningún asset de kind='photo' con status='active'.
-    missing_images_stmt = (
-        select(Product.sku)
+    missing_images_stmt = select(Product.sku).where(
+        ~select(ProductAsset.sku)
         .where(
-            ~select(ProductAsset.sku)
-            .where(
-                ProductAsset.sku == Product.sku,
-                ProductAsset.kind == "photo",
-                ProductAsset.status == "active",
-            )
-            .correlate(Product)
-            .exists()
+            ProductAsset.sku == Product.sku,
+            ProductAsset.kind == "photo",
+            ProductAsset.status == "active",
         )
+        .correlate(Product)
+        .exists()
     )
     missing_images_count_result = await session.execute(
         select(func.count()).select_from(missing_images_stmt.subquery())
@@ -123,11 +114,8 @@ async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
     missing_images_samples = await _sample_skus(session, missing_images_stmt)
 
     # 5. missing_brand
-    missing_brand_stmt = (
-        select(Product.sku)
-        .where(
-            (Product.brand.is_(None)) | (Product.brand == "")
-        )
+    missing_brand_stmt = select(Product.sku).where(
+        (Product.brand.is_(None)) | (Product.brand == "")
     )
     missing_brand_count_result = await session.execute(
         select(func.count()).select_from(missing_brand_stmt.subquery())
@@ -137,11 +125,8 @@ async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
 
     # 6. missing_family
     # family es NOT NULL en schema → siempre 0, pero lo calculamos defensivamente.
-    missing_family_stmt = (
-        select(Product.sku)
-        .where(
-            (Product.family.is_(None)) | (Product.family == "")
-        )
+    missing_family_stmt = select(Product.sku).where(
+        (Product.family.is_(None)) | (Product.family == "")
     )
     missing_family_count_result = await session.execute(
         select(func.count()).select_from(missing_family_stmt.subquery())
@@ -242,6 +227,7 @@ async def _compute_data_quality(session: AsyncSession) -> dict[str, Any]:
 # Endpoint
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/data-quality",
     summary="PIM data quality report — gaps por categoría con sample SKUs",
@@ -259,4 +245,4 @@ async def get_pim_data_quality(
     return await _compute_data_quality(session)
 
 
-__all__ = ["router", "_compute_data_quality"]
+__all__ = ["_compute_data_quality", "router"]

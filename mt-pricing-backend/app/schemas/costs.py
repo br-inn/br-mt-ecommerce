@@ -92,7 +92,7 @@ class CostUpdate(BaseModel):
     fx_inferred: bool | None = None
 
     @model_validator(mode="after")
-    def _at_least_one(self) -> "CostUpdate":
+    def _at_least_one(self) -> CostUpdate:
         if not any(
             [
                 self.breakdown is not None,

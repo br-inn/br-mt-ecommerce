@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import logging
 import time
-from decimal import Decimal
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -12,10 +13,16 @@ logger = logging.getLogger(__name__)
 
 _FALLBACK_WEIGHTS: dict[str, dict[str, Decimal]] = {
     "_default": {
-        "material": Decimal("0.18"), "pn": Decimal("0.14"), "dn": Decimal("0.00"),
-        "product_type": Decimal("0.00"), "thread_standard": Decimal("0.14"),
-        "ways": Decimal("0.00"), "norma": Decimal("0.14"), "brand_tier": Decimal("0.18"),
-        "delivery": Decimal("0.14"), "data_completeness": Decimal("0.08"),
+        "material": Decimal("0.18"),
+        "pn": Decimal("0.14"),
+        "dn": Decimal("0.00"),
+        "product_type": Decimal("0.00"),
+        "thread_standard": Decimal("0.14"),
+        "ways": Decimal("0.00"),
+        "norma": Decimal("0.14"),
+        "brand_tier": Decimal("0.18"),
+        "delivery": Decimal("0.14"),
+        "data_completeness": Decimal("0.08"),
     },
 }
 _FALLBACK_CONFIG: dict[str, Any] = {
@@ -44,13 +51,15 @@ class RuleEngineCache:
     def _is_expired(self) -> bool:
         return (time.monotonic() - self._loaded_at) > self.ttl_seconds
 
-    async def ensure_loaded(self, session: "AsyncSession") -> None:
+    async def ensure_loaded(self, session: AsyncSession) -> None:
         if not self._is_expired() and self._profiles:
             return
         try:
             await self._reload(session)
         except Exception as exc:
-            logger.warning("rule_engine_cache.reload_failed — using fallback", extra={"error": str(exc)[:120]})
+            logger.warning(
+                "rule_engine_cache.reload_failed — using fallback", extra={"error": str(exc)[:120]}
+            )
             if self._profiles:
                 # Already have cached data — degrade gracefully, keep stale profiles
                 return
@@ -58,9 +67,9 @@ class RuleEngineCache:
             self._load_fallback()
             raise
 
-    async def _reload(self, session: "AsyncSession") -> None:
-        from app.repositories.taxonomy_profile import TaxonomyProfileRepository
+    async def _reload(self, session: AsyncSession) -> None:
         from app.repositories.comparator_config import ComparatorConfigRepository
+        from app.repositories.taxonomy_profile import TaxonomyProfileRepository
 
         profile_repo = TaxonomyProfileRepository(session)
         config_repo = ComparatorConfigRepository(session)

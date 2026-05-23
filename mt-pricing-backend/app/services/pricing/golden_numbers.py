@@ -36,8 +36,8 @@ from typing import Literal
 
 __all__ = [
     "BUNDLING_STRATEGIES",
-    "GoldenTier",
     "TIER_CONFIG",
+    "GoldenTier",
     "apply_golden_numbers",
     "channel_default_strategy",
     "round_half_up",

@@ -17,7 +17,7 @@ import io
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import (
@@ -42,12 +42,12 @@ from app.schemas.imports_materials import (
     ImportMaterialsPreviewResponse,
 )
 from app.services.importer.importer_service import (
-    ImportFileTooLargeError,
+    MAX_FILE_SIZE_BYTES,
     ImporterDomainError,
+    ImportFileTooLargeError,
     ImportHeaderMismatchError,
     ImportRunInvalidStateError,
     ImportRunNotFoundError,
-    MAX_FILE_SIZE_BYTES,
 )
 from app.services.importer_materials import (
     ApplyMaterialsResult,
@@ -139,7 +139,7 @@ async def preview_materials_import(
 
     try:
         parse_result = parse_materials_xlsx_stream(io.BytesIO(file_bytes))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(
             status_code=422,
             detail={
@@ -156,7 +156,7 @@ async def preview_materials_import(
         kind="materials",
         filename=file.filename,
         status="preview_ready",
-        created_at=datetime.now(tz=timezone.utc),
+        created_at=datetime.now(tz=UTC),
         created_by=user.email if user is not None else None,
         parse_result=parse_result,
         summary=_summarize(parse_result),
@@ -212,9 +212,7 @@ async def apply_materials_import(
         _raise_domain(ImportRunNotFoundError(run_id))
     if state.status != "preview_ready":
         _raise_domain(
-            ImportRunInvalidStateError(
-                run_id, current=state.status, expected="preview_ready"
-            )
+            ImportRunInvalidStateError(run_id, current=state.status, expected="preview_ready")
         )
 
     mode = body.mode if body is not None else "replace"
@@ -224,15 +222,13 @@ async def apply_materials_import(
         state.status = "applying"
         try:
             assert state.parse_result is not None
-            result = await apply_material_rows(
-                state.parse_result.rows, repo=repo, mode=mode
-            )
+            result = await apply_material_rows(state.parse_result.rows, repo=repo, mode=mode)
             state.apply_result = result
             state.status = "completed_with_errors" if result.errors > 0 else "completed"
             state.summary["applied_inserted"] = result.inserted
             state.summary["applied_truncated"] = result.truncated
             state.summary["applied_errors"] = result.errors
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("Materials importer apply failed run_id=%s", run_id)
             state.status = "failed"
             state.error = f"{type(exc).__name__}: {exc!s}"

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from app.workers.worker import celery_app
@@ -29,7 +29,7 @@ from app.workers.worker import celery_app
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -44,6 +44,7 @@ def _run_async(coro: Any) -> Any:  # noqa: ANN401
 # US-ERP-05-03 — Dunning check diario
 # ---------------------------------------------------------------------------
 
+
 @celery_app.task(
     name="mt.billing.run_dunning_check",
     bind=True,
@@ -51,7 +52,7 @@ def _run_async(coro: Any) -> Any:  # noqa: ANN401
     default_retry_delay=60,
     queue="default",
 )
-def run_dunning_check(self: Any) -> dict[str, Any]:  # noqa: ANN401
+def run_dunning_check(self: Any) -> dict[str, Any]:
     """Evalúa invoices en mora y registra historial de dunning."""
     return _run_async(_run_dunning_check_async())
 
@@ -71,11 +72,16 @@ async def _run_dunning_check_async() -> dict[str, Any]:
     async with get_db_session() as session:
         # Load active dunning levels
         dl_result = await session.execute(
-            select(DunningLevel).where(DunningLevel.is_active == True).order_by(DunningLevel.level)  # noqa: E712
+            select(DunningLevel).where(DunningLevel.is_active == True).order_by(DunningLevel.level)
         )
         levels = list(dl_result.scalars().all())
         if not levels:
-            return {"processed": 0, "escalated": 0, "errors": 0, "note": "no dunning levels configured"}
+            return {
+                "processed": 0,
+                "escalated": 0,
+                "errors": 0,
+                "note": "no dunning levels configured",
+            }
 
         # Overdue invoices
         q = select(Invoice).where(
@@ -148,6 +154,7 @@ async def _run_dunning_check_async() -> dict[str, Any]:
 # US-ERP-05-06 — Check unposted deliveries (billing alert 24h)
 # ---------------------------------------------------------------------------
 
+
 @celery_app.task(
     name="mt.billing.check_unposted_deliveries",
     bind=True,
@@ -155,21 +162,20 @@ async def _run_dunning_check_async() -> dict[str, Any]:
     default_retry_delay=60,
     queue="default",
 )
-def check_unposted_deliveries(self: Any) -> dict[str, Any]:  # noqa: ANN401
+def check_unposted_deliveries(self: Any) -> dict[str, Any]:
     """Detecta deliveries sin invoice > 24h y crea alertas."""
     return _run_async(_check_unposted_deliveries_async())
 
 
 async def _check_unposted_deliveries_async() -> dict[str, Any]:
-    from sqlalchemy import select, text
+    from sqlalchemy import text
 
     from app.db import get_db_session
     from app.db.models.notification import Notification
-    from app.db.models.sales import OutboundDelivery
 
     alerted = 0
     errors = 0
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
 
     async with get_db_session() as session:
         # Deliveries shipped > 24h ago without any associated invoice
@@ -203,8 +209,10 @@ async def _check_unposted_deliveries_async() -> dict[str, Any]:
                         "so_id": str(row.so_id) if row.so_id else None,
                         "shipped_at": row.shipped_at.isoformat() if row.shipped_at else None,
                         "hours_since_shipment": round(
-                            (datetime.now(timezone.utc) - row.shipped_at).total_seconds() / 3600, 1
-                        ) if row.shipped_at else None,
+                            (datetime.now(UTC) - row.shipped_at).total_seconds() / 3600, 1
+                        )
+                        if row.shipped_at
+                        else None,
                     },
                 )
                 session.add(notification)
@@ -223,6 +231,7 @@ async def _check_unposted_deliveries_async() -> dict[str, Any]:
 # US-ERP-05-05 — Mark broken payment promises
 # ---------------------------------------------------------------------------
 
+
 @celery_app.task(
     name="mt.billing.mark_broken_promises",
     bind=True,
@@ -230,7 +239,7 @@ async def _check_unposted_deliveries_async() -> dict[str, Any]:
     default_retry_delay=60,
     queue="default",
 )
-def mark_broken_promises(self: Any) -> dict[str, Any]:  # noqa: ANN401
+def mark_broken_promises(self: Any) -> dict[str, Any]:
     """Marca promesas vencidas como broken."""
     return _run_async(_mark_broken_promises_async())
 

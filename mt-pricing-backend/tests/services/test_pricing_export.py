@@ -13,11 +13,10 @@ from __future__ import annotations
 import glob
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
-from app.services.feature_flags.flag_service import clear_local_cache, set_local_flag, FLAG_SHADOW_PUBLISH_AMAZON
 from app.services.pricing_export import AmazonUAEAdapter, PublishPayload
 
 pytestmark = pytest.mark.unit
@@ -26,12 +25,13 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_payload(rows: list[dict]) -> PublishPayload:
     return PublishPayload(
         channel_code="AMAZON_UAE",
         scheme_code="FBA",
         rows=rows,
-        generated_at=datetime.now(tz=timezone.utc),
+        generated_at=datetime.now(tz=UTC),
     )
 
 
@@ -48,6 +48,7 @@ def _valid_row(sku: str = "MTV-1004", price: float = 147.75) -> dict:
 # ---------------------------------------------------------------------------
 # Tests validate_payload
 # ---------------------------------------------------------------------------
+
 
 def test_amazon_uae_adapter_validates_missing_sku():
     """validate_payload retorna error si fila sin sku."""
@@ -97,6 +98,7 @@ def test_amazon_uae_adapter_valid_payload_no_errors():
 # Tests shadow_publish
 # ---------------------------------------------------------------------------
 
+
 async def test_amazon_uae_adapter_shadow_publish_returns_stub():
     """shadow_publish retorna ok=True, shadow_mode=True."""
     adapter = AmazonUAEAdapter()
@@ -118,9 +120,9 @@ async def test_amazon_uae_adapter_export_csv_filters_non_approved():
     """export_csv excluye filas con status != 'approved' en rows_blocked."""
     adapter = AmazonUAEAdapter()
     rows = [
-        _valid_row(sku="MTV-1004"),                          # approved
-        {**_valid_row(sku="MTV-1005"), "status": "pending"}, # blocked
-        {**_valid_row(sku="MTV-1006"), "status": "draft"},   # blocked
+        _valid_row(sku="MTV-1004"),  # approved
+        {**_valid_row(sku="MTV-1005"), "status": "pending"},  # blocked
+        {**_valid_row(sku="MTV-1006"), "status": "draft"},  # blocked
     ]
     payload = _make_payload(rows)
 
@@ -141,6 +143,7 @@ async def test_amazon_uae_adapter_export_csv_filters_non_approved():
 # ---------------------------------------------------------------------------
 # Tests US-1B-04-04 — shadow_publish real (escribe /tmp)
 # ---------------------------------------------------------------------------
+
 
 async def test_shadow_publish_writes_file():
     """shadow_publish escribe /tmp/shadow_amazon_uae_*.csv y retorna ok=True, shadow_mode=True."""

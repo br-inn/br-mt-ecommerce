@@ -8,13 +8,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-import pytest
-
 from app.services.products.facets_service import (
     ProductFilters,
     build_product_clauses,
 )
-
 
 # ---- ProductFilters DTO -------------------------------------------------------
 

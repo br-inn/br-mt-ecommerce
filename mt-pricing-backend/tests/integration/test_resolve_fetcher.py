@@ -21,7 +21,9 @@ async def test_resolve_hardcoded_channel_returns_existing(db_session):
 async def test_resolve_source_slug_returns_generic(db_session):
     repo = ScraperSourceRepository(db_session)
     source = await repo.create(
-        name="ACME", slug="acme-resolve", base_url="https://acme.example",
+        name="ACME",
+        slug="acme-resolve",
+        base_url="https://acme.example",
         destination_profile="competitor_price",
     )
     recipe_row = await repo.add_recipe(source.id, _RECIPE)

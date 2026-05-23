@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import AsyncIterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -98,6 +98,32 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
         yield ac
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def _cleanup_data(db_session: AsyncSession) -> AsyncIterator[None]:
+    """Limpia productos + audit_events antes de cada test para evitar contaminación."""
+    from sqlalchemy import text
+
+    await db_session.execute(text("DELETE FROM product_translations;"))
+    await db_session.execute(text("DELETE FROM product_assets;"))
+    await db_session.execute(
+        text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete;")
+    )
+    await db_session.execute(text("DELETE FROM products;"))
+    await db_session.execute(
+        text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete;")
+    )
+    await db_session.execute(
+        text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_trg;")
+    )
+    await db_session.execute(text("DELETE FROM audit_events;"))
+    await db_session.execute(
+        text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable_trg;")
+    )
+    await db_session.execute(text("DELETE FROM import_runs;"))
+    await db_session.commit()
+    yield
+
+
 @pytest_asyncio.fixture
 async def authed_user(db_session: AsyncSession) -> tuple[UUID, str]:
     email = f"dashboard-{uuid4().hex[:8]}@mt.ae"
@@ -179,23 +205,20 @@ async def test_dashboard_with_seeded_data_returns_correct_counts(
         [
             Product(
                 sku="MT-V-001",
-                name_en="Valve 001",
                 family="valves_ball",
-                active=True,
+                lifecycle_status="active",
                 data_quality="complete",
             ),
             Product(
                 sku="MT-V-002",
-                name_en="Valve 002",
                 family="valves_ball",
-                active=True,
+                lifecycle_status="active",
                 data_quality="partial",
             ),
             Product(
                 sku="MT-V-003",
-                name_en="Valve 003",
                 family="valves_ball",
-                active=False,
+                lifecycle_status="deprecated",
                 data_quality="blocked",
             ),
         ]
@@ -212,7 +235,7 @@ async def test_dashboard_with_seeded_data_returns_correct_counts(
     db_session.add(job)
     await db_session.flush()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db_session.add_all(
         [
             JobRun(
@@ -250,9 +273,7 @@ async def test_dashboard_with_seeded_data_returns_correct_counts(
     )
     await db_session.flush()
 
-    res = await client.get(
-        "/api/v1/dashboard/stats", headers=_auth_headers(uid, email)
-    )
+    res = await client.get("/api/v1/dashboard/stats", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
     body = res.json()
 
@@ -291,9 +312,8 @@ async def test_dashboard_translations_coverage_pct(
         [
             Product(
                 sku=sku,
-                name_en=f"Item {sku}",
                 family="adapters",
-                active=True,
+                lifecycle_status="active",
                 data_quality="partial",
             )
             for sku in skus
@@ -312,9 +332,7 @@ async def test_dashboard_translations_coverage_pct(
     )
     await db_session.flush()
 
-    res = await client.get(
-        "/api/v1/dashboard/stats", headers=_auth_headers(uid, email)
-    )
+    res = await client.get("/api/v1/dashboard/stats", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
     body = res.json()
 
@@ -335,7 +353,7 @@ async def test_dashboard_recent_events_limit_10(
     from app.db.models.audit import AuditEvent
 
     uid, email = authed_user
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # 15 events, ordered from oldest to newest.
     db_session.add_all(
         [
@@ -352,9 +370,7 @@ async def test_dashboard_recent_events_limit_10(
     )
     await db_session.flush()
 
-    res = await client.get(
-        "/api/v1/dashboard/stats", headers=_auth_headers(uid, email)
-    )
+    res = await client.get("/api/v1/dashboard/stats", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
     body = res.json()
 

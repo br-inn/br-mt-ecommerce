@@ -62,9 +62,7 @@ async def get_role_permissions(
                 "status": 404,
             },
         )
-    permissions = [
-        PermissionResponse.model_validate(rp.permission) for rp in role.role_permissions
-    ]
+    permissions = [PermissionResponse.model_validate(rp.permission) for rp in role.role_permissions]
     return RoleWithPermissionsResponse(
         id=role.id,
         code=role.code,
@@ -90,4 +88,4 @@ async def list_permissions(
 
 
 # Repo unused-import guard — silenced for explicit re-export of the helper.
-__all__ = ["router", "RoleRepository"]
+__all__ = ["RoleRepository", "router"]

@@ -21,7 +21,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 # ---------------------------------------------------------------------------
 # Family — orden importa (más específico primero).
 # ---------------------------------------------------------------------------
@@ -29,76 +28,121 @@ from dataclasses import dataclass
 # matchee gana. Las regex se compilan con `re.IGNORECASE` y deben usar word
 # boundaries para evitar falsos positivos tipo "nut" → "**t** galvanised".
 _FAMILY_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("valve", (
-        r"\b(ball|butterfly|gate|globe|check|angle|control|needle|diaphragm|solenoid|stop)\s+valve\b",
-        r"\bvalve\b",
-    )),
-    ("flange", (
-        r"\bflange\b",
-        r"\bblind\b",
-        r"\bstub\s+end\b",
-        r"\bwelding\s+(neck|socket)\b",
-    )),
-    ("gauge", (
-        r"\bpressure\s+gauge\b",
-        r"\b(thermometer|manometer|gauge)\b",
-    )),
-    ("actuator", (
-        r"\b(actuator|servomotor)\b",
-        r"\blevel\s+regulator\b",
-    )),
-    ("tee", (
-        # "T fitting", "F-F-F equal T 18", "Brass female T 15", "reducing T"
-        r"\b(equal|reducing|female|male|brass|galvanised|stainless|f-cu)\s+t\b",
-        r"\bf-f-f\b",
-        r"\bt\s+(fitting|brass|galvanised|stainless)\b",
-    )),
-    ("elbow", (
-        r"\b(90°?|45°?)\s+(elbow|bend)\b",
-        r"\belbow\b",
-        r"\bbend\b",
-        r"\blong\s+radius\b",
-    )),
-    ("reducer", (
-        r"\b(concentric|eccentric)\s+reducer\b",
-        r"\breducer\b",
-        r"\breducing\s+(coupling|nut|socket)\b",
-    )),
-    ("press_fitting", (
-        r"\bpress\s+fitting\b",
-        r"\bmt-press\b",
-    )),
-    ("coupling", (
-        r"\b(double\s+)?coupling\b",
-        r"\b(pipe\s+)?socket\b",
-    )),
+    (
+        "valve",
+        (
+            r"\b(ball|butterfly|gate|globe|check|angle|control|needle|diaphragm|solenoid|stop)\s+valve\b",
+            r"\bvalve\b",
+        ),
+    ),
+    (
+        "flange",
+        (
+            r"\bflange\b",
+            r"\bblind\b",
+            r"\bstub\s+end\b",
+            r"\bwelding\s+(neck|socket)\b",
+        ),
+    ),
+    (
+        "gauge",
+        (
+            r"\bpressure\s+gauge\b",
+            r"\b(thermometer|manometer|gauge)\b",
+        ),
+    ),
+    (
+        "actuator",
+        (
+            r"\b(actuator|servomotor)\b",
+            r"\blevel\s+regulator\b",
+        ),
+    ),
+    (
+        "tee",
+        (
+            # "T fitting", "F-F-F equal T 18", "Brass female T 15", "reducing T"
+            r"\b(equal|reducing|female|male|brass|galvanised|stainless|f-cu)\s+t\b",
+            r"\bf-f-f\b",
+            r"\bt\s+(fitting|brass|galvanised|stainless)\b",
+        ),
+    ),
+    (
+        "elbow",
+        (
+            r"\b(90°?|45°?)\s+(elbow|bend)\b",
+            r"\belbow\b",
+            r"\bbend\b",
+            r"\blong\s+radius\b",
+        ),
+    ),
+    (
+        "reducer",
+        (
+            r"\b(concentric|eccentric)\s+reducer\b",
+            r"\breducer\b",
+            r"\breducing\s+(coupling|nut|socket)\b",
+        ),
+    ),
+    (
+        "press_fitting",
+        (
+            r"\bpress\s+fitting\b",
+            r"\bmt-press\b",
+        ),
+    ),
+    (
+        "coupling",
+        (
+            r"\b(double\s+)?coupling\b",
+            r"\b(pipe\s+)?socket\b",
+        ),
+    ),
     ("nipple", (r"\bnipple\b",)),
     ("plug", (r"\bplug\b",)),
-    ("nut", (
-        r"\b(hexagon|lock)\s+nut\b",
-        r"\bnut\b",
-    )),
-    ("adaptor", (
-        r"\b(adaptor|adapter|connector)\b",
-        r"\btap\s+connector\b",
-    )),
-    ("pipe", (
-        r"\bpe-?xa?\b.*\bpipe\b",
-        r"\b(sch\s*40|sch\s*80)\b",
-        r"\bpipe\b",
-    )),
-    ("hardware", (
-        r"\bu-bolt\b",
-        r"\b(bolt|screw|washer|bracket|hanger)\b",
-    )),
-    ("hose", (
-        r"\bhose\b",
-        r"\bflexible\s+connection\b",
-    )),
-    ("fitting", (
-        r"\bfitting\b",
-        r"\b(f-cu|fe/pe|pe/pe|pe/f|pe/m|cu-mult|compression)\b",
-    )),
+    (
+        "nut",
+        (
+            r"\b(hexagon|lock)\s+nut\b",
+            r"\bnut\b",
+        ),
+    ),
+    (
+        "adaptor",
+        (
+            r"\b(adaptor|adapter|connector)\b",
+            r"\btap\s+connector\b",
+        ),
+    ),
+    (
+        "pipe",
+        (
+            r"\bpe-?xa?\b.*\bpipe\b",
+            r"\b(sch\s*40|sch\s*80)\b",
+            r"\bpipe\b",
+        ),
+    ),
+    (
+        "hardware",
+        (
+            r"\bu-bolt\b",
+            r"\b(bolt|screw|washer|bracket|hanger)\b",
+        ),
+    ),
+    (
+        "hose",
+        (
+            r"\bhose\b",
+            r"\bflexible\s+connection\b",
+        ),
+    ),
+    (
+        "fitting",
+        (
+            r"\bfitting\b",
+            r"\b(f-cu|fe/pe|pe/pe|pe/f|pe/m|cu-mult|compression)\b",
+        ),
+    ),
 )
 # Pre-compilamos para evitar overhead en cada call (5085 productos).
 _FAMILY_COMPILED: tuple[tuple[str, tuple[re.Pattern[str], ...]], ...] = tuple(
@@ -143,26 +187,26 @@ _DN_IMPERIAL_INT_RE = re.compile(r'\b(\d{1,3})\s*[”"]')
 
 # Imperial → DN (mm) — tabla canónica BS/EN ISO 6708.
 _IMPERIAL_TO_DN: dict[str, str] = {
-    "1/8":   "6",
-    "1/4":   "8",
-    "3/8":   "10",
-    "1/2":   "15",
-    "3/4":   "20",
-    "1":     "25",
+    "1/8": "6",
+    "1/4": "8",
+    "3/8": "10",
+    "1/2": "15",
+    "3/4": "20",
+    "1": "25",
     "1 1/4": "32",
-    "11/4":  "32",
+    "11/4": "32",
     "1 1/2": "40",
-    "11/2":  "40",
-    "2":     "50",
+    "11/2": "40",
+    "2": "50",
     "2 1/2": "65",
-    "21/2":  "65",
-    "3":     "80",
-    "4":     "100",
-    "5":     "125",
-    "6":     "150",
-    "8":     "200",
-    "10":    "250",
-    "12":    "300",
+    "21/2": "65",
+    "3": "80",
+    "4": "100",
+    "5": "125",
+    "6": "150",
+    "8": "200",
+    "10": "250",
+    "12": "300",
 }
 
 
@@ -170,8 +214,8 @@ def _imperial_key(whole: str | None, num: str, den: str) -> str:
     """Normaliza un imperial detectado a una clave de _IMPERIAL_TO_DN."""
     whole = (whole or "").strip()
     if whole:
-        return f'{whole} {num}/{den}'
-    return f'{num}/{den}'
+        return f"{whole} {num}/{den}"
+    return f"{num}/{den}"
 
 
 # ---------------------------------------------------------------------------
@@ -206,10 +250,19 @@ _ANSI_TO_PN: dict[str, str] = {
 #
 # Familias sin PN aplicable (gauge, hardware, hose, actuator, etc.): None.
 # ---------------------------------------------------------------------------
-_NO_PN_FAMILIES: frozenset[str] = frozenset({
-    "gauge", "actuator", "hardware", "hose", "pipe", "nipple", "nut", "plug",
-    "adaptor",
-})
+_NO_PN_FAMILIES: frozenset[str] = frozenset(
+    {
+        "gauge",
+        "actuator",
+        "hardware",
+        "hose",
+        "pipe",
+        "nipple",
+        "nut",
+        "plug",
+        "adaptor",
+    }
+)
 
 
 def _infer_pn_heuristic(name: str, family: str | None, material: str | None) -> str | None:

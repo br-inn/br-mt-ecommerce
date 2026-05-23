@@ -190,7 +190,7 @@ async def get_kg_metrics() -> KgMetricsResponse:
         )
 
 
-def _compute_kg_metrics(graph) -> dict:  # noqa: ANN001
+def _compute_kg_metrics(graph) -> dict:
     """Ejecuta queries Neo4j para métricas (sync, llamar via asyncio.to_thread)."""
     driver = getattr(graph, "_driver", None)
     if driver is None:
@@ -207,9 +207,7 @@ def _compute_kg_metrics(graph) -> dict:  # noqa: ANN001
     with driver.session(database=database) as s:
         node_count = s.run("MATCH (n) RETURN count(n) AS cnt").single()["cnt"]
         edge_count = s.run("MATCH ()-[r]->() RETURN count(r) AS cnt").single()["cnt"]
-        orphan_nodes = (
-            s.run("MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt").single()["cnt"]
-        )
+        orphan_nodes = s.run("MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt").single()["cnt"]
 
     return {
         "node_count": node_count,
@@ -223,8 +221,8 @@ def _compute_kg_metrics(graph) -> dict:  # noqa: ANN001
 
 # Re-export para el test fixture
 __all__ = [
-    "router",
-    "get_graph_store",
-    "get_cdc_dispatcher",
     "Neo4jStubGraphStore",
+    "get_cdc_dispatcher",
+    "get_graph_store",
+    "router",
 ]

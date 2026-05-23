@@ -8,7 +8,7 @@ chico que Amazon UAE para PVF industrial.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -71,13 +71,11 @@ class NoonUaeStubFetcher:
     def channel(self) -> str:
         return CHANNEL
 
-    async def fetch(
-        self, query: Query, *, sku: str | None = None
-    ) -> list[CandidateRaw]:
+    async def fetch(self, query: Query, *, sku: str | None = None) -> list[CandidateRaw]:
         candidates_raw = CANNED_BY_SKU.get(sku or "") if sku else None
         if not candidates_raw:
             candidates_raw = _synthetic(sku or query.text)
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         out: list[CandidateRaw] = []
         for c in candidates_raw[:N_CANDIDATES]:
             out.append(
@@ -86,9 +84,7 @@ class NoonUaeStubFetcher:
                     external_id=str(c["external_id"]),
                     title=str(c["title"]),
                     brand=c.get("brand"),
-                    price_aed=(
-                        Decimal(str(c["price_aed"])) if c.get("price_aed") else None
-                    ),
+                    price_aed=(Decimal(str(c["price_aed"])) if c.get("price_aed") else None),
                     delivery_text=c.get("delivery_text"),
                     specs=dict(c.get("specs") or {}),
                     raw_payload={

@@ -44,8 +44,7 @@ def _raise_domain(err: CurrencyDomainError) -> None:
     response_model=list[CurrencyResponse],
     summary="Listar todas las currencies (incluye inactivas)",
     description=(
-        "Devuelve todas las currencies registradas, con flag `active`. "
-        "Permission `fx:read`."
+        "Devuelve todas las currencies registradas, con flag `active`. Permission `fx:read`."
     ),
     operation_id="currenciesList",
 )

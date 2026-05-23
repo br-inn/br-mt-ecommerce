@@ -10,7 +10,7 @@ NO commitea — la session es responsabilidad del caller (FastAPI dependency
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
@@ -43,7 +43,7 @@ class BaseRepository(Generic[ModelT]):
     def _has_soft_delete(self) -> bool:
         return (
             self.soft_delete_field is not None
-            and self.soft_delete_field in inspect(self.model).columns.keys()  # noqa: SIM118
+            and self.soft_delete_field in inspect(self.model).columns.keys()
         )
 
     # ---------- CRUD ----------
@@ -110,6 +110,6 @@ class BaseRepository(Generic[ModelT]):
         obj = await self.get(pk)
         if obj is None:
             return False
-        setattr(obj, self.soft_delete_field, datetime.now(tz=timezone.utc))  # type: ignore[arg-type]
+        setattr(obj, self.soft_delete_field, datetime.now(tz=UTC))  # type: ignore[arg-type]
         await self.session.flush()
         return True

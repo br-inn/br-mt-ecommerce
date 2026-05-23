@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Any
 from uuid import UUID
 
@@ -181,6 +182,7 @@ class PurchaseOrderRepository:
             clauses.append(PurchaseOrder.po_number.ilike(f"%{q}%"))
         if clauses:
             from sqlalchemy import and_
+
             stmt = stmt.where(and_(*clauses))
 
         cursor_uuid = _decode_id_cursor(cursor)
@@ -226,7 +228,7 @@ class PurchaseOrderRepository:
     # Confirm (draft → confirmed)
     # ------------------------------------------------------------------
     async def confirm(self, po_id: UUID) -> PurchaseOrder:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         po = await self.get(po_id)
         if po is None:
@@ -256,7 +258,7 @@ class PurchaseOrderRepository:
                 },
             )
         po.status = "confirmed"
-        po.confirmed_at = datetime.now(tz=timezone.utc)
+        po.confirmed_at = datetime.now(tz=UTC)
         await self.session.flush()
         return po
 
@@ -311,9 +313,7 @@ class PurchaseOrderRepository:
     # ------------------------------------------------------------------
     # Lines
     # ------------------------------------------------------------------
-    async def add_line(
-        self, po_id: UUID, line_data: Any
-    ) -> PurchaseOrderLine:
+    async def add_line(self, po_id: UUID, line_data: Any) -> PurchaseOrderLine:
         po = await self.get(po_id)
         if po is None:
             raise HTTPException(
@@ -348,9 +348,7 @@ class PurchaseOrderRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_line(
-        self, po_id: UUID, line_id: UUID, update_data: Any
-    ) -> PurchaseOrderLine:
+    async def update_line(self, po_id: UUID, line_id: UUID, update_data: Any) -> PurchaseOrderLine:
         po = await self.get(po_id)
         if po is None:
             raise HTTPException(

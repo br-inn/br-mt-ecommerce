@@ -35,7 +35,7 @@ Constraints adicionales:
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -106,9 +106,7 @@ class InvalidTranslationStateTransition(ProductDomainError):
             message=(
                 f"Transición inválida {current!r} → {target!r}. "
                 f"Permitidas: "
-                + ", ".join(
-                    f"{a}->{b}" for a, b in sorted(_VALID_TRANSITIONS)
-                )
+                + ", ".join(f"{a}->{b}" for a, b in sorted(_VALID_TRANSITIONS))
                 + "."
             ),
             status_code=409,
@@ -184,9 +182,7 @@ class TranslationWorkflowService:
         self.audit_emitter = TranslationAuditEmitter(self.audit)
 
     # ---------------------------------------------------------- helpers
-    async def _ensure_translation(
-        self, sku: str, lang: str
-    ) -> ProductTranslation:
+    async def _ensure_translation(self, sku: str, lang: str) -> ProductTranslation:
         prod = await self.products.get_by_sku(sku)
         if prod is None or prod.deleted_at is not None:
             raise ProductNotFoundError(sku)
@@ -196,9 +192,7 @@ class TranslationWorkflowService:
         return existing
 
     # ---------------------------------------------------------- transitions
-    async def request_review(
-        self, sku: str, lang: str, actor: User
-    ) -> ProductTranslation:
+    async def request_review(self, sku: str, lang: str, actor: User) -> ProductTranslation:
         """``draft|pending|stale`` → ``pending_review`` (autor pide review)."""
         row = await self._ensure_translation(sku, lang)
         previous = row.status
@@ -206,7 +200,7 @@ class TranslationWorkflowService:
 
         row.status = STATE_PENDING_REVIEW
         row.translated_by = actor.id
-        row.translated_at = datetime.now(tz=timezone.utc)
+        row.translated_at = datetime.now(tz=UTC)
         # Reseteamos staleness_reason si venía de stale.
         _set_optional(row, "staleness_reason", None)
         await self.session.flush()
@@ -221,9 +215,7 @@ class TranslationWorkflowService:
         )
         return row
 
-    async def approve(
-        self, sku: str, lang: str, actor: User
-    ) -> ProductTranslation:
+    async def approve(self, sku: str, lang: str, actor: User) -> ProductTranslation:
         """``pending_review`` → ``approved`` (con four-eyes)."""
         row = await self._ensure_translation(sku, lang)
         previous = row.status
@@ -234,7 +226,7 @@ class TranslationWorkflowService:
 
         row.status = STATE_APPROVED
         row.reviewed_by = actor.id
-        row.reviewed_at = datetime.now(tz=timezone.utc)
+        row.reviewed_at = datetime.now(tz=UTC)
         await self.session.flush()
 
         await self.audit_emitter.record_transition(
@@ -247,9 +239,7 @@ class TranslationWorkflowService:
         )
         return row
 
-    async def reject(
-        self, sku: str, lang: str, actor: User, *, reason: str
-    ) -> ProductTranslation:
+    async def reject(self, sku: str, lang: str, actor: User, *, reason: str) -> ProductTranslation:
         """``pending_review`` → ``draft`` (con motivo obligatorio)."""
         if reason is None or not str(reason).strip():
             raise TranslationRejectMissingReason()
@@ -260,7 +250,7 @@ class TranslationWorkflowService:
 
         row.status = STATE_DRAFT
         row.reviewed_by = actor.id
-        row.reviewed_at = datetime.now(tz=timezone.utc)
+        row.reviewed_at = datetime.now(tz=UTC)
         _set_optional(row, "rejection_reason", reason.strip())
         await self.session.flush()
 
@@ -332,13 +322,13 @@ def _set_optional(obj: Any, attr: str, value: Any) -> None:
 
 __all__ = [
     "ALL_STATES",
-    "InvalidTranslationStateTransition",
     "STALENESS_REASON_MASTER_EN",
     "STATE_APPROVED",
     "STATE_DRAFT",
     "STATE_PENDING_LEGACY",
     "STATE_PENDING_REVIEW",
     "STATE_STALE",
+    "InvalidTranslationStateTransition",
     "TranslationFourEyesViolation",
     "TranslationNotFoundError",
     "TranslationRejectMissingReason",

@@ -3,6 +3,7 @@
 Bloque 1: estructura de la receta (validación del JSONB).
 Bloque 2 (Task 10): schemas request/response de la API.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -59,8 +60,8 @@ class Recipe(BaseModel):
 # ---------------------------------------------------------------------------
 # Task 10 — API request / response schemas
 # ---------------------------------------------------------------------------
-from datetime import datetime  # noqa: E402
-from uuid import UUID  # noqa: E402
+from datetime import datetime
+from uuid import UUID
 
 
 class ScraperSourceCreate(BaseModel):

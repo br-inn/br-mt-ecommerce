@@ -81,9 +81,7 @@ class Standard(UuidPkMixin, Base):
     __tablename__ = "standards"
 
     code: Mapped[str] = mapped_column(Text, nullable=False)
-    edition: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("''")
-    )
+    edition: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
     title_en: Mapped[str] = mapped_column(Text, nullable=False)
     reference_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -92,9 +90,7 @@ class Standard(UuidPkMixin, Base):
         server_default=text("now()"),
     )
 
-    __table_args__ = (
-        UniqueConstraint("code", "edition", name="uq_standards_code_edition"),
-    )
+    __table_args__ = (UniqueConstraint("code", "edition", name="uq_standards_code_edition"),)
 
 
 # ---------------------------------------------------------------------------
@@ -113,19 +109,15 @@ class DimensionColumn(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     label_en: Mapped[str] = mapped_column(Text, nullable=False)
     unit: Mapped[str | None] = mapped_column(Text, nullable=True)
-    order_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
-    cells: Mapped[list["DimensionCell"]] = relationship(
+    cells: Mapped[list[DimensionCell]] = relationship(
         back_populates="column",
         cascade="all, delete-orphan",
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "family_id", "code", name="uq_dimension_columns_family_code"
-        ),
+        UniqueConstraint("family_id", "code", name="uq_dimension_columns_family_code"),
         Index("ix_dimension_columns_family", "family_id"),
     )
 
@@ -150,9 +142,7 @@ class DimensionRow(UuidPkMixin, Base):
         ForeignKey("actuation_codes.id", ondelete="SET NULL"),
         nullable=True,
     )
-    order_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -162,7 +152,7 @@ class DimensionRow(UuidPkMixin, Base):
     actuation_code: Mapped[ActuationCode | None] = relationship(
         foreign_keys=[actuation_code_id], lazy="joined"
     )
-    cells: Mapped[list["DimensionCell"]] = relationship(
+    cells: Mapped[list[DimensionCell]] = relationship(
         back_populates="row",
         cascade="all, delete-orphan",
         order_by="DimensionCell.column_id",
@@ -189,18 +179,14 @@ class DimensionCell(UuidPkMixin, Base):
         ForeignKey("dimension_columns.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    value_number: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 6), nullable=True
-    )
+    value_number: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
     value_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     row: Mapped[DimensionRow] = relationship(back_populates="cells")
     column: Mapped[DimensionColumn] = relationship(back_populates="cells")
 
     __table_args__ = (
-        UniqueConstraint(
-            "row_id", "column_id", name="uq_dimension_cells_row_col"
-        ),
+        UniqueConstraint("row_id", "column_id", name="uq_dimension_cells_row_col"),
         CheckConstraint(
             "value_number IS NOT NULL OR value_text IS NOT NULL",
             name="ck_dimension_cells_value_present",
@@ -224,16 +210,10 @@ class PressureTemperaturePoint(UuidPkMixin, Base):
         nullable=False,
     )
     series_variant_code: Mapped[str | None] = mapped_column(Text, nullable=True)
-    temperature_c: Mapped[Decimal] = mapped_column(
-        Numeric(8, 2), nullable=False
-    )
-    pressure_max_bar: Mapped[Decimal] = mapped_column(
-        Numeric(8, 2), nullable=False
-    )
+    temperature_c: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
+    pressure_max_bar: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
     condition_en: Mapped[str | None] = mapped_column(Text, nullable=True)
-    order_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

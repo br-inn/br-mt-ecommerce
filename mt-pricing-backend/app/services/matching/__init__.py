@@ -35,13 +35,13 @@ from app.services.matching.scoring import (
 )
 
 __all__ = [
-    "CandidateRaw",
     "DEFAULT_WEIGHTS",
+    "SCORING_WEIGHTS",
+    "CandidateRaw",
     "FetcherPort",
     "MatchService",
     "Query",
     "QueryBuilder",
-    "SCORING_WEIGHTS",
     "ScoringBreakdown",
     "build_queries",
     "compute_g1_target",

@@ -6,7 +6,8 @@ Niveles:
 
 Convenciones:
 - `pytest-asyncio` en modo `auto` — async fixtures sin decorar.
-- `event_loop` session-scoped — testcontainers tarda ~2s en arrancar; reusar.
+- `asyncio_default_fixture_loop_scope = "session"` en pyproject.toml — loop
+  compartido por toda la sesión; testcontainers arranca sólo una vez.
 - DB session function-scoped, transaccional, rollback al final → tests aislados.
 - Celery configurado `task_always_eager=True` por defecto en tests para evitar
   necesidad de un worker real.
@@ -14,12 +15,11 @@ Convenciones:
 
 from __future__ import annotations
 
-import asyncio
 import os
 import pathlib
 import subprocess
-from collections.abc import AsyncIterator, Iterator
-from typing import TYPE_CHECKING
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import pytest_asyncio
@@ -30,25 +30,52 @@ if TYPE_CHECKING:
     from redis.asyncio import Redis
     from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+# =============================================================================
+# CONTRATO DEL MODELO — Referencia para escribir tests correctamente
+# =============================================================================
+# HYBRID PROPERTIES de Product (son read-only, NO tienen setter):
+#   Product.name_en  → derivado de translations WHERE lang='en'
+#   Product.active   → derivado de lifecycle_status == 'active'
+#
+#   ❌  Product(name_en="Foo")  → AttributeError silencioso en savepoint
+#   ❌  Product(active=True)    → AttributeError silencioso en savepoint
+#   ✅  Product(lifecycle_status="active", erp_name="Foo")
+#
+# CAMPOS CORRECTOS al crear un Product:
+#   sku            — obligatorio
+#   family         — obligatorio
+#   lifecycle_status — "active" | "deprecated" | "draft" | "blocked"
+#   data_quality   — "complete" | "partial" | "blocked"
+#   erp_name       — nombre ERP (equivalente a lo que name_en derivaba antes)
+#   Usar fixture make_product() que valida estos contratos.
+#
+# CHECK CONSTRAINTS de DB (violarlas produce CheckViolationError):
+#   match_agent_decisions.signal      : IN ('conformal', 'bootstrap')
+#   match_agent_decisions.verdict     : IN ('auto_validate', 'auto_discard', 'no_decision')
+#   match_agent_decisions.mode        : IN ('shadow', 'active')
+#   match_agent_config.mode           : IN ('shadow', 'active')
+#   products.lifecycle_status         : IN ('active', 'deprecated', 'draft', 'blocked')
+#   import_runs.status                : IN ('queued', 'running', 'completed', 'failed')
+#
+# DATOS YA SEEDED EN MIGRACIONES (no insertar duplicados — usar get_or_create):
+#   Permission.code : 'products:read', 'products:write', 'prices:read',
+#                     'prices:write', 'users:read', 'users:write',
+#                     'matches:read', 'matches:write', 'scraper:read',
+#                     'scraper:write', 'imports:write'
+#   Role.code       : 'admin', 'comercial', 'ti_integracion', 'gerente',
+#                     'auditor', 'pim_manager'
+#   Usar fixture make_role() / make_permission() que hacen SELECT-first.
+#
+# PATRÓN CORRECTO para deps FastAPI en mini-apps de tests:
+#   ✅  override get_current_user con fake admin (role.code="admin")
+#   ❌  override require_permissions(perm) — crea nuevo objeto cada llamada
+#       (falla silenciosamente por identidad de objeto)
+# =============================================================================
+
 # --- Force test env BEFORE importing app modules ----------------------------
-# Si el desarrollador tiene `.env` con secrets reales, no queremos que los
-# tests los toquen. El testcontainer se levanta y mutamos DATABASE_URL/REDIS_URL
-# en `_test_env` antes de cualquier import de `app.*`.
 os.environ.setdefault("ENV", "development")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("ENABLE_DOCS", "false")
-
-
-# =============================================================================
-# Event loop — session-scoped para que testcontainers no se reinicien
-# =============================================================================
-@pytest.fixture(scope="session")
-def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    loop = asyncio.new_event_loop()
-    try:
-        yield loop
-    finally:
-        loop.close()
 
 
 # =============================================================================
@@ -59,29 +86,22 @@ _BACKEND_DIR = pathlib.Path(__file__).parent.parent
 
 
 def _create_auth_stub() -> None:
-    """Crea el schema `auth` y tabla `auth.users` mínima si no existen.
-
-    Necesario en CI (PostgreSQL puro sin Supabase) porque algunas migraciones
-    referencia auth.users con FK. Supabase lo provee de serie; aquí lo stubamos.
-    """
+    """Crea el schema `auth` y tabla `auth.users` mínima si no existen."""
     import psycopg
 
     alembic_url = os.environ.get("ALEMBIC_DATABASE_URL", "")
     if not alembic_url:
         return
-    # psycopg v3 URL: postgresql+psycopg://... → remove driver prefix
     raw_url = alembic_url.replace("postgresql+psycopg://", "postgresql://").replace(
         "postgresql+psycopg2://", "postgresql://"
     )
     with psycopg.connect(raw_url, autocommit=True) as conn:
         conn.execute("CREATE SCHEMA IF NOT EXISTS auth")
         conn.execute("CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY)")
-        # Supabase function used in RLS policies (migration 013+); stub returns NULL.
         conn.execute(
             "CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid"
             " LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$"
         )
-        # Supabase built-in roles used in RLS policies; create if absent.
         conn.execute(
             "DO $$ BEGIN"
             "  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role')"
@@ -90,11 +110,7 @@ def _create_auth_stub() -> None:
 
 
 def _run_migrations() -> None:
-    """Corre `alembic upgrade head` en el directorio del backend.
-
-    Usa ALEMBIC_DATABASE_URL (psycopg sync) que debe estar seteada antes de
-    llamar a esta función.
-    """
+    """Corre `alembic upgrade head` en el directorio del backend."""
     _create_auth_stub()
     result = subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
@@ -115,14 +131,10 @@ def postgres_container() -> Iterator[str]:
     - Modo CI: si DATABASE_URL ya está en el entorno (servicio de GitHub Actions),
       la reutiliza directamente y corre las migraciones Alembic contra ella.
     - Modo local: levanta un contenedor efímero `pgvector/pgvector:pg16` via
-      testcontainers (no requiere Docker pre-configurado más allá del daemon local).
-
-    En ambos casos corre `alembic upgrade head` una vez por sesión.
+      testcontainers.
     """
     existing = os.environ.get("DATABASE_URL")
     if existing:
-        # CI / entorno externo: usar la DB ya provisionada.
-        # Derivar la URL sync para Alembic: asyncpg → psycopg.
         alembic_url = existing.replace("+asyncpg", "+psycopg2").replace("+asyncpg", "")
         if "+psycopg" not in alembic_url and "postgresql" in alembic_url:
             alembic_url = alembic_url.replace("postgresql://", "postgresql+psycopg2://")
@@ -131,9 +143,6 @@ def postgres_container() -> Iterator[str]:
         yield existing
         return
 
-    # Modo local: testcontainers.
-    # `pgvector/pgvector:pg16` incluye la extensión `vector` requerida por
-    # la migración base. `postgres:16-alpine` no la tiene.
     from testcontainers.postgres import PostgresContainer
 
     with PostgresContainer("pgvector/pgvector:pg16") as pg:
@@ -149,11 +158,7 @@ def postgres_container() -> Iterator[str]:
 
 @pytest.fixture(scope="session")
 def redis_container() -> Iterator[str]:
-    """Devuelve la URL `redis://host:port/0` de un Redis de tests.
-
-    - Modo CI: si REDIS_URL ya está en el entorno, la reutiliza.
-    - Modo local: levanta un contenedor efímero via testcontainers.
-    """
+    """Devuelve la URL `redis://host:port/0` de un Redis de tests."""
     existing = os.environ.get("REDIS_URL")
     if existing:
         os.environ.setdefault("CELERY_BROKER_URL", existing)
@@ -187,15 +192,7 @@ def redis_container() -> Iterator[str]:
 
 @pytest.fixture(scope="session")
 def neo4j_container() -> Iterator[str]:
-    """Levanta un Neo4j efímero (5.x community) via testcontainers.
-
-    Bypass para entornos sin Docker-in-Docker: si ``NEO4J_TEST_URI`` está
-    definida, reusamos esa instancia (típicamente el servicio `neo4j` del
-    docker-compose dev). Útil para correr el suite desde dentro del
-    container backend sin montar `/var/run/docker.sock`.
-
-    Devuelve la Bolt URI y resetea el singleton del driver al terminar.
-    """
+    """Levanta un Neo4j efímero (5.x community) via testcontainers."""
     external = os.environ.get("NEO4J_TEST_URI")
     user = os.environ.get("NEO4J_TEST_USER", "neo4j")
     password = os.environ.get("NEO4J_TEST_PASSWORD", "devpassword")
@@ -248,12 +245,7 @@ def neo4j_container() -> Iterator[str]:
 # =============================================================================
 @pytest_asyncio.fixture(scope="session")
 async def db_engine(postgres_container: str) -> AsyncIterator[AsyncEngine]:
-    """Engine async sobre el Postgres efímero del session.
-
-    NOTA: las migraciones (`alembic upgrade head`) las dispara Agente C en
-    su propio fixture cuando agregue tests de modelos. Aquí sólo dejamos el
-    engine listo para usar.
-    """
+    """Engine async sobre el Postgres efímero del session."""
     from app.db import make_engine
 
     engine = make_engine(url=postgres_container)
@@ -263,7 +255,11 @@ async def db_engine(postgres_container: str) -> AsyncIterator[AsyncEngine]:
 
 @pytest_asyncio.fixture
 async def db_session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
-    """Session function-scoped, transaccional. Rollback al final → aislamiento."""
+    """Session function-scoped, transaccional. Rollback al final → aislamiento.
+
+    Para tests donde el código bajo test NO llama session.commit() directamente.
+    Si el código SIGUE llamando commit(), usar db_session_committed.
+    """
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
     async with db_engine.connect() as connection:
@@ -272,6 +268,204 @@ async def db_session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         async with session_maker() as session:
             yield session
         await connection.rollback()
+
+
+@pytest_asyncio.fixture
+async def db_session_committed(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
+    """Session para tests donde el código bajo test llama session.commit().
+
+    A diferencia de db_session (rollback), esta fixture hace commits reales y
+    trunca las tablas afectadas al finalizar para garantizar aislamiento.
+
+    Usar cuando PimImporter, workers u otros servicios llaman commit() internamente.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    async_session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with async_session_maker() as session:
+        yield session
+        # Limpieza post-test — orden inverso a FK constraints.
+        await session.execute(text("DELETE FROM product_translations"))
+        await session.execute(text("DELETE FROM product_assets"))
+        await session.execute(
+            text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete")
+        )
+        await session.execute(text("DELETE FROM products"))
+        await session.execute(
+            text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete")
+        )
+        await session.execute(text("DELETE FROM import_runs"))
+        await session.execute(
+            text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_trg")
+        )
+        await session.execute(text("DELETE FROM audit_events"))
+        await session.execute(
+            text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable_trg")
+        )
+        await session.commit()
+
+
+# =============================================================================
+# Factories para entidades de test — evitan errores con hybrid_properties
+# =============================================================================
+
+
+@pytest_asyncio.fixture
+async def make_product(db_session: AsyncSession) -> Callable[..., Any]:
+    """Factory fixture para crear Products en tests.
+
+    Encapsula el contrato del modelo: lifecycle_status en lugar de active,
+    sin name_en (hybrid_property read-only), sin active (hybrid_property).
+    Resuelve brand_id + family_id automáticamente (mig 048: NOT NULL).
+
+    Uso:
+        product = await make_product("MT-V-001")
+        product = await make_product("MT-V-002", lifecycle_status="deprecated")
+        product = await make_product("MT-V-003", family="valves_gate", data_quality="partial")
+    """
+    from sqlalchemy import func, or_, select
+
+    from app.db.models.product import Product
+    from app.db.models.vocabularies import Brand, Family
+
+    async def _get_or_create_brand(brand_name: str) -> Any:
+        row = (
+            await db_session.execute(
+                select(Brand).where(
+                    or_(
+                        func.lower(Brand.code) == brand_name.lower(),
+                        func.lower(Brand.name) == brand_name.lower(),
+                    )
+                )
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return row.id
+        b = Brand(code=brand_name.lower().replace(" ", "_"), name=brand_name)
+        db_session.add(b)
+        await db_session.flush()
+        return b.id
+
+    async def _get_or_create_family(family_name: str) -> Any:
+        row = (
+            await db_session.execute(
+                select(Family).where(
+                    or_(
+                        func.lower(Family.code) == family_name.lower(),
+                        func.lower(Family.name) == family_name.lower(),
+                    )
+                )
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return row.id
+        f = Family(code=family_name.lower().replace(" ", "_"), name=family_name)
+        db_session.add(f)
+        await db_session.flush()
+        return f.id
+
+    async def _factory(
+        sku: str,
+        *,
+        family: str = "valves_ball",
+        brand: str = "MT",
+        lifecycle_status: str = "active",
+        data_quality: str = "complete",
+        erp_name: str | None = None,
+        **kwargs: Any,
+    ) -> Product:
+        # Captura errores tempranos — ambos son hybrid_property sin setter.
+        for forbidden in ("name_en", "active"):
+            if forbidden in kwargs:
+                raise ValueError(
+                    f"make_product: '{forbidden}' es hybrid_property read-only. "
+                    f"Usa 'lifecycle_status' (no 'active') y 'erp_name' (no 'name_en')."
+                )
+        if "brand_id" not in kwargs:
+            kwargs["brand_id"] = await _get_or_create_brand(brand)
+        if "family_id" not in kwargs:
+            kwargs["family_id"] = await _get_or_create_family(family)
+        p = Product(
+            sku=sku,
+            family=family,
+            brand=brand,
+            lifecycle_status=lifecycle_status,
+            data_quality=data_quality,
+            erp_name=erp_name,
+            **kwargs,
+        )
+        db_session.add(p)
+        await db_session.flush()
+        return p
+
+    return _factory
+
+
+@pytest_asyncio.fixture
+async def make_permission(db_session: AsyncSession) -> Callable[..., Any]:
+    """Factory SELECT-first para Permission.
+
+    Evita UniqueViolationError al reusar permisos ya seeded en migraciones.
+
+    Uso:
+        perm = await make_permission("products:read")
+        perm = await make_permission("custom:perm", description="Custom")
+    """
+    from sqlalchemy import select
+
+    from app.db.models.user import Permission
+
+    async def _factory(code: str, description: str = "") -> Permission:
+        existing = (
+            await db_session.execute(select(Permission).where(Permission.code == code))
+        ).scalar_one_or_none()
+        if existing:
+            return existing
+        perm = Permission(code=code, description=description or code)
+        db_session.add(perm)
+        await db_session.flush()
+        return perm
+
+    return _factory
+
+
+@pytest_asyncio.fixture
+async def make_role(db_session: AsyncSession) -> Callable[..., Any]:
+    """Factory SELECT-first para Role.
+
+    Evita UniqueViolationError al reusar roles ya seeded en migraciones.
+    Si el rol existe, lo devuelve tal como está (no actualiza permissions_snapshot).
+
+    Uso:
+        role = await make_role("comercial")
+        role = await make_role("custom_role", name="Custom", permissions=["products:read"])
+    """
+    from sqlalchemy import select
+
+    from app.db.models.user import Role
+
+    async def _factory(
+        code: str,
+        *,
+        name: str = "",
+        permissions: list[str] | None = None,
+    ) -> Role:
+        existing = (
+            await db_session.execute(select(Role).where(Role.code == code))
+        ).scalar_one_or_none()
+        if existing:
+            return existing
+        role = Role(
+            code=code,
+            name=name or code,
+            permissions_snapshot=permissions or [],
+        )
+        db_session.add(role)
+        await db_session.flush()
+        return role
+
+    return _factory
 
 
 # =============================================================================

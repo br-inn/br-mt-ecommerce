@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -15,6 +14,8 @@ from openpyxl import Workbook
 from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.routes.imports_materials import (
     reset_run_store,
+)
+from app.api.routes.imports_materials import (
     router as imports_materials_router,
 )
 
@@ -92,9 +93,8 @@ def _build_app() -> tuple[FastAPI, _FakeUser, MagicMock]:
                 if dep.call is None:
                     continue
                 fn = dep.call
-                if (
-                    fn.__module__ == require_permissions.__module__
-                    and fn.__qualname__.startswith("require_permissions.")
+                if fn.__module__ == require_permissions.__module__ and fn.__qualname__.startswith(
+                    "require_permissions."
                 ):
                     app.dependency_overrides[fn] = _override_perms_factory()
 

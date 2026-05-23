@@ -17,6 +17,7 @@ Graceful degradation:
 - Si Redis no disponible → skip cache, run model.
 - Si modelo falla → log ERROR, return original order (scores = None).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -144,7 +145,9 @@ async def rerank_candidates(
     for candidate, score in zip(candidates, scores, strict=False):
         candidate["rerank_score"] = score
 
-    reranked = sorted(candidates, key=lambda c: c.get("rerank_score") or float("-inf"), reverse=True)
+    reranked = sorted(
+        candidates, key=lambda c: c.get("rerank_score") or float("-inf"), reverse=True
+    )
     return reranked
 
 

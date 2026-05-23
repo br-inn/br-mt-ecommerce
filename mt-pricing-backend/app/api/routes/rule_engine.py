@@ -9,6 +9,7 @@ GET/POST /rule-engine/norm-equivalences
 GET/PUT /rule-engine/comparator-config
 GET /rule-engine/rule-suggestions  POST .../apply  POST .../dismiss
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -48,6 +49,7 @@ router = APIRouter(
 
 
 # ── Taxonomy Profiles ────────────────────────────────────────────────────────
+
 
 @router.get("/taxonomy-profiles", response_model=list[TaxonomyProfileResponse])
 async def list_taxonomy_profiles(session: AsyncSession = Depends(get_db_session)):
@@ -98,6 +100,7 @@ async def get_taxonomy_profile_stats(
 
 
 # ── Unit Transforms ──────────────────────────────────────────────────────────
+
 
 @router.get("/unit-transforms", response_model=list[UnitTransformResponse])
 async def list_unit_transforms(session: AsyncSession = Depends(get_db_session)):
@@ -159,6 +162,7 @@ async def delete_unit_transform(
 
 # ── Norm Equivalences ────────────────────────────────────────────────────────
 
+
 @router.get("/norm-equivalences", response_model=list[NormEquivalenceResponse])
 async def list_norm_equivalences(session: AsyncSession = Depends(get_db_session)):
     repo = NormEquivalenceRepository(session)
@@ -207,6 +211,7 @@ async def delete_norm_equivalence(
 
 # ── Comparator Config ────────────────────────────────────────────────────────
 
+
 @router.get("/comparator-config", response_model=list[ComparatorConfigEntry])
 async def list_comparator_config(session: AsyncSession = Depends(get_db_session)):
     result = await session.execute(select(ComparatorConfig).order_by(ComparatorConfig.key))
@@ -227,6 +232,7 @@ async def update_comparator_config(
 
 
 # ── Rule Suggestions ─────────────────────────────────────────────────────────
+
 
 @router.get("/rule-suggestions", response_model=list[RuleSuggestionResponse])
 async def list_rule_suggestions(

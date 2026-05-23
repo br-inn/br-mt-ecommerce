@@ -49,7 +49,7 @@ def _get_supabase_storage() -> Any:
         return None
     try:
         client = get_supabase_admin()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     return client.storage if client is not None else None
 
@@ -60,7 +60,7 @@ def _download_original(storage: Any, bucket: str, key: str) -> bytes:
         raise RuntimeError("supabase storage no configurado")
     try:
         return storage.from_(bucket).download(key)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         raise RuntimeError(f"download {key} failed: {e}") from e
 
 
@@ -120,7 +120,7 @@ def _compute_blurhash(image_bytes: bytes) -> str | None:
             small = img.copy()
             small.thumbnail((128, 128))
             return blurhash.encode(small, x_components=4, y_components=3)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
@@ -137,7 +137,7 @@ def _upload_thumbnail(storage: Any, bucket: str, key: str, body: bytes) -> None:
             body,
             file_options={"content-type": "image/webp", "upsert": "true"},
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         raise RuntimeError(f"upload {key} failed: {e}") from e
 
 
@@ -294,7 +294,7 @@ def _persist_variants_to_db(
         import asyncio as _asyncio
 
         _asyncio.run(engine.dispose())
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "thumbnails.db_persist_failed",
             extra={"storage_path": storage_path, "error": str(exc)},

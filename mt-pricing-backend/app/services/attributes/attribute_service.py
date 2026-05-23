@@ -36,9 +36,7 @@ from app.schemas.attributes import (
 class AttributeDomainError(Exception):
     """Domain error for attribute operations — maps to HTTP via API layer."""
 
-    def __init__(
-        self, message: str, code: str, status_code: int = 400
-    ) -> None:
+    def __init__(self, message: str, code: str, status_code: int = 400) -> None:
         super().__init__(message)
         self.message = message
         self.code = code
@@ -84,9 +82,7 @@ class AttributeService:
         return row
 
     async def get_definition_by_code(self, code: str) -> AttributeDefinition:
-        stmt = select(AttributeDefinition).where(
-            AttributeDefinition.code == code
-        )
+        stmt = select(AttributeDefinition).where(AttributeDefinition.code == code)
         result = await self.session.execute(stmt)
         row = result.scalar_one_or_none()
         if row is None:
@@ -99,9 +95,7 @@ class AttributeService:
 
     async def create_definition(self, data: dict[str, Any]) -> AttributeDefinition:
         existing = await self.session.execute(
-            select(AttributeDefinition).where(
-                AttributeDefinition.code == data["code"]
-            )
+            select(AttributeDefinition).where(AttributeDefinition.code == data["code"])
         )
         if existing.scalar_one_or_none() is not None:
             raise AttributeDomainError(
@@ -123,9 +117,7 @@ class AttributeService:
         await self.session.refresh(row)
         return row
 
-    async def patch_definition(
-        self, attr_id: UUID, data: dict[str, Any]
-    ) -> AttributeDefinition:
+    async def patch_definition(self, attr_id: UUID, data: dict[str, Any]) -> AttributeDefinition:
         row = await self.get_definition(attr_id)
         for k, v in data.items():
             setattr(row, k, v)
@@ -138,9 +130,7 @@ class AttributeService:
         # Check no values exist (ON DELETE RESTRICT would do this, but the
         # error path is clearer here).
         existing_values = await self.session.execute(
-            select(AttributeValue.id)
-            .where(AttributeValue.attribute_id == attr_id)
-            .limit(1)
+            select(AttributeValue.id).where(AttributeValue.attribute_id == attr_id).limit(1)
         )
         if existing_values.scalar_one_or_none() is not None:
             raise AttributeDomainError(
@@ -171,9 +161,7 @@ class AttributeService:
             )
         return row
 
-    async def create_option(
-        self, attr_id: UUID, data: dict[str, Any]
-    ) -> AttributeOption:
+    async def create_option(self, attr_id: UUID, data: dict[str, Any]) -> AttributeOption:
         attr = await self.get_definition(attr_id)
         if attr.data_type != "enum":
             raise AttributeDomainError(
@@ -195,9 +183,7 @@ class AttributeService:
         await self.session.refresh(row)
         return row
 
-    async def patch_option(
-        self, option_id: UUID, data: dict[str, Any]
-    ) -> AttributeOption:
+    async def patch_option(self, option_id: UUID, data: dict[str, Any]) -> AttributeOption:
         row = await self.get_option(option_id)
         for k, v in data.items():
             setattr(row, k, v)
@@ -220,9 +206,7 @@ class FamilyAttributeService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def list_for_family(
-        self, family_id: UUID
-    ) -> Sequence[FamilyAttribute]:
+    async def list_for_family(self, family_id: UUID) -> Sequence[FamilyAttribute]:
         stmt = (
             select(FamilyAttribute)
             .where(FamilyAttribute.family_id == family_id)
@@ -282,12 +266,9 @@ class FamilyAttributeService:
         return link
 
     async def unlink(self, family_id: UUID, attribute_id: UUID) -> None:
-        stmt = (
-            select(FamilyAttribute)
-            .where(
-                FamilyAttribute.family_id == family_id,
-                FamilyAttribute.attribute_id == attribute_id,
-            )
+        stmt = select(FamilyAttribute).where(
+            FamilyAttribute.family_id == family_id,
+            FamilyAttribute.attribute_id == attribute_id,
         )
         result = await self.session.execute(stmt)
         link = result.scalar_one_or_none()
@@ -300,9 +281,7 @@ class FamilyAttributeService:
         await self.session.delete(link)
         await self.session.commit()
 
-    async def is_in_template(
-        self, family_id: UUID, attribute_id: UUID
-    ) -> bool:
+    async def is_in_template(self, family_id: UUID, attribute_id: UUID) -> bool:
         stmt = select(FamilyAttribute.id).where(
             FamilyAttribute.family_id == family_id,
             FamilyAttribute.attribute_id == attribute_id,
@@ -323,9 +302,7 @@ class AttributeValueService:
         self.template_svc = FamilyAttributeService(session)
 
     # ---- list / get --------------------------------------------------------
-    async def list_for_product(
-        self, sku: str
-    ) -> Sequence[AttributeValue]:
+    async def list_for_product(self, sku: str) -> Sequence[AttributeValue]:
         stmt = (
             select(AttributeValue)
             .where(
@@ -338,9 +315,7 @@ class AttributeValueService:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_for_product(
-        self, sku: str, attribute_code: str
-    ) -> AttributeValue:
+    async def get_for_product(self, sku: str, attribute_code: str) -> AttributeValue:
         attr = await self.attribute_svc.get_definition_by_code(attribute_code)
         stmt = select(AttributeValue).where(
             AttributeValue.owner_type == "product",
@@ -378,9 +353,7 @@ class AttributeValueService:
         attr = await self.attribute_svc.get_definition_by_code(attribute_code)
 
         # 3. Verify attribute is in family template.
-        in_template = await self.template_svc.is_in_template(
-            product.family_id, attr.id
-        )
+        in_template = await self.template_svc.is_in_template(product.family_id, attr.id)
         if not in_template:
             raise AttributeDomainError(
                 (

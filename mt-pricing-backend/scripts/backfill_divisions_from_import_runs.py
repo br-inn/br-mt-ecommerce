@@ -24,7 +24,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-from collections import defaultdict
 from typing import Any
 
 from sqlalchemy import select, text
@@ -97,9 +96,7 @@ async def backfill(
 
             if not codes:
                 summary["runs_skipped_no_codes"] += 1
-                logger.info(
-                    "run_id=%s SKIP (sin codes ni default).", run.id
-                )
+                logger.info("run_id=%s SKIP (sin codes ni default).", run.id)
                 continue
 
             skus = await _skus_for_run(session, str(run.id))
@@ -111,14 +108,10 @@ async def backfill(
                     # de configuración, pero NO escribimos.
                     continue
                 try:
-                    n = await assign_divisions(
-                        session, sku, codes, code_id_cache=cache
-                    )
+                    n = await assign_divisions(session, sku, codes, code_id_cache=cache)
                     run_links_created += n
-                except Exception:  # noqa: BLE001
-                    logger.exception(
-                        "backfill failed sku=%s run_id=%s", sku, run.id
-                    )
+                except Exception:
+                    logger.exception("backfill failed sku=%s run_id=%s", sku, run.id)
 
             if not dry_run:
                 await session.commit()
@@ -139,7 +132,12 @@ async def backfill(
             )
             logger.info(
                 "run_id=%s codes=%s source=%s skus=%d links_created=%d dry_run=%s",
-                run.id, codes, source, len(skus), run_links_created, dry_run,
+                run.id,
+                codes,
+                source,
+                len(skus),
+                run_links_created,
+                dry_run,
             )
 
     return summary
@@ -172,7 +170,8 @@ async def _main() -> None:
     ]
     logger.info(
         "Starting backfill dry_run=%s default_codes=%s",
-        args.dry_run, default_codes,
+        args.dry_run,
+        default_codes,
     )
     result = await backfill(dry_run=args.dry_run, default_codes=default_codes)
     logger.info("=" * 60)

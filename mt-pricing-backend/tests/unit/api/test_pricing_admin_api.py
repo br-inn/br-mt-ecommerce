@@ -6,7 +6,7 @@ get_current_user, require_permissions. Sin DB ni Celery real.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -62,9 +62,8 @@ def _build_app(*, session: Any = None) -> tuple[FastAPI, _FakeUser]:
                 if dep.call is None:
                     continue
                 fn = dep.call
-                if (
-                    fn.__module__ == require_permissions.__module__
-                    and fn.__qualname__.startswith("require_permissions.")
+                if fn.__module__ == require_permissions.__module__ and fn.__qualname__.startswith(
+                    "require_permissions."
                 ):
                     app.dependency_overrides[fn] = _override_perms_factory()
 
@@ -140,7 +139,7 @@ async def test_last_run_returns_not_found_when_empty() -> None:
 async def test_last_run_returns_event_summary() -> None:
     fake_session = MagicMock()
     last_event = MagicMock()
-    last_event.event_at = datetime(2026, 5, 7, 2, 0, tzinfo=timezone.utc)
+    last_event.event_at = datetime(2026, 5, 7, 2, 0, tzinfo=UTC)
     last_event.actor_email = "system@mt.ae"
     last_event.after = {"skus_total": 224, "skus_processed": 220}
     last_event.payload_diff = {"source": "nightly_beat"}

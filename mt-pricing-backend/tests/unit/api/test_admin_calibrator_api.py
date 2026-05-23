@@ -15,10 +15,11 @@ from app.api.deps import get_current_user, get_db_session
 from app.api.routes.admin_calibrator import (
     get_calibrator_storage,
     get_calibrator_trainer,
+)
+from app.api.routes.admin_calibrator import (
     router as admin_calibrator_router,
 )
 from app.services.matching.calibrator_trainer import (
-    CalibratorTrainer,
     CalibratorTrainingNotReady,
     TrainingResult,
 )
@@ -198,7 +199,7 @@ def _build_app(
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow
