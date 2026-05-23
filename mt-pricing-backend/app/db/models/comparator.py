@@ -54,7 +54,7 @@ from app.db.types import HAS_PGVECTOR, UUID_PG
 # Embedding dim 1536 (ADR-012 §17.1: OpenAI text-embedding-3-small / similares).
 # Fase 1: nullable — research workstream decide modelo final en S5+.
 if HAS_PGVECTOR:  # pragma: no cover
-    from pgvector.sqlalchemy import Vector  # type: ignore[import-not-found]
+    from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
 
     _EMBEDDING_TYPE: Any = Vector(1536)
 else:  # pragma: no cover
