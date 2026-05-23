@@ -55,7 +55,7 @@ def _get_supabase_storage() -> Any:
         return None
     try:
         client = get_supabase_admin()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     return client.storage if client is not None else None
 
@@ -70,7 +70,7 @@ def _storage_object_exists(storage: Any, bucket: str, key: str) -> bool:
         name = key.split("/")[-1]
         items = storage.from_(bucket).list(prefix)
         return any(item.get("name") == name for item in (items or []))
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("probe_mirror.storage_list_failed", extra={"bucket": bucket, "key": key})
         return False
 
@@ -89,7 +89,7 @@ def _upload_original(storage: Any, bucket: str, key: str, body: bytes, mime: str
             body,
             file_options={"content-type": mime, "upsert": "true"},
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.exception("probe_mirror.storage_upload_failed", extra={"key": key})
         raise RuntimeError(f"upload failed: {e}") from e
 
@@ -200,5 +200,5 @@ def _enqueue_thumbnails(sku: str, original_key: str) -> None:
         from app.workers.thumbnails import generate_thumbnails
 
         generate_thumbnails.delay(sku, original_key)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("probe_mirror.thumbnails_enqueue_failed", extra={"sku": sku})

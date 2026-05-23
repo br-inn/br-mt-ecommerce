@@ -254,7 +254,6 @@ async def test_fetch_no_api_key_returns_empty() -> None:
 
 def test_factory_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Settings sin TRADELING_API_KEY → factory retorna None."""
-    from app.core.config import get_settings
     from pydantic import SecretStr
 
     mock_settings = MagicMock()

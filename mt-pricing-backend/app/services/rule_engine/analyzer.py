@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from uuid import UUID
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +16,7 @@ FN_RATE_THRESHOLD = 0.20
 
 
 async def analyze_and_suggest(
-    session: "AsyncSession",
+    session: AsyncSession,
     taxonomy_profile_id: UUID,
     family: str,
     metrics: dict,

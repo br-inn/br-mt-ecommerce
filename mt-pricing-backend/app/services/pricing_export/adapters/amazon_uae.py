@@ -12,7 +12,7 @@ import io
 import logging
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.services.pricing_export.publisher import ExportResult, PublishPayload
@@ -93,7 +93,7 @@ class AmazonUAEAdapter:
                 rows_blocked=len(errors),
                 errors=errors,
                 shadow_mode=True,
-                exported_at=datetime.now(tz=timezone.utc),
+                exported_at=datetime.now(tz=UTC),
             )
 
         # Generar CSV con misma lógica que export_csv
@@ -119,7 +119,7 @@ class AmazonUAEAdapter:
         csv_content = buf.getvalue()
 
         # Escribir en /tmp sin retornar bytes al cliente
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S%f")
         shadow_filename = f"shadow_amazon_uae_{timestamp}.csv"
         shadow_path = os.path.join(tempfile.gettempdir(), shadow_filename)
         with open(shadow_path, "w", encoding="utf-8", newline="") as fh:
@@ -138,7 +138,7 @@ class AmazonUAEAdapter:
             rows_blocked=rows_blocked,
             submission_id=f"shadow-amz-{uuid4()}",
             shadow_mode=True,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={"shadow_path": shadow_path, "scheme_code": payload.scheme_code},
         )
 
@@ -178,7 +178,7 @@ class AmazonUAEAdapter:
             rows_exported=rows_exported,
             rows_blocked=rows_blocked,
             shadow_mode=False,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={"stub": True, "scheme_code": payload.scheme_code},
         )
         return csv_bytes, result

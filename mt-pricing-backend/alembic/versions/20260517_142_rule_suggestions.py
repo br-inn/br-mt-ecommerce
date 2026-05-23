@@ -4,9 +4,10 @@ Revision ID: 20260517_142
 Revises: 20260517_141
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
+
+from alembic import op
 
 revision = "20260517_142"
 down_revision = "20260517_141"

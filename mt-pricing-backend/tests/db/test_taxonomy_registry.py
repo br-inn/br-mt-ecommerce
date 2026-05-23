@@ -529,7 +529,7 @@ class TestModelsRegistration:
 
     def test_taxonomy_models_in_metadata(self) -> None:
         from app.db import Base
-        from app.db import models as _  # noqa: F401
+        from app.db import models as _
 
         expected = {
             "taxonomy_types",

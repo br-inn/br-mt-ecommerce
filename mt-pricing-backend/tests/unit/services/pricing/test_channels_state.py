@@ -34,7 +34,7 @@ def test_channel_states_constant() -> None:
 
 def test_channel_state_history_importable() -> None:
     """ChannelStateHistory debe ser importable desde app.db.models."""
-    from app.db.models import ChannelStateHistory  # noqa: F401
+    from app.db.models import ChannelStateHistory
 
     assert ChannelStateHistory.__tablename__ == "channel_state_history"
 

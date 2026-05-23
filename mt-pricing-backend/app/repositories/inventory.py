@@ -13,23 +13,20 @@ Cubre:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+import datetime as _dt
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-import datetime as _dt
 
 from app.db.models.inventory import (
     CycleCountSchedule,
     ExpiryAlertThreshold,
     GoodsReceipt,
-    InventoryAlert,
     InventoryLot,
     InventoryPosition,
     JournalEntry,
@@ -65,8 +62,6 @@ from app.schemas.inventory import (
     WarehouseZoneRead,
 )
 from app.schemas.inventory_ops import (
-    AbcClassificationRunResult,
-    CriticalStockItem,
     CycleCountScheduleCreate,
     CycleCountScheduleRead,
     ExpiryAlertGroupRead,
@@ -78,7 +73,6 @@ from app.schemas.inventory_ops import (
     ReplenishmentParamCreate,
     ReplenishmentParamPatch,
     ReplenishmentParamRead,
-    RopCheckResult,
 )
 
 
@@ -101,7 +95,7 @@ class InventoryRepository:
         warehouse_id: UUID | None = None,
         zone_id: UUID | None = None,
     ) -> list[InventoryPositionRead]:
-        from app.db.models.product import Product  # noqa: PLC0415
+        from app.db.models.product import Product
 
         stmt = (
             select(
@@ -241,7 +235,7 @@ class InventoryRepository:
             )
         )
 
-        five_min_ago = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
+        five_min_ago = datetime.now(tz=_dt.UTC) - timedelta(minutes=5)
         pending_gr_stmt = select(func.count(GoodsReceipt.id)).where(
             and_(
                 GoodsReceipt.status == "pending",
@@ -489,9 +483,9 @@ class InventoryRepository:
         return WarehouseRead.model_validate(wh)
 
     async def patch_warehouse(
-        self, warehouse_id: UUID, payload: "WarehousePatch"
-    ) -> "WarehouseRead":
-        from app.schemas.inventory import WarehousePatch, WarehouseRead
+        self, warehouse_id: UUID, payload: WarehousePatch
+    ) -> WarehouseRead:
+        from app.schemas.inventory import WarehouseRead
 
         result = await self.session.execute(select(Warehouse).where(Warehouse.id == warehouse_id))
         wh = result.scalar_one_or_none()
@@ -716,7 +710,7 @@ class InventoryRepository:
             rp.lead_time_days = payload.lead_time_days
         if payload.is_active is not None:
             rp.is_active = payload.is_active
-        rp.updated_at = _dt.datetime.now(tz=_dt.timezone.utc)
+        rp.updated_at = _dt.datetime.now(tz=_dt.UTC)
         await self.session.flush()
         return ReplenishmentParamRead.model_validate(rp)
 
@@ -768,7 +762,7 @@ class InventoryRepository:
 
     async def get_inventory_kpis(self) -> InventoryKpisRead:
         today = _dt.date.today()
-        now = _dt.datetime.now(tz=_dt.timezone.utc)
+        now = _dt.datetime.now(tz=_dt.UTC)
         thirty_days_ago = now - _dt.timedelta(days=30)
         expiry_cutoff = today + _dt.timedelta(days=30)
 

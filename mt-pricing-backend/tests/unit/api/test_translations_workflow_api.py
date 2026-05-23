@@ -20,7 +20,7 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
@@ -32,6 +32,8 @@ from httpx import ASGITransport, AsyncClient
 from app.api.deps import get_current_user, get_db_session
 from app.api.routes.translations_workflow import (
     get_translation_workflow_service,
+)
+from app.api.routes.translations_workflow import (
     router as workflow_router,
 )
 from app.services.products.translation_audit import TranslationAuditEmitter
@@ -76,7 +78,7 @@ class _FakeTranslation:
         self.reviewed_at: datetime | None = None
         self.staleness_reason: str | None = None
         self.rejection_reason: str | None = None
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.created_at = now
         self.updated_at = now
 
@@ -173,7 +175,7 @@ def _build_app(service: TranslationWorkflowService, user: _FakeUser) -> FastAPI:
             call = d.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call: Any = call) -> _FakeUser:  # noqa: ARG001
+                async def _allow(_call: Any = call) -> _FakeUser:
                     return user
 
                 app.dependency_overrides[call] = _allow

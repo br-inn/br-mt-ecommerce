@@ -31,8 +31,8 @@ _mock_aiolimiter.AsyncLimiter.return_value = _rate_limiter_instance
 sys.modules["anthropic"] = _mock_anthropic
 sys.modules["aiolimiter"] = _mock_aiolimiter
 
-from app.services.comparator.interfaces import VlmJudgeVerdict  # noqa: E402
-from app.services.comparator.vlm_judge_stub import NoopVlmJudgeAdapter  # noqa: E402
+from app.services.comparator.interfaces import VlmJudgeVerdict
+from app.services.comparator.vlm_judge_stub import NoopVlmJudgeAdapter
 
 pytestmark = pytest.mark.unit
 
@@ -68,7 +68,7 @@ async def test_valid_json_returns_correct_verdict() -> None:
     client_mock = _make_client_mock(valid_json)
     _mock_anthropic.AsyncAnthropic.return_value = client_mock
 
-    from app.services.comparator.vlm_judge_adapter import ClaudeVlmJudgeAdapter  # noqa: PLC0415
+    from app.services.comparator.vlm_judge_adapter import ClaudeVlmJudgeAdapter
 
     adapter = ClaudeVlmJudgeAdapter(api_key="test-key")
     verdict = await adapter.judge(
@@ -95,7 +95,7 @@ async def test_invalid_json_returns_uncertain_fallback() -> None:
     client_mock = _make_client_mock(bad_text)
     _mock_anthropic.AsyncAnthropic.return_value = client_mock
 
-    from app.services.comparator.vlm_judge_adapter import ClaudeVlmJudgeAdapter  # noqa: PLC0415
+    from app.services.comparator.vlm_judge_adapter import ClaudeVlmJudgeAdapter
 
     adapter = ClaudeVlmJudgeAdapter(api_key="test-key")
     verdict = await adapter.judge(
@@ -117,6 +117,7 @@ async def test_invalid_json_returns_uncertain_fallback() -> None:
 @pytest.mark.asyncio
 async def test_uncertain_low_confidence_enqueues_to_human_queue() -> None:
     from uuid import uuid4
+
     from app.services.comparator.adapters import RagOnlyComparatorAdapter
 
     # Mock de session: execute devuelve result con scalar_one_or_none=None
@@ -197,7 +198,7 @@ async def test_empty_response_content_returns_uncertain_fallback() -> None:
     client.messages.create = AsyncMock(return_value=response)
     _mock_anthropic.AsyncAnthropic.return_value = client
 
-    from app.services.comparator.vlm_judge_adapter import ClaudeVlmJudgeAdapter  # noqa: PLC0415
+    from app.services.comparator.vlm_judge_adapter import ClaudeVlmJudgeAdapter
 
     adapter = ClaudeVlmJudgeAdapter(api_key="test-key")
     verdict = await adapter.judge(
@@ -218,10 +219,10 @@ async def test_empty_response_content_returns_uncertain_fallback() -> None:
 
 def test_factory_returns_noop_when_api_key_empty() -> None:
     """VlmJudgeFactory devuelve Noop cuando ANTHROPIC_API_KEY está vacío (AC#9)."""
-    from unittest.mock import patch  # noqa: PLC0415
+    from unittest.mock import patch
 
-    from app.services.comparator.factory import VlmJudgeFactory  # noqa: PLC0415
-    from app.services.comparator.vlm_judge_stub import NoopVlmJudgeAdapter  # noqa: PLC0415
+    from app.services.comparator.factory import VlmJudgeFactory
+    from app.services.comparator.vlm_judge_stub import NoopVlmJudgeAdapter
 
     with (
         patch.object(VlmJudgeFactory, "_is_enabled", return_value=True),

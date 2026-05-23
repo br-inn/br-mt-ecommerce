@@ -152,7 +152,7 @@ class ProductCertificationResponse(BaseModel):
     owner_id: str | None = None
 
     @classmethod
-    def from_link(cls, link: object) -> "ProductCertificationResponse":
+    def from_link(cls, link: object) -> ProductCertificationResponse:
         """Construir desde un row ProductCertification (con cert eager-loaded).
 
         Fase 5 — extrae owner_type/owner_id defensivamente; si el atributo no
@@ -227,7 +227,7 @@ class ProductApplicationResponse(BaseModel):
     created_at: datetime
 
     @classmethod
-    def from_link(cls, link: object) -> "ProductApplicationResponse":
+    def from_link(cls, link: object) -> ProductApplicationResponse:
         """Construir desde un row ProductApplication (con application eager-loaded)."""
         app = link.application  # type: ignore[attr-defined]
         return cls(
@@ -495,7 +495,7 @@ class ProductDivisionResponse(BaseModel):
     created_at: datetime
 
     @classmethod
-    def from_link(cls, link: object) -> "ProductDivisionResponse":
+    def from_link(cls, link: object) -> ProductDivisionResponse:
         d = link.division  # type: ignore[attr-defined]
         return cls(
             division_id=link.division_id,  # type: ignore[attr-defined]

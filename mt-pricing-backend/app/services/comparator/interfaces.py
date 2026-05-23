@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import UUID
 
 
@@ -232,7 +232,7 @@ class RerankerPort(ABC):
     """
 
     @abstractmethod
-    async def rerank(self, query: str, candidates: list[str]) -> list["RankedCandidate"]:
+    async def rerank(self, query: str, candidates: list[str]) -> list[RankedCandidate]:
         """Reordena `candidates` por relevancia respecto a `query`.
 
         Args:
@@ -261,10 +261,10 @@ __all__ = [
     "OcrPort",
     "OcrResult",
     "RankedCandidate",
+    "RerankerPort",
     "ReverseImageHit",
     "ReverseImageSearchPort",
     "ReverseImageSearchResult",
-    "RerankerPort",
     "VlmJudgePort",
     "VlmJudgeVerdict",
 ]

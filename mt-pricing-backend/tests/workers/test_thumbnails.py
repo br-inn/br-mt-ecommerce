@@ -24,7 +24,7 @@ def test_thumbnails_health_returns_ok(celery_app_eager):
 def _generate_test_jpeg(width: int = 1500, height: int = 1000) -> bytes:
     """Genera un JPEG sintético en memoria con Pillow (skip si no instalado)."""
     pytest.importorskip("PIL")
-    from PIL import Image  # noqa: PLC0415
+    from PIL import Image
 
     img = Image.new("RGB", (width, height), color=(120, 80, 40))
     out = io.BytesIO()
@@ -57,7 +57,7 @@ def test_thumbnails_generates_three_sizes(celery_app_eager):
 
     # Verifica que cada variante es WebP válido y respeta tamaño máximo.
     pytest.importorskip("PIL")
-    from PIL import Image  # noqa: PLC0415
+    from PIL import Image
 
     for key, body in uploads:
         size = int(key.split("/")[-1].split(".")[0])
@@ -71,7 +71,6 @@ def test_thumbnails_generates_three_sizes(celery_app_eager):
 
 def test_thumbnails_aspect_ratio_preserved_for_tall_image(celery_app_eager):
     pytest.importorskip("PIL")
-    from app.workers import thumbnails as th
 
     # Imagen 500x1500 (vertical) — al pedir 256, alto debe ser 256.
     original = _generate_test_jpeg(500, 1500)
@@ -86,7 +85,7 @@ def test_thumbnails_aspect_ratio_preserved_for_tall_image(celery_app_eager):
         th2.generate_thumbnails.apply(args=("MT-V-099", "originals/MT-V-099/x.jpg")).get()
 
     pytest.importorskip("PIL")
-    from PIL import Image  # noqa: PLC0415
+    from PIL import Image
 
     for key, body in uploads:
         size = int(key.split("/")[-1].split(".")[0])

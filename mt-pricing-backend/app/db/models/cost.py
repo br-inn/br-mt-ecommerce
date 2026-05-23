@@ -46,7 +46,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -56,7 +55,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.db.mixins import AuditMixin, TimestampMixin, UuidPkMixin
 from app.db.types import UUID_PG
-
 
 COST_STATUSES = ("active", "superseded")
 
@@ -157,4 +155,4 @@ class Cost(UuidPkMixin, TimestampMixin, AuditMixin, Base):
         return None if self.status == "active" else self.updated_at
 
 
-__all__ = ["Cost", "COST_STATUSES"]
+__all__ = ["COST_STATUSES", "Cost"]

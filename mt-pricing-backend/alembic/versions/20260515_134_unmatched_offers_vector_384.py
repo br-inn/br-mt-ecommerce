@@ -1,6 +1,7 @@
 """Resize unmatched_offers.embedding VECTOR(1536) → VECTOR(384) for sentence-transformers"""
 
 from __future__ import annotations
+
 from alembic import op
 
 revision = "20260515_134"

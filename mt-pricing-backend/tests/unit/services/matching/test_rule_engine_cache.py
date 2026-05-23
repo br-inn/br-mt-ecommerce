@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import time
-from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+
 from app.services.matching.rule_engine_cache import RuleEngineCache
 
 

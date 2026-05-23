@@ -15,24 +15,24 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_current_user, get_db_session
 from app.api.routes.human_queue import (
     get_human_queue_service,
+)
+from app.api.routes.human_queue import (
     router as human_queue_router,
 )
 from app.services.matching.human_queue_service import (
     HumanQueueNotFoundError,
-    HumanQueueService,
 )
 
 pytestmark = pytest.mark.unit
@@ -78,7 +78,7 @@ class _FakeMatchRow:
         self.validated_by: UUID | None = None
         self.validated_at: datetime | None = None
         self.discarded_reason: str | None = None
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.created_at = now
         self.updated_at = now
 
@@ -120,7 +120,7 @@ class _FakeHumanQueueService:
             if r.id == match_id:
                 r.label = label
                 r.reviewer_user_id = reviewer_user_id
-                r.reviewed_at = datetime.now(tz=timezone.utc)
+                r.reviewed_at = datetime.now(tz=UTC)
                 return r
         raise HumanQueueNotFoundError(match_id)
 
@@ -150,7 +150,7 @@ def _build_app(service: _FakeHumanQueueService, user: _FakeUser) -> FastAPI:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow

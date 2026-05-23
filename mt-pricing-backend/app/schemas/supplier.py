@@ -22,7 +22,6 @@ from pydantic import (
     model_validator,
 )
 
-
 SUPPLIER_CODE_REGEX = r"^[A-Z0-9][A-Z0-9_\-]{1,63}$"
 CURRENCY_CODE_REGEX = r"^[A-Z]{3}$"
 
@@ -112,7 +111,7 @@ class SupplierPatch(BaseModel):
         return v.upper()
 
     @model_validator(mode="after")
-    def _at_least_one_field(self) -> "SupplierPatch":
+    def _at_least_one_field(self) -> SupplierPatch:
         if not self.model_dump(exclude_unset=True):
             raise ValueError("PATCH payload vacío — al menos un campo requerido.")
         return self

@@ -11,7 +11,7 @@ Contrato:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
@@ -159,7 +159,7 @@ class SupplierService:
             if k == "code":
                 continue  # inmutable
             setattr(sup, k, v)
-        sup.updated_at = datetime.now(tz=timezone.utc)
+        sup.updated_at = datetime.now(tz=UTC)
         try:
             await self.session.flush()
         except IntegrityError as exc:
@@ -192,7 +192,7 @@ class SupplierService:
             if k == "code":
                 continue
             setattr(sup, k, v)
-        sup.updated_at = datetime.now(tz=timezone.utc)
+        sup.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         after = _snapshot(sup)
         diff = _diff(before, after)
@@ -218,7 +218,7 @@ class SupplierService:
             return sup  # Idempotente.
         before = _snapshot(sup)
         sup.active = False
-        sup.updated_at = datetime.now(tz=timezone.utc)
+        sup.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         await self.audit.record(
             entity_type="supplier",

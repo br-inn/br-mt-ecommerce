@@ -172,7 +172,7 @@ def extract_pdp_specs(html: str) -> dict[str, Any]:
 
     try:
         tree = HTMLParser(html)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {"title_pdp": "", "canonical_url": "", "raw_pairs": []}
 
     raw_pairs: list[dict[str, str]] = []

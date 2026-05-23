@@ -15,7 +15,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-
 CHANNEL_CODE_REGEX = r"^[a-z0-9_]{2,64}$"
 ChannelCodeStr = Annotated[
     str,

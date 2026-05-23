@@ -7,7 +7,6 @@ FastAPI ad-hoc app, no DB required.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -20,6 +19,8 @@ from app.api.routes.vocabularies import (
     admin_vocab_router,
     get_app_service,
     get_cert_service,
+)
+from app.api.routes.vocabularies import (
     router as vocab_router,
 )
 from app.services.vocabularies.vocabulary_service import (

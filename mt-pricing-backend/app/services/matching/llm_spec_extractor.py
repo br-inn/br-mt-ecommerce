@@ -246,7 +246,7 @@ async def extract_specs_from_amazon_text(
     except anthropic.APIError as exc:
         logger.exception("llm_spec_extractor: Anthropic API error: %s", exc)
         return AmazonSpecsExtracted()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("llm_spec_extractor: error inesperado: %s", exc)
         return AmazonSpecsExtracted()
 

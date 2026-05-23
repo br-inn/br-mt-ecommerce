@@ -28,7 +28,7 @@ Compatibilidad celery.beat:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from celery.beat import Scheduler
@@ -89,7 +89,7 @@ class DatabaseScheduler(Scheduler):
         """Beat invoca esto cada `max_interval` segundos. Devuelve delay próximo."""
         try:
             self._dispatch_due_jobs()
-        except Exception:  # noqa: BLE001 — Beat no puede crashear
+        except Exception:
             logger.exception("DatabaseScheduler.tick fallo")
         return float(self.UPDATE_INTERVAL)
 
@@ -103,7 +103,7 @@ class DatabaseScheduler(Scheduler):
     # ----------------------------------------------------------------- Logic
     def _dispatch_due_jobs(self) -> int:
         """Despacha jobs maduros. Devuelve count dispatched."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         dispatched = 0
 
         # Lazy import — circular si lo ponemos al top (worker importa scheduler).
@@ -202,7 +202,7 @@ class DatabaseScheduler(Scheduler):
                             "run_id": str(run_id),
                         },
                     )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.exception("DatabaseScheduler.dispatch_failed code=%s", job["code"])
                     conn.execute(
                         text(
@@ -246,11 +246,11 @@ class DatabaseScheduler(Scheduler):
                 next_dt = cron.get_next(datetime)
                 # croniter respeta el tz del input; aseguramos UTC para storage.
                 if next_dt.tzinfo is None:
-                    next_dt = next_dt.replace(tzinfo=timezone.utc)
+                    next_dt = next_dt.replace(tzinfo=UTC)
                 else:
-                    next_dt = next_dt.astimezone(timezone.utc)
+                    next_dt = next_dt.astimezone(UTC)
                 return next_dt
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("DatabaseScheduler.cron_parse_failed expr=%s", cron_expression)
                 return None
         if schedule_type == "interval" and interval_seconds:

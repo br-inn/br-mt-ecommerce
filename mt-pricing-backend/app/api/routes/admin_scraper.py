@@ -11,20 +11,17 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import datetime, timezone
 from typing import Annotated
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import require_permissions
 from app.core.config import settings
 from app.db.models.user import User
 from app.services.scraper.circuit_breaker import (
-    CircuitBreaker,
     CircuitState,
-    ProxyPool,
     get_circuit_breaker,
     get_proxy_pool,
 )

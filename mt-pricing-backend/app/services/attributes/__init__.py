@@ -10,6 +10,6 @@ from app.services.attributes.attribute_service import (
 __all__ = [
     "AttributeDomainError",
     "AttributeService",
-    "FamilyAttributeService",
     "AttributeValueService",
+    "FamilyAttributeService",
 ]

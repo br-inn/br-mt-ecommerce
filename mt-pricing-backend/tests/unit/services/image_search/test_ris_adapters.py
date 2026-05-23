@@ -17,7 +17,6 @@ from app.services.image_search.ris_adapters import (
 )
 from app.services.image_search.ris_boost import apply_ris_boost
 
-
 # ---------------------------------------------------------------------------
 # T9.1 — test_noop_returns_empty_hits
 # ---------------------------------------------------------------------------

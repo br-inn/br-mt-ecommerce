@@ -80,7 +80,7 @@ class ProductMaterial(Base):
         onupdate=text("now()"),
     )
 
-    product: Mapped["Product"] = relationship(back_populates="materials")
+    product: Mapped[Product] = relationship(back_populates="materials")
 
     __table_args__ = (
         Index("idx_product_materials_sku", "product_sku"),
@@ -117,7 +117,7 @@ class ProductConnection(Base):
         onupdate=text("now()"),
     )
 
-    product: Mapped["Product"] = relationship(back_populates="connections")
+    product: Mapped[Product] = relationship(back_populates="connections")
 
     __table_args__ = (
         CheckConstraint("position >= 1 AND position <= 8", name="chk_connection_position"),

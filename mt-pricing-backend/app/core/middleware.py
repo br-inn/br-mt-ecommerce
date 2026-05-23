@@ -22,10 +22,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from starlette.requests import Request
     from starlette.responses import Response
-
-    from collections.abc import Awaitable, Callable
 
 logger = structlog.get_logger(__name__)
 

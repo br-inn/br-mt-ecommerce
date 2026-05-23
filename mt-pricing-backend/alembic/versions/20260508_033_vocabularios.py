@@ -17,11 +17,11 @@ Create Date: 2026-05-08
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
+
+from alembic import op
 
 revision: str = "20260508_033"
 down_revision: str | None = "20260507_029"

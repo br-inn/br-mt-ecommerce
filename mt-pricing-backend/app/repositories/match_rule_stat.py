@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -16,7 +16,7 @@ class MatchRuleStatRepository(BaseRepository[MatchRuleStat]):
     soft_delete_field = None
 
     async def get_profile_metrics(self, taxonomy_profile_id: UUID, days: int = 30) -> dict:
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
 
         total_stmt = select(func.count(MatchRuleStat.id)).where(
             MatchRuleStat.taxonomy_profile_id == taxonomy_profile_id,

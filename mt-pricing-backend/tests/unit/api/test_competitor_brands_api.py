@@ -16,7 +16,7 @@ Cobertura objetivo (≥ 80 %):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
@@ -34,7 +34,7 @@ pytestmark = pytest.mark.unit
 # Helpers / fakes
 # ---------------------------------------------------------------------------
 
-_NOW = datetime.now(tz=timezone.utc)
+_NOW = datetime.now(tz=UTC)
 
 
 def _brand(
@@ -105,7 +105,7 @@ def _build_app(user: _FakeUser, repo_mock: Any) -> FastAPI:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow

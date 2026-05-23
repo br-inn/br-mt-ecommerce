@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import (
-    Boolean,
     CHAR,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -35,8 +35,7 @@ from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
 if TYPE_CHECKING:
-    from app.db.models.inventory import Warehouse, InventoryLot, WarehouseLocation
-    from app.db.models.user import User
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -94,18 +93,18 @@ class SalesOrder(UuidPkMixin, Base):
     )
 
     # Relationships
-    lines: Mapped[list["SalesOrderLine"]] = relationship(
+    lines: Mapped[list[SalesOrderLine]] = relationship(
         "SalesOrderLine",
         back_populates="order",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    deliveries: Mapped[list["OutboundDelivery"]] = relationship(
+    deliveries: Mapped[list[OutboundDelivery]] = relationship(
         "OutboundDelivery",
         back_populates="order",
         lazy="dynamic",
     )
-    open_items: Mapped[list["CustomerOpenItem"]] = relationship(
+    open_items: Mapped[list[CustomerOpenItem]] = relationship(
         "CustomerOpenItem",
         back_populates="order",
         lazy="dynamic",
@@ -159,8 +158,8 @@ class SalesOrderLine(UuidPkMixin, Base):
     )
 
     # Relationships
-    order: Mapped["SalesOrder"] = relationship("SalesOrder", back_populates="lines")
-    reservations: Mapped[list["StockReservation"]] = relationship(
+    order: Mapped[SalesOrder] = relationship("SalesOrder", back_populates="lines")
+    reservations: Mapped[list[StockReservation]] = relationship(
         "StockReservation",
         back_populates="so_line",
         lazy="dynamic",
@@ -245,7 +244,7 @@ class StockReservation(UuidPkMixin, Base):
     )
 
     # Relationships
-    so_line: Mapped["SalesOrderLine"] = relationship(
+    so_line: Mapped[SalesOrderLine] = relationship(
         "SalesOrderLine", back_populates="reservations"
     )
 
@@ -315,7 +314,7 @@ class CustomerOpenItem(UuidPkMixin, Base):
     )
 
     # Relationships
-    order: Mapped["SalesOrder | None"] = relationship("SalesOrder", back_populates="open_items")
+    order: Mapped[SalesOrder | None] = relationship("SalesOrder", back_populates="open_items")
 
     __table_args__ = (
         CheckConstraint("document_type IN ('so','invoice')", name="ck_open_item_doc_type"),
@@ -364,8 +363,8 @@ class OutboundDelivery(UuidPkMixin, Base):
     )
 
     # Relationships
-    order: Mapped["SalesOrder"] = relationship("SalesOrder", back_populates="deliveries")
-    lines: Mapped[list["OutboundDeliveryLine"]] = relationship(
+    order: Mapped[SalesOrder] = relationship("SalesOrder", back_populates="deliveries")
+    lines: Mapped[list[OutboundDeliveryLine]] = relationship(
         "OutboundDeliveryLine",
         back_populates="delivery",
         cascade="all, delete-orphan",
@@ -420,7 +419,7 @@ class OutboundDeliveryLine(UuidPkMixin, Base):
     )
 
     # Relationships
-    delivery: Mapped["OutboundDelivery"] = relationship("OutboundDelivery", back_populates="lines")
+    delivery: Mapped[OutboundDelivery] = relationship("OutboundDelivery", back_populates="lines")
 
     __table_args__ = (
         Index("idx_del_line_delivery", "delivery_id"),
@@ -459,18 +458,18 @@ class RmaHeader(UuidPkMixin, Base):
     )
 
     # Relationships
-    lines: Mapped[list["RmaLine"]] = relationship(
+    lines: Mapped[list[RmaLine]] = relationship(
         "RmaLine",
         back_populates="rma",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    credit_memos: Mapped[list["CreditMemo"]] = relationship(
+    credit_memos: Mapped[list[CreditMemo]] = relationship(
         "CreditMemo",
         back_populates="rma",
         lazy="dynamic",
     )
-    return_deliveries: Mapped[list["ReturnDelivery"]] = relationship(
+    return_deliveries: Mapped[list[ReturnDelivery]] = relationship(
         "ReturnDelivery",
         back_populates="rma",
         lazy="noload",
@@ -520,7 +519,7 @@ class RmaLine(UuidPkMixin, Base):
     condition: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Relationships
-    rma: Mapped["RmaHeader"] = relationship("RmaHeader", back_populates="lines")
+    rma: Mapped[RmaHeader] = relationship("RmaHeader", back_populates="lines")
 
     __table_args__ = (
         CheckConstraint(
@@ -558,7 +557,7 @@ class CreditMemo(UuidPkMixin, Base):
     )
 
     # Relationships
-    rma: Mapped["RmaHeader"] = relationship("RmaHeader", back_populates="credit_memos")
+    rma: Mapped[RmaHeader] = relationship("RmaHeader", back_populates="credit_memos")
 
     __table_args__ = (
         CheckConstraint(
@@ -602,6 +601,6 @@ class ReturnDelivery(UuidPkMixin, Base):
         server_default=text("now()"),
     )
 
-    rma: Mapped["RmaHeader"] = relationship("RmaHeader", back_populates="return_deliveries")
+    rma: Mapped[RmaHeader] = relationship("RmaHeader", back_populates="return_deliveries")
 
     __table_args__ = (Index("idx_return_delivery_rma", "rma_id"),)

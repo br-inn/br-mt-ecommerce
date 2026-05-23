@@ -8,7 +8,7 @@ de Postgres real.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -17,8 +17,8 @@ import pytest
 from app.services.pricing.escalation_service import (
     AUDIT_ACTION,
     DEFAULT_ESCALATION_HOURS,
-    EscalationService,
     NOTIFICATION_KIND,
+    EscalationService,
 )
 
 
@@ -34,7 +34,7 @@ class _FakePrice:
     escalated: bool = False
     escalated_at: datetime | None = None
     updated_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc) - timedelta(hours=72)
+        default_factory=lambda: datetime.now(tz=UTC) - timedelta(hours=72)
     )
 
 
@@ -120,7 +120,7 @@ class _FakeSession:
         self._fallback_user = fallback_user
         self.flush_count = 0
 
-    async def execute(self, stmt):  # noqa: ANN001 — duck-typed
+    async def execute(self, stmt):
         text = str(stmt).lower()
         if "from prices" in text:
             return _FakeResult(self._overdue)
@@ -128,7 +128,7 @@ class _FakeSession:
             return _FakeResult([self._fallback_user] if self._fallback_user else [])
         return _FakeResult([])
 
-    async def get(self, model, key):  # noqa: ANN001
+    async def get(self, model, key):
         return self._users.get(key)
 
     async def flush(self) -> None:

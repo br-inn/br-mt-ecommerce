@@ -19,12 +19,12 @@ from app.services.importer.column_mapper import (
     EXCEL_COL_TO_FIELD,
     EXPECTED_HEADERS,
     ImportCastError,
-    map_row,
     _cast_cm_to_mm,
     _cast_decimal,
     _cast_ean,
     _cast_int,
     _cast_text,
+    map_row,
 )
 
 

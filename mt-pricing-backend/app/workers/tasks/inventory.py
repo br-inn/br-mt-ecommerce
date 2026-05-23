@@ -32,7 +32,7 @@ from app.workers.worker import celery_app
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -100,7 +100,7 @@ def recalc_map_on_gr(self, gr_id: str) -> dict[str, Any]:  # type: ignore[no-unt
                                     pol.po_id,
                                 )
                                 po_number = po.po_number if po is not None else ""
-                        except Exception:  # noqa: BLE001
+                        except Exception:
                             pass
 
                         gr_event = GoodsReceivedEvent(
@@ -126,7 +126,7 @@ def recalc_map_on_gr(self, gr_id: str) -> dict[str, Any]:  # type: ignore[no-unt
                         session.add(sync_event)
                         await session.flush()
                         sync_event_id = str(sync_event.id)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     logger.warning(
                         "recalc_map_on_gr: could not create ERPSyncEvent for gr_id=%s",
                         gr_id,
@@ -170,7 +170,7 @@ def _dispatch_price_recalc(sku: str) -> None:
 
         recalculate_sku_task.delay(sku, "system")
         logger.info("recalc_map_on_gr: dispatched recalculate_sku_task sku=%s", sku)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning(
             "recalc_map_on_gr: could not dispatch recalculate_sku_task for sku=%s",
             sku,
@@ -185,7 +185,7 @@ def _dispatch_erp_event_by_id(event_id: str) -> None:
 
         push_erp_event.delay(event_id)
         logger.info("recalc_map_on_gr: dispatched push_erp_event event_id=%s", event_id)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning(
             "recalc_map_on_gr: push_erp_event dispatch failed event_id=%s",
             event_id,
@@ -204,16 +204,16 @@ async def _mark_gr_error(gr_id: str, tb: str) -> None:
                 gr.status = "error"
                 gr.notes = tb[:4000]
                 await session.commit()
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("recalc_map_on_gr: could not mark gr %s as error", gr_id)
 
 
 __all__ = [
-    "recalc_map_on_gr",
     "check_lot_expiry_warnings",
-    "run_rop_check",
-    "run_abc_classification",
     "generate_cycle_count_records",
+    "recalc_map_on_gr",
+    "run_abc_classification",
+    "run_rop_check",
 ]
 
 
@@ -238,9 +238,9 @@ def check_lot_expiry_warnings(self) -> dict[str, Any]:  # type: ignore[no-untype
     """
 
     async def _run() -> dict[str, Any]:
-        from datetime import date, timedelta
+        from datetime import date
 
-        from sqlalchemy import func, select, text
+        from sqlalchemy import select
 
         from app.db.engine import get_sessionmaker
         from app.db.models.inventory import (
@@ -501,7 +501,7 @@ def run_abc_classification(self, warehouse_id: str | None = None) -> dict[str, A
 
                 # Asignar clases ABC acumulativas
                 cumulative = Decimal("0")
-                classified_at = _dt.datetime.now(tz=_dt.timezone.utc)
+                classified_at = _dt.datetime.now(tz=_dt.UTC)
 
                 for row in rows:
                     val = row.consumption_value or Decimal("0")
@@ -590,8 +590,9 @@ def generate_cycle_count_records(self: Any, schedule_id: str) -> dict[str, Any]:
             if not sched:
                 return {"skipped": True, "reason": "schedule not found or inactive"}
 
-            from app.db.models.inventory import CycleCount
             import datetime as _datetime
+
+            from app.db.models.inventory import CycleCount
 
             positions_q = _select(InventoryPosition).where(
                 InventoryPosition.warehouse_id == sched.warehouse_id,

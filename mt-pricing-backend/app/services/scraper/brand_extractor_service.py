@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
@@ -194,7 +194,7 @@ class BrandExtractorService:
         await self._session.execute(
             update(BrandExtractor)
             .where(BrandExtractor.id == extractor.id)
-            .values(last_used_at=datetime.now(timezone.utc))
+            .values(last_used_at=datetime.now(UTC))
         )
         return extractor.attribute_map or {}
 
@@ -207,10 +207,11 @@ class BrandExtractorService:
         generated_by: str,
     ) -> None:
         """Upsert the attribute_map for brand × marketplace."""
-        from app.db.models.comparator import BrandExtractor
         from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-        now = datetime.now(timezone.utc)
+        from app.db.models.comparator import BrandExtractor
+
+        now = datetime.now(UTC)
         stmt = pg_insert(BrandExtractor).values(
             brand_id=brand_id,
             marketplace=marketplace,

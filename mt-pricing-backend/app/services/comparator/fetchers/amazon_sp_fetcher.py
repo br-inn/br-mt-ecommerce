@@ -110,7 +110,7 @@ class AmazonSPApiFetcherAdapter:
                             )
                             resp.raise_for_status()
                             data = resp.json()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 await _log_fetch_error(asin, exc)
                 stub = AmazonSPFetcherStub()
                 return await stub.fetch_competitor_price(asin)
@@ -150,20 +150,19 @@ def _extract_price(payload: dict) -> float:
 async def _log_fetch_error(asin: str, exc: Exception) -> None:
     """Registra error en competitor_fetch_errors (best-effort)."""
     try:
-        from app.db import get_sessionmaker  # noqa: PLC0415
-        from app.db.models.comparator import CompetitorFetchError  # noqa: PLC0415
+        from app.db import get_sessionmaker
+        from app.db.models.comparator import CompetitorFetchError
 
         session_factory = get_sessionmaker()
-        async with session_factory() as session:
-            async with session.begin():
-                session.add(
-                    CompetitorFetchError(
-                        asin=asin,
-                        error_type=type(exc).__name__,
-                        error_message=str(exc)[:500],
-                    )
+        async with session_factory() as session, session.begin():
+            session.add(
+                CompetitorFetchError(
+                    asin=asin,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc)[:500],
                 )
-    except Exception:  # noqa: BLE001
+            )
+    except Exception:
         logger.warning("amazon_sp_fetcher: no se pudo registrar error en DB")
 
 

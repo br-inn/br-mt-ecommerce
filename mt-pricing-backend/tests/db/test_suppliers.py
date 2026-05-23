@@ -24,29 +24,30 @@ pytestmark = [pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     """Aplica `alembic upgrade head` antes de los tests."""
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
     command.upgrade(cfg, "head")
 
 
-async def test_currencies_seed_has_four_rows(db_session: "AsyncSession") -> None:
+async def test_currencies_seed_has_four_rows(db_session: AsyncSession) -> None:
     """Migración 0004 siembra USD, EUR, AED, SAR."""
     rows = await db_session.execute(text("SELECT code FROM currencies ORDER BY code;"))
     codes = {r[0] for r in rows.all()}
     assert codes == {"AED", "EUR", "SAR", "USD"}
 
 
-async def test_currencies_seed_aed_is_base(db_session: "AsyncSession") -> None:
+async def test_currencies_seed_aed_is_base(db_session: AsyncSession) -> None:
     """AED es la moneda base (única con is_base=true)."""
     rows = await db_session.execute(text("SELECT code FROM currencies WHERE is_base = true;"))
     bases = {r[0] for r in rows.all()}
     assert bases == {"AED"}
 
 
-async def test_currencies_decimals_check(db_session: "AsyncSession") -> None:
+async def test_currencies_decimals_check(db_session: AsyncSession) -> None:
     """CHECK ck_currencies_decimals — rechaza decimals < 0 o > 8."""
     from sqlalchemy.exc import IntegrityError
 
@@ -60,7 +61,7 @@ async def test_currencies_decimals_check(db_session: "AsyncSession") -> None:
         await db_session.flush()
 
 
-async def test_currencies_only_one_base_allowed(db_session: "AsyncSession") -> None:
+async def test_currencies_only_one_base_allowed(db_session: AsyncSession) -> None:
     """Partial unique uq_currencies_one_base — sólo una moneda base."""
     from sqlalchemy.exc import IntegrityError
 
@@ -74,7 +75,7 @@ async def test_currencies_only_one_base_allowed(db_session: "AsyncSession") -> N
         await db_session.flush()
 
 
-async def test_supplier_insert_with_valid_currency(db_session: "AsyncSession") -> None:
+async def test_supplier_insert_with_valid_currency(db_session: AsyncSession) -> None:
     """Insertar supplier con contract_currency='EUR' (FK válida) persiste."""
     from app.db.models import Supplier
 
@@ -104,7 +105,7 @@ async def test_supplier_insert_with_valid_currency(db_session: "AsyncSession") -
     assert row[2] == 45
 
 
-async def test_supplier_insert_with_invalid_currency_fails(db_session: "AsyncSession") -> None:
+async def test_supplier_insert_with_invalid_currency_fails(db_session: AsyncSession) -> None:
     """Insertar supplier con contract_currency='XYZ' (no en seed) falla por FK."""
     from sqlalchemy.exc import IntegrityError
 
@@ -118,7 +119,7 @@ async def test_supplier_insert_with_invalid_currency_fails(db_session: "AsyncSes
         await db_session.flush()
 
 
-async def test_supplier_updated_at_trigger(db_session: "AsyncSession") -> None:
+async def test_supplier_updated_at_trigger(db_session: AsyncSession) -> None:
     """Trigger trg_suppliers_updated_at actualiza timestamp en UPDATE."""
     from app.db.models import Supplier
 

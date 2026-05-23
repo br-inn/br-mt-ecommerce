@@ -17,7 +17,7 @@ from app.services.comparator.adapters import (
     HybridComparatorAdapter,
     RagOnlyComparatorAdapter,
 )
-from app.services.comparator.interfaces import ComparisonStats, ComparatorPort
+from app.services.comparator.interfaces import ComparatorPort, ComparisonStats
 
 pytestmark = pytest.mark.unit
 

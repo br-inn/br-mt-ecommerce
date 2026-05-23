@@ -14,6 +14,8 @@ from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.routes.imports_datasheets import (
     get_importer_datasheets_service,
     get_product_service,
+)
+from app.api.routes.imports_datasheets import (
     router as imports_datasheets_router,
 )
 from app.services.importer_datasheets import ImporterDatasheetsService

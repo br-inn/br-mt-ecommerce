@@ -88,7 +88,7 @@ async def create_goods_receipt(
 
     # Recargar con relaciones tras commit
     gr_loaded = await repo.get(gr.id)
-    assert gr_loaded is not None  # noqa: S101
+    assert gr_loaded is not None
 
     # Disparar tarea asíncrona
     from app.workers.tasks.inventory import recalc_map_on_gr
@@ -213,5 +213,5 @@ async def retry_goods_receipt(
     recalc_map_on_gr.delay(str(gr.id))
 
     gr_loaded = await repo.get(gr.id)
-    assert gr_loaded is not None  # noqa: S101
+    assert gr_loaded is not None
     return _to_read(gr_loaded)

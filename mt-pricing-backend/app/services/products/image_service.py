@@ -20,7 +20,6 @@ from uuid import uuid4
 
 from app.core.config import settings
 
-
 # Magic bytes — primeros bytes de cada formato soportado.
 _MAGIC_PREFIXES: dict[str, list[bytes]] = {
     "image/jpeg": [b"\xff\xd8\xff"],
@@ -124,7 +123,7 @@ class ImageService:
 
             client = get_supabase_admin()
             signed = client.storage.from_(self.BUCKET).create_signed_upload_url(storage_path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             # Fallback determinista — endpoint sin token, frontend mostrará error
             # de upload pero no rompemos el contrato del API.
             return {

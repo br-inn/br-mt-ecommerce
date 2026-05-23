@@ -10,7 +10,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.services.pricing_export.publisher import ExportResult, PublishPayload
@@ -87,7 +87,7 @@ class ShopifyAdapter:
             rows_blocked=0,
             submission_id=f"stub-shopify-{uuid4()}",
             shadow_mode=True,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={"stub": True, "scheme_code": payload.scheme_code},
         )
 
@@ -136,7 +136,7 @@ class ShopifyAdapter:
             rows_exported=rows_exported,
             rows_blocked=rows_blocked,
             shadow_mode=False,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={
                 "stub": True,
                 "scheme_code": payload.scheme_code,

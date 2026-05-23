@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _MAX_RETRIES = 5
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -190,4 +190,4 @@ def push_erp_event(self, event_id: str) -> dict[str, Any]:  # type: ignore[no-un
     return _run_async(_process_event(event_id, self))
 
 
-__all__ = ["push_erp_event", "_process_event"]
+__all__ = ["_process_event", "push_erp_event"]

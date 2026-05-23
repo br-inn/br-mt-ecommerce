@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal, Protocol
 
-
 BuyBoxState = Literal["own", "competitor", "none"]
 
 

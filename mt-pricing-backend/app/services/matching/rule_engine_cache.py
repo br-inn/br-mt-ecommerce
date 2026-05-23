@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import logging
 import time
-from decimal import Decimal
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -50,7 +51,7 @@ class RuleEngineCache:
     def _is_expired(self) -> bool:
         return (time.monotonic() - self._loaded_at) > self.ttl_seconds
 
-    async def ensure_loaded(self, session: "AsyncSession") -> None:
+    async def ensure_loaded(self, session: AsyncSession) -> None:
         if not self._is_expired() and self._profiles:
             return
         try:
@@ -66,9 +67,9 @@ class RuleEngineCache:
             self._load_fallback()
             raise
 
-    async def _reload(self, session: "AsyncSession") -> None:
-        from app.repositories.taxonomy_profile import TaxonomyProfileRepository
+    async def _reload(self, session: AsyncSession) -> None:
         from app.repositories.comparator_config import ComparatorConfigRepository
+        from app.repositories.taxonomy_profile import TaxonomyProfileRepository
 
         profile_repo = TaxonomyProfileRepository(session)
         config_repo = ComparatorConfigRepository(session)

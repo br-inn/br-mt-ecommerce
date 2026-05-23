@@ -25,7 +25,6 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
@@ -45,7 +44,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UuidPkMixin
-
 
 # Valores permitidos para buybox_state — alineado con frontend Pill states.
 BUYBOX_STATES: tuple[str, ...] = ("own", "competitor", "none")

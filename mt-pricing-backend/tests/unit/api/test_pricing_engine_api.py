@@ -6,7 +6,6 @@ require_permissions, get_bulk_publish_service, get_revise_service.
 
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -19,6 +18,8 @@ from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.routes.pricing_engine import (
     get_bulk_publish_service,
     get_revise_service,
+)
+from app.api.routes.pricing_engine import (
     router as pricing_engine_router,
 )
 from app.services.pricing.bulk_publish_service import BulkPublishResult

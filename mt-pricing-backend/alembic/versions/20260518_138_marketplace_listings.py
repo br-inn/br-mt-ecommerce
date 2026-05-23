@@ -6,9 +6,11 @@ Create Date: 2026-05-18
 """
 
 from __future__ import annotations
-from alembic import op
+
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+
+from alembic import op
 
 revision = "20260518138a"
 down_revision = "20260518137a"

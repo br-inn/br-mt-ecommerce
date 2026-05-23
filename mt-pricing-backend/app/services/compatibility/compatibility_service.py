@@ -19,10 +19,10 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.compatibility import ProductCompatibility
 from app.repositories.audit import AuditRepository
 from app.repositories.compatibility import CompatibilityRepo
 from app.repositories.product import ProductRepository
-from app.db.models.compatibility import ProductCompatibility
 
 
 # ---------------------------------------------------------------------------

@@ -4,8 +4,6 @@ import csv
 import io
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.services.marketplace_export.amazon_listing_exporter import (
     AMAZON_FEED_HEADERS,
     AmazonListingExporter,

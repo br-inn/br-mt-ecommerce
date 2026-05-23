@@ -21,8 +21,9 @@ por account_code (5xxx vs 6xxx) para que la vista funcione sin romper el constra
 
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20260602_140"

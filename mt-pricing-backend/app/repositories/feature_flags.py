@@ -73,7 +73,7 @@ class FeatureFlagRepository:
         await self.session.flush()
 
         row = await self.get(key)
-        assert row is not None  # noqa: S101 — invariante post-upsert
+        assert row is not None
         return row
 
 

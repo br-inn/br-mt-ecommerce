@@ -55,10 +55,9 @@ from app.schemas.importer import (
 )
 from app.services.importer import ImporterService
 from app.services.importer.importer_service import (
+    _RUN_STORE,
     ImporterDomainError,
     ImportHeaderMismatchError,
-    ImportRunNotFoundError,
-    _RUN_STORE,
 )
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -123,7 +122,7 @@ async def analyze_import(
     try:
         header_idx, headers, samples = detect_header_row(file_bytes)
         proposed = suggest_mapping(headers, samples)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(
             status_code=422,
             detail={"code": "import_header_detection_failed", "title": str(exc)},
@@ -178,6 +177,7 @@ async def preview_import(
     custom_mapping = None
     if mapping_json:
         import json as _json
+
         from app.services.importer.mapping_detector import ColumnMappingItem as _CMI
 
         try:
@@ -205,7 +205,7 @@ async def preview_import(
             custom_mapping = parsed if parsed else None
         except HTTPException:
             raise
-        except Exception:  # noqa: BLE001
+        except Exception:
             raise HTTPException(
                 status_code=422,
                 detail={"code": "import_invalid_mapping", "title": "mapping_json inválido"},
@@ -407,7 +407,7 @@ async def upload_and_run_pim(
             bucket=settings.SUPABASE_STORAGE_BUCKET_IMPORTS,
             upsert=True,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail={
@@ -440,7 +440,7 @@ async def upload_and_run_pim(
         )
         run.celery_task_id = async_result.id
         await session.commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         run.status = "failed"
         run.errors = [{"row": 0, "error": f"Celery dispatch failed: {exc}"}]
         await session.commit()
@@ -506,7 +506,7 @@ async def run_pim_from_fixture(
         )
         run.celery_task_id = async_result.id
         await session.commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         run.status = "failed"
         run.errors = [{"row": 0, "error": f"Celery dispatch failed: {exc}"}]
         await session.commit()

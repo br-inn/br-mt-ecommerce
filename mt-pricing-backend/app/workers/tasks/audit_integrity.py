@@ -181,7 +181,7 @@ def verify_chain_range(
     retry_backoff=True,
     retry_kwargs={"max_retries": 2},
 )
-def nightly_integrity_check(self: Any) -> dict[str, Any]:  # noqa: ANN001
+def nightly_integrity_check(self: Any) -> dict[str, Any]:
     """Verifica integridad del hash chain del día anterior y firma el último hash.
 
     Cron: 0 3 * * * Asia/Dubai (23:00 UTC). Registrado en job_definitions

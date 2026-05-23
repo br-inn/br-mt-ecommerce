@@ -47,9 +47,7 @@ from app.schemas.vocabularies import (
     MaterialResponse,
     ProductDivisionLink,
     ProductDivisionResponse,
-    SeriesCertificationLink,
     SeriesCreate,
-    SeriesDivisionLink,
     SeriesPatch,
     SeriesResponse,
     SeriesTierCreate,
@@ -209,10 +207,10 @@ async def list_series_translations(
 # ---------------------------------------------------------------------------
 # Fase 5 — spare parts polymorphic by series + DN range
 # ---------------------------------------------------------------------------
-from app.schemas.compatibility import (  # noqa: E402
+from app.schemas.compatibility import (
     ProductCompatibilityResponse,
 )
-from app.services.compatibility import (  # noqa: E402
+from app.services.compatibility import (
     CompatibilityDomainError,
     CompatibilityService,
 )

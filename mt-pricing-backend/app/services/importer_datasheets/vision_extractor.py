@@ -222,7 +222,7 @@ def _render_pdf_pages(payload: bytes, *, max_pages: int = 4, resolution: int = 1
     """
     try:
         import pdfplumber  # type: ignore
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("vision_extractor: pdfplumber no instalado")
         return []
 
@@ -237,14 +237,14 @@ def _render_pdf_pages(payload: bytes, *, max_pages: int = 4, resolution: int = 1
                     buf = io.BytesIO()
                     img.save(buf, format="PNG")
                     pngs.append(buf.getvalue())
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "vision_extractor: page render failed idx=%d err=%s",
                         idx,
                         exc,
                     )
                     continue
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("vision_extractor: pdf open failed err=%s", exc)
         return []
     return pngs
@@ -300,7 +300,7 @@ class VisionExtractor:
 
         try:
             pngs = self._page_renderer(pdf_bytes, max_pages=self._max_pages)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("vision_extractor: render failed")
             return VisionExtractionResult(
                 error=f"pdf_render_failed: {type(exc).__name__}",
@@ -318,7 +318,7 @@ class VisionExtractor:
         for idx, png in enumerate(pngs):
             try:
                 raw = await client.extract(png_bytes=png, prompt=prompt)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "vision_extractor: client.extract failed idx=%d err=%s",
                     idx,

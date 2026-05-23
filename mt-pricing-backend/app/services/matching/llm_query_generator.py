@@ -132,7 +132,7 @@ async def generate_amazon_query(product_data: dict[str, Any]) -> str | None:
     except anthropic.APIError as exc:
         logger.exception("llm_query_generator: Anthropic API error: %s", exc)
         return None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("llm_query_generator: unexpected error: %s", exc)
         return None
 

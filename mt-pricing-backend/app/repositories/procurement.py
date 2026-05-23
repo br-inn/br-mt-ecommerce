@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -11,7 +10,6 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.db.models.procurement import (
     ApprovalDecision,
@@ -22,9 +20,7 @@ from app.db.models.procurement import (
 from app.schemas.procurement import (
     PRCreate,
     VendorConditionCreate,
-    VendorConditionUpdate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -153,7 +149,7 @@ class ProcurementRepository:
                 f"aprobador: {role_info}, timeout: {rule.timeout_hours}h]"
             ).strip()
 
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
@@ -175,7 +171,7 @@ class ProcurementRepository:
         )
         self.session.add(decision)
         pr.status = "approved"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
@@ -200,7 +196,7 @@ class ProcurementRepository:
         )
         self.session.add(decision)
         pr.status = "rejected"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
@@ -215,7 +211,7 @@ class ProcurementRepository:
                 },
             )
         pr.status = "cancelled"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         return pr
 
@@ -377,8 +373,9 @@ class ProcurementRepository:
 
     async def convert_pr_to_po(
         self, pr_id: UUID, created_by: UUID | None = None
-    ) -> "PurchaseOrder":
+    ) -> PurchaseOrder:
         import datetime as _dt
+
         from app.db.models.inventory import PurchaseOrder
 
         pr = await self._get_or_404(pr_id)
@@ -406,7 +403,7 @@ class ProcurementRepository:
         await self.session.flush()
 
         pr.status = "converted_to_po"
-        pr.updated_at = datetime.now(tz=timezone.utc)
+        pr.updated_at = datetime.now(tz=_dt.UTC)
         await self.session.flush()
         await self.session.refresh(po)
         return po

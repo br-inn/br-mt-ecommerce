@@ -9,12 +9,8 @@ Estrategia:
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 

@@ -111,7 +111,7 @@ class DimensionColumn(UuidPkMixin, Base):
     unit: Mapped[str | None] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
-    cells: Mapped[list["DimensionCell"]] = relationship(
+    cells: Mapped[list[DimensionCell]] = relationship(
         back_populates="column",
         cascade="all, delete-orphan",
     )
@@ -152,7 +152,7 @@ class DimensionRow(UuidPkMixin, Base):
     actuation_code: Mapped[ActuationCode | None] = relationship(
         foreign_keys=[actuation_code_id], lazy="joined"
     )
-    cells: Mapped[list["DimensionCell"]] = relationship(
+    cells: Mapped[list[DimensionCell]] = relationship(
         back_populates="row",
         cascade="all, delete-orphan",
         order_by="DimensionCell.column_id",

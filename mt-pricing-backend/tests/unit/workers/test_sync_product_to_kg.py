@@ -77,7 +77,7 @@ def test_sync_product_to_kg_task_returns_metadata() -> None:
 
     from app.workers.tasks import graphrag as task_mod
 
-    async def _fake_sync(product_id: str, operation: str) -> dict:  # noqa: ARG001
+    async def _fake_sync(product_id: str, operation: str) -> dict:
         return {"action": "upserted"}
 
     with patch.object(task_mod, "_sync_product", _fake_sync):

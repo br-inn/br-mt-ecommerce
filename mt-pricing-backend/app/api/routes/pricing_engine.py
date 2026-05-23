@@ -14,7 +14,7 @@ secciones en OpenAPI.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -115,7 +115,7 @@ async def recalc_batch(
     # Import diferido para evitar ciclos / facilitar mocking en tests.
     try:
         from app.workers.tasks.pricing import recalculate_sku_task
-    except Exception as exc:  # pragma: no cover  # noqa: BLE001
+    except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=503,
             detail={

@@ -22,8 +22,6 @@ import asyncio
 import json
 import os
 import sys
-import warnings
-from collections import Counter
 from pathlib import Path
 
 
@@ -56,8 +54,8 @@ _LABEL_MAP: dict[str, int] = {"accept": 1, "reject": 0}
 
 async def _fetch_pairs(database_url: str) -> list[dict]:
     """Consulta match_candidates WHERE label IN ('accept','reject') AND status='validated'."""
-    from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
 
     engine = create_async_engine(database_url, echo=False)
     rows: list[dict] = []

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC
 from decimal import Decimal
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -64,7 +65,6 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
 
     async def _run() -> dict:
         from decimal import Decimal
-        from uuid import UUID
 
         from sqlalchemy import select, text
         from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -342,8 +342,8 @@ async def _evaluate_extractor_alerts() -> int:
     Umbral: hit_rate < 0.60 (>20pp por debajo de la baseline asumida de 0.80).
     Retorna el número de alertas creadas o actualizadas.
     """
+    from datetime import datetime
     from decimal import Decimal
-    from datetime import datetime, timezone
 
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -366,7 +366,7 @@ async def _evaluate_extractor_alerts() -> int:
     alerts_modified = 0
     try:
         async with session_factory() as session:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             result = await session.execute(select(BrandExtractor))
             extractors = result.scalars().all()
 
@@ -508,7 +508,7 @@ def refresh_price_daily_stats_task() -> dict:
 
     async def _refresh() -> dict:
         from sqlalchemy import text
-        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy.pool import NullPool
 
         from app.core.config import settings
@@ -561,9 +561,8 @@ def send_price_alert_emails_task() -> dict:
     import os
 
     async def _send() -> dict:
-        from datetime import timezone
 
-        from sqlalchemy import select, update
+        from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
         from sqlalchemy.pool import NullPool
 
@@ -637,7 +636,7 @@ def send_price_alert_emails_task() -> dict:
                         )
                         response = sg.send(message)
                         if response.status_code in (200, 202):
-                            alert.notified_at = __import__("datetime").datetime.now(tz=timezone.utc)
+                            alert.notified_at = __import__("datetime").datetime.now(tz=UTC)
                             sent += 1
                         else:
                             failed_ids.append(str(alert.id))
@@ -690,15 +689,15 @@ def scraper_heartbeat_task() -> dict:
     """
 
     async def _heartbeat() -> dict:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from sqlalchemy import text
-        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy.pool import NullPool
 
         from app.core.config import settings
 
-        now_utc = datetime.now(tz=timezone.utc)
+        now_utc = datetime.now(tz=UTC)
         engine = create_async_engine(
             str(settings.DATABASE_URL),
             poolclass=NullPool,

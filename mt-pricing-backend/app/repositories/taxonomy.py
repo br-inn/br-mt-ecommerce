@@ -15,12 +15,11 @@ Convención: las funciones que aceptan ``slug`` resuelven aliases vía
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, delete, func, or_, select, text, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.taxonomy_registry import (
@@ -32,7 +31,6 @@ from app.db.models.taxonomy_registry import (
     TaxonomyNodeParent,
     TaxonomyType,
 )
-
 
 # ---------------------------------------------------------------------------
 # TaxonomyType

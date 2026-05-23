@@ -88,13 +88,13 @@ class ProductCompatibility(UuidPkMixin, Base):
 
     # --- relationships ---------------------------------------------------
     # `product` = el producto "origen" (el que tiene la compatibilidad).
-    product: Mapped["Product"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    product: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product",
         foreign_keys=[product_sku],
         back_populates="compatibilities_outgoing",
     )
     # `compatible_with` = el producto "destino" al que apunta el enlace.
-    compatible_with: Mapped["Product"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    compatible_with: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product",
         foreign_keys=[compatible_with_sku],
         back_populates="compatibilities_incoming",

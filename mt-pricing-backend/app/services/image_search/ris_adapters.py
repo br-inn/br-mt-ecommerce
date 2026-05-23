@@ -10,7 +10,7 @@ Implementaciones de ReverseImageSearchPort:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import httpx
@@ -35,7 +35,7 @@ class NoopRisAdapter(ReverseImageSearchPort):
         return ReverseImageSearchResult(
             provider="noop",
             hits=(),
-            searched_at=datetime.now(tz=timezone.utc),
+            searched_at=datetime.now(tz=UTC),
         )
 
 
@@ -70,14 +70,14 @@ class TinEyeAdapter(ReverseImageSearchPort):
             return ReverseImageSearchResult(
                 provider="tineye",
                 hits=hits,
-                searched_at=datetime.now(tz=timezone.utc),
+                searched_at=datetime.now(tz=UTC),
             )
         except Exception as exc:
             logger.warning("ris.tineye.search failed image_url=%s: %s", image_url, exc)
             return ReverseImageSearchResult(
                 provider="tineye_error",
                 hits=(),
-                searched_at=datetime.now(tz=timezone.utc),
+                searched_at=datetime.now(tz=UTC),
             )
 
 
@@ -113,14 +113,14 @@ class GoogleLensSerpApiAdapter(ReverseImageSearchPort):
             return ReverseImageSearchResult(
                 provider="google_lens_serpapi",
                 hits=hits,
-                searched_at=datetime.now(tz=timezone.utc),
+                searched_at=datetime.now(tz=UTC),
             )
         except Exception as exc:
             logger.warning("ris.google_lens.search failed image_url=%s: %s", image_url, exc)
             return ReverseImageSearchResult(
                 provider="google_lens_error",
                 hits=(),
-                searched_at=datetime.now(tz=timezone.utc),
+                searched_at=datetime.now(tz=UTC),
             )
 
 
@@ -144,7 +144,7 @@ class RateLimitedRisAdapter(ReverseImageSearchPort):
             return ReverseImageSearchResult(
                 provider="limit_reached",
                 hits=(),
-                searched_at=datetime.now(tz=timezone.utc),
+                searched_at=datetime.now(tz=UTC),
             )
         return await self._inner.search(image_url=image_url, max_results=max_results)
 

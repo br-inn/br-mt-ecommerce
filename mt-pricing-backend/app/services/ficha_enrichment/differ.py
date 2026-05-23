@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.db.models.product import Product
-from app.schemas.ficha_enrich import FieldDiff, FichaExtractionResult
+from app.schemas.ficha_enrich import FichaExtractionResult, FieldDiff
 
 _SCALAR_FIELD_MAP: dict[str, str] = {
     "family": "family",
@@ -127,7 +127,7 @@ class FichaEnrichmentDiffer:
     def compute_batch(
         self,
         products: list,  # list[Product]
-        extraction: "FichaExtractionResult",
+        extraction: FichaExtractionResult,
     ) -> list:  # list[SkuDiffResult]
         from app.schemas.ficha_enrich import SkuDiffResult
 

@@ -1,6 +1,7 @@
 """Create unmatched_offers table (Silver layer candidate store for re-matching)"""
 
 from __future__ import annotations
+
 from alembic import op
 
 revision = "20260515_133"

@@ -45,7 +45,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-
 CDC_EVENT_ACTIONS: tuple[str, ...] = ("insert", "update", "delete")
 CDC_EVENT_STATUSES: tuple[str, ...] = (
     "pending",
@@ -107,8 +106,8 @@ class CdcEvent(Base):
 
 
 __all__ = [
-    "CdcEvent",
     "CDC_EVENT_ACTIONS",
-    "CDC_EVENT_STATUSES",
     "CDC_EVENT_ENTITY_TYPES",
+    "CDC_EVENT_STATUSES",
+    "CdcEvent",
 ]

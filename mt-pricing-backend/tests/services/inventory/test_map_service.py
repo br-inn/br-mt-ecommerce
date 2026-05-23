@@ -14,7 +14,7 @@ de servicios (aislada de integración).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -52,7 +52,7 @@ def _make_gr(
     gr.status = status
     gr.map_before = Decimal(map_before) if map_before else None
     gr.map_after = Decimal(map_after) if map_after else None
-    gr.received_at = datetime(2026, 5, 12, tzinfo=timezone.utc)
+    gr.received_at = datetime(2026, 5, 12, tzinfo=UTC)
     gr.notes = None
     return gr
 

@@ -115,4 +115,4 @@ class FXRateResponse(BaseModel):
     created_at: datetime
 
 
-__all__ = ["FXRateCreate", "FXRateResponse", "FX_SOURCES", "FXSourceLiteral"]
+__all__ = ["FX_SOURCES", "FXRateCreate", "FXRateResponse", "FXSourceLiteral"]

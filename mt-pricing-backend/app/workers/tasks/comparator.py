@@ -11,7 +11,7 @@ from app.workers.worker import celery_app
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     # asyncio.run() crea un event loop nuevo por invocación — correcto para
     # Celery prefork donde cada fork hereda el estado del padre.
     return asyncio.run(coro)
@@ -37,11 +37,12 @@ def refresh_sku_task(self: Any, sku: str) -> dict[str, Any]:  # type: ignore[no-
     """
 
     async def _run() -> dict[str, Any]:
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.pool import NullPool
+
         from app.core.config import settings
         from app.services.matching.adapter_registry import get_fetcher
         from app.services.matching.match_service import MatchService, MatchSkuNotFoundError
-        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-        from sqlalchemy.pool import NullPool
 
         # NullPool: conexión fresca por sesión, sin reciclado entre invocaciones.
         engine = create_async_engine(
@@ -64,7 +65,9 @@ def refresh_sku_task(self: Any, sku: str) -> dict[str, Any]:  # type: ignore[no-
         try:
             fetchers = [get_fetcher("amazon_uae"), get_fetcher("noon_uae")]
             async with session_factory() as session:
-                from app.repositories.unmatched_offers import UnmatchedOfferRepository  # noqa: PLC0415
+                from app.repositories.unmatched_offers import (
+                    UnmatchedOfferRepository,
+                )
 
                 unmatched_repo = UnmatchedOfferRepository(session)
                 service = MatchService(session, fetchers=fetchers, unmatched_repo=unmatched_repo)
@@ -73,7 +76,7 @@ def refresh_sku_task(self: Any, sku: str) -> dict[str, Any]:  # type: ignore[no-
                 # Si hay hits similares al SKU, intentar re-matchear sin red request.
                 pool_matched = 0
                 try:
-                    from app.services.matching.embeddings import embed_sku  # noqa: PLC0415
+                    from app.services.matching.embeddings import embed_sku
 
                     product = await service._products_repo.get_by_sku_for_matching(sku)
                     if product is not None:
@@ -109,7 +112,7 @@ def refresh_sku_task(self: Any, sku: str) -> dict[str, Any]:  # type: ignore[no-
 
                     # Agente de validación — corre inline tras el scoring.
                     if settings.MATCH_AGENT_ENABLED:
-                        from app.services.matching.validation_agent import (  # noqa: PLC0415
+                        from app.services.matching.validation_agent import (
                             MatchValidationAgent,
                         )
 

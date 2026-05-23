@@ -12,13 +12,14 @@ from __future__ import annotations
 
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 
 # IMPORTANTE: importar Base + todos los modelos para registrar metadata.
 from app.core.config import settings
+from app.db import models as _models
 from app.db.base import Base
-from app.db import models as _models  # noqa: F401  -- registra todos los modelos
 
 config = context.config
 

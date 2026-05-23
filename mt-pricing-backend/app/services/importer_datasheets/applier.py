@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.db.models.user import User
@@ -88,7 +88,7 @@ async def apply_datasheet_diffs(
     No aborta el batch entero por un fallo individual: contabiliza en
     ``errors`` con detalle (`failure_details`) y sigue.
     """
-    started = datetime.now(tz=timezone.utc)
+    started = datetime.now(tz=UTC)
     res = ApplyDatasheetsResult(total_rows=len(diffs), started_at=started)
     for d in diffs:
         try:
@@ -102,7 +102,7 @@ async def apply_datasheet_diffs(
                 _import_run_id=run_id,
             )
             res.attached += 1
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception(
                 "datasheets applier failed row=%s sku=%s",
                 d.row_index,
@@ -118,7 +118,7 @@ async def apply_datasheet_diffs(
                     "message": f"{type(exc).__name__}: {exc!s}",
                 }
             )
-    res.finished_at = datetime.now(tz=timezone.utc)
+    res.finished_at = datetime.now(tz=UTC)
     return res
 
 

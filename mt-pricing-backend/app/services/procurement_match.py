@@ -22,7 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.inventory import GoodsReceipt, PurchaseOrder, PurchaseOrderLine
 from app.db.models.procurement import InvoiceTolerance, VendorInvoice
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

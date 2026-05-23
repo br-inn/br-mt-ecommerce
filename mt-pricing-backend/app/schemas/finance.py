@@ -18,8 +18,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
-
+from pydantic import BaseModel, ConfigDict
 
 # ---------------------------------------------------------------------------
 # Shared config

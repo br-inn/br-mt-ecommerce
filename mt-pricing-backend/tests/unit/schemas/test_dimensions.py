@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+from datetime import UTC
 from decimal import Decimal
 from uuid import uuid4
 
@@ -243,7 +244,7 @@ class TestDimensionTableResponse:
             unit="mm",
             order_index=0,
         )
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         row_id = uuid4()
         row = DimensionRowWithCells(
@@ -253,7 +254,7 @@ class TestDimensionTableResponse:
             dn=50,
             actuation_code_id=None,
             order_index=0,
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             cells=[
                 DimensionCellResponse(
                     id=uuid4(),
@@ -285,7 +286,7 @@ class TestPressureTemperatureCurveResponse:
         assert m.points == []
 
     def test_with_points(self) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         p = PressureTemperaturePointResponse(
             id=uuid4(),
@@ -295,7 +296,7 @@ class TestPressureTemperatureCurveResponse:
             pressure_max_bar=Decimal("16"),
             condition_en=None,
             order_index=0,
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
         )
         m = PressureTemperatureCurveResponse(
             product_sku="SKU-001",
@@ -310,19 +311,19 @@ class TestPressureTemperatureCurveResponse:
 # ===========================================================================
 class TestActuationCodeResponse:
     def test_round_trip(self) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         m = ActuationCodeResponse(
             id=uuid4(),
             code="MR",
             name_en="Gearbox",
             type="gearbox",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
         )
         assert m.type == "gearbox"
 
     def test_invalid_type(self) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         with pytest.raises(ValidationError):
             ActuationCodeResponse(
@@ -330,5 +331,5 @@ class TestActuationCodeResponse:
                 code="X",
                 name_en="X",
                 type="bogus",  # type: ignore[arg-type]
-                created_at=datetime.now(tz=timezone.utc),
+                created_at=datetime.now(tz=UTC),
             )

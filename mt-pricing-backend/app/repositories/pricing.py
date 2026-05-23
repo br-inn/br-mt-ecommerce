@@ -8,7 +8,7 @@ commit-on-success).
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -61,7 +61,7 @@ class FXRateRepository(BaseRepository[FXRate]):
         to_currency: str,
         as_of: datetime | None = None,
     ) -> FXRate | None:
-        as_of = as_of or datetime.now(tz=timezone.utc)
+        as_of = as_of or datetime.now(tz=UTC)
         stmt = (
             select(FXRate)
             .where(
@@ -277,7 +277,7 @@ class PriceRepository(BaseRepository[Price]):
 
         Devuelve el número de filas afectadas.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         stmt = select(Price).where(
             Price.product_sku == product_sku,
             Price.channel_id == channel_id,
@@ -328,7 +328,7 @@ class ExceptionRuleRepository(BaseRepository[ExceptionRule]):
 
         Raises ValueError si `rule_id` no existe.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         rule = await self.get_by_id(rule_id)
         if rule is None:

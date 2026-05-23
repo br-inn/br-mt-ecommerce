@@ -1,11 +1,12 @@
 """Unit tests for ProductModel ORM — pure Python (no DB)."""
 
 import uuid
+
 from app.db.models.product_models import (
-    ProductModel,
     ModelDimensionRow,
     ModelFlowData,
     ModelTechTable,
+    ProductModel,
 )
 
 

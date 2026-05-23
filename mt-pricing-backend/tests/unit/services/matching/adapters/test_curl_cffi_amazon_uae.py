@@ -13,9 +13,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.matching.adapters.curl_cffi_amazon_uae import (
-    CurlCffiAmazonUaeFetcher,
     _AMAZON_AE_BASE,
     _CAPTCHA_PATH,
+    CurlCffiAmazonUaeFetcher,
     ScraperBlockedError,
 )
 from app.services.matching.ports import CandidateRaw, Query

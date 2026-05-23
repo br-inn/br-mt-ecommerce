@@ -25,7 +25,7 @@ import logging
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +33,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.user import User
 from app.services.importer.importer_service import (
     ImportFileTooLargeError,
-    ImporterDomainError,
     ImportRunInvalidStateError,
     ImportRunNotFoundError,
 )
@@ -155,7 +154,7 @@ class ImporterDatasheetsService:
                 continue
 
             specs = parse_specs_from_text(text)
-            assert parsed.kind is not None  # noqa: S101  for mypy
+            assert parsed.kind is not None
             per_file_meta.append((filename, payload, parsed.kind, parsed.sku_suffixes, specs))
             all_suffixes.update(parsed.sku_suffixes)
 
@@ -206,7 +205,7 @@ class ImporterDatasheetsService:
             run_id=run_id,
             kind="datasheets",
             status="preview_ready",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             created_by=getattr(actor, "email", None),
             diffs=diffs,
             orphan_files=orphan_files,
@@ -258,7 +257,7 @@ class ImporterDatasheetsService:
                 state.summary["applied_errors"] = result.errors
                 # Liberamos los binarios — ya están en Storage.
                 state.payloads = {}
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.exception("datasheets apply failed run_id=%s", run_id)
                 state.status = "failed"
                 state.error = f"{type(exc).__name__}: {exc!s}"
@@ -280,7 +279,7 @@ class ImporterDatasheetsService:
         # Libera cualquier txn pending para que el pooler no la mate.
         try:
             await self.session.commit()
-        except Exception:  # noqa: BLE001  — sesión sin txn activa
+        except Exception:
             pass
 
         uploaded = 0
@@ -301,7 +300,7 @@ class ImporterDatasheetsService:
             try:
                 await asyncio.to_thread(_sync)
                 return True
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "datasheets storage upload failed path=%s err=%s",
                     object_path,
@@ -344,12 +343,12 @@ class ImporterDatasheetsService:
         if self._sku_resolver is not None:
             try:
                 return await self._sku_resolver.resolve_skus(suffixes)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("sku_resolver failed; fallback to repo")
         # Fallback: usa repository de productos
         try:
             from app.repositories.product import ProductRepository
-        except Exception:  # pragma: no cover  # noqa: BLE001
+        except Exception:  # pragma: no cover
             return {}
         repo = ProductRepository(self.session)
         result: dict[str, str] = {}
@@ -357,7 +356,7 @@ class ImporterDatasheetsService:
             sku_candidate = f"MT-V-{suffix}"
             try:
                 product = await repo.get_by_sku(sku_candidate)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 product = None
             if product is not None:
                 result[suffix] = sku_candidate
@@ -366,9 +365,9 @@ class ImporterDatasheetsService:
 
 __all__ = [
     "DATASHEET_KIND_PREFIXES",
+    "MAX_DATASHEET_BYTES",
     "DatasheetsRunState",
     "ImporterDatasheetsService",
-    "MAX_DATASHEET_BYTES",
     "ProductLookupProtocol",
     "reset_datasheets_run_store",
 ]

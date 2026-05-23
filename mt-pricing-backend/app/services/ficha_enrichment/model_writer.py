@@ -10,13 +10,13 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.certificates import Certificate
+from app.db.models.product import Product
 from app.db.models.product_models import (
     ModelDimensionRow,
     ModelFlowData,
     ModelTechTable,
     ProductModel,
 )
-from app.db.models.product import Product
 from app.schemas.ficha_enrich import (
     ExtractedDimensionRow,
     FichaExtractionResult,
@@ -226,13 +226,13 @@ async def write_model_data(
 
 
 __all__ = [
-    "write_model_data",
+    "_build_dimensions_dict",
+    "link_products_to_model",
     "upsert_model",
+    "write_certificates",
     "write_dimension_rows",
     "write_flow_data_rows",
+    "write_model_data",
     "write_model_tech_tables",
-    "write_certificates",
-    "link_products_to_model",
-    "_build_dimensions_dict",
     "write_pt_curves_data",
 ]

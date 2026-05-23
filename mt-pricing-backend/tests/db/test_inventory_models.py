@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 pytestmark = pytest.mark.unit
@@ -27,7 +29,7 @@ def test_inventory_models_importable() -> None:
 def test_inventory_models_registered_in_metadata() -> None:
     """Los 5 modelos quedan registrados en Base.metadata tras importar models."""
     from app.db import Base
-    from app.db import models as _  # noqa: F401
+    from app.db import models as _
 
     expected = {
         "purchase_orders",
@@ -104,10 +106,10 @@ async def test_noop_adapter_health_check() -> None:
 @pytest.mark.asyncio
 async def test_noop_adapter_pull_purchase_orders_returns_empty() -> None:
     """NoOpAdapter.pull_purchase_orders() retorna lista vacía."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.integrations.erp.noop_adapter import NoOpAdapter
 
     adapter = NoOpAdapter()
-    result = await adapter.pull_purchase_orders(since=datetime.now(tz=timezone.utc))
+    result = await adapter.pull_purchase_orders(since=datetime.now(tz=UTC))
     assert result == []

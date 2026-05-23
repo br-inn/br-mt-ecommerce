@@ -65,16 +65,16 @@ class ProductModel(UuidPkMixin, Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    variant_of: Mapped["ProductModel | None"] = relationship(
+    variant_of: Mapped[ProductModel | None] = relationship(
         "ProductModel", remote_side="ProductModel.id", foreign_keys=[variant_of_id]
     )
-    dimension_rows: Mapped[list["ModelDimensionRow"]] = relationship(
+    dimension_rows: Mapped[list[ModelDimensionRow]] = relationship(
         back_populates="model", cascade="all, delete-orphan"
     )
-    flow_data: Mapped[list["ModelFlowData"]] = relationship(
+    flow_data: Mapped[list[ModelFlowData]] = relationship(
         back_populates="model", cascade="all, delete-orphan"
     )
-    tech_tables: Mapped[list["ModelTechTable"]] = relationship(
+    tech_tables: Mapped[list[ModelTechTable]] = relationship(
         back_populates="model", cascade="all, delete-orphan"
     )
 

@@ -15,12 +15,10 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import and_, delete, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.compatibility import ProductCompatibility
-from app.db.models.product import Product
 
 # Mapa de inversos semánticos que deben sincronizarse.
 _INVERSE: dict[str, str] = {

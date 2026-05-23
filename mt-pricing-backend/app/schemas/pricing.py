@@ -10,8 +10,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.db.enums import ChannelState, PriceState
-
 CHANNEL_CODE_REGEX = r"^[a-z0-9_]{2,64}$"
 SCHEME_CODE_REGEX = r"^[A-Z][A-Z0-9_]{1,31}$"
 CURRENCY_CODE_REGEX = r"^[A-Z]{3}$"

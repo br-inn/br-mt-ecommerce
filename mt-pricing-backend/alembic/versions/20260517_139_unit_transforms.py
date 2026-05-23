@@ -7,11 +7,13 @@ Create Date: 2026-05-17
 
 from __future__ import annotations
 
-from alembic import op
+import uuid
+from datetime import UTC, datetime
+
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
-import uuid
-from datetime import datetime, timezone
+
+from alembic import op
 
 revision = "20260517_139"
 down_revision = "20260517_138"
@@ -94,7 +96,7 @@ def upgrade() -> None:
             "transform_type IN ('numeric','lookup','nominal')", name="ck_unit_transforms_type"
         ),
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     op.bulk_insert(
         sa.table(
             "unit_transforms",

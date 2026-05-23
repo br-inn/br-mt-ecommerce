@@ -6,7 +6,7 @@ All Redis calls are mocked via AsyncMock so no real Redis instance is needed.
 from __future__ import annotations
 
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 

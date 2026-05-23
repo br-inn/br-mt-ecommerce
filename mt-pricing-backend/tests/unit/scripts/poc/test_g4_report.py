@@ -9,8 +9,6 @@ Cubre:
 
 from __future__ import annotations
 
-import pytest
-
 from scripts.poc.g4_report import _is_failure, _verdict
 
 

@@ -26,7 +26,7 @@ Cobertura (10+ tests):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -39,6 +39,8 @@ from app.api.deps import get_current_user, get_db_session
 from app.api.routes.products import (
     get_asset_service,
     get_product_service,
+)
+from app.api.routes.products import (
     router as products_router,
 )
 from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
@@ -46,7 +48,7 @@ from app.services.products.product_service import ProductNotFoundError
 
 pytestmark = pytest.mark.unit
 
-NOW = datetime.now(tz=timezone.utc)
+NOW = datetime.now(tz=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +157,7 @@ def _build_app(
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call) -> _FakeUser:  # noqa: ARG001
+                async def _allow(_call=call) -> _FakeUser:
                     return user
 
                 app.dependency_overrides[call] = _allow

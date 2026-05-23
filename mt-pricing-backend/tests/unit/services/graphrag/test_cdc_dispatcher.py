@@ -126,7 +126,7 @@ async def test_process_one_failure_increments_attempts() -> None:
     )
     dispatcher, store, _ = _make_dispatcher_with_events([event])
 
-    def _boom(node):  # noqa: ANN001, ARG001
+    def _boom(node):
         raise RuntimeError("graph down")
 
     store.merge_node = _boom  # type: ignore[method-assign]

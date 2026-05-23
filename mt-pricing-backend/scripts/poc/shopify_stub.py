@@ -10,7 +10,7 @@ Canal registrado: ``shopify_uae``
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -29,7 +29,7 @@ class ShopifyUaeStubFetcher:
 
     async def fetch(self, query: Query, *, sku: str | None = None) -> list[CandidateRaw]:
         candidates_raw = _synthetic(sku or query.text)
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         out: list[CandidateRaw] = []
         for c in candidates_raw[:N_CANDIDATES]:
             out.append(
@@ -80,4 +80,4 @@ def _synthetic(seed: str) -> list[dict[str, Any]]:
     return out
 
 
-__all__ = ["ShopifyUaeStubFetcher", "CHANNEL"]
+__all__ = ["CHANNEL", "ShopifyUaeStubFetcher"]

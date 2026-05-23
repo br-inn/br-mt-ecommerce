@@ -8,7 +8,7 @@ Patrones (alineados con SupplierService):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -20,7 +20,6 @@ from app.db.models.pricing import Price
 from app.db.models.product import Product
 from app.db.models.user import User
 from app.repositories.audit import AuditRepository
-from app.repositories.product import ProductRepository
 from app.repositories.pricing import (
     ChannelRepository,
     CostRepository,
@@ -29,6 +28,7 @@ from app.repositories.pricing import (
     PriceApprovalEventRepository,
     PriceRepository,
 )
+from app.repositories.product import ProductRepository
 from app.services.pricing.exception_evaluator import ExceptionEvaluator
 from app.services.pricing.rule_engine import (
     EUR_TO_AED_DEFAULT,
@@ -97,7 +97,7 @@ class CostNotFound(PricingDomainError):
 
 
 class PriceNotFound(PricingDomainError):
-    def __init__(self, price_id: Any) -> None:  # noqa: ANN401
+    def __init__(self, price_id: Any) -> None:
         super().__init__("price_not_found", f"Precio {price_id} no existe.", 404)
 
 
@@ -134,9 +134,7 @@ def _snapshot_price(p: Price) -> dict[str, Any]:
         v = getattr(p, f, None)
         if v is None:
             out[f] = None
-        elif isinstance(v, (UUID, datetime)):
-            out[f] = str(v)
-        elif isinstance(v, Decimal):
+        elif isinstance(v, (UUID, datetime)) or isinstance(v, Decimal):
             out[f] = str(v)
         else:
             out[f] = v
@@ -552,13 +550,13 @@ class PricingService:
 
 
 __all__ = [
+    "ChannelDeprecated",
+    "ChannelNotFound",
+    "CostNotFound",
+    "PriceNotFound",
     "PricingDomainError",
     "PricingService",
     "ProductNotFound",
-    "ChannelNotFound",
-    "ChannelDeprecated",
     "SchemeNotFound",
-    "CostNotFound",
-    "PriceNotFound",
     "TransitionError",
 ]

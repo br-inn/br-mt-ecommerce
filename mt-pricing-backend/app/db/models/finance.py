@@ -22,8 +22,8 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
-    Boolean,
     CHAR,
+    Boolean,
     CheckConstraint,
     Computed,
     Date,
@@ -36,12 +36,12 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as UUID_PG
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as UUID_PG
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import UuidPkMixin
-
 
 # ---------------------------------------------------------------------------
 # US-ERP-06-01 — Chart of Accounts

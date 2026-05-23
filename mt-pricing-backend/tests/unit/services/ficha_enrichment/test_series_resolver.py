@@ -1,17 +1,16 @@
 """Unit tests for series_resolver — pure functions only (no DB)."""
 
-import pytest
-from app.services.ficha_enrichment.series_resolver import (
-    extract_series_prefix,
-    extract_all_series_from_text,
-    dn_label_to_int,
-    generate_candidate_skus,
-)
 from app.schemas.ficha_enrich import (
-    FichaExtractionResult,
+    ExtractedDimensionRow,
     ExtractedScalars,
     ExtractedSpecs,
-    ExtractedDimensionRow,
+    FichaExtractionResult,
+)
+from app.services.ficha_enrichment.series_resolver import (
+    dn_label_to_int,
+    extract_all_series_from_text,
+    extract_series_prefix,
+    generate_candidate_skus,
 )
 
 

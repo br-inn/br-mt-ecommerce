@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
-from app.db.models.hitl_queue import HitlQueue, HITL_STATUSES
+from app.db.models.hitl_queue import HITL_STATUSES, HitlQueue
 from app.db.models.user import User
 
 logger = logging.getLogger(__name__)

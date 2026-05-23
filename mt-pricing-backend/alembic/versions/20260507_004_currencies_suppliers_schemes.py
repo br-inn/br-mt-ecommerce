@@ -20,9 +20,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260507_004"
 down_revision: str | None = "20260506_003"

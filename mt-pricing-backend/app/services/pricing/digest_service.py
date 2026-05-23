@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,7 +46,7 @@ class DigestService:
             0,
             0,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
         day_end = datetime(
             target_date.year,
@@ -56,7 +56,7 @@ class DigestService:
             59,
             59,
             999999,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         # Counts por status

@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from sqlalchemy import CheckConstraint, Text
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UuidPkMixin
 

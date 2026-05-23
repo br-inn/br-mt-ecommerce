@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Any
 from uuid import UUID
 
@@ -227,7 +228,7 @@ class PurchaseOrderRepository:
     # Confirm (draft → confirmed)
     # ------------------------------------------------------------------
     async def confirm(self, po_id: UUID) -> PurchaseOrder:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         po = await self.get(po_id)
         if po is None:
@@ -257,7 +258,7 @@ class PurchaseOrderRepository:
                 },
             )
         po.status = "confirmed"
-        po.confirmed_at = datetime.now(tz=timezone.utc)
+        po.confirmed_at = datetime.now(tz=UTC)
         await self.session.flush()
         return po
 

@@ -19,7 +19,7 @@ Lógica de scoring:
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Vocabulario de sinónimos — migrado íntegro de match_scorer_v2.py
@@ -189,7 +189,7 @@ def _matches_any(needle: str, synonyms: list[str]) -> bool:
     return False
 
 
-def _classify_term(text: str, synonym_map: dict[str, list[str]]) -> Optional[str]:
+def _classify_term(text: str, synonym_map: dict[str, list[str]]) -> str | None:
     """Devuelve la clase canónica para un texto libre."""
     if not text:
         return None
@@ -201,7 +201,7 @@ def _classify_term(text: str, synonym_map: dict[str, list[str]]) -> Optional[str
     return None
 
 
-def _extract_size_inches(text: str) -> Optional[str]:
+def _extract_size_inches(text: str) -> str | None:
     """Encuentra la primera medida en pulgadas: '1/2"', '1 1/2"', '2"'."""
     if not text:
         return None
@@ -211,7 +211,7 @@ def _extract_size_inches(text: str) -> Optional[str]:
     return None
 
 
-def _extract_dn(text: str) -> Optional[int]:
+def _extract_dn(text: str) -> int | None:
     if not text:
         return None
     m = re.search(r"\bDN\s*(\d+)\b", text, re.I)
@@ -220,7 +220,7 @@ def _extract_dn(text: str) -> Optional[int]:
     return None
 
 
-def _extract_pn(text: str) -> Optional[int]:
+def _extract_pn(text: str) -> int | None:
     if not text:
         return None
     m = re.search(r"\bPN[ -]?(\d{1,3})\b", text, re.I)
@@ -587,8 +587,8 @@ def score_match(
         ]
     ).lower()
 
-    matched_competitor: Optional[dict[str, Any]] = None
-    matched_dropshipper: Optional[str] = None
+    matched_competitor: dict[str, Any] | None = None
+    matched_dropshipper: str | None = None
 
     for alias, comp_info in _COMPETITOR_BRANDS.items():
         if alias in amz_brand_blob:
@@ -634,8 +634,8 @@ def score_match(
 
 
 __all__ = [
-    "VALVE_TYPE_SYNONYMS",
-    "MATERIAL_SYNONYMS",
     "END_CONNECTION_SYNONYMS",
+    "MATERIAL_SYNONYMS",
+    "VALVE_TYPE_SYNONYMS",
     "score_match",
 ]

@@ -41,7 +41,7 @@ class _FakeRedis:
         self._buckets: dict[str, dict[str, float]] = {}
         self._fail = fail
 
-    def eval(  # noqa: ANN201 — match redis-py signature
+    def eval(
         self, script: str, num_keys: int, *args: Any
     ) -> list[Any]:
         if self._fail:

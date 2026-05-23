@@ -146,7 +146,7 @@ def _ensure_supabase_user(admin: Any, user: E2EUser) -> UUID:
 async def _ensure_db_user(user: E2EUser, supabase_id: UUID) -> None:
     """Upsert en public.users asignando el rol indicado."""
     # Imports tardíos para no requerir app.* antes de setear DATABASE_URL.
-    from sqlalchemy import select, text
+    from sqlalchemy import text
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     db_url = os.environ.get("DATABASE_URL")

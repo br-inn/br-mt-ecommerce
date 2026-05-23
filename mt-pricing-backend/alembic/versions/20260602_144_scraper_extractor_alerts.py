@@ -11,6 +11,7 @@ BrandExtractor cae > 20pp respecto a la baseline de 7 días.
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.

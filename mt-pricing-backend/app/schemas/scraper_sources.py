@@ -60,8 +60,8 @@ class Recipe(BaseModel):
 # ---------------------------------------------------------------------------
 # Task 10 — API request / response schemas
 # ---------------------------------------------------------------------------
-from datetime import datetime  # noqa: E402
-from uuid import UUID  # noqa: E402
+from datetime import datetime
+from uuid import UUID
 
 
 class ScraperSourceCreate(BaseModel):

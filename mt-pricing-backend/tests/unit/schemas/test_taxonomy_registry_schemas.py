@@ -5,7 +5,7 @@ No tocan BD. Validan reglas de slug, enums, defaults, y rechazo de extras.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -149,7 +149,7 @@ class TestTaxonomyTypeUpdate:
 
 class TestTaxonomyTypeRead:
     def test_from_attributes(self) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         type_id = uuid4()
 
         class FakeType:
@@ -221,7 +221,7 @@ class TestTaxonomyNodeUpdate:
         succ = uuid4()
         u = TaxonomyNodeUpdate(
             superseded_by=succ,
-            valid_until=datetime.now(tz=timezone.utc),
+            valid_until=datetime.now(tz=UTC),
         )
         assert u.superseded_by == succ
         assert u.active is None

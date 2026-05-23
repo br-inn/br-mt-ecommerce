@@ -40,9 +40,10 @@ pytestmark = [pytest.mark.integration]
 def _migrate(postgres_container: str) -> None:
     """Aplica `alembic upgrade head` sobre el testcontainer."""
     import sqlalchemy as _sa
-    from alembic import command
     from alembic.config import Config
     from sqlalchemy import text
+
+    from alembic import command
 
     sync_url = postgres_container.replace("postgresql+asyncpg://", "postgresql+psycopg://")
     from app.core import config as _app_cfg

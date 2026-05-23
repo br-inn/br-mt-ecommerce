@@ -16,7 +16,7 @@ La interacción `create_cost`/`update_cost` con DB real se cubre en
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -51,7 +51,7 @@ class _FakeCost:
         self.supplier_code = kw.get("supplier_code")
         self.currency_origin = kw.get("currency_origin", "EUR")
         self.fx_rate_id = kw.get("fx_rate_id")
-        self.effective_at = kw.get("effective_at", datetime(2026, 6, 12, tzinfo=timezone.utc))
+        self.effective_at = kw.get("effective_at", datetime(2026, 6, 12, tzinfo=UTC))
         self.breakdown = kw.get("breakdown", {})
         self.scheme_landed_aed = kw.get("scheme_landed_aed")
         self.status = kw.get("status", "active")
@@ -59,8 +59,8 @@ class _FakeCost:
         self.fx_inferred = kw.get("fx_inferred", False)
         self.created_by = kw.get("created_by")
         self.updated_by = kw.get("updated_by")
-        self.created_at = kw.get("created_at", datetime(2026, 5, 7, tzinfo=timezone.utc))
-        self.updated_at = kw.get("updated_at", datetime(2026, 5, 7, tzinfo=timezone.utc))
+        self.created_at = kw.get("created_at", datetime(2026, 5, 7, tzinfo=UTC))
+        self.updated_at = kw.get("updated_at", datetime(2026, 5, 7, tzinfo=UTC))
 
 
 def _session_with_fx(rate: str | float | None) -> Any:
@@ -83,7 +83,7 @@ async def test_compute_landed_aed_origin_aed_skips_fx() -> None:
     res = await svc.compute_landed_aed(
         breakdown={"fob_aed": "10.00", "freight_aed": "2.50"},
         currency_origin="AED",
-        effective_at=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_at=datetime(2026, 6, 12, tzinfo=UTC),
     )
     assert res == Decimal("12.5000")
 
@@ -95,7 +95,7 @@ async def test_compute_landed_aed_eur_components_use_fx() -> None:
     res = await svc.compute_landed_aed(
         breakdown={"fob_eur": "12.40", "freight_eur": "1.80"},
         currency_origin="EUR",
-        effective_at=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_at=datetime(2026, 6, 12, tzinfo=UTC),
     )
     expected = (Decimal("12.40") + Decimal("1.80")) * Decimal("4.29")
     assert res == expected.quantize(Decimal("0.0001"))
@@ -108,7 +108,7 @@ async def test_compute_landed_aed_mixed_aed_and_eur() -> None:
     res = await svc.compute_landed_aed(
         breakdown={"fob_eur": "10", "customs_aed": "5"},
         currency_origin="EUR",
-        effective_at=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_at=datetime(2026, 6, 12, tzinfo=UTC),
     )
     assert res == Decimal("47.9000")
 
@@ -124,7 +124,7 @@ async def test_compute_landed_aed_pct_applies_on_subtotal() -> None:
             "payment_fees_pct": "10",
         },
         currency_origin="EUR",
-        effective_at=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_at=datetime(2026, 6, 12, tzinfo=UTC),
     )
     expected = Decimal("47.90") + (Decimal("47.90") * Decimal("10") / Decimal("100"))
     assert res == expected.quantize(Decimal("0.0001"))
@@ -137,7 +137,7 @@ async def test_compute_landed_aed_returns_none_when_fx_missing_for_non_aed() -> 
     res = await svc.compute_landed_aed(
         breakdown={"fob_eur": "10"},
         currency_origin="EUR",
-        effective_at=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_at=datetime(2026, 6, 12, tzinfo=UTC),
     )
     assert res is None
 
@@ -149,7 +149,7 @@ async def test_compute_landed_aed_ignores_non_numeric_values() -> None:
     res = await svc.compute_landed_aed(
         breakdown={"fob_eur": "10", "comment_str": "abc"},
         currency_origin="EUR",
-        effective_at=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_at=datetime(2026, 6, 12, tzinfo=UTC),
     )
     assert res == (Decimal("10") * Decimal("4.29")).quantize(Decimal("0.0001"))
 

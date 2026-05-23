@@ -14,7 +14,8 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import Float, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PgUUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.types import TypeDecorator, TypeEngine
 
 # ---------------------------------------------------------------------------
@@ -56,12 +57,12 @@ class JSONBValidatedDict(TypeDecorator[dict[str, Any]]):
     impl = JSONB
     cache_ok = True
 
-    def process_bind_param(self, value: Any, dialect: Any) -> Any:  # noqa: ANN401
+    def process_bind_param(self, value: Any, dialect: Any) -> Any:
         if value is None:
             return {}
         return value
 
-    def process_result_value(self, value: Any, dialect: Any) -> Any:  # noqa: ANN401
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
         return value if value is not None else {}
 
 

@@ -33,13 +33,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, cast, or_, select, Text
+from sqlalchemy import Text, and_, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit import AuditEvent
 from app.db.models.cost import Cost
 from app.db.models.pricing import Price
-from app.db.models.product import ProductTranslation
 from app.db.models.user import User
 
 __all__ = [

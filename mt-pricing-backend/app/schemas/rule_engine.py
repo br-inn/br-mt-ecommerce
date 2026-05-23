@@ -21,7 +21,7 @@ class TaxonomyProfileUpdate(BaseModel):
     description: str | None = None
 
     @model_validator(mode="after")
-    def weights_sum_to_one(self) -> "TaxonomyProfileUpdate":
+    def weights_sum_to_one(self) -> TaxonomyProfileUpdate:
         total = sum(self.weights.values())
         if abs(total - 1.0) > 0.001:
             raise ValueError(f"Los pesos deben sumar 1.0 (actual: {total:.4f})")

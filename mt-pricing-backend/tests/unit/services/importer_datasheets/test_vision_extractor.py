@@ -5,7 +5,6 @@ Sin pdfplumber/Pillow/HTTP — inyectamos page_renderer + client mocks.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -14,7 +13,6 @@ import pytest
 from app.services.importer_datasheets.vision_extractor import (
     OpenAIVisionExtractor,
     VisionExtractor,
-    VisionExtractorClient,
     _parse_vision_response,
 )
 

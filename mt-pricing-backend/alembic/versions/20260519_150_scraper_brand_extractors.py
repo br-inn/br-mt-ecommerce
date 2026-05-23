@@ -15,8 +15,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260519_150"
 down_revision: str = "20260519_149"

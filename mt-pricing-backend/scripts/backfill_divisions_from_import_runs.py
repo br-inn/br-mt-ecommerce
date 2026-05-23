@@ -24,7 +24,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-from collections import defaultdict
 from typing import Any
 
 from sqlalchemy import select, text
@@ -111,7 +110,7 @@ async def backfill(
                 try:
                     n = await assign_divisions(session, sku, codes, code_id_cache=cache)
                     run_links_created += n
-                except Exception:  # noqa: BLE001
+                except Exception:
                     logger.exception("backfill failed sku=%s run_id=%s", sku, run.id)
 
             if not dry_run:

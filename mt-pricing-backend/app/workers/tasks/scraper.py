@@ -57,6 +57,9 @@ def scrape_sku_task(self, sku: str, *, force: bool = False) -> dict:  # type: ig
     logger.info("scraper.sku_start", extra={"sku": sku, "force": force})
 
     async def _run_async() -> list[dict]:
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.pool import NullPool
+
         from app.core.config import settings
         from app.repositories.feature_flags import FeatureFlagRepository
         from app.services.feature_flags.flag_service import (
@@ -66,8 +69,6 @@ def scrape_sku_task(self, sku: str, *, force: bool = False) -> dict:  # type: ig
         )
         from app.services.matching.adapter_registry import get_fetcher
         from app.services.matching.match_service import MatchService
-        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-        from sqlalchemy.pool import NullPool
 
         # NullPool: cada sesión crea una conexión fresca y la cierra al salir.
         # Evita que conexiones corruptas del warmup de flags se reciclen a la
@@ -200,7 +201,7 @@ def scrape_batch_task(skus: list[str], *, force: bool = False) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _build_brand_query(brand: object) -> "Query":
+def _build_brand_query(brand: object) -> Query:
     """Construye el Query para buscar todos los productos de una marca en Amazon."""
     from app.services.matching.ports import Query
 
@@ -246,7 +247,6 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
         from sqlalchemy.pool import NullPool
 
         from app.core.config import settings
-        from app.db.models.comparator import CompetitorBrand
         from app.repositories.competitor_brands import CompetitorBrandRepository
         from app.repositories.feature_flags import FeatureFlagRepository
         from app.services.feature_flags.flag_service import (
@@ -311,7 +311,6 @@ def scrape_brand_task(self, brand_id: str, *, force: bool = False) -> dict:  # t
                     )
 
                 # ── Rate limiter + circuit breaker ──────────────────────────
-                from urllib.parse import urlparse
 
                 from app.services.scraper.circuit_breaker import (
                     ScraperCircuitOpenError,
@@ -518,7 +517,7 @@ def generate_brand_extractor_task(
             )
             try:
                 candidates = await fetcher.fetch(query)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 return {"error": f"Fetch failed: {exc}"}
 
             if not candidates:

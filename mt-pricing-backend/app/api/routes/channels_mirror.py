@@ -19,7 +19,6 @@ RBAC: usa permisos existentes ``channels:read`` (listings/diff/sync-log) y
 from __future__ import annotations
 
 from typing import Annotated, Any
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy import select
@@ -51,7 +50,6 @@ from app.services.channel_mirror.mirror_service import (
     UnknownChannelError,
 )
 from app.services.channel_mirror.ports import ChannelMirrorPort
-
 
 router = APIRouter(prefix="/channels", tags=["Channel Mirror"])
 

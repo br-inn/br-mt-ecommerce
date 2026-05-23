@@ -40,7 +40,7 @@ async def _run_async(window_hours: int) -> dict:
     max_retries=3,
 )
 def escalate_pending_reviews(
-    self: Any,  # noqa: ANN401 — celery bound task
+    self: Any,
     window_hours: int = 48,
 ) -> dict:
     summary = asyncio.run(_run_async(window_hours))

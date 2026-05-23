@@ -11,9 +11,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from decimal import Decimal
 
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.engine import get_sessionmaker

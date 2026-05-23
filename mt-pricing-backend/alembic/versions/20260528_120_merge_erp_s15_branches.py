@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
-
 revision: str = "20260528_120"
 down_revision: tuple[str, ...] = ("20260526_110", "20260527_118")
 branch_labels: str | Sequence[str] | None = None

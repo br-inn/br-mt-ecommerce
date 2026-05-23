@@ -10,7 +10,6 @@ import pytest
 from app.services.feature_flags.flag_service import (
     CACHE_NS,
     CACHE_TTL_SECONDS,
-    FLAG_KILL_SWITCH,
     FLAG_LIVE_NETWORK_AMAZON_UAE,
     KNOWN_FLAGS,
     FlagService,

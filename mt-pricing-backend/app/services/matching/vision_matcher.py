@@ -20,8 +20,8 @@ import logging
 import os
 from enum import Enum
 
-import httpx
 import anthropic
+import httpx
 from tenacity import (
     AsyncRetrying,
     RetryError,
@@ -206,7 +206,7 @@ async def compare_product_images(
     except (RetryError, anthropic.APIError) as exc:
         logger.exception("vision_matcher: API error: %s", exc)
         return VisualVerdict.UNCERTAIN, f"Error API: {exc.__class__.__name__}"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("vision_matcher: error inesperado: %s", exc)
         return VisualVerdict.UNCERTAIN, f"Error inesperado: {exc.__class__.__name__}"
 

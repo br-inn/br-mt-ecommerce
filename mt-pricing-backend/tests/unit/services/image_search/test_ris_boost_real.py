@@ -8,13 +8,11 @@ Tests — US-F15-02-03 (mig. 075):
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.services.image_search.ris_boost import get_canonical_domains
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -5,6 +5,7 @@ Sin DB ni Celery — Protocols inyectados (PricingService, ProductRepo, AuditRep
 
 from __future__ import annotations
 
+from datetime import UTC
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -262,10 +263,10 @@ async def test_run_marks_skus_with_no_prices_as_skipped() -> None:
 # Result serialization
 # ---------------------------------------------------------------------------
 def test_to_dict_round_trip() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     r = BulkRecalcResult(
-        started_at=datetime(2026, 5, 7, 2, 0, tzinfo=timezone.utc),
+        started_at=datetime(2026, 5, 7, 2, 0, tzinfo=UTC),
     )
     r.skus_total = 5
     r.skus_processed = 3

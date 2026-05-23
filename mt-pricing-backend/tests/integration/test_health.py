@@ -16,7 +16,7 @@ Esto evita levantar/tirar containers — el "happy path" usa testcontainers real
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -230,7 +230,7 @@ async def test_celery_heartbeat_workers_alive_returns_healthy(
     """Con keys recientes en Redis, todas las queues reportan alive=true."""
     from app.core.config import settings
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     queues = ("imports", "pricing", "images", "comparator", "notifications", "audit")
     for q in queues:
         await redis_client.set(f"mt:worker:heartbeat:{q}", now_iso, ex=120)
@@ -258,7 +258,7 @@ async def test_celery_heartbeat_stale_returns_unhealthy(
     """Heartbeat con > 60s de antigüedad → alive=false."""
     from app.core.config import settings
 
-    stale = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    stale = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
     queues = ("imports", "pricing", "images", "comparator", "notifications", "audit")
     for q in queues:
         await redis_client.set(f"mt:worker:heartbeat:{q}", stale, ex=600)

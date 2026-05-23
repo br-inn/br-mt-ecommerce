@@ -26,12 +26,13 @@ from uuid import UUID
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from app.services.matching.enhanced_match_service import EnhancedMatchResult
     from app.repositories.unmatched_offers import UnmatchedOfferRepository
+    from app.services.matching.enhanced_match_service import EnhancedMatchResult
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models.inventory import CostLot
 from app.db.models.match_candidate import MatchCandidate
 from app.repositories.matches import MatchCandidateRepository
@@ -40,12 +41,11 @@ from app.services.matching.adapters import (
     AmazonUaeStubFetcher,
 )
 from app.services.matching.delivery_classifier import classify_delivery
-from app.services.matching.ports import CandidateRaw, FetcherPort, Query
-from app.services.matching.search_query_cache import get_or_generate_query
-from app.services.matching.query_builder import QueryBuilder
-from app.core.config import settings
 from app.services.matching.material_normalizer import MaterialNormalizer
+from app.services.matching.ports import CandidateRaw, FetcherPort, Query
+from app.services.matching.query_builder import QueryBuilder
 from app.services.matching.scoring import compute_scoring
+from app.services.matching.search_query_cache import get_or_generate_query
 
 # Threshold provisional Sprint 3 — peer cuando score ≥ 70.
 # TODO(ADR-MATCH-THRESHOLDS): externalizar a comparator_config.
@@ -69,7 +69,7 @@ def populate_conformal_fields(candidate: Any, calibrator: Any | None) -> None:
     """
     if calibrator is None:
         return
-    from decimal import Decimal as _D  # noqa: PLC0415
+    from decimal import Decimal as _D
 
     raw = candidate.score / 100.0
     pred = calibrator.predict_with_interval(raw)
@@ -191,7 +191,7 @@ class MatchService:
         fetchers: Sequence[FetcherPort] | None = None,
         query_builder: QueryBuilder | None = None,
         material_normalizer: MaterialNormalizer | None = None,
-        unmatched_repo: "UnmatchedOfferRepository | None" = None,
+        unmatched_repo: UnmatchedOfferRepository | None = None,
     ) -> None:
         self.session = session
         self.fetchers: list[FetcherPort] = list(
@@ -304,7 +304,9 @@ class MatchService:
         _rerank_query = sku_dict.get("name_en") or sku_dict.get("name") or ""
         if _cross_encoder_enabled and persisted and _rerank_query:
             try:
-                from app.services.matching.cross_encoder_reranker import rerank_candidates  # noqa: PLC0415
+                from app.services.matching.cross_encoder_reranker import (
+                    rerank_candidates,
+                )
 
                 # Convertir a dicts para el reranker
                 cand_dicts = [
@@ -315,7 +317,7 @@ class MatchService:
                     }
                     for i, c in enumerate(persisted)
                 ]
-                from app.core.redis import get_redis  # noqa: PLC0415
+                from app.core.redis import get_redis
 
                 reranked_dicts = await rerank_candidates(
                     query=_rerank_query,
@@ -328,7 +330,7 @@ class MatchService:
                 persisted = [persisted[i] for i in idx_order]
 
                 # Escribir calibrated_confidence = sigmoid(rerank_score) → [0, 1]
-                import math as _math  # noqa: PLC0415
+                import math as _math
 
                 for _rd, _row in zip(reranked_dicts, persisted, strict=False):
                     _rs = _rd.get("rerank_score")
@@ -428,9 +430,9 @@ class MatchService:
                 await self.session.flush()
 
         # ── Pool-relativa: género de conexión ──────────────────────────────────
-        from app.services.matching.scoring import (  # noqa: PLC0415
-            _normalize_gender,
+        from app.services.matching.scoring import (
             _normalize_bore,
+            _normalize_gender,
             _normalize_seat_mat,
         )
 
@@ -502,7 +504,7 @@ class MatchService:
     async def _score_and_upsert(
         self, sku_dict: dict[str, Any], raw: CandidateRaw
     ) -> MatchCandidate:
-        from app.services.matching.rule_engine_cache import get_rule_engine_cache  # noqa: PLC0415
+        from app.services.matching.rule_engine_cache import get_rule_engine_cache
 
         _cache = get_rule_engine_cache()
         peer_threshold, drop_threshold = _get_thresholds(_cache)
@@ -541,7 +543,7 @@ class MatchService:
         # curl_cffi no puede acceder al PDP, pero el título suele tener el tamaño.
         # _normalize_dn reconoce '1/2"', '1/2 inch', '1/2in', 'DN15', etc.
         if not cand_dict.get("dn") and not cand_dict.get("size"):
-            from app.services.matching.scoring import _normalize_dn  # noqa: PLC0415
+            from app.services.matching.scoring import _normalize_dn
 
             title_dn = _normalize_dn(raw.title or "")
             if title_dn:
@@ -651,7 +653,7 @@ class MatchService:
             "note": delivery.note,
         }
 
-        from app.services.matching.extractors.pdp_extractor import parse_pack_units  # noqa: PLC0415
+        from app.services.matching.extractors.pdp_extractor import parse_pack_units
 
         pack_units = parse_pack_units(raw.title, raw.specs or {})
 
@@ -678,8 +680,8 @@ class MatchService:
 
         # ── Instrumentación match_rule_stats (best-effort) ────────────────
         try:
-            from app.repositories.match_rule_stat import MatchRuleStatRepository  # noqa: PLC0415
-            from app.repositories.taxonomy_profile import TaxonomyProfileRepository  # noqa: PLC0415
+            from app.repositories.match_rule_stat import MatchRuleStatRepository
+            from app.repositories.taxonomy_profile import TaxonomyProfileRepository
 
             stat_repo = MatchRuleStatRepository(self.session)
             tp_repo = TaxonomyProfileRepository(self.session)
@@ -696,7 +698,7 @@ class MatchService:
 
         return candidate
 
-    async def _maybe_enqueue_hitl(self, candidate: MatchCandidate, raw: "CandidateRaw") -> None:
+    async def _maybe_enqueue_hitl(self, candidate: MatchCandidate, raw: CandidateRaw) -> None:
         """Inserta en hitl_queue si confidence < 0.6 Y product_value > 1000 AED.
 
         Idempotente: no inserta si ya existe un item ``pending`` para ese match_id
@@ -712,7 +714,7 @@ class MatchService:
             )
 
     async def __maybe_enqueue_hitl_impl(
-        self, candidate: MatchCandidate, raw: "CandidateRaw"
+        self, candidate: MatchCandidate, raw: CandidateRaw
     ) -> None:
         """Implementación interna — ver _maybe_enqueue_hitl.
 
@@ -724,12 +726,14 @@ class MatchService:
         """
         from decimal import Decimal
 
+        from sqlalchemy import func as _func
+        from sqlalchemy import select as _select
+
         from app.db.models.hitl_queue import (
-            HitlQueue,
             HITL_CONFIDENCE_THRESHOLD,
             HITL_VALUE_THRESHOLD_AED,
+            HitlQueue,
         )
-        from sqlalchemy import select as _select, func as _func
 
         # Determinar uncertainty_score (defensivo: FakeMatchRow en tests puede no tener el atributo)
         conf = getattr(candidate, "calibrated_confidence", None)
@@ -850,8 +854,8 @@ class MatchService:
         self, candidate: MatchCandidate, *, label: int, user_id: UUID | None
     ) -> None:
         """Cierra el lazo de feedback: golden_labels + human_outcome del agente."""
-        from app.repositories.golden_labels import GoldenLabelRepository  # noqa: PLC0415
-        from app.repositories.match_agent import MatchAgentDecisionRepository  # noqa: PLC0415
+        from app.repositories.golden_labels import GoldenLabelRepository
+        from app.repositories.match_agent import MatchAgentDecisionRepository
 
         try:
             await GoldenLabelRepository(self.session).upsert(
@@ -861,7 +865,7 @@ class MatchService:
                 score=candidate.score / 100.0,
                 judged_by=user_id,
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning(
                 "match_service._record_human_feedback.golden_labels_failed", exc_info=True
             )
@@ -871,7 +875,7 @@ class MatchService:
             await MatchAgentDecisionRepository(self.session).set_human_outcome(
                 candidate.id, outcome
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning(
                 "match_service._record_human_feedback.human_outcome_failed", exc_info=True
             )
@@ -1015,7 +1019,6 @@ class MatchService:
             por score DESC.
         """
         from app.services.matching.enhanced_match_service import (  # lazy — anthropic only in scraper-worker
-            EnhancedMatchResult,
             enhanced_score,
         )
 
@@ -1042,12 +1045,12 @@ class MatchService:
         # Cargar el calibrador conformal activo (None en fase bootstrap).
         conformal: Any | None = None
         try:
-            from app.repositories.golden_labels import (  # noqa: PLC0415
+            from app.repositories.golden_labels import (
                 CalibratorVersionRepository,
                 GoldenLabelRepository,
             )
-            from app.services.matching.calibrator import ConformalWrapper  # noqa: PLC0415
-            from app.services.matching.calibrator_storage import CalibratorStorage  # noqa: PLC0415
+            from app.services.matching.calibrator import ConformalWrapper
+            from app.services.matching.calibrator_storage import CalibratorStorage
 
             storage = CalibratorStorage(CalibratorVersionRepository(self.session))
             base_cal = await storage.load_active()
@@ -1060,7 +1063,7 @@ class MatchService:
                         [int(row.label) for row in labels],
                     )
                     conformal = wrapper
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("refresh_candidates_enhanced.conformal_load_failed", exc_info=True)
             conformal = None
 

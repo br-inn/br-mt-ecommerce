@@ -86,7 +86,7 @@ async def trigger_bulk_recalc(
     body = payload or BulkRecalcTriggerRequest()
     try:
         from app.workers.tasks.pricing_recalc import bulk_recalc_task
-    except Exception as exc:  # pragma: no cover  # noqa: BLE001
+    except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=503,
             detail={

@@ -56,7 +56,7 @@ class Certificate(UuidPkMixin, Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    scopes: Mapped[list["CertificateScope"]] = relationship(
+    scopes: Mapped[list[CertificateScope]] = relationship(
         back_populates="certificate", cascade="all, delete-orphan"
     )
 

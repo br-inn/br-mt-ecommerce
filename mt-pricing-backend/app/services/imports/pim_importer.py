@@ -20,7 +20,7 @@ Idempotencia:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -29,7 +29,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models.import_run import ImportRun
-from app.db.models.product import Product
 from app.repositories.audit import AuditRepository
 from app.repositories.product import ProductRepository
 from app.services.importer.column_mapper import EXPECTED_HEADERS
@@ -110,7 +109,7 @@ class PimImporter:
 
         try:
             wb = load_workbook(str(self.source_path), read_only=True, data_only=True)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             await self._mark_failed(f"openpyxl load failed: {exc}")
             raise
 
@@ -132,7 +131,7 @@ class PimImporter:
 
             # Marca run como running.
             self._run.status = "running"
-            self._run.started_at = datetime.now(tz=timezone.utc)
+            self._run.started_at = datetime.now(tz=UTC)
             await self.session.commit()
 
             inserted = 0
@@ -159,7 +158,7 @@ class PimImporter:
                         updated += 1
                     else:
                         skipped += 1
-                except Exception as exc:  # noqa: BLE001 — toleramos por fila
+                except Exception as exc:
                     error_rows += 1
                     if len(errors) < MAX_ERRORS_LOGGED:
                         errors.append(
@@ -180,14 +179,14 @@ class PimImporter:
                     self._run.total_rows = row_idx
                     try:
                         await self.session.commit()
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         logger.exception(
                             "PimImporter periodic commit failed at row %d",
                             row_idx,
                         )
                         try:
                             await self.session.rollback()
-                        except Exception:  # noqa: BLE001
+                        except Exception:
                             pass
                 row_idx += 1
         finally:
@@ -207,7 +206,7 @@ class PimImporter:
             "errors": error_rows,
             "max_errors_logged": MAX_ERRORS_LOGGED,
         }
-        self._run.finished_at = datetime.now(tz=timezone.utc)
+        self._run.finished_at = datetime.now(tz=UTC)
         self._run.status = "completed" if error_rows == 0 else "completed_with_errors"
         await self.session.commit()
         logger.info(
@@ -239,13 +238,13 @@ class PimImporter:
         if self._run is None:
             return
         self._run.status = "failed"
-        self._run.finished_at = datetime.now(tz=timezone.utc)
+        self._run.finished_at = datetime.now(tz=UTC)
         existing = list(self._run.errors or [])
         existing.append({"row": 0, "error": reason[:200]})
         self._run.errors = existing[:MAX_ERRORS_LOGGED]
         try:
             await self.session.commit()
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("PimImporter _mark_failed commit failed")
             await self.session.rollback()
 
@@ -300,7 +299,7 @@ class PimImporter:
 
         if self.actor_id is not None:
             existing.updated_by = self.actor_id
-        existing.updated_at = datetime.now(tz=timezone.utc)
+        existing.updated_at = datetime.now(tz=UTC)
         await self.session.flush()
         await self._audit_event(
             action="product.imported.updated",
@@ -332,7 +331,7 @@ class PimImporter:
                 self._division_codes,
                 code_id_cache=self._division_code_cache,
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception(
                 "PimImporter assign_divisions failed sku=%s codes=%s",
                 sku,
@@ -359,7 +358,7 @@ class PimImporter:
                 after=after,
                 reason=f"PIM batch import run {self.run_id}",
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("PimImporter audit failed sku=%s action=%s", sku, action)
 
 
@@ -376,4 +375,4 @@ def _safe_repr(value: Any) -> Any:
     return value
 
 
-__all__ = ["PimImporter", "MAX_ERRORS_LOGGED", "COMMIT_EVERY_N_ROWS"]
+__all__ = ["COMMIT_EVERY_N_ROWS", "MAX_ERRORS_LOGGED", "PimImporter"]

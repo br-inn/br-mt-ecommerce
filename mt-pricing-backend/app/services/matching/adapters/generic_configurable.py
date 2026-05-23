@@ -8,9 +8,10 @@ construir un fetcher para esos modos lanza NotImplementedError.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from app.services.matching.ports import CandidateRaw, Query
 from app.services.scraper.recipe_extractor import extract_records
@@ -99,5 +100,5 @@ class GenericConfigurableFetcher:
             delivery_text=record.get("delivery_text"),
             specs=specs,
             raw_payload={"recipe_source": self.channel, "extracted": record},
-            fetched_at=datetime.now(tz=timezone.utc),
+            fetched_at=datetime.now(tz=UTC),
         )

@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models.product import ProductAsset
-from app.schemas.assets import AssetKind, allowed_mimes_for_kind, max_bytes_for_kind
+from app.schemas.assets import allowed_mimes_for_kind, max_bytes_for_kind
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +196,7 @@ class AssetService:
 
             client = get_supabase_admin()
             signed = client.storage.from_(bucket).create_signed_upload_url(storage_path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {
                 "storage_path": storage_path,
                 "upload_url": (

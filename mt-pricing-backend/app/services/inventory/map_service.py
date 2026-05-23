@@ -16,8 +16,7 @@ Flujo principal: `process_gr(gr_id)` →
 from __future__ import annotations
 
 import logging
-import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
@@ -134,7 +133,7 @@ class MAPService:
         )
 
         gr.status = "processed"
-        gr.processed_at = datetime.now(tz=timezone.utc)
+        gr.processed_at = datetime.now(tz=UTC)
         await self.session.flush()
 
         return pos
@@ -188,7 +187,7 @@ class MAPService:
         pol: Any,
     ) -> Decimal:
         """Determina el unit_cost_aed del GR usando prioridad definida en story."""
-        received_at = gr.received_at or datetime.now(tz=timezone.utc)
+        received_at = gr.received_at or datetime.now(tz=UTC)
 
         actual_breakdown: dict = gr.actual_breakdown or {}
         if actual_breakdown:
@@ -245,7 +244,7 @@ class MAPService:
         new_map: Decimal,
         last_gr_id: UUID,
     ) -> InventoryPosition:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Fetch current to compute new qty_on_hand.
         existing = await self._get_position(

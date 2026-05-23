@@ -13,13 +13,14 @@ Sin DB: stubeamos `AsyncSession` + repos in-memory. Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
 
+from app.services.products.product_service import ProductNotFoundError
 from app.services.products.translation_workflow import (
     STALENESS_REASON_MASTER_EN,
     STATE_APPROVED,
@@ -36,7 +37,6 @@ from app.services.products.translation_workflow import (
     can_transition,
     list_valid_transitions,
 )
-from app.services.products.product_service import ProductNotFoundError
 
 pytestmark = pytest.mark.unit
 
@@ -70,7 +70,7 @@ class _FakeTranslation:
         self.reviewed_at: datetime | None = None
         self.staleness_reason: str | None = None
         self.rejection_reason: str | None = None
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.created_at = now
         self.updated_at = now
 

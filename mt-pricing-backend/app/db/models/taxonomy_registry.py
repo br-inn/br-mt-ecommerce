@@ -38,7 +38,6 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
-
 # ---------------------------------------------------------------------------
 # Constants — espejo de los CHECK constraints en la migración 049
 # ---------------------------------------------------------------------------
@@ -118,12 +117,12 @@ class TaxonomyType(UuidPkMixin, Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    nodes: Mapped[list["TaxonomyNode"]] = relationship(
+    nodes: Mapped[list[TaxonomyNode]] = relationship(
         back_populates="type",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    aliases: Mapped[list["TaxonomyAlias"]] = relationship(
+    aliases: Mapped[list[TaxonomyAlias]] = relationship(
         back_populates="type",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -204,11 +203,11 @@ class TaxonomyNode(UuidPkMixin, Base):
     )
 
     type: Mapped[TaxonomyType] = relationship(back_populates="nodes")
-    parent: Mapped["TaxonomyNode | None"] = relationship(
+    parent: Mapped[TaxonomyNode | None] = relationship(
         remote_side="TaxonomyNode.id",
         foreign_keys=[parent_id],
     )
-    successor: Mapped["TaxonomyNode | None"] = relationship(
+    successor: Mapped[TaxonomyNode | None] = relationship(
         remote_side="TaxonomyNode.id",
         foreign_keys=[superseded_by],
     )

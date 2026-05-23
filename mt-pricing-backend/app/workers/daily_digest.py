@@ -15,7 +15,7 @@ import asyncio
 import logging
 import smtplib
 import ssl
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -181,7 +181,7 @@ async def _run_async(target_date: date) -> dict:
     max_retries=3,
 )
 def daily_digest(
-    self: Any,  # noqa: ANN401 — celery bound task
+    self: Any,
     target_date_iso: str | None = None,
 ) -> dict:
     """Genera y distribuye el digest diario de precios.
@@ -193,7 +193,7 @@ def daily_digest(
     target = (
         date.fromisoformat(target_date_iso)
         if target_date_iso
-        else datetime.now(tz=timezone.utc).date()
+        else datetime.now(tz=UTC).date()
     )
     result = asyncio.run(_run_async(target))
     logger.info(

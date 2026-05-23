@@ -13,9 +13,9 @@ asyncio_mode = "auto" (pyproject.toml), no se necesita @pytest.mark.asyncio.
 
 from __future__ import annotations
 
-import io
 import csv
-from datetime import datetime, timezone
+import io
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
@@ -50,8 +50,8 @@ def _make_price(
     price.amount = amount
     price.channel_id = channel_id
     price.scheme_code = scheme_code
-    price.approved_at = approved_at or datetime(2026, 5, 12, 10, 0, 0, tzinfo=timezone.utc)
-    price.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=timezone.utc)
+    price.approved_at = approved_at or datetime(2026, 5, 12, 10, 0, 0, tzinfo=UTC)
+    price.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=UTC)
     return price
 
 
@@ -87,7 +87,7 @@ def _make_export_result(rows_exported: int, rows_blocked: int = 0) -> ExportResu
         rows_exported=rows_exported,
         rows_blocked=rows_blocked,
         shadow_mode=False,
-        exported_at=datetime.now(tz=timezone.utc),
+        exported_at=datetime.now(tz=UTC),
     )
 
 
@@ -114,12 +114,12 @@ async def test_export_service_returns_csv_bytes():
     fn_row_1 = MagicMock()
     fn_row_1.sku = "MTV-1001"
     fn_row_1.amount = Decimal("147.75")
-    fn_row_1.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=timezone.utc)
+    fn_row_1.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=UTC)
 
     fn_row_2 = MagicMock()
     fn_row_2.sku = "MTV-1002"
     fn_row_2.amount = Decimal("147.75")
-    fn_row_2.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=timezone.utc)
+    fn_row_2.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=UTC)
 
     fn_result = MagicMock()
     fn_result.fetchall.return_value = [fn_row_1, fn_row_2]
@@ -204,7 +204,7 @@ async def test_export_service_filters_non_approved():
     fn_row = MagicMock()
     fn_row.sku = "MTV-2001"
     fn_row.amount = Decimal("147.75")
-    fn_row.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=timezone.utc)
+    fn_row.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=UTC)
     fn_result = MagicMock()
     fn_result.fetchall.return_value = [fn_row]
 
@@ -410,7 +410,7 @@ async def test_export_pilot_channel_succeeds():
     fn_row = MagicMock()
     fn_row.sku = "MTV-4001"
     fn_row.amount = Decimal("99.00")
-    fn_row.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=timezone.utc)
+    fn_row.fx_at = datetime(2026, 5, 12, 9, 0, 0, tzinfo=UTC)
     fn_result = MagicMock()
     fn_result.fetchall.return_value = [fn_row]
 

@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
-
 from uuid import UUID
 
 from sqlalchemy import and_, exists, func, or_, select
@@ -65,7 +64,7 @@ class ProductFilters:
     # Reserved for parent/variant filters in later iterations.
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "ProductFilters":
+    def from_dict(cls, d: dict[str, Any]) -> ProductFilters:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
     def has_any_active(self) -> bool:

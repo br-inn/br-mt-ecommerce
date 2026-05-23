@@ -14,8 +14,8 @@ Cambios en ``hitl_queue``:
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
-from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision = "20260602_142"

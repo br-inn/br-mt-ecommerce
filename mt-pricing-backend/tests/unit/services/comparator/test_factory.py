@@ -15,8 +15,6 @@ import pytest
 from app.services.comparator import (
     FLAG_COMPARATOR_ENABLED,
     ComparatorServiceFactory,
-    FullGraphRagComparatorAdapter,
-    HybridComparatorAdapter,
     NoopComparatorService,
     RagOnlyComparatorAdapter,
 )

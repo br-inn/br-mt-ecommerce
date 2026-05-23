@@ -19,7 +19,7 @@ Cobertura BDD (8 casos):
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -36,8 +36,9 @@ pytestmark = [pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     """``alembic upgrade head`` antes de los tests del módulo."""
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
@@ -47,7 +48,7 @@ def _migrate(postgres_container: str) -> None:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-async def _purge_pair(session: "AsyncSession", from_c: str, to_c: str) -> None:
+async def _purge_pair(session: AsyncSession, from_c: str, to_c: str) -> None:
     """Borra todas las filas del par (limpia entre tests dentro de la mismatx)."""
     await session.execute(
         text("DELETE FROM fx_rates WHERE from_currency = :f AND to_currency = :t"),
@@ -56,7 +57,7 @@ async def _purge_pair(session: "AsyncSession", from_c: str, to_c: str) -> None:
 
 
 async def _insert_rate(
-    session: "AsyncSession",
+    session: AsyncSession,
     *,
     from_c: str,
     to_c: str,
@@ -87,7 +88,7 @@ async def _insert_rate(
     return str(result.scalar_one())
 
 
-async def _row_by_id(session: "AsyncSession", row_id: str) -> dict:
+async def _row_by_id(session: AsyncSession, row_id: str) -> dict:
     res = await session.execute(
         text(
             """
@@ -105,16 +106,16 @@ async def _row_by_id(session: "AsyncSession", row_id: str) -> dict:
 # ---------------------------------------------------------------------------
 # AC-1 — Insert nuevo cierra el previo
 # ---------------------------------------------------------------------------
-async def test_insert_closes_previous_active_rate(db_session: "AsyncSession") -> None:
+async def test_insert_closes_previous_active_rate(db_session: AsyncSession) -> None:
     await _purge_pair(db_session, "EUR", "AED")
     prev_id = await _insert_rate(
         db_session,
         from_c="EUR",
         to_c="AED",
         rate=4.29,
-        effective_from=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 4, 1, tzinfo=UTC),
     )
-    new_at = datetime(2026, 6, 12, tzinfo=timezone.utc)
+    new_at = datetime(2026, 6, 12, tzinfo=UTC)
     new_id = await _insert_rate(
         db_session, from_c="EUR", to_c="AED", rate=4.18, effective_from=new_at
     )
@@ -131,7 +132,7 @@ async def test_insert_closes_previous_active_rate(db_session: "AsyncSession") ->
 # AC-2 — Retroactivo sin flag → bloqueo
 # ---------------------------------------------------------------------------
 async def test_retroactive_insert_blocked_without_flag(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     await _purge_pair(db_session, "EUR", "AED")
     await _insert_rate(
@@ -139,7 +140,7 @@ async def test_retroactive_insert_blocked_without_flag(
         from_c="EUR",
         to_c="AED",
         rate=4.29,
-        effective_from=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 4, 1, tzinfo=UTC),
     )
     with pytest.raises((IntegrityError, InternalError, Exception)) as ei:
         await _insert_rate(
@@ -147,7 +148,7 @@ async def test_retroactive_insert_blocked_without_flag(
             from_c="EUR",
             to_c="AED",
             rate=4.10,
-            effective_from=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 1, 1, tzinfo=UTC),
         )
     assert "fx_retroactive_not_allowed" in str(ei.value)
 
@@ -155,9 +156,9 @@ async def test_retroactive_insert_blocked_without_flag(
 # ---------------------------------------------------------------------------
 # AC-3 — Mismo effective_from → bloqueo
 # ---------------------------------------------------------------------------
-async def test_same_effective_from_blocked(db_session: "AsyncSession") -> None:
+async def test_same_effective_from_blocked(db_session: AsyncSession) -> None:
     await _purge_pair(db_session, "EUR", "AED")
-    same_at = datetime(2026, 4, 1, tzinfo=timezone.utc)
+    same_at = datetime(2026, 4, 1, tzinfo=UTC)
     await _insert_rate(db_session, from_c="EUR", to_c="AED", rate=4.29, effective_from=same_at)
     with pytest.raises((IntegrityError, InternalError, Exception)) as ei:
         await _insert_rate(
@@ -173,30 +174,30 @@ async def test_same_effective_from_blocked(db_session: "AsyncSession") -> None:
 # ---------------------------------------------------------------------------
 # AC-4 — fx_rate_at devuelve la fila vigente
 # ---------------------------------------------------------------------------
-async def test_fx_rate_at_returns_active_row(db_session: "AsyncSession") -> None:
+async def test_fx_rate_at_returns_active_row(db_session: AsyncSession) -> None:
     await _purge_pair(db_session, "EUR", "AED")
     apr_id = await _insert_rate(
         db_session,
         from_c="EUR",
         to_c="AED",
         rate=4.29,
-        effective_from=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 4, 1, tzinfo=UTC),
     )
     jun_id = await _insert_rate(
         db_session,
         from_c="EUR",
         to_c="AED",
         rate=4.18,
-        effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 6, 12, tzinfo=UTC),
     )
 
     res_apr = await db_session.execute(
         text("SELECT fx_rate_at('EUR','AED', :t) AS id"),
-        {"t": datetime(2026, 5, 1, tzinfo=timezone.utc)},
+        {"t": datetime(2026, 5, 1, tzinfo=UTC)},
     )
     res_jul = await db_session.execute(
         text("SELECT fx_rate_at('EUR','AED', :t) AS id"),
-        {"t": datetime(2026, 7, 1, tzinfo=timezone.utc)},
+        {"t": datetime(2026, 7, 1, tzinfo=UTC)},
     )
     assert str(res_apr.scalar_one()) == apr_id
     assert str(res_jul.scalar_one()) == jun_id
@@ -205,7 +206,7 @@ async def test_fx_rate_at_returns_active_row(db_session: "AsyncSession") -> None
 # ---------------------------------------------------------------------------
 # AC-5 — AED→AED forzado a rate=1
 # ---------------------------------------------------------------------------
-async def test_aed_aed_identity_forces_rate_one(db_session: "AsyncSession") -> None:
+async def test_aed_aed_identity_forces_rate_one(db_session: AsyncSession) -> None:
     # Limpiamos la identity row del seed mig 017 (la migración la inserta con
     # 2026-04-01, pero queremos un test puro).
     await db_session.execute(
@@ -216,7 +217,7 @@ async def test_aed_aed_identity_forces_rate_one(db_session: "AsyncSession") -> N
         from_c="AED",
         to_c="AED",
         rate=999.5,
-        effective_from=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 1, 1, tzinfo=UTC),
         source="manual",
     )
     row = await _row_by_id(db_session, new_id)
@@ -227,7 +228,7 @@ async def test_aed_aed_identity_forces_rate_one(db_session: "AsyncSession") -> N
 # AC-6 — rate=0 → bloqueo del trigger
 # ---------------------------------------------------------------------------
 async def test_zero_rate_blocked_by_trigger_or_constraint(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     await _purge_pair(db_session, "EUR", "AED")
     with pytest.raises((IntegrityError, InternalError, Exception)) as ei:
@@ -236,7 +237,7 @@ async def test_zero_rate_blocked_by_trigger_or_constraint(
             from_c="EUR",
             to_c="AED",
             rate=0,
-            effective_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            effective_from=datetime(2026, 6, 1, tzinfo=UTC),
         )
     msg = str(ei.value)
     # Cualquiera de los dos: trigger o CHECK constraint.
@@ -251,7 +252,7 @@ async def test_zero_rate_blocked_by_trigger_or_constraint(
 # AC-7 — allow_retroactive=true permite el insert
 # ---------------------------------------------------------------------------
 async def test_allow_retroactive_flag_permits_insert(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     await _purge_pair(db_session, "EUR", "AED")
     await _insert_rate(
@@ -259,7 +260,7 @@ async def test_allow_retroactive_flag_permits_insert(
         from_c="EUR",
         to_c="AED",
         rate=4.29,
-        effective_from=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 4, 1, tzinfo=UTC),
     )
     # Flag scoped al statement: SET LOCAL en la misma transacción.
     await db_session.execute(text("SET LOCAL fx.allow_retroactive = 'true'"))
@@ -268,7 +269,7 @@ async def test_allow_retroactive_flag_permits_insert(
         from_c="EUR",
         to_c="AED",
         rate=4.10,
-        effective_from=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 1, 1, tzinfo=UTC),
     )
     new = await _row_by_id(db_session, new_id)
     assert new["effective_to"] is None  # NEW se inserta como vigente.
@@ -277,7 +278,7 @@ async def test_allow_retroactive_flag_permits_insert(
 # ---------------------------------------------------------------------------
 # AC-8 — pares independientes
 # ---------------------------------------------------------------------------
-async def test_pairs_are_independent(db_session: "AsyncSession") -> None:
+async def test_pairs_are_independent(db_session: AsyncSession) -> None:
     await _purge_pair(db_session, "EUR", "AED")
     await _purge_pair(db_session, "USD", "AED")
     eur_id = await _insert_rate(
@@ -285,14 +286,14 @@ async def test_pairs_are_independent(db_session: "AsyncSession") -> None:
         from_c="EUR",
         to_c="AED",
         rate=4.29,
-        effective_from=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 4, 1, tzinfo=UTC),
     )
     usd_id = await _insert_rate(
         db_session,
         from_c="USD",
         to_c="AED",
         rate=3.67,
-        effective_from=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 4, 1, tzinfo=UTC),
     )
     # Cerramos EUR→AED con un rate nuevo.
     await _insert_rate(
@@ -300,7 +301,7 @@ async def test_pairs_are_independent(db_session: "AsyncSession") -> None:
         from_c="EUR",
         to_c="AED",
         rate=4.18,
-        effective_from=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        effective_from=datetime(2026, 6, 12, tzinfo=UTC),
     )
     eur = await _row_by_id(db_session, eur_id)
     usd = await _row_by_id(db_session, usd_id)

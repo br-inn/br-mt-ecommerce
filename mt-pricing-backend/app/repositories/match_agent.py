@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -31,7 +31,7 @@ class MatchAgentConfigRepository:
         updated_by: UUID | None = None,
     ) -> MatchAgentConfig:
         values: dict[str, Any] = {
-            "updated_at": datetime.now(tz=timezone.utc),
+            "updated_at": datetime.now(tz=UTC),
             "updated_by": updated_by,
         }
         if mode is not None:
@@ -45,7 +45,7 @@ class MatchAgentConfigRepository:
         )
         await self.session.flush()
         row = await self.session.get(MatchAgentConfig, 1)
-        assert row is not None  # noqa: S101 — el seed garantiza id=1
+        assert row is not None
         return row
 
 

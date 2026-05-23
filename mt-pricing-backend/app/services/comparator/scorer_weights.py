@@ -79,7 +79,7 @@ def _load_yaml_profiles(path: Path) -> dict[str, dict[str, float]] | None:
             )
             return None
         return profiles
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("scorer_weights: error leyendo %s: %s — usando pesos hardcoded", path, exc)
         return None
 
@@ -90,14 +90,14 @@ def _get_weights_path() -> Path:
         from app.core.config import settings  # evitar import circular en tests
 
         raw = getattr(settings, "SCORER_WEIGHTS_PATH", "config/scorer_weights_by_family.yaml")
-    except Exception:  # noqa: BLE001
+    except Exception:
         raw = "config/scorer_weights_by_family.yaml"
     return Path(raw)
 
 
 def _get_profiles() -> dict[str, dict[str, float]]:
     """Retorna perfiles (lazy-load con cache en proceso)."""
-    global _cached_profiles  # noqa: PLW0603
+    global _cached_profiles
     if _cached_profiles is None:
         path = _get_weights_path()
         loaded = _load_yaml_profiles(path)
@@ -107,7 +107,7 @@ def _get_profiles() -> dict[str, dict[str, float]]:
 
 def _clear_cache() -> None:
     """Limpia el cache de perfiles (útil en tests)."""
-    global _cached_profiles  # noqa: PLW0603
+    global _cached_profiles
     _cached_profiles = None
 
 
@@ -149,6 +149,6 @@ def get_weights_profile_name(family: str | None = None) -> str:
 
 
 __all__ = [
-    "load_weights",
     "get_weights_profile_name",
+    "load_weights",
 ]

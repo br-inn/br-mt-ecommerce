@@ -78,7 +78,7 @@ async def _run_retrain(auto_promote: bool, since_days: int | None) -> dict[str, 
     bind=True,
     acks_late=True,
 )
-def retrain_nightly(  # noqa: ANN001
+def retrain_nightly(
     self,
     auto_promote: bool = True,
     since_days: int | None = 90,
@@ -90,7 +90,7 @@ def retrain_nightly(  # noqa: ANN001
     """
     try:
         result = asyncio.run(_run_retrain(auto_promote=auto_promote, since_days=since_days))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("calibrator.retrain.failed", extra={"error": str(exc)})
         raise
     logger.info("calibrator.retrain.done", extra=result)

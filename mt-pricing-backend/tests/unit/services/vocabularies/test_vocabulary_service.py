@@ -6,8 +6,7 @@ All tests use in-memory fakes — no DB required.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, date
-from typing import Any
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 

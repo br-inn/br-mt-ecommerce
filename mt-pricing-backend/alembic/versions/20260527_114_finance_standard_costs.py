@@ -10,9 +10,10 @@ Note: product_sku references products.sku (TEXT PK — NUNCA product_id UUID)
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260527_114"
 down_revision = "20260527_113"

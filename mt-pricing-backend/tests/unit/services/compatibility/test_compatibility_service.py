@@ -20,7 +20,7 @@ Cobertura:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -30,8 +30,8 @@ from app.services.compatibility.compatibility_service import (
     CompatibilityDomainError,
     CompatibilityDuplicateError,
     CompatibilityNotFoundError,
-    CompatibilityService,
     CompatibilitySelfLoopError,
+    CompatibilityService,
     CompatibilitySkuNotFoundError,
 )
 

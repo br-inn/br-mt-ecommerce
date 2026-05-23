@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import (
-    Boolean,
     CHAR,
+    Boolean,
     CheckConstraint,
     Computed,
     Date,

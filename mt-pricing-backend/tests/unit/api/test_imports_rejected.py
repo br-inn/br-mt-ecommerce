@@ -8,7 +8,7 @@ Patrón análogo a test_admin_flags_api:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -20,9 +20,9 @@ from httpx import ASGITransport, AsyncClient
 from app.api.deps import get_current_user, get_db_session
 from app.api.routes.imports import router as imports_router
 from app.services.importer.importer_service import (
+    _RUN_STORE,
     ImportRunState,
     RejectedRow,
-    _RUN_STORE,
     reset_run_store,
 )
 
@@ -72,7 +72,7 @@ def _build_app(user: _FakeUser) -> FastAPI:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow
@@ -92,7 +92,7 @@ def _make_run_with_rejected(rejected: list[RejectedRow]) -> ImportRunState:
         type_="pim",
         filename="test.xlsx",
         status="preview_ready",
-        created_at=datetime.now(tz=timezone.utc),
+        created_at=datetime.now(tz=UTC),
         created_by="tester@mt.ae",
         summary={"total": 1250, "create": 100, "update": 50, "error": len(rejected)},
         rejected_rows=rejected,

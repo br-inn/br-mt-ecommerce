@@ -68,7 +68,7 @@ class Neo4jGraphStore:
 
     def __init__(
         self,
-        driver: "Driver",
+        driver: Driver,
         *,
         database: str = "neo4j",
     ) -> None:
@@ -81,7 +81,7 @@ class Neo4jGraphStore:
     def database(self) -> str:
         return self._database
 
-    def _session(self) -> "Session":
+    def _session(self) -> Session:
         return self._driver.session(database=self._database)
 
     def _ensure_constraint(self, label: str) -> None:
@@ -96,7 +96,7 @@ class Neo4jGraphStore:
                 with self._session() as s:
                     s.run(cypher).consume()
                 self._ensured_labels.add(safe)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "neo4j_real.ensure_constraint failed label=%s err=%s",
                     safe,
@@ -213,7 +213,7 @@ class Neo4jGraphStore:
                     "edges": edges,
                     "healthy": True,
                 }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("neo4j_real.health_check failed: %s", exc)
             return {
                 "backend": "neo4j_real",

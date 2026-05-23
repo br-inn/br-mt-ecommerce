@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     """Mini event-loop runner. Idéntico patrón al de ``app.workers.tasks.pricing``."""
     try:
         loop = asyncio.get_event_loop()
@@ -91,7 +91,7 @@ async def _acquire_mutex() -> bool:
     """
     try:
         from app.core.redis import get_redis
-    except Exception:  # pragma: no cover  # noqa: BLE001
+    except Exception:  # pragma: no cover
         return True
 
     try:
@@ -99,7 +99,7 @@ async def _acquire_mutex() -> bool:
         # Si HAY clave → manual recalc en curso, no podemos correr.
         existing = await redis.get("mt:pricing:manual_recalc_lock")
         return existing is None
-    except Exception:  # pragma: no cover  # noqa: BLE001
+    except Exception:  # pragma: no cover
         logger.exception("bulk_recalc.mutex_check_failed")
         return True
 
@@ -143,7 +143,7 @@ def bulk_recalc_task(self, source: str = "nightly_beat") -> dict[str, Any]:  # t
             try:
                 result = await svc.run(actor=actor, source=source)
                 await session.commit()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 await session.rollback()
                 raise
             return result.to_dict()

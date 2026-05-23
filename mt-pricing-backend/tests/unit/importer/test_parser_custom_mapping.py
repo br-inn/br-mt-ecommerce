@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import io
+
 import openpyxl
 
-from app.services.importer.column_mapper import map_row_with_mapping
 from app.services.importer.mapping_detector import ColumnMappingItem
 from app.services.importer.parser import parse_xlsx_stream
 

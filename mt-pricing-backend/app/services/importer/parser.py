@@ -72,7 +72,7 @@ def parse_xlsx_stream(
     sheet_name: str | None = None,
     max_rows: int | None = None,
     header_row_index: int | None = None,
-    custom_mapping: "list[ColumnMappingItem] | None" = None,
+    custom_mapping: list[ColumnMappingItem] | None = None,
 ) -> ParseResult:
     """Parsea un xlsx PIM completo con openpyxl streaming.
 

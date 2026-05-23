@@ -12,13 +12,12 @@ ADR-006 (workflow excepción) + ADR-010 (no aprobado no integra):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
 from app.db.models.pricing import Price, PriceApprovalEvent
 from app.db.models.user import User
-
 
 # Transiciones legales — claves son `from_status`, valores son set de `to_status` válidos.
 ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -83,7 +82,7 @@ def transition(
         raise InvalidTransition(price.status, to_status)
 
     from_status = price.status
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     event = PriceApprovalEvent(
         price_id=price.id,
         actor_id=actor.id,
@@ -136,7 +135,7 @@ class PriceStateMachine:
             raise InvalidTransitionError(price.status, target_status)
 
         from_status = price.status
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         event = PriceApprovalEvent(
             price_id=price.id,

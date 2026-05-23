@@ -16,7 +16,7 @@ Convenciones:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -87,7 +87,7 @@ class PricingResult:
     formula: str
     breakdown: dict[str, Any] = field(default_factory=dict)
     alerts: list[dict[str, Any]] = field(default_factory=list)
-    fx_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    fx_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     has_velocity_premium: bool = False
     has_critical_alerts: bool = False
     has_warnings: bool = False
@@ -102,7 +102,7 @@ class PricingResult:
         return [_decimals_to_str(a) for a in self.alerts]
 
 
-def _decimals_to_str(obj: Any) -> Any:  # noqa: ANN401
+def _decimals_to_str(obj: Any) -> Any:
     """Convierte Decimals recursivamente a str para JSONB-safe."""
     if isinstance(obj, Decimal):
         return str(obj)
@@ -604,12 +604,12 @@ class PricingRuleEngine:
     # ----------------------------------------------------------------------
     def calculate(
         self,
-        product: Any,  # noqa: ANN401  — Product ORM o dict
-        channel: Any,  # noqa: ANN401  — Channel ORM o dict
-        scheme: Any,  # noqa: ANN401  — CostScheme ORM o dict
-        cost: Any,  # noqa: ANN401  — Cost ORM o dict
+        product: Any,
+        channel: Any,
+        scheme: Any,
+        cost: Any,
         fx_rate: Decimal | None = None,
-        prev_price: Any | None = None,  # noqa: ANN401
+        prev_price: Any | None = None,
         market: dict[str, Any] | None = None,
         master_data: dict[str, Any] | None = None,
         scheme_min_margin: Decimal | None = None,
@@ -621,7 +621,7 @@ class PricingRuleEngine:
         sin tocar BD.
         """
 
-        def g(obj: Any, attr: str, default: Any = None) -> Any:  # noqa: ANN401
+        def g(obj: Any, attr: str, default: Any = None) -> Any:
             if obj is None:
                 return default
             if isinstance(obj, dict):
@@ -769,7 +769,7 @@ class PricingRuleEngine:
             formula=policy["formula"],
             breakdown=breakdown_final,
             alerts=alerts,
-            fx_at=datetime.now(tz=timezone.utc),
+            fx_at=datetime.now(tz=UTC),
             has_velocity_premium=has_velocity_premium,
             has_critical_alerts=has_critical,
             has_warnings=has_warnings,
@@ -778,4 +778,4 @@ class PricingRuleEngine:
         )
 
 
-__all__ = ["PricingRuleEngine", "PricingResult"]
+__all__ = ["PricingResult", "PricingRuleEngine"]

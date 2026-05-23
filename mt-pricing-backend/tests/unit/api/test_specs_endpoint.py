@@ -14,10 +14,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_current_user, get_db_session
 from app.api.routes.products import router as products_router
-from app.services.specs.specs_registry import SpecsRegistry
-from app.services.specs.specs_validator import SpecsValidator
 
 pytestmark = pytest.mark.unit
 
@@ -70,7 +68,7 @@ def _build_app(user: _FakeUser) -> FastAPI:
             call = dependency.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call) -> _FakeUser:  # noqa: ARG001
+                async def _allow(_call=call) -> _FakeUser:
                     return user
 
                 app.dependency_overrides[call] = _allow

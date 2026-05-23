@@ -265,7 +265,6 @@ async def test_decode_jwt_hs256_wrong_signature_raises_401() -> None:
 @pytest.mark.asyncio
 async def test_decode_jwt_jwks_mode_invokes_jwks_path() -> None:
     """Si VERIFICATION_MODE='jwks', se delega a `decode_with_jwks`."""
-    from pydantic import SecretStr
 
     from app.api.deps import _decode_jwt
     from app.core.config import settings

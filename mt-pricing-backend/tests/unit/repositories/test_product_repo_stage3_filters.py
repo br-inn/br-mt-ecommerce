@@ -35,7 +35,7 @@ def _fake_session() -> tuple[Any, list[Any]]:
     """
     captured: list[Any] = []
 
-    async def _execute(stmt: Any) -> Any:  # noqa: ANN401
+    async def _execute(stmt: Any) -> Any:
         captured.append(stmt)
         result = MagicMock()
         # scalars().all() para la lista; scalar_one() para count.

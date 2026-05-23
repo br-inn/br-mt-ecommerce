@@ -1,13 +1,13 @@
 """Tests for extended ficha_enrich schemas."""
 
 from app.schemas.ficha_enrich import (
-    ExtractedMaterial,
-    ExtractedDimensionRow,
     ExtractedCertificate,
+    ExtractedDimensionRow,
     ExtractedFlowData,
-    FichaExtractionResult,
+    ExtractedMaterial,
     ExtractedScalars,
     ExtractedSpecs,
+    FichaExtractionResult,
 )
 
 

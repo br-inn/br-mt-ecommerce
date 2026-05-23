@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_db_session, require_permissions
 from app.db.models.user import User
 from app.schemas.common import ProblemDetails
 from app.schemas.vocabularies import (

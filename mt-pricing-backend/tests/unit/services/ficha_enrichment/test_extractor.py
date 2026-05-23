@@ -1,13 +1,13 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from app.schemas.ficha_enrich import FichaExtractionResult
 from app.services.ficha_enrichment.extractor import (
     FichaEnrichmentExtractor,
     _build_result,
     _format_tables,
 )
-from app.schemas.ficha_enrich import FichaExtractionResult
-
 
 MINIMAL_PDF = b"%PDF-1.4\n1 0 obj\n<</Type/Catalog>>\nendobj\nxref\n0 1\n0000000000 65535 f\ntrailer\n<</Root 1 0 R>>\nstartxref\n9\n%%EOF"
 

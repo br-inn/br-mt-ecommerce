@@ -6,7 +6,8 @@ import hashlib
 import logging
 from typing import Any
 
-from sqlalchemy import delete as _sa_delete, select
+from sqlalchemy import delete as _sa_delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.ficha_enrich import FichaEnrichApplyRequest, SkuApplyResult
@@ -316,8 +317,8 @@ class FichaEnrichmentApplier:
         # bytes_size, hash_sha256, caption, status, created_by (UUID)
         # kind CHECK: photo|banner|datasheet_pdf|exploded_3d|section_drawing|
         #             dimension_drawing|certificate_pdf|video_link|external_url|mirror_url
-        from app.services.importer_datasheets.vision_extractor import _render_pdf_pages
         from app.db.models.product import ProductAsset
+        from app.services.importer_datasheets.vision_extractor import _render_pdf_pages
 
         pngs = _render_pdf_pages(pdf_bytes, max_pages=20, resolution=150)
         uploaded: list[str] = []
@@ -331,8 +332,9 @@ class FichaEnrichmentApplier:
             storage_path = f"datasheets/{sku}/{asset_meta.asset_kind}_p{idx}_{sha}.png"
 
             try:
-                from app.core.config import settings
                 from supabase import create_client
+
+                from app.core.config import settings
 
                 sb = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
                 sb.storage.from_("product-images").upload(

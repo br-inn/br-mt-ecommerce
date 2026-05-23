@@ -9,9 +9,9 @@ Cubre:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -152,7 +152,7 @@ async def test_sync_persists_listing_and_logs_two_events() -> None:
         stock_qty=312,
         rating=4.6,
         reviews_count=184,
-        fetched_at=datetime.now(tz=timezone.utc),
+        fetched_at=datetime.now(tz=UTC),
     )
     adapter = _FakeAdapter("amazon_uae", live_listing)
     service, listings_repo, events_repo = _make_service(

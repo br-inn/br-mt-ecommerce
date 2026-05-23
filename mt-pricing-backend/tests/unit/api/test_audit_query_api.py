@@ -11,9 +11,8 @@ Estrategia (alineada con `test_translations_workflow_api.py`):
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -26,7 +25,6 @@ from app.services.audit.audit_query_service import (
     AuditQueryFilters,
     AuditQueryResult,
     AuditQueryResultRow,
-    AuditQueryService,
 )
 
 pytestmark = pytest.mark.unit
@@ -96,7 +94,7 @@ def _build_app(user: _FakeUser, fake_service: _FakeAuditQueryService) -> FastAPI
             call = d.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call: Any = call) -> _FakeUser:  # noqa: ARG001
+                async def _allow(_call: Any = call) -> _FakeUser:
                     return user
 
                 app.dependency_overrides[call] = _allow
@@ -120,7 +118,7 @@ def _row(
 ) -> AuditQueryResultRow:
     return AuditQueryResultRow(
         id=id,
-        event_at=datetime.now(tz=timezone.utc),
+        event_at=datetime.now(tz=UTC),
         entity_type=entity_type,
         entity_id=entity_id,
         action=action,
@@ -207,8 +205,8 @@ async def test_audit_events_temporal_range_parsed() -> None:
     svc = _FakeAuditQueryService([])
     user = _FakeUser()
     app = _build_app(user, svc)
-    since = (datetime.now(tz=timezone.utc) - timedelta(days=7)).isoformat()
-    until = datetime.now(tz=timezone.utc).isoformat()
+    since = (datetime.now(tz=UTC) - timedelta(days=7)).isoformat()
+    until = datetime.now(tz=UTC).isoformat()
     async with await _client(app) as ac:
         resp = await ac.get("/api/v1/audit-events", params={"from": since, "to": until})
     assert resp.status_code == 200, resp.text

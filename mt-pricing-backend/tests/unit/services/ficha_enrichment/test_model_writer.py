@@ -1,14 +1,14 @@
 """Unit tests for model_writer — pure logic, no DB."""
 
+from app.schemas.ficha_enrich import (
+    ExtractedDimensionRow,
+    ExtractedScalars,
+    ExtractedSpecs,
+    FichaExtractionResult,
+)
 from app.services.ficha_enrichment.model_writer import (
     _build_dimensions_dict,
     write_pt_curves_data,
-)
-from app.schemas.ficha_enrich import (
-    FichaExtractionResult,
-    ExtractedScalars,
-    ExtractedSpecs,
-    ExtractedDimensionRow,
 )
 
 

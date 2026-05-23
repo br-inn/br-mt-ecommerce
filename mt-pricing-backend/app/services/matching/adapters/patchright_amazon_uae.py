@@ -36,7 +36,7 @@ import asyncio
 import logging
 import os
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from urllib.parse import quote_plus
 
@@ -101,9 +101,9 @@ class PatchrightAmazonUaeFetcher:
             ScraperBlockedError: if Amazon returns 403 or redirects to CAPTCHA
                 at the SERP level (PDP blocks are silently swallowed as empty specs).
         """
-        from patchright.async_api import async_playwright  # type: ignore[import]  # noqa: PLC0415
+        from patchright.async_api import async_playwright  # type: ignore[import]
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         async with async_playwright() as pw:
             launcher = getattr(pw, self._browser_channel, pw.chromium)
@@ -222,7 +222,7 @@ class PatchrightAmazonUaeFetcher:
             return extract_pdp_specs(html)
         except ScraperBlockedError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # PDP failures are non-fatal — return empty specs rather than
             # aborting the entire fetch.
             logger.warning(

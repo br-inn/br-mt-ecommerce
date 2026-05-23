@@ -15,8 +15,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision: str = "20260513_102"
 down_revision: str = "20260513_101"

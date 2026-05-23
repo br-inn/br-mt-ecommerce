@@ -188,7 +188,7 @@ class TokenBucketLimiter:
                     str(cost),
                 ],
             )
-        except Exception as exc:  # noqa: BLE001 — fail-open
+        except Exception as exc:
             logger.warning("rate_limit.redis_error fail-open: %s", exc)
             return True, float(policy.capacity), 0.0
 

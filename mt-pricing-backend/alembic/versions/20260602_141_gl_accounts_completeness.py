@@ -14,8 +14,9 @@ Cambios en ``gl_accounts``:
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20260602_141"

@@ -10,7 +10,7 @@ RBAC: requiere permiso ``channels:read``.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -92,7 +92,7 @@ async def generate_channel_export(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    date_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
+    date_str = datetime.now(tz=UTC).strftime("%Y%m%d")
     filename = f"{channel_code.upper()}_{date_str}.csv"
 
     headers = {

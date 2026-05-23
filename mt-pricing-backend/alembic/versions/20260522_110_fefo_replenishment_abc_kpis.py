@@ -19,11 +19,10 @@ Create Date: 2026-05-22
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260522_110"

@@ -15,7 +15,8 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as UUID_PG
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as UUID_PG
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -72,7 +73,7 @@ class ProductTechTable(Base):
         onupdate=text("now()"),
     )
 
-    product: Mapped["Product"] = relationship(back_populates="tech_tables")
+    product: Mapped[Product] = relationship(back_populates="tech_tables")
 
     __table_args__ = (
         UniqueConstraint("product_sku", "kind", name="uq_product_tech_tables_sku_kind"),

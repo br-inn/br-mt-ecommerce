@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -142,7 +141,7 @@ class GoodsReceiptRepository:
         await self.session.refresh(gr, ["po_line_id"])
         # Re-query con eager load para devolver po_line
         gr_loaded = await self.get(gr.id)
-        assert gr_loaded is not None  # noqa: S101
+        assert gr_loaded is not None
         return gr_loaded
 
     async def _update_po_status(self, po: PurchaseOrder) -> None:
@@ -283,5 +282,5 @@ class GoodsReceiptRepository:
 
         # Devolver con eager load
         loaded = await self.get(gr_id)
-        assert loaded is not None  # noqa: S101
+        assert loaded is not None
         return loaded

@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, text
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -26,8 +25,9 @@ from sqlalchemy import create_engine, text
 @pytest.fixture(scope="module")
 def _migrated_db(postgres_container: str) -> str:
     """Aplica alembic upgrade head y devuelve la URL sync."""
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     sync_url = os.environ["ALEMBIC_DATABASE_URL"]
     cfg = Config("alembic.ini")
@@ -55,7 +55,7 @@ def _insert_manifest(
 ) -> str:
     """Inserta una fila en exports_manifest y devuelve su id."""
     manifest_id = str(uuid.uuid4())
-    created_at = datetime.now(tz=timezone.utc) - timedelta(seconds=offset_seconds)
+    created_at = datetime.now(tz=UTC) - timedelta(seconds=offset_seconds)
     conn.execute(
         text(
             """

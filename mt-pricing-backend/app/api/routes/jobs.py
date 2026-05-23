@@ -16,7 +16,7 @@ RBAC:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -144,7 +144,7 @@ async def create_job(
         kwargs=payload.kwargs,
         enabled=payload.enabled,
         edited_by=actor.id,
-        edited_at=datetime.now(tz=timezone.utc),
+        edited_at=datetime.now(tz=UTC),
     )
     return JobDefinitionResponse.model_validate(obj)
 
@@ -202,7 +202,7 @@ async def update_job(
     for k, v in data.items():
         setattr(obj, k, v)
     obj.edited_by = actor.id
-    obj.edited_at = datetime.now(tz=timezone.utc)
+    obj.edited_at = datetime.now(tz=UTC)
     await session.flush()
     return JobDefinitionResponse.model_validate(obj)
 
@@ -240,7 +240,7 @@ async def run_job_now(
             },
         )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     run = JobRun(
         id=uuid4(),
         job_id=job.id,
@@ -269,10 +269,10 @@ async def run_job_now(
         celery_task_id = async_result.id
         run.celery_task_id = celery_task_id
         await session.flush()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         run.status = "failure"
         run.error = f"Celery dispatch failed: {exc}"
-        run.finished_at = datetime.now(tz=timezone.utc)
+        run.finished_at = datetime.now(tz=UTC)
         await session.flush()
         # No 503 fatal — el frontend muestra el run failed. Devolvemos 503 sólo
         # si la app está corriendo en modo donde Celery debería existir.

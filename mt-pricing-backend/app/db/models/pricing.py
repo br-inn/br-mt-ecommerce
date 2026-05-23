@@ -34,7 +34,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -43,13 +42,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.db.enums import PriceState, Scheme, values_csv
 from app.db.mixins import AuditMixin, TimestampMixin, UuidPkMixin
-from app.db.types import UUID_PG
 
 # ---------------------------------------------------------------------------
 # Channel — moved to app.db.models.channels (US-1B-03-01). Re-export here
 # for backward-compat with any code that does `from app.db.models.pricing import Channel`.
 # ---------------------------------------------------------------------------
-from app.db.models.channels import Channel  # noqa: F401,E402
+from app.db.models.channels import Channel
+from app.db.types import UUID_PG
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +99,7 @@ class FXRate(UuidPkMixin, TimestampMixin, Base):
 # Cost — moved to `app.db.models.cost` (US-1A-04-02). Importer can `from
 # app.db.models.pricing import Cost` if needed.
 # ---------------------------------------------------------------------------
-from app.db.models.cost import Cost  # noqa: F401,E402  # back-compat re-export
+from app.db.models.cost import Cost  # back-compat re-export
 
 
 # ---------------------------------------------------------------------------
@@ -276,9 +275,9 @@ class PriceApprovalEvent(UuidPkMixin, TimestampMixin, Base):
 
 __all__ = [
     "Channel",
-    "FXRate",
     "Cost",
-    "Price",
     "ExceptionRule",
+    "FXRate",
+    "Price",
     "PriceApprovalEvent",
 ]

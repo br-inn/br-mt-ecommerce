@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.product import Product
 from app.schemas.ficha_enrich import (
-    FieldDiff,
     FichaExtractionResult,
+    FieldDiff,
     SeriesGroupResult,
     SkuDiffResult,
 )
@@ -227,10 +227,10 @@ async def resolve_all_series(
 
 
 __all__ = [
-    "extract_series_prefix",
-    "extract_all_series_from_text",
     "dn_label_to_int",
+    "extract_all_series_from_text",
+    "extract_series_prefix",
     "generate_candidate_skus",
-    "resolve_series",
     "resolve_all_series",
+    "resolve_series",
 ]

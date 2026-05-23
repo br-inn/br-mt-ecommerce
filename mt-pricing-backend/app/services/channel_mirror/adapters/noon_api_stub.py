@@ -6,11 +6,10 @@ canal Noon. Sprint 4+ → implementación real.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.channel_mirror.ports import LiveListing, PublishResult
-
 
 _CANNED_LISTINGS: dict[str, dict[str, Any]] = {
     "MTV-1004": {
@@ -53,7 +52,7 @@ class NoonApiStub:
                 sku=sku,
                 fields={},
                 buybox_state="none",
-                fetched_at=datetime.now(tz=timezone.utc),
+                fetched_at=datetime.now(tz=UTC),
                 raw={"stub": True, "reason": "sku_not_found_in_canned"},
             )
         return LiveListing(
@@ -66,7 +65,7 @@ class NoonApiStub:
             stock_qty=canned["stock_qty"],
             rating=canned["rating"],
             reviews_count=canned["reviews_count"],
-            fetched_at=datetime.now(tz=timezone.utc),
+            fetched_at=datetime.now(tz=UTC),
             raw={"stub": True, "noon_id": canned["external_id"]},
         )
 

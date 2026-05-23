@@ -265,7 +265,7 @@ async def admin_create_option(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_option(
-    attr_id: UUID,  # noqa: ARG001 — kept for URL stability
+    attr_id: UUID,
     option_id: UUID,
     data: AttributeOptionPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
@@ -286,7 +286,7 @@ async def admin_patch_option(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_option(
-    attr_id: UUID,  # noqa: ARG001
+    attr_id: UUID,
     option_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: AttributeService = Depends(get_attribute_service),

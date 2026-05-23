@@ -86,7 +86,7 @@ class ApplicationRepo(BaseRepository[Application]):
 class ProductCertificationRepo:
     """Repository for product ↔ certification links."""
 
-    def __init__(self, session: "sqlalchemy.ext.asyncio.AsyncSession") -> None:  # type: ignore[name-defined]
+    def __init__(self, session: sqlalchemy.ext.asyncio.AsyncSession) -> None:  # type: ignore[name-defined]
         self.session = session
 
     async def link(
@@ -95,8 +95,8 @@ class ProductCertificationRepo:
         certification_id: UUID,
         *,
         certificate_pdf_asset_id: UUID | None = None,
-        obtained_at: "date | None" = None,  # type: ignore[name-defined]
-        expires_at: "date | None" = None,  # type: ignore[name-defined]
+        obtained_at: date | None = None,  # type: ignore[name-defined]
+        expires_at: date | None = None,  # type: ignore[name-defined]
         notes: str | None = None,
         owner_type: str = "product",
         owner_id: str | None = None,
@@ -202,7 +202,7 @@ class ProductCertificationRepo:
 class ProductApplicationRepo:
     """Repository for product ↔ application links."""
 
-    def __init__(self, session: "sqlalchemy.ext.asyncio.AsyncSession") -> None:  # type: ignore[name-defined]
+    def __init__(self, session: sqlalchemy.ext.asyncio.AsyncSession) -> None:  # type: ignore[name-defined]
         self.session = session
 
     async def link(
@@ -432,7 +432,7 @@ class DivisionRepo(BaseRepository[Division]):
 class ProductDivisionRepo:
     """Repository for product ↔ division links (M:N)."""
 
-    def __init__(self, session: "sqlalchemy.ext.asyncio.AsyncSession") -> None:  # type: ignore[name-defined]
+    def __init__(self, session: sqlalchemy.ext.asyncio.AsyncSession) -> None:  # type: ignore[name-defined]
         self.session = session
 
     async def link(self, product_sku: str, division_id: UUID) -> ProductDivision:
@@ -577,7 +577,7 @@ class SeriesRepo(BaseRepository[Series]):
 class SeriesTranslationRepo:
     """Repo de traducciones (upsert por (series_id, lang))."""
 
-    def __init__(self, session: "sqlalchemy.ext.asyncio.AsyncSession") -> None:  # type: ignore[name-defined]
+    def __init__(self, session: sqlalchemy.ext.asyncio.AsyncSession) -> None:  # type: ignore[name-defined]
         self.session = session
 
     async def upsert(
@@ -636,7 +636,7 @@ class SeriesTranslationRepo:
 class SeriesDivisionRepo:
     """Junction series ↔ divisions."""
 
-    def __init__(self, session: "sqlalchemy.ext.asyncio.AsyncSession") -> None:  # type: ignore[name-defined]
+    def __init__(self, session: sqlalchemy.ext.asyncio.AsyncSession) -> None:  # type: ignore[name-defined]
         self.session = session
 
     async def link(self, series_id: UUID, division_id: UUID) -> SeriesDivision:
@@ -674,7 +674,7 @@ class SeriesDivisionRepo:
 class SeriesCertificationRepo:
     """Junction series ↔ certifications (paquete default)."""
 
-    def __init__(self, session: "sqlalchemy.ext.asyncio.AsyncSession") -> None:  # type: ignore[name-defined]
+    def __init__(self, session: sqlalchemy.ext.asyncio.AsyncSession) -> None:  # type: ignore[name-defined]
         self.session = session
 
     async def link(self, series_id: UUID, certification_id: UUID) -> SeriesCertification:

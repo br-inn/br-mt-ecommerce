@@ -50,7 +50,7 @@ def _set_safe_env_defaults() -> None:
 
 def export(out_path: Path, indent: int) -> None:
     _set_safe_env_defaults()
-    from app.main import app  # noqa: PLC0415 — app import requires env defaults
+    from app.main import app
 
     schema = app.openapi()
     out_path.parent.mkdir(parents=True, exist_ok=True)

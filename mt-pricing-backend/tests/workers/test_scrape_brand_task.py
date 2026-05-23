@@ -16,7 +16,6 @@ import pytest
 
 from app.services.matching.ports import Query
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -174,10 +173,8 @@ def test_serp_url_without_category_node_omits_rh_param():
 async def test_scrape_brand_task_run_async_calls_fetcher_with_correct_query():
     """Prueba la lógica interna de _run_async extrayéndola directamente."""
     from unittest.mock import AsyncMock, MagicMock
-    from decimal import Decimal
-    import types
 
-    from app.services.matching.ports import CandidateRaw, Query
+    from app.services.matching.ports import CandidateRaw
     from app.workers.tasks.scraper import _build_brand_query
 
     # Simula lo que haría _run_async con mocks puros
@@ -320,7 +317,6 @@ def test_scrape_brands_batch_task_dispatches_with_force_flag():
 def test_scrape_brands_batch_task_loads_active_brands_when_none(monkeypatch):
     """brand_ids=None → se cargan las marcas activas desde DB vía asyncio.run."""
     from unittest.mock import MagicMock, patch
-    import asyncio as _asyncio
 
     active_ids = [str(uuid4()), str(uuid4())]
 

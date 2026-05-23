@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -142,7 +142,7 @@ class MatchValidationAgent:
                 extra={"sku": sku, "mode": mode, "decided": decided},
             )
             return decided
-        except Exception:  # noqa: BLE001 — el agente nunca rompe el worker
+        except Exception:
             logger.exception("validation_agent.run.error", extra={"sku": sku})
             return 0
 
@@ -159,7 +159,7 @@ class MatchValidationAgent:
             "verdict": decision.verdict,
             "mode": mode,
             "signal": decision.signal,
-            "decided_at": datetime.now(tz=timezone.utc).isoformat(),
+            "decided_at": datetime.now(tz=UTC).isoformat(),
             "applied": True,
         }
         cand.specs_jsonb = specs
@@ -167,19 +167,19 @@ class MatchValidationAgent:
     async def _has_active_calibrator(self) -> bool:
         """Returns True if there is an active calibrator version in the DB."""
         try:
-            from app.db.models.golden_label import CalibratorVersion  # noqa: PLC0415
+            from app.db.models.golden_label import CalibratorVersion
 
             stmt = (
                 select(CalibratorVersion.id).where(CalibratorVersion.is_active.is_(True)).limit(1)
             )
             return (await self._session.execute(stmt)).scalar_one_or_none() is not None
-        except Exception:  # noqa: BLE001 — if table doesn't exist yet, no calibrator
+        except Exception:
             return False
 
     async def _active_calibrator_version(self) -> str | None:
         """Returns the version string of the active calibrator, if any."""
         try:
-            from app.db.models.golden_label import CalibratorVersion  # noqa: PLC0415
+            from app.db.models.golden_label import CalibratorVersion
 
             stmt = (
                 select(CalibratorVersion.version)
@@ -187,5 +187,5 @@ class MatchValidationAgent:
                 .limit(1)
             )
             return (await self._session.execute(stmt)).scalar_one_or_none()
-        except Exception:  # noqa: BLE001
+        except Exception:
             return None

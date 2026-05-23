@@ -110,7 +110,7 @@ def _build_app(
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return the_user
 
                 app.dependency_overrides[call] = _allow
@@ -179,8 +179,8 @@ async def test_list_returns_existing_ranges() -> None:
 async def test_import_csv_validates_negative_min() -> None:
     """POST /admin/price-calibration/import-csv con expected_min_p10 < 0 → HTTP 422."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,-5.00,850.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,-5.00,850.00,AED\n"
+    )
 
     session = AsyncMock()
     app = _build_app(session)
@@ -201,8 +201,8 @@ async def test_import_csv_validates_negative_min() -> None:
 async def test_import_csv_validates_min_greater_than_max() -> None:
     """POST /admin/price-calibration/import-csv con min >= max → HTTP 422."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,900.00,100.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,900.00,100.00,AED\n"
+    )
 
     session = _make_session_with_begin([])
     app = _build_app(session)
@@ -235,10 +235,10 @@ def _make_session_with_begin(
 async def test_import_csv_upserts_valid_rows() -> None:
     """POST /admin/price-calibration/import-csv con CSV válido → inserted: 2, updated: 0."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\n"
-        "valve_family,15.00,850.00,AED\n"
-        "fitting_family,2.50,320.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\n"
+        b"valve_family,15.00,850.00,AED\n"
+        b"fitting_family,2.50,320.00,AED\n"
+    )
 
     session = _make_session_with_begin(
         [
@@ -264,8 +264,8 @@ async def test_import_csv_upserts_valid_rows() -> None:
 async def test_import_csv_counts_updates_for_existing_rows() -> None:
     """POST /admin/price-calibration/import-csv con fila existente → updated: 1."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,20.00,900.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,20.00,900.00,AED\n"
+    )
 
     existing_row = _make_range_row(
         category_id="valve_family",
@@ -372,8 +372,8 @@ async def test_recalibrate_dispatches_task_via_module_patch() -> None:
 async def test_import_csv_rejects_invalid_currency() -> None:
     """POST /admin/price-calibration/import-csv con currency no permitida → HTTP 422."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,15.00,850.00,GBP\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,15.00,850.00,GBP\n"
+    )
 
     session = _make_session_with_begin([])
     app = _build_app(session)

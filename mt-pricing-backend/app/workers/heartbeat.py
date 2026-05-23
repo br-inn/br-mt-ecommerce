@@ -19,7 +19,7 @@ corren en un loop síncrono — meter asyncio aquí es contraproducente.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from celery.signals import worker_ready
@@ -55,7 +55,7 @@ def _get_sync_redis() -> SyncRedis:
 def _publish(queue: str) -> None:
     """Escribe el heartbeat de una queue puntual con TTL."""
     redis = _get_sync_redis()
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     redis.set(f"mt:worker:heartbeat:{queue}", now_iso, ex=_HEARTBEAT_TTL_SECONDS)
 
 
@@ -77,7 +77,7 @@ def on_worker_ready(sender: Any = None, **_: Any) -> None:
         for q in queues:
             _publish(q)
         logger.info("worker_heartbeat.boot", extra={"queues": queues})
-    except Exception:  # noqa: BLE001 — un fallo en heartbeat no debe tumbar el worker
+    except Exception:
         logger.exception("worker_heartbeat.boot_failed")
 
 

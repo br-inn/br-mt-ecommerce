@@ -17,12 +17,11 @@ Métodos principales:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.datasheet_import_run import ProductDatasheet
 from app.db.models.import_run import ImportRun
@@ -60,7 +59,7 @@ class ProductDatasheetRepository(BaseRepository[ProductDatasheet]):
             existing.file_size_bytes = file_size_bytes
             existing.import_run_id = import_run_id
             existing.uploaded_by = uploaded_by
-            existing.uploaded_at = datetime.now(tz=timezone.utc)
+            existing.uploaded_at = datetime.now(tz=UTC)
             await self.session.flush()
             return existing
 
@@ -73,7 +72,7 @@ class ProductDatasheetRepository(BaseRepository[ProductDatasheet]):
             file_size_bytes=file_size_bytes,
             import_run_id=import_run_id,
             uploaded_by=uploaded_by,
-            uploaded_at=datetime.now(tz=timezone.utc),
+            uploaded_at=datetime.now(tz=UTC),
         )
         self.session.add(row)
         await self.session.flush()
@@ -133,7 +132,7 @@ class DatasheetImportRunRepository(BaseRepository[ImportRun]):
         if errors is not None:
             run.errors = errors
         if finished:
-            run.finished_at = datetime.now(tz=timezone.utc)
+            run.finished_at = datetime.now(tz=UTC)
         await self.session.flush()
         return run
 

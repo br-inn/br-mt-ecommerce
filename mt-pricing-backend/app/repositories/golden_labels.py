@@ -165,7 +165,7 @@ class CalibratorVersionRepository:
         )
         await self.session.flush()
         target = await self.get_by_version(version)
-        assert target is not None  # noqa: S101
+        assert target is not None
         return target
 
 

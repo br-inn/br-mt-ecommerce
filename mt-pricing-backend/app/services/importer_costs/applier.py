@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,7 +106,7 @@ async def apply_cost_diffs(
     """
     result = ApplyCostsResult(
         total_rows=len(diffs),
-        started_at=datetime.now(tz=timezone.utc),
+        started_at=datetime.now(tz=UTC),
     )
 
     for d in diffs:
@@ -145,7 +145,7 @@ async def apply_cost_diffs(
                 d.scheme_code,
             )
             continue
-        except Exception as exc:  # noqa: BLE001 — fallo individual no rompe batch
+        except Exception as exc:
             result.errors += 1
             result.failure_details.append(
                 {
@@ -163,5 +163,5 @@ async def apply_cost_diffs(
         elif d.action == CostRowAction.UPDATE:
             result.updated += 1
 
-    result.finished_at = datetime.now(tz=timezone.utc)
+    result.finished_at = datetime.now(tz=UTC)
     return result

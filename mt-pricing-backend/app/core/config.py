@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     ENABLE_DOCS: bool = True
 
     # --- Server ---
-    HOST: str = "0.0.0.0"  # noqa: S104 — bind explícito para contenedor
+    HOST: str = "0.0.0.0"
     PORT: int = 8000
 
     # --- Database ---

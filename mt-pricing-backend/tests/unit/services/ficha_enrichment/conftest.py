@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import sys
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
+from unittest.mock import MagicMock
 
 
 def _ensure_anthropic_stub() -> None:

@@ -52,10 +52,10 @@ class Role(UuidPkMixin, Base):
         onupdate=text("now()"),
     )
 
-    role_permissions: Mapped[list["RolePermission"]] = relationship(
+    role_permissions: Mapped[list[RolePermission]] = relationship(
         back_populates="role", cascade="all, delete-orphan"
     )
-    users: Mapped[list["User"]] = relationship(back_populates="role")
+    users: Mapped[list[User]] = relationship(back_populates="role")
 
     __table_args__ = (Index("idx_roles_code", "code"),)
 
@@ -69,7 +69,7 @@ class Permission(UuidPkMixin, Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    role_permissions: Mapped[list["RolePermission"]] = relationship(
+    role_permissions: Mapped[list[RolePermission]] = relationship(
         back_populates="permission", cascade="all, delete-orphan"
     )
 

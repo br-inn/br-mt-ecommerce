@@ -55,7 +55,7 @@ class MarketplaceListing(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    product: Mapped["Product"] = relationship(back_populates="marketplace_listings")
+    product: Mapped[Product] = relationship(back_populates="marketplace_listings")
 
     __table_args__ = (
         UniqueConstraint(
@@ -77,4 +77,4 @@ class MarketplaceListing(Base):
     )
 
 
-__all__ = ["MarketplaceListing", "MARKETPLACE_VALUES", "STATUS_VALUES"]
+__all__ = ["MARKETPLACE_VALUES", "STATUS_VALUES", "MarketplaceListing"]

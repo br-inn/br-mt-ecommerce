@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
@@ -35,7 +35,6 @@ from app.db.models.inventory import (
     StockMovementType,
 )
 from app.db.models.sales import (
-    AtpCheckingRule,
     CreditMemo,
     CustomerCreditLimit,
     CustomerOpenItem,
@@ -50,30 +49,25 @@ from app.db.models.sales import (
 from app.db.models.user import User
 from app.schemas.sales import (
     ATPCheckOut,
-    AtpRuleCreate,
-    AtpRuleOut,
     BackorderLineOut,
     CreditCheckOut,
     CreditLimitCreate,
     CreditLimitOut,
     CreditLimitUpdate,
     CreditMemoOut,
-    CustomerOpenItemOut,
     DocumentChainOut,
     O2CKpisOut,
     OutboundDeliveryCreate,
     OutboundDeliveryListOut,
     OutboundDeliveryOut,
     OutboundDeliveryStatusUpdate,
+    ReturnDeliveryCreate,
     RmaCreate,
     RmaOut,
-    ReturnDeliveryCreate,
-    ReturnDeliveryOut,
     SalesOrderCreate,
     SalesOrderListOut,
     SalesOrderOut,
     SalesOrderUpdate,
-    StockReservationOut,
 )
 from app.services.atp import compute_atp_for_so
 
@@ -88,22 +82,22 @@ _ZERO = Decimal("0")
 
 
 def _so_number() -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     return f"SO-{ts}-{uuid.uuid4().hex[:6].upper()}"
 
 
 def _delivery_number() -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     return f"DEL-{ts}-{uuid.uuid4().hex[:6].upper()}"
 
 
 def _rma_number() -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     return f"RMA-{ts}-{uuid.uuid4().hex[:6].upper()}"
 
 
 def _memo_number() -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     return f"CM-{ts}-{uuid.uuid4().hex[:6].upper()}"
 
 
@@ -835,7 +829,7 @@ async def goods_issue(
 
     # 5. Update delivery
     delivery.status = "goods_issued"
-    delivery.shipped_at = datetime.now(timezone.utc)
+    delivery.shipped_at = datetime.now(UTC)
 
     # 6. Update SO status
     # Check if all lines delivered
@@ -941,6 +935,7 @@ async def receive_return_goods(
     body: ReturnDeliveryCreate = ReturnDeliveryCreate(),
 ) -> RmaOut:
     from datetime import date as _date
+
     from app.db.models.sales import ReturnDelivery
 
     rma = await _get_rma_or_404(db, rma_id)
@@ -1051,8 +1046,8 @@ async def get_kpis(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> O2CKpisOut:
-    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    first_of_month = datetime.now(timezone.utc).replace(
+    thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
+    first_of_month = datetime.now(UTC).replace(
         day=1, hour=0, minute=0, second=0, microsecond=0
     )
 

@@ -56,7 +56,7 @@ def _raise_domain(err: DocumentDomainError) -> None:
     summary="Lista documentos controlados (filtros opcionales)",
 )
 async def list_documents(
-    type: Annotated[DocumentType | None, Query()] = None,  # noqa: A002
+    type: Annotated[DocumentType | None, Query()] = None,
     language: Annotated[str | None, Query(min_length=2, max_length=2)] = None,
     _user: User = Depends(require_permissions("products:read")),
     service: DocumentService = Depends(get_document_service),

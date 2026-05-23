@@ -108,6 +108,7 @@ async def test_neo4j_repo_health_check_none_store_returns_unhealthy() -> None:
 @pytest.mark.asyncio
 async def test_neo4j_get_product_neighbors_calls_query_neighbors() -> None:
     from unittest.mock import MagicMock
+
     from app.services.graphrag.ports import GraphEdge, GraphNode
 
     mock_store = MagicMock()
@@ -137,6 +138,7 @@ async def test_neo4j_get_product_neighbors_calls_query_neighbors() -> None:
 @pytest.mark.asyncio
 async def test_neo4j_get_product_neighbors_with_rel_type() -> None:
     from unittest.mock import MagicMock
+
     from app.services.graphrag.ports import GraphEdge, GraphNode
 
     mock_store = MagicMock()
@@ -166,6 +168,7 @@ async def test_neo4j_get_product_neighbors_with_rel_type() -> None:
 @pytest.mark.asyncio
 async def test_neo4j_get_competitor_context_with_matches() -> None:
     from unittest.mock import MagicMock
+
     from app.services.graphrag.ports import GraphEdge, GraphNode
 
     listing_id = uuid4()

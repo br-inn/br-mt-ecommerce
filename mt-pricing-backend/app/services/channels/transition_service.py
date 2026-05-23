@@ -12,7 +12,7 @@ Sin commit — el caller (route) hace await session.commit().
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -219,7 +219,7 @@ class ChannelTransitionService:
         history: ChannelStateHistory,
     ) -> None:
         """Efectos laterales según transición (US-1B-03-03)."""
-        now = datetime.now(tz=timezone.utc).isoformat()
+        now = datetime.now(tz=UTC).isoformat()
 
         if to_state == "paused":
             # Canal pausado — notificar comercial + gerente
@@ -267,8 +267,8 @@ class ChannelTransitionService:
 
 
 __all__ = [
-    "ChannelTransitionService",
-    "ChannelTransitionError",
-    "MissingApprovedPricesError",
     "VALID_TRANSITIONS",
+    "ChannelTransitionError",
+    "ChannelTransitionService",
+    "MissingApprovedPricesError",
 ]

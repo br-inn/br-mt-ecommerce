@@ -53,7 +53,7 @@ class ForceLogoutPublisher:
         """
         try:
             client = get_supabase_admin()
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("ForceLogoutPublisher: no se pudo obtener admin client")
             return False
 
@@ -68,7 +68,7 @@ class ForceLogoutPublisher:
             # bloqueante — el handler ya está awaited y el call es sub-ms en
             # path normal.
             client.table(self.TABLE).insert(payload).execute()
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("ForceLogoutPublisher fallo al insertar evento user_id=%s", user_id)
             return False
         logger.info(

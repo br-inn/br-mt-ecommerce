@@ -23,20 +23,19 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select, text, and_, or_
+from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
     _user_permission_codes,
     get_current_user,
     get_db_session,
-    require_permissions,
     require_role,
 )
 from app.db.models.finance import (
@@ -44,7 +43,6 @@ from app.db.models.finance import (
     CostCenter,
     FinancialEntry,
     GlAccount,
-    JournalEntryControl,
     PaymentRun,
     PaymentRunItem,
     PeriodCloseChecklist,
@@ -58,8 +56,8 @@ from app.db.models.finance import (
 from app.db.models.pricing import FXRate
 from app.db.models.user import User
 from app.schemas.finance import (
-    ApAgingOut,
     ApAgingBucket,
+    ApAgingOut,
     BalanceSheetLineOut,
     BalanceSheetOut,
     BudgetCreate,
@@ -80,7 +78,6 @@ from app.schemas.finance import (
     GlAccountCreate,
     GlAccountOut,
     GlAccountUpdate,
-    JournalEntryControlOut,
     PaymentRunCreate,
     PaymentRunOut,
     PeriodCloseChecklistOut,
@@ -93,7 +90,6 @@ from app.schemas.finance import (
     ProfitCenterOut,
     StandardCostCreate,
     StandardCostOut,
-    TaxProvisionOut,
     TrialBalanceLineOut,
     TrialBalanceOut,
 )
@@ -221,7 +217,7 @@ async def close_posting_period(
     if period.status == "locked":
         raise HTTPException(status_code=409, detail="El período ya está bloqueado")
     period.status = "closed"
-    period.closed_at = datetime.now(timezone.utc)
+    period.closed_at = datetime.now(UTC)
     period.closed_by = current_user.id
     await db.flush()
     await db.refresh(period)
@@ -415,7 +411,7 @@ async def review_financial_entry(
         entry_id=entry_id,
         action="reviewed",
         by_user=current_user.id,
-        at=datetime.now(timezone.utc),
+        at=datetime.now(UTC),
     )
 
 
@@ -444,7 +440,7 @@ async def approve_financial_entry(
         entry_id=entry_id,
         action="approved",
         by_user=current_user.id,
-        at=datetime.now(timezone.utc),
+        at=datetime.now(UTC),
     )
 
 
@@ -884,7 +880,7 @@ async def start_period_close(
         fiscal_year=fiscal_year,
         period_num=period_num,
         status="in_progress",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db.add(checklist)
     await db.flush()
@@ -964,7 +960,7 @@ async def close_period_checklist(
         )
 
     checklist.status = "closed"
-    checklist.completed_at = datetime.now(timezone.utc)
+    checklist.completed_at = datetime.now(UTC)
     checklist.completed_by = current_user.id
 
     # Cerrar también el posting_period correspondiente
@@ -977,7 +973,7 @@ async def close_period_checklist(
     pp = pp_result.scalar_one_or_none()
     if pp and pp.status == "open":
         pp.status = "closed"
-        pp.closed_at = datetime.now(timezone.utc)
+        pp.closed_at = datetime.now(UTC)
         pp.closed_by = current_user.id
 
     await db.flush()

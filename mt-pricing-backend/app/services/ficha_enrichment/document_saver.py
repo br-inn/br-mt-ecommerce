@@ -55,7 +55,7 @@ async def save_ficha_document(
             supabase_url = os.environ.get("SUPABASE_URL", "")
             supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
             if supabase_url and supabase_key:
-                from supabase import create_client  # noqa: PLC0415
+                from supabase import create_client
 
                 client = create_client(supabase_url, supabase_key)
                 client.storage.from_(_PDF_BUCKET).upload(
@@ -68,7 +68,7 @@ async def save_ficha_document(
 
     try:
         # Evitar duplicados: si ya existe un asset con este storage_path, reusar
-        from sqlalchemy import select as _sel  # noqa: PLC0415
+        from sqlalchemy import select as _sel
 
         existing_asset_r = await session.execute(
             _sel(ProductAsset).where(

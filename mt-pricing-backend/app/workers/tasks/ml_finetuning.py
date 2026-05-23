@@ -111,19 +111,18 @@ async def _insert_registry(
     from app.db.engine import get_sessionmaker
     from app.db.models.comparator import ComparatorModelRegistry
 
-    async with get_sessionmaker()() as session:
-        async with session.begin():
-            record = ComparatorModelRegistry(
-                model_name=model_name,
-                base_model=base_model,
-                storage_path=storage_path,
-                eval_metrics_jsonb=eval_metrics,
-                trained_at=datetime.now(tz=UTC),
-                status="candidate",
-            )
-            session.add(record)
-            await session.flush()
-            return str(record.id)
+    async with get_sessionmaker()() as session, session.begin():
+        record = ComparatorModelRegistry(
+            model_name=model_name,
+            base_model=base_model,
+            storage_path=storage_path,
+            eval_metrics_jsonb=eval_metrics,
+            trained_at=datetime.now(tz=UTC),
+            status="candidate",
+        )
+        session.add(record)
+        await session.flush()
+        return str(record.id)
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +243,7 @@ class _InsufficientDataError(Exception):
     max_retries=0,
     queue="comparator",
 )
-def finetune_embeddings(  # type: ignore[no-untyped-def]  # noqa: ANN001
+def finetune_embeddings(  # type: ignore[no-untyped-def]
     self,
     *,
     dataset_path: str,

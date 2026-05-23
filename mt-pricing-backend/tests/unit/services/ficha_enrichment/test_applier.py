@@ -1,14 +1,14 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from app.services.ficha_enrichment.applier import FichaEnrichmentApplier
+import pytest
+
 from app.schemas.ficha_enrich import (
-    FichaEnrichApplyRequest,
-    FichaExtractionResult,
     ExtractedScalars,
     ExtractedSpecs,
-    ExtractedMaterial,
+    FichaEnrichApplyRequest,
+    FichaExtractionResult,
 )
+from app.services.ficha_enrichment.applier import FichaEnrichmentApplier
 
 
 def _make_actor():

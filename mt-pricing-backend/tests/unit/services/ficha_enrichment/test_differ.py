@@ -1,12 +1,13 @@
 from unittest.mock import MagicMock
-from app.services.ficha_enrichment.differ import FichaEnrichmentDiffer, _specs_to_dict
+
 from app.schemas.ficha_enrich import (
+    ExtractedAsset,
+    ExtractedMaterial,
     ExtractedScalars,
     ExtractedSpecs,
-    ExtractedMaterial,
-    ExtractedAsset,
     FichaExtractionResult,
 )
+from app.services.ficha_enrichment.differ import FichaEnrichmentDiffer
 
 
 def _make_product(**kwargs):

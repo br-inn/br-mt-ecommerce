@@ -15,7 +15,7 @@ Generación de los stubs:
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -115,7 +115,7 @@ class AmazonUaeStubFetcher:
         candidates_raw = CANNED_BY_SKU.get(sku or "") if sku else None
         if not candidates_raw:
             candidates_raw = _synthetic(sku or query.text)
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         out: list[CandidateRaw] = []
         for c in candidates_raw[:N_CANDIDATES]:
             out.append(

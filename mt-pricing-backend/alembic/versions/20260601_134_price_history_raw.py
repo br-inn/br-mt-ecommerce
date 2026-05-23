@@ -14,8 +14,8 @@ Tablas:
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "20260601_134"

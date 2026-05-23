@@ -15,7 +15,7 @@ Notas de diseño:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -47,7 +47,7 @@ async def get_pricing_dashboard_stats(
 
     Frontend refresca cada 60s (`refetchInterval: 60_000`).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     since_7d = now - timedelta(days=7)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 

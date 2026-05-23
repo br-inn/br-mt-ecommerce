@@ -127,7 +127,7 @@ class DualExtractor:
             )
             result.error = f"regex_failed:{exc.code}"
             regex_specs = DatasheetSpecs()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("dual_extractor: regex extractor exception")
             result.error = f"regex_failed:{type(exc).__name__}"
             regex_specs = DatasheetSpecs()
@@ -138,7 +138,7 @@ class DualExtractor:
         # 2. Vision extractor (best-effort).
         try:
             vision_result = await self._vision.extract(pdf_bytes=pdf_bytes, filename=filename)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("dual_extractor: vision extractor exception")
             vision_result = VisionExtractionResult(error=f"vision_failed:{type(exc).__name__}")
 
@@ -225,7 +225,7 @@ def _normalize(value: Any) -> str:
 
 
 __all__ = [
+    "SPEC_KEYS",
     "DualExtractionResult",
     "DualExtractor",
-    "SPEC_KEYS",
 ]

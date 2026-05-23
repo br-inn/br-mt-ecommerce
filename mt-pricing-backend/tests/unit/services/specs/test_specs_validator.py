@@ -6,7 +6,6 @@ No IO beyond loading schemas from disk.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -300,7 +299,7 @@ async def test_product_service_accepts_valid_specs(validator: SpecsValidator) ->
     mock_products_repo.get_by_sku.return_value = None
     mock_products_repo.create.return_value = MagicMock(
         sku="MT-VB-002",
-        **{k: None for k in ["name_en", "family", "subfamily"]},
+        **dict.fromkeys(["name_en", "family", "subfamily"]),
     )
 
     mock_audit_repo = AsyncMock()

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import io
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -294,7 +294,7 @@ async def export_marketplace_listings(
 
     csv_bytes = _EXPORTER.export_csv(rows)
 
-    date_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
+    date_str = datetime.now(tz=UTC).strftime("%Y%m%d")
     filename = f"AMAZON_UAE_{date_str}.csv"
 
     return StreamingResponse(
@@ -368,7 +368,7 @@ async def upsert_marketplace_listing(
         )
     )
     listing = result.scalar_one_or_none()
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     if listing is None:
         listing = MarketplaceListing(
@@ -475,7 +475,7 @@ async def generate_marketplace_listing(
             },
         ) from exc
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     if listing is None:
         listing = MarketplaceListing(

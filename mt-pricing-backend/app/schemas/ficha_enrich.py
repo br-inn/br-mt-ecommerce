@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -249,24 +250,24 @@ class FichaSeriesApplyResponse(BaseModel):
 
 
 __all__ = [
-    "ExtractedScalars",
-    "ExtractedMaterial",
-    "ExtractedDimensionRow",
-    "ExtractedTranslation",
-    "PageClassification",
     "ExtractedAsset",
-    "ExtractedSpecs",
     "ExtractedCertificate",
+    "ExtractedDimensionRow",
     "ExtractedFlowData",
-    "FichaExtractionResult",
-    "FieldDiff",
-    "SkuDiffResult",
-    "SeriesGroupResult",
-    "FichaEnrichPreviewResponse",
+    "ExtractedMaterial",
+    "ExtractedScalars",
+    "ExtractedSpecs",
+    "ExtractedTranslation",
     "FichaEnrichApplyRequest",
-    "SkuApplyResult",
     "FichaEnrichApplyResponse",
-    "FichaSeriesPreviewResponse",
+    "FichaEnrichPreviewResponse",
+    "FichaExtractionResult",
     "FichaSeriesApplyRequest",
     "FichaSeriesApplyResponse",
+    "FichaSeriesPreviewResponse",
+    "FieldDiff",
+    "PageClassification",
+    "SeriesGroupResult",
+    "SkuApplyResult",
+    "SkuDiffResult",
 ]

@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import (
-    Boolean,
     CHAR,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -34,8 +34,7 @@ from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
 if TYPE_CHECKING:
-    from app.db.models.sales import SalesOrder, SalesOrderLine, OutboundDelivery
-    from app.db.models.user import User
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -131,23 +130,23 @@ class Invoice(UuidPkMixin, Base):
     )
 
     # Relationships
-    lines: Mapped[list["InvoiceLine"]] = relationship(
+    lines: Mapped[list[InvoiceLine]] = relationship(
         "InvoiceLine",
         back_populates="invoice",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    dunning_history: Mapped[list["DunningHistory"]] = relationship(
+    dunning_history: Mapped[list[DunningHistory]] = relationship(
         "DunningHistory",
         back_populates="invoice",
         lazy="dynamic",
     )
-    e_invoice_submissions: Mapped[list["EInvoiceSubmission"]] = relationship(
+    e_invoice_submissions: Mapped[list[EInvoiceSubmission]] = relationship(
         "EInvoiceSubmission",
         back_populates="invoice",
         lazy="dynamic",
     )
-    payment_promises: Mapped[list["PaymentPromise"]] = relationship(
+    payment_promises: Mapped[list[PaymentPromise]] = relationship(
         "PaymentPromise",
         back_populates="invoice",
         lazy="dynamic",
@@ -211,7 +210,7 @@ class InvoiceLine(UuidPkMixin, Base):
     tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
 
     # Relationships
-    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="lines")
+    invoice: Mapped[Invoice] = relationship("Invoice", back_populates="lines")
 
     __table_args__ = (
         Index("idx_invoice_line_invoice_id", "invoice_id"),
@@ -271,7 +270,7 @@ class DunningHistory(UuidPkMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="dunning_history")
+    invoice: Mapped[Invoice] = relationship("Invoice", back_populates="dunning_history")
 
     __table_args__ = (
         Index("idx_dunning_history_invoice_id", "invoice_id"),
@@ -321,7 +320,7 @@ class EInvoiceSubmission(UuidPkMixin, Base):
     )
 
     # Relationships
-    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="e_invoice_submissions")
+    invoice: Mapped[Invoice] = relationship("Invoice", back_populates="e_invoice_submissions")
 
     __table_args__ = (
         CheckConstraint(
@@ -413,7 +412,7 @@ class PaymentPromise(UuidPkMixin, Base):
     )
 
     # Relationships
-    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="payment_promises")
+    invoice: Mapped[Invoice] = relationship("Invoice", back_populates="payment_promises")
 
     __table_args__ = (
         CheckConstraint(

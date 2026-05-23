@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, text
 
@@ -29,7 +29,6 @@ from app.services.importer_datasheets.spec_parser import (
 )
 from app.services.storage import upload_bytes
 
-
 FIXTURES_DIR = "/fixtures"
 PDF_FILES = [
     "MTFT_87.pdf",
@@ -47,7 +46,7 @@ PDF_FILES = [
 
 
 async def main() -> None:
-    started = datetime.now(tz=timezone.utc)
+    started = datetime.now(tz=UTC)
     bucket = settings.SUPABASE_STORAGE_BUCKET_DATASHEETS
     Session = get_sessionmaker()
 
@@ -138,7 +137,7 @@ async def main() -> None:
             await asyncio.to_thread(_do)
             upload_results.append({"filename": e["filename"], "ok": True})
             print(f"  OK {object_path}")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             upload_results.append({"filename": e["filename"], "ok": False, "err": str(exc)})
             print(f"  FAIL {object_path}: {exc}")
 
@@ -254,7 +253,7 @@ async def main() -> None:
             except Exception as exc:
                 print(f"\nSigned URL test: FAIL - {exc}")
 
-    elapsed = (datetime.now(tz=timezone.utc) - started).total_seconds()
+    elapsed = (datetime.now(tz=UTC) - started).total_seconds()
     print(f"\n[done] elapsed={elapsed:.1f}s")
 
 

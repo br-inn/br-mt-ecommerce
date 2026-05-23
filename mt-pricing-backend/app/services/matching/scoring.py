@@ -1,4 +1,3 @@
-# ruff: noqa: RUF002, RUF003
 """Scoring del matching pipeline foundation.
 
 Implementa lo que Sprint 3 necesita del scorer:

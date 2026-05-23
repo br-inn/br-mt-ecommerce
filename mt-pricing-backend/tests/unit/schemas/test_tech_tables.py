@@ -14,7 +14,6 @@ from app.schemas.tech_tables import (
     ProductTechTableResponse,
 )
 
-
 # ---- materials_matrix ----------------------------------------------------------
 
 

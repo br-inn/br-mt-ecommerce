@@ -10,7 +10,6 @@ Patrón análogo a `test_graphrag_api`:
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
@@ -22,6 +21,8 @@ from app.api.deps import get_current_user, get_db_session
 from app.api.routes.admin_flags import (
     get_flag_service,
     get_kill_switch,
+)
+from app.api.routes.admin_flags import (
     router as admin_flags_router,
 )
 from app.services.feature_flags.flag_service import (
@@ -32,7 +33,6 @@ from app.services.feature_flags.flag_service import (
 )
 from app.services.feature_flags.kill_switch import (
     KillSwitch,
-    disengage,
     is_kill_switch_engaged,
     reset,
 )
@@ -138,7 +138,7 @@ def _build_app(
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow

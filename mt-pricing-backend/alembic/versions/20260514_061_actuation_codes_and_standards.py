@@ -24,9 +24,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
+
+from alembic import op
 
 revision: str = "20260514_061"
 down_revision: str | None = "20260514_060"

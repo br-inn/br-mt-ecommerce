@@ -115,7 +115,7 @@ def _build_competitor_brands_app(
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return the_user
 
                 app.dependency_overrides[call] = _allow
@@ -149,7 +149,7 @@ def _build_scraper_app(
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return the_user
 
                 app.dependency_overrides[call] = _allow

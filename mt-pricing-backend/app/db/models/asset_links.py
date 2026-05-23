@@ -34,7 +34,6 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
-
 OWNER_TYPES = ("product", "variant", "series", "family", "spare_part")
 
 ROLES = (
@@ -72,7 +71,7 @@ class AssetLink(UuidPkMixin, Base):
     )
 
     # Relationship hacia ProductAsset (no back_populates — viewonly desde aquí).
-    asset: Mapped["ProductAsset"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    asset: Mapped[ProductAsset] = relationship(  # type: ignore[name-defined]
         "ProductAsset",
         foreign_keys=[asset_id],
         lazy="joined",

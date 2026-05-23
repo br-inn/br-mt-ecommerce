@@ -116,11 +116,12 @@ async def run_with_db(brand_id: str, marketplace: str) -> None:
     import uuid as _uuid
 
     from app.core.database import AsyncSessionLocal
-    from app.db.models.comparator import BrandExtractor, CompetitorBrand
+    from sqlalchemy import select
+
+    from app.db.models.comparator import CompetitorBrand
     from app.services.matching.adapter_registry import get_fetcher
     from app.services.matching.ports import Query
     from app.services.scraper.brand_extractor_service import BrandExtractorService
-    from sqlalchemy import select
 
     brand_uuid = _uuid.UUID(brand_id)
 

@@ -20,8 +20,9 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision: str = "20260528_121"
 down_revision: tuple[str, ...] = ("20260528_120", "20260513_111")

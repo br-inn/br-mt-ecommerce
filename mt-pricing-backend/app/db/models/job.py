@@ -68,7 +68,7 @@ class JobDefinition(UuidPkMixin, Base):
         onupdate=text("now()"),
     )
 
-    runs: Mapped[list["JobRun"]] = relationship(
+    runs: Mapped[list[JobRun]] = relationship(
         back_populates="definition", cascade="all, delete-orphan"
     )
 

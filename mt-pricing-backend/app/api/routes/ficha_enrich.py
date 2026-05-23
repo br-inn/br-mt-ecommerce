@@ -175,7 +175,7 @@ async def apply_ficha_enrich(
                         sku=target_sku,
                         applied_fields=[],
                         skipped_fields=[],
-                        warnings=[f"SKU no encontrado"],
+                        warnings=["SKU no encontrado"],
                     )
                 )
             else:

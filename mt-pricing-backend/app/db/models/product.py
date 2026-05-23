@@ -28,14 +28,15 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM as PG_ENUM, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.enums import DataQuality, LifecycleStatus, ReleaseStatus, TranslationStatus, values_csv
+from app.db.enums import DataQuality, ReleaseStatus, TranslationStatus, values_csv
 from app.db.mixins import UuidPkMixin
-from app.db.types import UUID_PG, HAS_PGVECTOR
+from app.db.types import HAS_PGVECTOR, UUID_PG
 
 # Vector real si la lib está; ARRAY(Float) si no.
 if HAS_PGVECTOR:  # pragma: no cover
@@ -219,11 +220,11 @@ class Product(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    translations: Mapped[list["ProductTranslation"]] = relationship(
+    translations: Mapped[list[ProductTranslation]] = relationship(
         back_populates="product", cascade="all, delete-orphan", lazy="selectin"
     )
     # `assets` — all asset kinds; `images` — backward compat alias (kind='photo' only)
-    assets: Mapped[list["ProductAsset"]] = relationship(
+    assets: Mapped[list[ProductAsset]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
         foreign_keys="[ProductAsset.sku]",
@@ -236,13 +237,13 @@ class Product(Base):
         return [a for a in self.assets if a.kind == "photo"]
 
     # Wave 4 — vocabularios M:N (selectin para incluir en ProductDetail)
-    product_certifications: Mapped[list["ProductCertification"]] = relationship(  # type: ignore[name-defined]
+    product_certifications: Mapped[list[ProductCertification]] = relationship(  # type: ignore[name-defined]
         "ProductCertification",
         back_populates="product",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    product_applications: Mapped[list["ProductApplication"]] = relationship(  # type: ignore[name-defined]
+    product_applications: Mapped[list[ProductApplication]] = relationship(  # type: ignore[name-defined]
         "ProductApplication",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -250,20 +251,20 @@ class Product(Base):
     )
 
     # Plan 2026-05-15 — model hierarchy link
-    model: Mapped["ProductModel | None"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    model: Mapped[ProductModel | None] = relationship(  # type: ignore[name-defined]
         "ProductModel",
         foreign_keys="[Product.model_id]",
         lazy="select",
     )
 
     # Wave 3 — componentes (materiales por componente, conexiones múltiples).
-    materials: Mapped[list["ProductMaterial"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    materials: Mapped[list[ProductMaterial]] = relationship(  # type: ignore[name-defined]
         "ProductMaterial",
         back_populates="product",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    connections: Mapped[list["ProductConnection"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    connections: Mapped[list[ProductConnection]] = relationship(  # type: ignore[name-defined]
         "ProductConnection",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -271,7 +272,7 @@ class Product(Base):
     )
 
     # Wave 6 — tech tables (P/T, materials matrix, dimensions by DN).
-    tech_tables: Mapped[list["ProductTechTable"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    tech_tables: Mapped[list[ProductTechTable]] = relationship(  # type: ignore[name-defined]
         "ProductTechTable",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -281,14 +282,14 @@ class Product(Base):
     # Wave 7 — compatibilidades M:N (recambios/accesorios).
     # outgoing: enlaces donde este producto es el "origen".
     # incoming: enlaces donde este producto es el "destino" (viewonly — no mutamos desde aquí).
-    compatibilities_outgoing: Mapped[list["ProductCompatibility"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    compatibilities_outgoing: Mapped[list[ProductCompatibility]] = relationship(  # type: ignore[name-defined]
         "ProductCompatibility",
         foreign_keys="ProductCompatibility.product_sku",
         back_populates="product",
         lazy="selectin",
         cascade="all, delete-orphan",
     )
-    compatibilities_incoming: Mapped[list["ProductCompatibility"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    compatibilities_incoming: Mapped[list[ProductCompatibility]] = relationship(  # type: ignore[name-defined]
         "ProductCompatibility",
         foreign_keys="ProductCompatibility.compatible_with_sku",
         back_populates="compatible_with",
@@ -297,7 +298,7 @@ class Product(Base):
     )
 
     # Stage 3 — divisiones M:N (selectin para incluir en ProductDetail)
-    product_divisions: Mapped[list["ProductDivision"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    product_divisions: Mapped[list[ProductDivision]] = relationship(  # type: ignore[name-defined]
         "ProductDivision",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -313,12 +314,12 @@ class Product(Base):
     # con lang='en'.
 
     @hybrid_property
-    def active(self) -> bool:  # noqa: D401 — propiedad-bandera.
+    def active(self) -> bool:
         """`True` si lifecycle_status == 'active'. Read-only (escribir en lifecycle_status)."""
         return self.lifecycle_status == "active"
 
     @active.expression  # type: ignore[no-redef]
-    def active(cls):  # noqa: N805 — hybrid expression.
+    def active(cls):
         return cls.lifecycle_status == "active"
 
     @hybrid_property
@@ -330,7 +331,7 @@ class Product(Base):
         return None
 
     @name_en.expression  # type: ignore[no-redef]
-    def name_en(cls):  # noqa: N805
+    def name_en(cls):
         from sqlalchemy import select as _select
 
         return (
@@ -351,7 +352,7 @@ class Product(Base):
         return None
 
     @description_en.expression  # type: ignore[no-redef]
-    def description_en(cls):  # noqa: N805
+    def description_en(cls):
         from sqlalchemy import select as _select
 
         return (
@@ -372,7 +373,7 @@ class Product(Base):
         return None
 
     @marketing_copy_en.expression  # type: ignore[no-redef]
-    def marketing_copy_en(cls):  # noqa: N805
+    def marketing_copy_en(cls):
         from sqlalchemy import select as _select
 
         return (
@@ -401,7 +402,7 @@ class Product(Base):
     # esquema. Cualquier full-text futuro debería indexar
     # product_translations.name por lang.
     # M1-04 — conversiones UoM alternativas (ej: 1 BOX = 12 UNIT)
-    uom_conversions: Mapped[list["ProductUomConversion"]] = relationship(
+    uom_conversions: Mapped[list[ProductUomConversion]] = relationship(
         "ProductUomConversion",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -409,7 +410,7 @@ class Product(Base):
     )
 
     # M1-01 — releases por mercado (ej: UAE, KSA, MX)
-    releases: Mapped[list["ProductRelease"]] = relationship(
+    releases: Mapped[list[ProductRelease]] = relationship(
         "ProductRelease",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -417,7 +418,7 @@ class Product(Base):
     )
 
     # mig 099 — dimensiones reales por norma (EN 558 / ASME B16.10 / AWWA C504)
-    bore_dimensions: Mapped[list["ProductBoreDimension"]] = relationship(
+    bore_dimensions: Mapped[list[ProductBoreDimension]] = relationship(
         "ProductBoreDimension",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -425,7 +426,7 @@ class Product(Base):
     )
 
     # Marketplace export listings (Task 1 migration — product_marketplace_listings)
-    marketplace_listings: Mapped[list["MarketplaceListing"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    marketplace_listings: Mapped[list[MarketplaceListing]] = relationship(  # type: ignore[name-defined]
         "MarketplaceListing",
         back_populates="product",
         cascade="all, delete-orphan",
@@ -754,7 +755,7 @@ class DnNpsReference(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     # Backref desde ProductBoreDimension
-    bore_dimensions: Mapped[list["ProductBoreDimension"]] = relationship(
+    bore_dimensions: Mapped[list[ProductBoreDimension]] = relationship(
         "ProductBoreDimension",
         primaryjoin="DnNpsReference.dn_nominal == foreign(ProductBoreDimension.dn_nominal_ref)",
         viewonly=True,

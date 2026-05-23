@@ -16,7 +16,7 @@ pytestmark = pytest.mark.unit
 def test_all_models_importable_and_registered() -> None:
     """Importar `app.db.models` debe poblar Base.metadata.tables con todas las tablas Sprint 1."""
     from app.db import Base
-    from app.db import models as _  # noqa: F401 — side-effect: registra mappers
+    from app.db import models as _
 
     expected_tables = {
         # Users / RBAC
@@ -85,7 +85,7 @@ def test_db_layer_public_surface() -> None:
 def test_products_table_has_required_columns() -> None:
     """US-1A-02-01-S1 — schema de `products` tiene los campos del PRD §4."""
     from app.db import Base
-    from app.db import models as _  # noqa: F401
+    from app.db import models as _
 
     products = Base.metadata.tables["products"]
     cols = set(products.columns.keys())
@@ -118,7 +118,7 @@ def test_products_table_has_required_columns() -> None:
 def test_audit_events_table_has_required_columns() -> None:
     """US-1A-07-01-S1 — schema de `audit_events` cumple architecture §8.10."""
     from app.db import Base
-    from app.db import models as _  # noqa: F401
+    from app.db import models as _
 
     audit = Base.metadata.tables["audit_events"]
     cols = set(audit.columns.keys())

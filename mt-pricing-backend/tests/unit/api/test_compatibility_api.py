@@ -21,8 +21,7 @@ Cobertura:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -30,8 +29,9 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
-from app.api.routes.products import get_compatibility_service, router as products_router
+from app.api.deps import get_current_user, get_db_session
+from app.api.routes.products import get_compatibility_service
+from app.api.routes.products import router as products_router
 from app.services.compatibility.compatibility_service import (
     CompatibilityDuplicateError,
     CompatibilityNotFoundError,
@@ -42,7 +42,7 @@ from app.services.compatibility.compatibility_service import (
 
 pytestmark = pytest.mark.unit
 
-NOW = datetime.now(tz=timezone.utc)
+NOW = datetime.now(tz=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ def _build_app(user: _FakeUser, compat_svc: CompatibilityService) -> FastAPI:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow

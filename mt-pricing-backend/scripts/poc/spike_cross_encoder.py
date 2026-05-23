@@ -32,7 +32,7 @@ import os
 import random
 import sys
 import time
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -206,7 +206,7 @@ def _run_cohere(
             )
             resp.raise_for_status()
             data = resp.json()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Cohere API error: %s", exc)
             errors += 1
             continue
@@ -257,7 +257,7 @@ def _run_local_cross_encoder(
     logger.info("Cargando modelo local: %s", model_name)
     try:
         model = CrossEncoder(model_name)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("Error cargando modelo %s: %s", model_name, exc)
         return None
 
@@ -347,7 +347,7 @@ def _save_results(
     result = {
         "cohere": cohere_metrics,
         "cross_encoder_local": local_metrics,
-        "run_at": datetime.now(timezone.utc).isoformat(),
+        "run_at": datetime.now(UTC).isoformat(),
         "sample_size": sample_size,
     }
     with open(output_path, "w", encoding="utf-8") as f:

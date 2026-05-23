@@ -23,7 +23,7 @@ NO maneja:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -70,7 +70,7 @@ class CdcDispatcher:
         """Procesa un evento. Devuelve dict con outcome y conteos."""
         try:
             self._dispatch_to_graph(event)
-        except Exception as exc:  # noqa: BLE001 — capturamos todo para FSM
+        except Exception as exc:
             event.attempts = (event.attempts or 0) + 1
             event.last_error = f"{type(exc).__name__}: {exc}"
             if event.attempts >= MAX_ATTEMPTS_BEFORE_DEAD_LETTER:
@@ -90,7 +90,7 @@ class CdcDispatcher:
                 "error": event.last_error,
             }
         event.status = "processed"
-        event.processed_at = datetime.now(tz=timezone.utc)
+        event.processed_at = datetime.now(tz=UTC)
         event.last_error = None
         return {
             "event_id": event.id,
@@ -172,4 +172,4 @@ class CdcDispatcher:
         return int(result.rowcount or 0)
 
 
-__all__ = ["CdcDispatcher", "MAX_ATTEMPTS_BEFORE_DEAD_LETTER"]
+__all__ = ["MAX_ATTEMPTS_BEFORE_DEAD_LETTER", "CdcDispatcher"]

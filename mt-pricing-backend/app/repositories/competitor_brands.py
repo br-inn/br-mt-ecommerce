@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -60,13 +60,13 @@ class CompetitorBrandRepository:
     async def update(self, brand: CompetitorBrand, **kwargs: object) -> CompetitorBrand:
         for key, value in kwargs.items():
             setattr(brand, key, value)
-        brand.updated_at = datetime.now(tz=timezone.utc)
+        brand.updated_at = datetime.now(tz=UTC)
         await self._session.flush()
         return brand
 
     async def touch_scraped(self, brand: CompetitorBrand) -> None:
-        brand.last_scraped_at = datetime.now(tz=timezone.utc)
-        brand.updated_at = datetime.now(tz=timezone.utc)
+        brand.last_scraped_at = datetime.now(tz=UTC)
+        brand.updated_at = datetime.now(tz=UTC)
         await self._session.flush()
 
     async def upsert_listing(
@@ -76,7 +76,7 @@ class CompetitorBrandRepository:
         competitor_brand_id: UUID,
     ) -> None:
         """Upsert un CandidateRaw en competitor_listings vinculado a la marca."""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         image_url: str = candidate.raw_payload.get("image_url", "") or ""
         values = dict(
             source=candidate.source,

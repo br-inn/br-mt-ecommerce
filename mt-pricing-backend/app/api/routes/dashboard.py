@@ -19,7 +19,7 @@ TODO Sprint 2:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -72,7 +72,7 @@ async def get_dashboard_stats(
 
     Frontend refresca cada 30s (`refetchInterval`).
     """
-    since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    since_24h = datetime.now(UTC) - timedelta(hours=24)
 
     # ----------------------------------------------------------------------
     # 1. Catálogo
@@ -219,5 +219,5 @@ async def get_dashboard_stats(
         users=users,
         activity=activity,
         jobs=jobs,
-        as_of=datetime.now(timezone.utc).isoformat(),
+        as_of=datetime.now(UTC).isoformat(),
     )

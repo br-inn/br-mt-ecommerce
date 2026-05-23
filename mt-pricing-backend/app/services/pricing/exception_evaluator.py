@@ -67,8 +67,8 @@ class ExceptionEvaluator:
     def evaluate(
         cls,
         new_price: PricingResult,
-        prev_price: Any | None,  # noqa: ANN401
-        channel_id: Any,  # noqa: ANN401
+        prev_price: Any | None,
+        channel_id: Any,
         scheme_code: str,
         active_rules: list[ExceptionRule],
         prev_fx_rate: Decimal | None = None,

@@ -10,9 +10,10 @@ Note: CO-PA and Cash Flow are query-only APIs over financial_entries.
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260527_118"
 down_revision = "20260527_117"

@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date
+
 from app.db.models.certificates import Certificate, CertificateScope
 
 

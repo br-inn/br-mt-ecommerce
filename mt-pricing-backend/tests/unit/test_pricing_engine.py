@@ -18,16 +18,8 @@ pytestmark = pytest.mark.unit
 
 def test_pricing_module_imports() -> None:
     """Verifica que todos los módulos públicos importan sin error."""
-    from app.services.pricing import (  # noqa: F401
-        ALLOWED_TRANSITIONS,
-        ExceptionEvaluator,
-        InvalidTransition,
-        PricingResult,
-        PricingRuleEngine,
-        PricingService,
-    )
-    from app.api.routes.pricing import router  # noqa: F401
-    from app.db.models.pricing import (  # noqa: F401
+    from app.api.routes.pricing import router
+    from app.db.models.pricing import (
         Channel,
         Cost,
         ExceptionRule,
@@ -35,11 +27,19 @@ def test_pricing_module_imports() -> None:
         Price,
         PriceApprovalEvent,
     )
-    from app.schemas.pricing import (  # noqa: F401
+    from app.schemas.pricing import (
         ChannelResponse,
         FXRateResponse,
         PriceResponse,
         PricingResultResponse,
+    )
+    from app.services.pricing import (
+        ALLOWED_TRANSITIONS,
+        ExceptionEvaluator,
+        InvalidTransition,
+        PricingResult,
+        PricingRuleEngine,
+        PricingService,
     )
 
 

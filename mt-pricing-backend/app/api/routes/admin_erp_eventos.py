@@ -49,7 +49,7 @@ class ERPSyncEventOut(BaseModel):
     updated_at: str | None
 
     @classmethod
-    def from_orm_event(cls, ev: ERPSyncEvent) -> "ERPSyncEventOut":
+    def from_orm_event(cls, ev: ERPSyncEvent) -> ERPSyncEventOut:
         return cls(
             id=ev.id,
             event_type=ev.event_type,
@@ -171,7 +171,7 @@ async def retry_erp_evento(
 
         push_erp_event.delay(str(event_id))
         logger.info("retry_erp_evento: re-enqueued event_id=%s", event_id)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning(
             "retry_erp_evento: could not enqueue push_erp_event for event_id=%s",
             event_id,

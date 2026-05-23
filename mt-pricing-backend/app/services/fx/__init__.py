@@ -12,10 +12,10 @@ from app.services.fx.fx_rate_service import (
 )
 
 __all__ = [
-    "FXRateService",
     "FXRateDomainError",
     "FXRateNotFoundError",
     "FXRateRetroactiveBlockedError",
     "FXRateSameEffectiveFromError",
+    "FXRateService",
     "InvalidFXCurrencyError",
 ]

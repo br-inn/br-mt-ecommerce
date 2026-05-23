@@ -158,9 +158,9 @@ def parse_materials_xlsx_stream(
                 continue
 
             errors: list[str] = []
-            descriptor = _cast_text(row[0] if 0 < len(row) else None)
+            descriptor = _cast_text(row[0] if len(row) > 0 else None)
             try:
-                temp = _cast_decimal(row[1] if 1 < len(row) else None)
+                temp = _cast_decimal(row[1] if len(row) > 1 else None)
             except ValueError as exc:
                 errors.append(f"col 'temperatura_c': {exc}")
                 temp = None

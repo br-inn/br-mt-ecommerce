@@ -181,9 +181,9 @@ def _relative_improvement(before: float, after: float) -> float:
 
 __all__ = [
     "AUTO_PROMOTE_MIN_RELATIVE_IMPROVEMENT",
+    "MIN_SAMPLES",
     "CalibratorTrainer",
     "CalibratorTrainingError",
     "CalibratorTrainingNotReady",
-    "MIN_SAMPLES",
     "TrainingResult",
 ]

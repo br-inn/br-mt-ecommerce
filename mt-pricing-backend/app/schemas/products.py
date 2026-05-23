@@ -15,7 +15,6 @@ Notas de diseño:
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
@@ -31,14 +30,13 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.product_models import ProductModelResponse
-
 # Wave 1: import asset schemas — must be before ProductDetail definition.
 from app.schemas.assets import (
     ProductAssetConfirmRequest,
     ProductAssetResponse,
     ProductAssetUploadRequest,
 )
+from app.schemas.product_models import ProductModelResponse
 
 # Backward-compat aliases — deprecated, will be removed in Wave 2.
 ProductImageResponse = ProductAssetResponse
@@ -184,7 +182,7 @@ class ProductBase(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _validate_temp_range(self) -> "ProductBase":
+    def _validate_temp_range(self) -> ProductBase:
         if (
             self.temp_min_c is not None
             and self.temp_max_c is not None
@@ -525,8 +523,8 @@ class ProductDetail(ProductResponse):
     images: list[ProductAssetResponse] = Field(default_factory=list)
     # ---- Stage 3 (Wave 11) — series/material/display pair eager-loaded ----
     # Use *_detail fields to avoid shadowing the scalar str fields on ProductResponse.
-    series_detail: "SeriesResponse | None" = None
-    material_detail: "MaterialResponse | None" = None
+    series_detail: SeriesResponse | None = None
+    material_detail: MaterialResponse | None = None
     display_pair: ProductMini | None = None
     model_detail: ProductModelResponse | None = None
 
@@ -627,7 +625,7 @@ class ProductUomConversionBase(BaseModel):
     is_active: bool = True
 
     @model_validator(mode="after")
-    def uom_pair_not_equal(self) -> "ProductUomConversionBase":
+    def uom_pair_not_equal(self) -> ProductUomConversionBase:
         if self.uom_from == self.uom_to:
             raise ValueError("uom_from and uom_to must be different")
         return self
@@ -733,6 +731,6 @@ class BoreDimensionRead(BaseModel):
 # Re-bind forward references — ProductDetail referencia translations/images
 # Import vocabularios al final (al pie) para evitar ciclo de import al cargar
 # `app.schemas.vocabularies`. Sólo se necesitan a la hora de model_rebuild.
-from app.schemas.vocabularies import MaterialResponse, SeriesResponse  # noqa: E402
+from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 
 ProductDetail.model_rebuild()

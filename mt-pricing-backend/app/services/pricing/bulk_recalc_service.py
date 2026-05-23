@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Protocol
 from uuid import UUID
@@ -195,18 +195,18 @@ class BulkRecalcService:
         source: str = "nightly_beat",
     ) -> BulkRecalcResult:
         """Ejecuta el batch completo. Idempotente — si mutex no lo permite, skipea."""
-        result = BulkRecalcResult(started_at=datetime.now(tz=timezone.utc))
+        result = BulkRecalcResult(started_at=datetime.now(tz=UTC))
 
         if self._mutex is not None:
             try:
                 acquired = await self._mutex()
-            except Exception:  # noqa: BLE001 — mutex no debe romper el batch
+            except Exception:
                 logger.exception("BulkRecalcService.mutex_acquire_failed")
                 acquired = True
             if not acquired:
                 result.skipped = True
                 result.skip_reason = "manual_recalc_in_progress"
-                result.finished_at = datetime.now(tz=timezone.utc)
+                result.finished_at = datetime.now(tz=UTC)
                 logger.warning(
                     "bulk_recalc skipped: manual recalc mutex held",
                     extra={"source": source},
@@ -230,7 +230,7 @@ class BulkRecalcService:
                     }
                 )
                 continue
-            except Exception as exc:  # noqa: BLE001 — unhandled error per-SKU
+            except Exception as exc:
                 logger.exception("bulk_recalc.unhandled sku=%s", sku)
                 result.skus_failed += 1
                 result.errors.append(
@@ -272,7 +272,7 @@ class BulkRecalcService:
                 extra={"source": source, "errors": result.errors[:10]},
             )
 
-        result.finished_at = datetime.now(tz=timezone.utc)
+        result.finished_at = datetime.now(tz=UTC)
 
         # Audit batch — entity_id = ISO-date para idempotency casi-trivial
         # (un batch al día). No falla el run si el audit falla.
@@ -286,7 +286,7 @@ class BulkRecalcService:
                 after=result.to_dict(),
                 payload_diff={"source": source},
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("bulk_recalc.audit_record_failed")
 
         logger.info(
@@ -303,13 +303,13 @@ class BulkRecalcService:
 
 
 __all__ = [
-    "BulkRecalcResult",
-    "BulkRecalcService",
     "FAILURE_RATE_ALERT_THRESHOLD",
     "NIGHTLY_RECALC_CRON",
     "NIGHTLY_RECALC_TASK_NAME",
     "NIGHTLY_RECALC_TIMEZONE",
+    "AuditRepoProtocol",
+    "BulkRecalcResult",
+    "BulkRecalcService",
     "PricingServiceProtocol",
     "ProductRepoProtocol",
-    "AuditRepoProtocol",
 ]

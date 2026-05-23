@@ -221,7 +221,7 @@ class Neo4jGraphRepository(GraphRepository):
                 }
                 for edge, neighbor_node in neighbors
             ]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "neo4j_graph_repo.get_product_neighbors failed sku=%s: %s",
                 product_sku,
@@ -267,7 +267,7 @@ class Neo4jGraphRepository(GraphRepository):
                 ],
                 "graph_confidence": graph_confidence,
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "neo4j_graph_repo.get_competitor_context failed listing_id=%s: %s",
                 competitor_listing_id,
@@ -289,7 +289,7 @@ class Neo4jGraphRepository(GraphRepository):
                 "healthy": store_health.get("healthy", False),
                 "store_health": store_health,
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("neo4j_graph_repo.health_check failed: %s", exc)
             return {
                 "backend": "neo4j_graph_repository",
@@ -313,7 +313,7 @@ def get_graph_repository(session_factory: Any = None) -> GraphRepository:
         from app.core.config import settings
 
         backend = settings.GRAPHRAG_BACKEND
-    except Exception:  # noqa: BLE001 — config opcional en tests
+    except Exception:
         backend = "stub"
 
     if backend == "neo4j":
@@ -321,7 +321,7 @@ def get_graph_repository(session_factory: Any = None) -> GraphRepository:
             from app.services.graphrag.adapters.factory import get_default_graph_store
 
             graph_store = get_default_graph_store()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error(
                 "comparator.graph_repository: neo4j import failed — "
                 "Neo4jGraphRepository iniciará sin graph_store: %s",

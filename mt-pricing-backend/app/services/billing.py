@@ -15,12 +15,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.billing import (
@@ -62,7 +62,7 @@ def _compute_line_totals(
 
 
 def _generate_invoice_number(prefix: str = "INV") -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     short = str(uuid4()).split("-")[0].upper()
     return f"{prefix}-{ts}-{short}"
 
@@ -560,7 +560,7 @@ async def get_dunning_invoices(
 
     # Load dunning levels
     dl_result = await session.execute(
-        select(DunningLevel).where(DunningLevel.is_active == True).order_by(DunningLevel.level)  # noqa: E712
+        select(DunningLevel).where(DunningLevel.is_active == True).order_by(DunningLevel.level)
     )
     levels = list(dl_result.scalars().all())
 
@@ -604,7 +604,7 @@ async def escalate_dunning(
     dl_result = await session.execute(
         select(DunningLevel)
         .where(DunningLevel.is_active == True)
-        .order_by(DunningLevel.level.desc())  # noqa: E712
+        .order_by(DunningLevel.level.desc())
     )
     levels = list(dl_result.scalars().all())
     current_level = 0
@@ -654,7 +654,7 @@ async def submit_e_invoice(
         invoice_id=invoice.id,
         standard=req.standard,
         submission_ref=f"{req.standard}-{uuid4().hex[:8].upper()}",
-        submitted_at=datetime.now(timezone.utc),
+        submitted_at=datetime.now(UTC),
         status="submitted",
         xml_payload=xml_payload,
         qr_code=qr_code,
@@ -685,7 +685,7 @@ async def retry_e_invoice(
         submission_type=sub.submission_type,
         status="submitted",
         retry_count=sub.retry_count + 1,
-        submitted_at=datetime.now(timezone.utc),
+        submitted_at=datetime.now(UTC),
         request_payload=sub.request_payload,
     )
     session.add(new_sub)
@@ -707,7 +707,7 @@ async def get_ar_aging(
 
     q = select(Invoice).where(
         Invoice.status == "posted",
-        Invoice.total_amount != None,  # noqa: E711
+        Invoice.total_amount != None,
     )
     result = await session.execute(q)
     invoices = list(result.scalars().all())

@@ -3,7 +3,8 @@ y registra el resultado por field."""
 
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession

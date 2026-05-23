@@ -414,12 +414,12 @@ class MaterialNormalizer:
     # Factory
     # ------------------------------------------------------------------
     @classmethod
-    def from_static(cls) -> "MaterialNormalizer":
+    def from_static(cls) -> MaterialNormalizer:
         """Instancia rápida desde el mapa estático (sin IO)."""
         return cls(dict(_STATIC_MAP))
 
     @classmethod
-    async def from_db(cls, session: "AsyncSession") -> "MaterialNormalizer":
+    async def from_db(cls, session: AsyncSession) -> MaterialNormalizer:
         """Carga alias desde DB, fusionando con el mapa estático.
 
         Los alias de DB sobreescriben el estático cuando hay conflicto,

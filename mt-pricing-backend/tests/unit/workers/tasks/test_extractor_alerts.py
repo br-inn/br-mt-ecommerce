@@ -9,8 +9,9 @@ Strategy:
 
 from __future__ import annotations
 
+from datetime import UTC
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -120,10 +121,11 @@ class TestEvaluateExtractorAlerts:
         mock_session.execute.side_effect = [ext_result, alert_result]
 
         # Simular la lógica de _evaluate_extractor_alerts
-        from app.db.models.comparator import ExtractorAlert
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc)
+        from app.db.models.comparator import ExtractorAlert
+
+        now = datetime.now(UTC)
         alerts_modified = 0
         extractors = ext_result.scalars().all()
 
@@ -229,12 +231,12 @@ class TestResolveAlertEndpoint:
     @pytest.mark.asyncio
     async def test_sets_resolved_at(self) -> None:
         """Resolver una alerta activa → resolved_at se actualiza."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         alert = _make_alert()
         assert alert.resolved_at is None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         alert.resolved_at = now
         alert.resolved_by = None
 

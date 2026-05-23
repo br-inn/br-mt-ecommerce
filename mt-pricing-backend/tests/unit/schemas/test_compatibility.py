@@ -14,6 +14,7 @@ Cobertura:
 
 from __future__ import annotations
 
+from datetime import UTC
 from uuid import uuid4
 
 import pytest
@@ -80,9 +81,9 @@ def test_create_position_out_of_range() -> None:
 
 def test_response_from_dict() -> None:
     uid = uuid4()
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     obj = ProductCompatibilityResponse(
         id=uid,
         product_sku="MT-A-001",
@@ -225,9 +226,9 @@ def test_replace_item_carries_owner_type_and_dn() -> None:
 def test_response_includes_owner_type_and_dn() -> None:
     """ProductCompatibilityResponse expone owner_type + dn_min/dn_max."""
     uid = uuid4()
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     obj = ProductCompatibilityResponse(
         id=uid,
         product_sku="series-pn40",
@@ -247,9 +248,9 @@ def test_response_includes_owner_type_and_dn() -> None:
 def test_response_defaults_owner_type_product_when_missing() -> None:
     """Compat: response sin owner_type explícito asume 'product'."""
     uid = uuid4()
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     obj = ProductCompatibilityResponse(
         id=uid,
         product_sku="MT-A-001",

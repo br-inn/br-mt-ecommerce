@@ -12,7 +12,7 @@ Create Date: 2026-05-12
 
 from __future__ import annotations
 
-from alembic import op  # noqa: F401
+from alembic import op
 
 revision: str = "20260512_075"
 down_revision: tuple[str, ...] = ("20260512_072", "20260512_073", "20260512_074")

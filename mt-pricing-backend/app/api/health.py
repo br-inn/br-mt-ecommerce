@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -110,7 +110,7 @@ async def liveness() -> dict[str, str]:
         "status": "ok",
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
     }
 
 
@@ -147,7 +147,7 @@ async def readiness() -> JSONResponse:
         status_code=status_code,
         content={
             "status": "ok" if not failed else "degraded",
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "checks": checks,
         },
     )
@@ -186,7 +186,7 @@ async def deep_db() -> dict[str, Any]:
                 "overflow": pool.overflow() if hasattr(pool, "overflow") else None,
             },
         }
-    except Exception as exc:  # noqa: BLE001 — health debe ser robusto
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -210,7 +210,7 @@ async def deep_redis() -> dict[str, Any]:
             "redis_version": version,
             "uptime_in_seconds": uptime,
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -233,7 +233,7 @@ async def deep_storage() -> dict[str, Any]:
             "bucket": bucket,
             "list_count": len(files) if files is not None else 0,
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {
             "ok": False,
             "bucket": bucket,
@@ -272,14 +272,14 @@ async def celery_health() -> dict[str, Any]:
         async with asyncio.timeout(2.0):
             keys = [f"mt:worker:heartbeat:{q}" for q in _CELERY_QUEUES]
             values = await client.mget(keys)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {
             "ok": False,
             "error": type(exc).__name__,
             "detail": str(exc)[:200],
         }
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for queue, raw in zip(_CELERY_QUEUES, values, strict=True):
         if not raw:
             heartbeats[queue] = {"alive": False, "last_seen": None, "age_seconds": None}
@@ -289,7 +289,7 @@ async def celery_health() -> dict[str, Any]:
         try:
             last_seen = datetime.fromisoformat(text_val)
             if last_seen.tzinfo is None:
-                last_seen = last_seen.replace(tzinfo=timezone.utc)
+                last_seen = last_seen.replace(tzinfo=UTC)
         except ValueError:
             heartbeats[queue] = {
                 "alive": False,
@@ -320,7 +320,7 @@ async def _check_db(*, timeout: float) -> dict[str, Any]:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
         return {"ok": True}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -331,7 +331,7 @@ async def _check_redis(*, timeout: float) -> dict[str, Any]:
         async with asyncio.timeout(timeout):
             pong = await client.ping()
         return {"ok": bool(pong)}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
 
 
@@ -348,10 +348,10 @@ async def _check_supabase_auth(*, timeout: float) -> dict[str, Any]:
         # Import diferido — sólo cargamos httpx si el chequeo está habilitado.
         import httpx
 
-        async with asyncio.timeout(timeout):  # noqa: SIM117 — timeout context separado
+        async with asyncio.timeout(timeout):
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.get(url)
         ok = 200 <= resp.status_code < 300
         return {"ok": ok, "status_code": resp.status_code}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}

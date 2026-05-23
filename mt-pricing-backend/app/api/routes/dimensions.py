@@ -30,7 +30,6 @@ from app.db.models.user import User
 from app.schemas.common import ProblemDetails
 from app.schemas.dimensions import (
     ActuationCodeResponse,
-    DimensionCellCreate,
     DimensionCellPatch,
     DimensionCellResponse,
     DimensionColumnCreate,
@@ -289,7 +288,7 @@ async def admin_create_dimension_column(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_dimension_column(
-    family_id: UUID,  # noqa: ARG001 — kept for URL stability
+    family_id: UUID,
     column_id: UUID,
     data: DimensionColumnPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
@@ -310,7 +309,7 @@ async def admin_patch_dimension_column(
     responses={404: {"model": ProblemDetails}, 409: {"model": ProblemDetails}},
 )
 async def admin_delete_dimension_column(
-    family_id: UUID,  # noqa: ARG001
+    family_id: UUID,
     column_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: DimensionService = Depends(get_dimension_service),
@@ -365,7 +364,7 @@ async def admin_create_dimension_row(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_dimension_row(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     row_id: UUID,
     data: DimensionRowPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
@@ -386,7 +385,7 @@ async def admin_patch_dimension_row(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_dimension_row(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     row_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: DimensionService = Depends(get_dimension_service),
@@ -408,7 +407,7 @@ async def admin_delete_dimension_row(
     },
 )
 async def admin_upsert_dimension_cell(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     row_id: UUID,
     column_id: UUID,
     data: DimensionCellPatch,
@@ -464,7 +463,7 @@ async def admin_add_pt_point(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_pt_point(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     point_id: UUID,
     data: PressureTemperaturePointPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
@@ -485,7 +484,7 @@ async def admin_patch_pt_point(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_pt_point(
-    sku: Annotated[str, Path(min_length=1, max_length=64)],  # noqa: ARG001
+    sku: Annotated[str, Path(min_length=1, max_length=64)],
     point_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: PressureTemperatureService = Depends(get_pt_service),

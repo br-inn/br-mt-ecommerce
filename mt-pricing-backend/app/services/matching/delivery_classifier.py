@@ -20,9 +20,7 @@ Categorías:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from typing import NamedTuple
-
 
 # ─── Resultado ───────────────────────────────────────────────────────────────
 
@@ -125,7 +123,7 @@ def classify_delivery(delivery_text: str | None) -> DeliveryClassification:
                 category="local_stock",
                 estimated_days=_extract_days(text) or 2,
                 price_confidence_score=100,
-                note=f"Stock en UAE/GCC — precio comparable al de MT",
+                note="Stock en UAE/GCC — precio comparable al de MT",
             )
 
     # 2. Extraer días explícitos del texto
@@ -139,7 +137,7 @@ def classify_delivery(delivery_text: str | None) -> DeliveryClassification:
                 category="import",
                 estimated_days=days,
                 price_confidence_score=30,
-                note=f"Importación (China/fábrica) — precio referencial, no comparable con stock UAE",
+                note="Importación (China/fábrica) — precio referencial, no comparable con stock UAE",
             )
 
     # 4. Clasificar por días si los tenemos

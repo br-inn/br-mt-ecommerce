@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid as _uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -27,7 +27,7 @@ from app.workers.worker import celery_app
 log = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     """Helper para ejecutar corrutinas en el contexto síncrono de Celery."""
     try:
         loop = asyncio.get_event_loop()
@@ -54,8 +54,9 @@ def refresh_pl_mv(self: object) -> dict:
     """
 
     async def _inner() -> dict:
-        from app.db.engine import get_sessionmaker
         from sqlalchemy import text
+
+        from app.db.engine import get_sessionmaker
 
         async with get_sessionmaker()() as session:
             await session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_pl_summary"))
@@ -63,7 +64,7 @@ def refresh_pl_mv(self: object) -> dict:
             log.info("mv_pl_summary refreshed OK")
             return {
                 "status": "ok",
-                "refreshed_at": datetime.now(timezone.utc).isoformat(),
+                "refreshed_at": datetime.now(UTC).isoformat(),
             }
 
     return _run_async(_inner())
@@ -93,9 +94,9 @@ def run_fx_revaluation(
     """
 
     async def _inner() -> dict:
-        from app.db.engine import get_sessionmaker
         from sqlalchemy import select, text
 
+        from app.db.engine import get_sessionmaker
         from app.db.models.finance import FinancialEntry, GlAccount
         from app.db.models.pricing import FXRate
 
@@ -252,9 +253,9 @@ def calc_price_variance(
     """
 
     async def _inner() -> dict:
-        from app.db.engine import get_sessionmaker
         from sqlalchemy import select
 
+        from app.db.engine import get_sessionmaker
         from app.db.models.finance import PriceVariance, StandardCost
 
         async with get_sessionmaker()() as session:
@@ -350,9 +351,9 @@ def period_close_reminder(self: object) -> dict:
     """
 
     async def _inner() -> dict:
-        from app.db.engine import get_sessionmaker
         from sqlalchemy import select
 
+        from app.db.engine import get_sessionmaker
         from app.db.models.finance import PostingPeriod
 
         async with get_sessionmaker()() as session:
@@ -412,8 +413,9 @@ def refresh_copa_mv(self: object) -> dict:
     """
 
     async def _inner() -> dict:
-        from app.db.engine import get_sessionmaker
         from sqlalchemy import text
+
+        from app.db.engine import get_sessionmaker
 
         async with get_sessionmaker()() as session:
             await session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_copa_summary"))
@@ -421,7 +423,7 @@ def refresh_copa_mv(self: object) -> dict:
             log.info("mv_copa_summary refreshed OK")
             return {
                 "status": "ok",
-                "refreshed_at": datetime.now(timezone.utc).isoformat(),
+                "refreshed_at": datetime.now(UTC).isoformat(),
             }
 
     return _run_async(_inner())
@@ -453,10 +455,11 @@ def run_balance_reconciliation(self: object) -> dict:
     """
 
     async def _inner() -> dict:
-        from app.db.engine import get_sessionmaker
         from decimal import ROUND_HALF_UP
+
         from sqlalchemy import func, select
 
+        from app.db.engine import get_sessionmaker
         from app.db.models.finance import FinancialEntry, GlAccount, VendorOpenItem
         from app.db.models.sales import CustomerOpenItem
 

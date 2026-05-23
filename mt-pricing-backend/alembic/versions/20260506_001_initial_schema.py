@@ -13,9 +13,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260506_001"
 down_revision: str | None = None
@@ -40,7 +41,7 @@ def _csv(values: tuple[str, ...]) -> str:
 # --------------------------------------------------------------------------
 # upgrade()
 # --------------------------------------------------------------------------
-def upgrade() -> None:  # noqa: C901, PLR0915 — DDL es lineal y largo por naturaleza
+def upgrade() -> None:
     # ----- Extensions -----
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm;")

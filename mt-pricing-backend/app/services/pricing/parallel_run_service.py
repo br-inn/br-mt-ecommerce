@@ -13,13 +13,11 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import UTC, date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models.pricing import Price
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +74,7 @@ class ParallelRunService:
             0,
             0,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
         day_end = datetime(
             target_date.year,
@@ -86,7 +84,7 @@ class ParallelRunService:
             59,
             59,
             999999,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         # 1. Leer prices activos del día
@@ -101,7 +99,7 @@ class ParallelRunService:
         flagged_count = sum(1 for item in items if item["flagged"])
         report = {
             "date": target_date.isoformat(),
-            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+            "generated_at": datetime.now(tz=UTC).isoformat(),
             "total_skus": len(items),
             "flagged": flagged_count,
             "items": items,

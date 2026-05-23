@@ -15,7 +15,7 @@ el caller (route o test), el servicio no instancia adapters directamente.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -143,7 +143,7 @@ class ExportService:
         # ------------------------------------------------------------------
         # 4. Construir payload y validar
         # ------------------------------------------------------------------
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         payload = PublishPayload(
             channel_code=channel_code,
             scheme_code=scheme_code,
@@ -194,4 +194,4 @@ class ExportService:
         return csv_bytes, manifest
 
 
-__all__ = ["ExportService", "ADAPTER_REGISTRY"]
+__all__ = ["ADAPTER_REGISTRY", "ExportService"]

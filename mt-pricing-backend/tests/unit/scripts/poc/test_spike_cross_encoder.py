@@ -10,8 +10,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from scripts.poc.spike_cross_encoder import main
 
 

@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
-
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -249,7 +248,7 @@ async def resolve_extractor_alert(
     if alert is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active alert not found")
 
-    alert.resolved_at = datetime.now(timezone.utc)
+    alert.resolved_at = datetime.now(UTC)
     alert.resolved_by = user.id
     await session.commit()
     return {"alert_id": str(alert_id), "resolved": True}
@@ -287,6 +286,7 @@ async def run_brand_scrape(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> BrandScrapeRunResponse:
     from celery import group as celery_group
+
     from app.workers.tasks.scraper import scrape_brand_task
 
     repo = CompetitorBrandRepository(session)

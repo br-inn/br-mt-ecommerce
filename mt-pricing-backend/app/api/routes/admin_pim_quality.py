@@ -245,4 +245,4 @@ async def get_pim_data_quality(
     return await _compute_data_quality(session)
 
 
-__all__ = ["router", "_compute_data_quality"]
+__all__ = ["_compute_data_quality", "router"]

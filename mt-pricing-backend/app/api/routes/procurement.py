@@ -43,7 +43,7 @@ Endpoints US-ERP-03-06 — Dashboard KPIs:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID, uuid4
@@ -52,7 +52,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, get_current_user, require_permissions, require_role
+from app.api.deps import get_current_user, get_db_session, require_permissions, require_role
 from app.db.models.inventory import GoodsReceipt, PurchaseOrder, PurchaseOrderLine
 from app.db.models.procurement import (
     InvoiceTolerance,
@@ -75,9 +75,9 @@ from app.schemas.procurement import (
     InvoiceToleranceOut,
     InvoiceToleranceUpdate,
     PRCreate,
+    ProcurementKpiOut,
     PROut,
     PRReject,
-    ProcurementKpiOut,
     RfqComparisonItem,
     RfqComparisonOut,
     RfqCreate,
@@ -452,8 +452,8 @@ async def update_vendor_condition(
 
 def _next_invoice_number() -> str:
     """Genera número de factura interno provisional (INVYYYYMMDD-XXXX)."""
-    from datetime import date as _date
     import random
+    from datetime import date as _date
 
     return f"INV{_date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
 
@@ -737,8 +737,8 @@ async def delete_source_list(
 
 
 def _next_rfq_number() -> str:
-    from datetime import date as _date
     import random
+    from datetime import date as _date
 
     return f"RFQ{_date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
 
@@ -830,7 +830,7 @@ async def create_rfq_response(
     if existing:
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(existing, field, value)
-        existing.responded_at = datetime.now(tz=timezone.utc)
+        existing.responded_at = datetime.now(tz=UTC)
         session.add(existing)
         await session.commit()
         await session.refresh(existing)
@@ -845,7 +845,7 @@ async def create_rfq_response(
         lead_time_days=data.lead_time_days,
         valid_until=data.valid_until,
         notes=data.notes,
-        responded_at=datetime.now(tz=timezone.utc),
+        responded_at=datetime.now(tz=UTC),
     )
     session.add(resp)
     # Actualizar status de RFQ
@@ -1014,7 +1014,7 @@ async def spend_analysis(
 ) -> SpendAnalysisOut:
     period_days_map = {"30d": 30, "90d": 90, "365d": 365}
     days = period_days_map[period]
-    since = datetime.now(tz=timezone.utc) - timedelta(days=days)
+    since = datetime.now(tz=UTC) - timedelta(days=days)
 
     # Spend by vendor — desde VendorInvoices aprobadas/pagadas en el período
     vendor_result = await session.execute(

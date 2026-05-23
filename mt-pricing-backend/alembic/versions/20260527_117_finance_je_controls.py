@@ -11,9 +11,10 @@ Note: FX revaluation logic is in the API/Celery layer (no new tables).
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260527_117"
 down_revision = "20260527_116"

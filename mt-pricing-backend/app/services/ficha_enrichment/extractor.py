@@ -640,6 +640,7 @@ class FichaEnrichmentExtractor:
         max_pages: int = 9,
     ) -> tuple[list[PageClassification], list[ExtractedAsset], list[dict[str, float]]]:
         import asyncio
+
         from app.services.importer_datasheets.vision_extractor import _render_pdf_pages
 
         pngs = _render_pdf_pages(pdf_bytes, max_pages=max_pages, resolution=120)
@@ -707,11 +708,11 @@ class FichaEnrichmentExtractor:
 
 
 __all__ = [
+    "_PAGE_CLASSIFICATION_TOOL",
+    "_PT_CURVE_TOOL",
+    "_TOOL_SCHEMA",
     "FichaEnrichmentExtractor",
     "_build_result",
     "_format_tables",
     "_parse_tool_response",
-    "_TOOL_SCHEMA",
-    "_PAGE_CLASSIFICATION_TOOL",
-    "_PT_CURVE_TOOL",
 ]

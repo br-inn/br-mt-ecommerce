@@ -54,7 +54,7 @@ class Certification(UuidPkMixin, Base):
     )
 
     # Reverse side — products that carry this certification.
-    product_certifications: Mapped[list["ProductCertification"]] = relationship(
+    product_certifications: Mapped[list[ProductCertification]] = relationship(
         back_populates="certification", cascade="all, delete-orphan"
     )
 
@@ -76,7 +76,7 @@ class Application(UuidPkMixin, Base):
     )
 
     # Reverse side — products that have this application.
-    product_applications: Mapped[list["ProductApplication"]] = relationship(
+    product_applications: Mapped[list[ProductApplication]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
 
@@ -128,8 +128,8 @@ class ProductCertification(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    certification: Mapped["Certification"] = relationship(back_populates="product_certifications")
-    product: Mapped["Product"] = relationship(  # type: ignore[name-defined]
+    certification: Mapped[Certification] = relationship(back_populates="product_certifications")
+    product: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product",
         back_populates="product_certifications",
     )
@@ -169,8 +169,8 @@ class ProductApplication(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    application: Mapped["Application"] = relationship(back_populates="product_applications")
-    product: Mapped["Product"] = relationship(  # type: ignore[name-defined]
+    application: Mapped[Application] = relationship(back_populates="product_applications")
+    product: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product",
         back_populates="product_applications",
     )
@@ -356,7 +356,7 @@ class ProductDivision(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    product: Mapped["Product"] = relationship(  # type: ignore[name-defined]
+    product: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product", back_populates="product_divisions"
     )
     division: Mapped[Division] = relationship()
@@ -421,13 +421,13 @@ class Series(UuidPkMixin, Base):
     )
 
     tier: Mapped[SeriesTier | None] = relationship()
-    translations: Mapped[list["SeriesTranslation"]] = relationship(
+    translations: Mapped[list[SeriesTranslation]] = relationship(
         back_populates="series", cascade="all, delete-orphan"
     )
-    series_divisions: Mapped[list["SeriesDivision"]] = relationship(
+    series_divisions: Mapped[list[SeriesDivision]] = relationship(
         back_populates="series", cascade="all, delete-orphan"
     )
-    series_certifications: Mapped[list["SeriesCertification"]] = relationship(
+    series_certifications: Mapped[list[SeriesCertification]] = relationship(
         back_populates="series", cascade="all, delete-orphan"
     )
 

@@ -24,7 +24,7 @@ import asyncio
 import logging
 import os
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from urllib.parse import quote_plus
 from uuid import UUID
@@ -110,7 +110,7 @@ class CurlCffiAmazonUaeFetcher:
         Raises:
             ScraperBlockedError: if Amazon returns 403 or redirects to CAPTCHA.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         async with self._make_session() as session:
             serp_results = await self._fetch_serp(session, query)
@@ -149,14 +149,13 @@ class CurlCffiAmazonUaeFetcher:
                 if _raw_pairs_for_mapping and self._brand_id:
                     try:
                         from app.services.scraper.brand_extractor_service import (
-                            BrandExtractorService,
                             apply_mapping,
                         )
 
                         _mapped = apply_mapping(self._brand_attribute_map, _raw_pairs_for_mapping)
                         if _mapped:
                             specs.update(_mapped)
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         pass  # fallback to generic extraction silently
 
                 if not specs and title:
@@ -178,7 +177,7 @@ class CurlCffiAmazonUaeFetcher:
                     if pdp_price_raw:
                         try:
                             price_aed = Decimal(str(pdp_price_raw))
-                        except Exception:  # noqa: BLE001
+                        except Exception:
                             pass
 
                 candidates.append(
@@ -249,7 +248,7 @@ class CurlCffiAmazonUaeFetcher:
             return extract_pdp_specs(resp.text)
         except ScraperBlockedError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # PDP failures are non-fatal — return empty specs rather than
             # aborting the entire fetch.
             logger.warning(

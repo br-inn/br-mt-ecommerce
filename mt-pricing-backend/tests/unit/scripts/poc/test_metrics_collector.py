@@ -17,16 +17,8 @@ Cobertura:
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
-
-import pytest
 
 from scripts.poc.metrics_collector import (
-    AC_COV_MIN,
-    AC_ECE_MAX,
-    AC_FN_MAX,
-    AC_FP_MAX,
     CandidateRecord,
     MarketplaceMetrics,
     MetricsCollector,
@@ -34,7 +26,6 @@ from scripts.poc.metrics_collector import (
     _collect_failures,
     _is_failure,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

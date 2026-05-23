@@ -65,10 +65,10 @@ class ChannelHistoryResponse(BaseModel):
 
 
 __all__ = [
-    "ChannelTransitionRequest",
-    "ChannelTransitionResponse",
-    "ChannelRead",
-    "ChannelListResponse",
     "ChannelHistoryEntry",
     "ChannelHistoryResponse",
+    "ChannelListResponse",
+    "ChannelRead",
+    "ChannelTransitionRequest",
+    "ChannelTransitionResponse",
 ]

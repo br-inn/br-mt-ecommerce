@@ -13,6 +13,7 @@ Cobertura:
 
 from __future__ import annotations
 
+from datetime import UTC
 from uuid import uuid4
 
 import pytest
@@ -252,9 +253,9 @@ def test_compute_asset_urls_fake_supabase() -> None:
 # ProductAssetResponse from_attributes
 # ---------------------------------------------------------------------------
 def test_asset_response_validates_from_dict() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     asset_id = uuid4()
     # The field is aliased as 'metadata' in JSON but stored as 'asset_meta' in ORM.
     data = {
@@ -280,9 +281,9 @@ def test_asset_response_validates_from_dict() -> None:
 
 def test_asset_response_validates_from_orm_object() -> None:
     """Verify from_attributes mode works with asset_meta ORM attribute."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     # Use a simple namespace object to simulate ORM (avoids MagicMock auto-attrs).
     class _FakeORM:
@@ -328,6 +329,7 @@ def test_product_image_response_is_alias() -> None:
 
 
 def test_product_image_response_imported_from_products_schemas() -> None:
-    from app.schemas.products import ProductImageResponse as PIR, ProductAssetResponse as PAR
+    from app.schemas.products import ProductAssetResponse as PAR
+    from app.schemas.products import ProductImageResponse as PIR
 
     assert PIR is PAR

@@ -35,7 +35,7 @@ Constraints adicionales:
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -200,7 +200,7 @@ class TranslationWorkflowService:
 
         row.status = STATE_PENDING_REVIEW
         row.translated_by = actor.id
-        row.translated_at = datetime.now(tz=timezone.utc)
+        row.translated_at = datetime.now(tz=UTC)
         # Reseteamos staleness_reason si venía de stale.
         _set_optional(row, "staleness_reason", None)
         await self.session.flush()
@@ -226,7 +226,7 @@ class TranslationWorkflowService:
 
         row.status = STATE_APPROVED
         row.reviewed_by = actor.id
-        row.reviewed_at = datetime.now(tz=timezone.utc)
+        row.reviewed_at = datetime.now(tz=UTC)
         await self.session.flush()
 
         await self.audit_emitter.record_transition(
@@ -250,7 +250,7 @@ class TranslationWorkflowService:
 
         row.status = STATE_DRAFT
         row.reviewed_by = actor.id
-        row.reviewed_at = datetime.now(tz=timezone.utc)
+        row.reviewed_at = datetime.now(tz=UTC)
         _set_optional(row, "rejection_reason", reason.strip())
         await self.session.flush()
 
@@ -322,13 +322,13 @@ def _set_optional(obj: Any, attr: str, value: Any) -> None:
 
 __all__ = [
     "ALL_STATES",
-    "InvalidTranslationStateTransition",
     "STALENESS_REASON_MASTER_EN",
     "STATE_APPROVED",
     "STATE_DRAFT",
     "STATE_PENDING_LEGACY",
     "STATE_PENDING_REVIEW",
     "STATE_STALE",
+    "InvalidTranslationStateTransition",
     "TranslationFourEyesViolation",
     "TranslationNotFoundError",
     "TranslationRejectMissingReason",

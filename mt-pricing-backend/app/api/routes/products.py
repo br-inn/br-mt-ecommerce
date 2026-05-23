@@ -27,25 +27,32 @@ from fastapi import (
     status,
 )
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_db_session, require_permissions
 from app.api.pagination import decode_sku_cursor, encode_sku_cursor
 from app.db.models.user import User
-from app.schemas.common import Cursor, Pagination, ProblemDetails
+from app.repositories.product import ProductBoreDimensionRepository
 from app.schemas.assets import (
     AssetKind,
     ProductAssetConfirmRequest,
-    ProductAssetPatch,
     ProductAssetResponse,
     ProductAssetUploadRequest,
 )
+from app.schemas.common import Cursor, Pagination, ProblemDetails
 from app.schemas.compatibility import (
     CompatibilityKind,
     CompatibleProductSummary,
     ProductCompatibilityCreate,
     ProductCompatibilityReplaceItem,
     ProductCompatibilityResponse,
+)
+from app.schemas.facets import FacetsResponse
+from app.schemas.product_models import (
+    CertificateResponse,
+    ModelFlowDataResponse,
+    ProductModelResponse,
 )
 from app.schemas.products import (
     BoreDimensionRead,
@@ -57,8 +64,8 @@ from app.schemas.products import (
     ProductImageUploadRequest,
     ProductMini,
     ProductPatch,
-    ProductReleasePatch,
     ProductReleaseCreate,
+    ProductReleasePatch,
     ProductReleaseResponse,
     ProductReplace,
     ProductResponse,
@@ -68,12 +75,6 @@ from app.schemas.products import (
     ProductUomConversionCreate,
     ProductUomConversionResponse,
 )
-from app.schemas.facets import FacetsResponse
-from app.schemas.product_models import (
-    CertificateResponse,
-    ModelFlowDataResponse,
-    ProductModelResponse,
-)
 from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 from app.services.assets import AssetService
 from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
@@ -82,14 +83,12 @@ from app.services.compatibility import (
     CompatibilityService,
 )
 from app.services.components import ComponentsDomainError, ComponentsService
-from app.repositories.product import ProductBoreDimensionRepository
 from app.services.products import ImageService, ProductService
 from app.services.products.facets_service import ProductFilters, compute_facets
 from app.services.products.parent_resolver import ParentResolver, ParentResolverError
 from app.services.products.product_service import ProductDomainError
 from app.services.specs.specs_registry import SpecsRegistry
 from app.services.specs.specs_validator import SpecsValidationError, SpecsValidator
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -308,7 +307,7 @@ async def get_specs_schema(
 async def export_products_csv(
     family: Annotated[str | None, Query()] = None,
     subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[  # noqa: A002
+    type: Annotated[
         str | None, Query(max_length=64, alias="type")
     ] = None,
     brand: Annotated[str | None, Query()] = None,
@@ -445,7 +444,7 @@ async def export_products_csv(
 async def list_products(
     family: Annotated[str | None, Query()] = None,
     subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[  # noqa: A002 — query param name
+    type: Annotated[
         str | None, Query(max_length=64, alias="type")
     ] = None,
     brand: Annotated[str | None, Query()] = None,
@@ -656,7 +655,7 @@ async def create_product(
 async def get_facets(
     family: Annotated[str | None, Query()] = None,
     subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[  # noqa: A002
+    type: Annotated[
         str | None, Query(max_length=64, alias="type")
     ] = None,
     brand: Annotated[str | None, Query()] = None,
@@ -736,6 +735,7 @@ async def get_product_certificates(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[CertificateResponse]:
     from sqlalchemy import select as _select
+
     from app.db.models.certificates import Certificate
     from app.db.models.product import Product as _Prod
 
@@ -765,8 +765,9 @@ async def get_product_flow_data(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[ModelFlowDataResponse]:
     from sqlalchemy import select as _select
-    from app.db.models.product_models import ModelFlowData
+
     from app.db.models.product import Product as _Prod
+    from app.db.models.product_models import ModelFlowData
 
     model_id_subq = _select(_Prod.model_id).where(_Prod.sku == sku).scalar_subquery()
     rows = (
@@ -902,7 +903,7 @@ async def classify_pim_batch(
         async_result = classify_pim_batch_task.apply_async(
             args=[str(user.id), only_partial, promote_to_complete],
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail={
@@ -1267,7 +1268,7 @@ async def confirm_asset_upload(
             from app.workers.thumbnails import generate_thumbnails
 
             generate_thumbnails.delay(sku, asset.storage_path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
     # Hook: reverse image search CLIP indexing (US-RND-01-09).
@@ -1281,7 +1282,7 @@ async def confirm_asset_upload(
             if await is_reverse_image_search_enabled(_db_session):
                 _backend = get_image_backend()
                 await _backend.index_image(str(sku), asset.storage_path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             # Non-blocking — indexing failure must not break the upload response.
             pass
 
@@ -1588,13 +1589,11 @@ async def replace_compatibility(
 # ==========================================================================
 # Wave 3 — Components (materials + connections)
 # ==========================================================================
-from app.schemas.components import (  # noqa: E402
+from app.schemas.components import (
     ProductConnectionCreate,
-    ProductConnectionPatch,
     ProductConnectionResponse,
     ProductConnectionsReplaceRequest,
     ProductMaterialCreate,
-    ProductMaterialPatch,
     ProductMaterialResponse,
     ProductMaterialsReplaceRequest,
 )
@@ -1833,12 +1832,11 @@ async def set_parent(
 # ==========================================================================
 # Wave 6 — Tech tables (read + manual upsert; importer-driven for PDFs)
 # ==========================================================================
-from sqlalchemy import select as _sa_select  # noqa: E402
+from sqlalchemy import select as _sa_select
 
-from app.db.models.tech_tables import ProductTechTable  # noqa: E402
-from app.schemas.tech_tables import (  # noqa: E402
+from app.db.models.tech_tables import ProductTechTable
+from app.schemas.tech_tables import (
     ProductTechTableCreate,
-    ProductTechTablePatch,
     ProductTechTableResponse,
 )
 
@@ -1951,8 +1949,11 @@ async def delete_tech_table(
 # =============================================================================
 # M1-01 — Product Releases (por mercado)
 # =============================================================================
-from sqlalchemy import select as _sa_select2  # noqa: E402
-from app.db.models.product import ProductRelease, ProductUomConversion  # noqa: E402
+from datetime import UTC
+
+from sqlalchemy import select as _sa_select2
+
+from app.db.models.product import ProductRelease, ProductUomConversion
 
 
 def _assert_product_exists(product: Any, sku: str) -> None:
@@ -1998,6 +1999,8 @@ async def create_release(
     session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
 ) -> ProductRelease:
     from sqlalchemy import select as _sel
+
+    from app.db.models.product import Product
 
     product = (await session.execute(_sel(Product).where(Product.sku == sku))).scalar_one_or_none()
     _assert_product_exists(product, sku)
@@ -2076,7 +2079,7 @@ async def activate_release(
     _user: User = Depends(require_permissions("products:write")),
     session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
 ) -> ProductRelease:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     release = (
         await session.execute(
@@ -2096,7 +2099,7 @@ async def activate_release(
         )
     release.is_active = True
     release.status = "active"
-    release.released_at = datetime.now(timezone.utc)
+    release.released_at = datetime.now(UTC)
     release.released_by = _user.id
     await session.flush()
     await session.refresh(release)
@@ -2177,6 +2180,8 @@ async def create_uom_conversion(
     session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
 ) -> ProductUomConversion:
     from sqlalchemy import select as _sel2
+
+    from app.db.models.product import Product
 
     product = (await session.execute(_sel2(Product).where(Product.sku == sku))).scalar_one_or_none()
     _assert_product_exists(product, sku)
@@ -2292,15 +2297,15 @@ async def list_datasheets(
     _user: Annotated[User, Depends(require_permissions("products:read"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[_DatasheetSummary]:
-    from datetime import datetime, timedelta, timezone  # noqa: PLC0415
-    from posixpath import basename  # noqa: PLC0415
+    from datetime import datetime, timedelta
+    from posixpath import basename
 
-    from sqlalchemy import select  # noqa: PLC0415
+    from sqlalchemy import select
 
-    from app.db.models.asset_links import AssetLink  # noqa: PLC0415
-    from app.db.models.documents import Document  # noqa: PLC0415
-    from app.db.models.product import ProductAsset  # noqa: PLC0415
-    from app.services.storage import create_signed_url  # noqa: PLC0415
+    from app.db.models.asset_links import AssetLink
+    from app.db.models.documents import Document
+    from app.db.models.product import ProductAsset
+    from app.services.storage import create_signed_url
 
     links_result = await session.execute(
         select(AssetLink).where(
@@ -2324,7 +2329,7 @@ async def list_datasheets(
     docs_by_asset_id = {d.asset_id: d for d in docs_result.scalars().all()}
 
     _TTL = 3600
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires_at = (now + timedelta(seconds=_TTL)).isoformat()
 
     summaries: list[_DatasheetSummary] = []

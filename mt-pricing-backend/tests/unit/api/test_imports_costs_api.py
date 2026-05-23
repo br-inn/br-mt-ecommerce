@@ -30,6 +30,8 @@ from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.routes.imports_costs import (
     get_cost_service,
     get_importer_costs_service,
+)
+from app.api.routes.imports_costs import (
     router as imports_costs_router,
 )
 from app.services.importer_costs import (

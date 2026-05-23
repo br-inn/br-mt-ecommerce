@@ -18,19 +18,30 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+from collections.abc import AsyncIterator
 from datetime import date
-from typing import Annotated, Any, AsyncIterator
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import delete as sa_delete, select
+from sqlalchemy import delete as sa_delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_db_session, require_permissions
 from app.db.models.match_candidate import MatchCandidate
 from app.db.models.user import User
+from app.repositories.match_agent import (
+    MatchAgentConfigRepository,
+    MatchAgentDecisionRepository,
+)
 from app.schemas.common import Cursor, Pagination, ProblemDetails
+from app.schemas.match_agent import (
+    MatchAgentConfigResponse,
+    MatchAgentConfigUpdate,
+    MatchAgentMetrics,
+)
 from app.schemas.matches import (
     MatchBulkValidateRequest,
     MatchBulkValidateResponse,
@@ -38,18 +49,8 @@ from app.schemas.matches import (
     MatchCandidateResponse,
     MatchDiscardRequest,
     MatchRefreshJobResponse,
-    MatchRefreshResponse,
     MatchRefreshStatusResponse,
     ThreeWaySummaryResponse,
-)
-from app.repositories.match_agent import (
-    MatchAgentConfigRepository,
-    MatchAgentDecisionRepository,
-)
-from app.schemas.match_agent import (
-    MatchAgentConfigResponse,
-    MatchAgentConfigUpdate,
-    MatchAgentMetrics,
 )
 from app.services.matching.adapter_registry import get_fetcher
 from app.services.matching.match_service import (
@@ -185,7 +186,7 @@ async def update_agent_config(
     user: User = Depends(require_permissions("matches:write")),
     session: AsyncSession = Depends(get_db_session),
 ) -> MatchAgentConfigResponse:
-    from sqlalchemy import func as _func  # noqa: PLC0415
+    from sqlalchemy import func as _func
 
     repo = MatchAgentConfigRepository(session)
     cfg = await repo.get()
@@ -197,12 +198,12 @@ async def update_agent_config(
 
     if payload.mode == "active":
         try:
-            from app.db.models.golden_label import GoldenLabel  # noqa: PLC0415
+            from app.db.models.golden_label import GoldenLabel
 
             total = int(
                 (await session.execute(select(_func.count(GoldenLabel.id)))).scalar_one() or 0
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             total = 0
         gate = int(payload.min_labels_gate or cfg.min_labels_gate)
         if total < gate:
@@ -234,7 +235,7 @@ async def get_agent_metrics(
     _user: User = Depends(require_permissions("matches:read")),
     session: AsyncSession = Depends(get_db_session),
 ) -> MatchAgentMetrics:
-    from sqlalchemy import func as _func  # noqa: PLC0415
+    from sqlalchemy import func as _func
 
     cfg = await MatchAgentConfigRepository(session).get()
     if cfg is None:
@@ -245,10 +246,10 @@ async def get_agent_metrics(
 
     total = 0
     try:
-        from app.db.models.golden_label import GoldenLabel  # noqa: PLC0415
+        from app.db.models.golden_label import GoldenLabel
 
         total = int((await session.execute(select(_func.count(GoldenLabel.id)))).scalar_one() or 0)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     decision_repo = MatchAgentDecisionRepository(session)
@@ -257,10 +258,10 @@ async def get_agent_metrics(
 
     active_cal = None
     try:
-        from app.repositories.golden_labels import CalibratorVersionRepository  # noqa: PLC0415
+        from app.repositories.golden_labels import CalibratorVersionRepository
 
         active_cal = await CalibratorVersionRepository(session).get_active()
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     return MatchAgentMetrics(
@@ -370,10 +371,9 @@ async def refresh_matches(
     service: MatchService = Depends(get_match_service),
     session: AsyncSession = Depends(get_db_session),
 ) -> MatchRefreshJobResponse:
-    from app.workers.tasks.comparator import refresh_sku_task  # noqa: PLC0415
-
     # Verify SKU exists before enqueuing.
-    from app.repositories.product import ProductRepository  # noqa: PLC0415
+    from app.repositories.product import ProductRepository
+    from app.workers.tasks.comparator import refresh_sku_task
 
     product = await ProductRepository(session).get_by_sku(sku)
     if product is None:
@@ -414,7 +414,7 @@ async def refresh_status(
     _user: User = Depends(require_permissions("matches:read")),
     service: MatchService = Depends(get_match_service),
 ) -> MatchRefreshStatusResponse:
-    from celery.result import AsyncResult  # noqa: PLC0415
+    from celery.result import AsyncResult
 
     result = AsyncResult(task_id)
     celery_state = result.state  # PENDING | STARTED | SUCCESS | FAILURE | RETRY
@@ -610,7 +610,7 @@ async def clear_all_matches(
     _user: User = Depends(require_permissions("matches:write")),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict[str, int]:
-    from app.core.config import settings  # noqa: PLC0415
+    from app.core.config import settings
 
     if not settings.is_dev:
         raise HTTPException(
@@ -634,8 +634,8 @@ async def invalidate_model_enriched_cache(
 
     Fuerza regeneración de queries LLM con contexto del modelo en el próximo refresh.
     """
-    from app.db.models.search_query import ProductSearchQuery  # noqa: PLC0415
-    from app.db.models.product import Product  # noqa: PLC0415
+    from app.db.models.product import Product
+    from app.db.models.search_query import ProductSearchQuery
 
     skus_with_model = select(Product.sku).where(Product.model_id.is_not(None)).scalar_subquery()
     stmt = sa_delete(ProductSearchQuery).where(ProductSearchQuery.sku.in_(skus_with_model))

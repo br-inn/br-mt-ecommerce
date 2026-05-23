@@ -19,7 +19,7 @@ Patrón mirror de :mod:`app.services.channel_mirror.ports` (ports-and-adapters).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -101,7 +101,6 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             return
 
         from app.db.models.comparator import MatchDecision
-        from app.db.models.match_candidate import MatchCandidate
         from app.services.matching.human_queue_service import HumanQueueService
 
         # Idempotencia: bloquear cualquier decisión duplicada para este par
@@ -161,7 +160,7 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             judge_image_regions=judge_image_regions,
             deal_breakers_triggered=deal_breakers,
             judge_model_version=judge_model_version if judge_verdict is not None else None,
-            judge_at=datetime.now(tz=timezone.utc) if judge_verdict is not None else None,
+            judge_at=datetime.now(tz=UTC) if judge_verdict is not None else None,
         )
         self._session.add(decision)
         await self._session.flush()
@@ -289,7 +288,7 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             judge_image_regions=r_image_regions,
             deal_breakers_triggered=r_deal_breakers,
             judge_model_version=r_model_version if r_verdict is not None else None,
-            judge_at=datetime.now(tz=timezone.utc) if r_verdict is not None else None,
+            judge_at=datetime.now(tz=UTC) if r_verdict is not None else None,
         )
         self._session.add(decision)
         await self._session.flush()

@@ -42,4 +42,4 @@ class CurrencyActivePatch(BaseModel):
     )
 
 
-__all__ = ["CurrencyResponse", "CurrencyActivePatch"]
+__all__ = ["CurrencyActivePatch", "CurrencyResponse"]
