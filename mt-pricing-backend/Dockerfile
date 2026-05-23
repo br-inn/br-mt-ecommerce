@@ -27,6 +27,8 @@ RUN apt-get update \
 COPY pyproject.toml uv.lock* README.md ./
 # uv pip install ignora [tool.uv.sources], así que torch resuelve desde PyPI (CUDA).
 # El force-reinstall + uninstall en el mismo RUN elimina los paquetes nvidia-* del layer.
+# El upgrade final de wheel/setuptools asegura que uv no haya restaurado versiones
+# vulnerables de la imagen base (CVE-2026-24049, CVE-2025-47273, CVE-2026-23949).
 RUN uv pip install --system --no-cache . \
     && pip install --no-cache-dir --force-reinstall \
         "torch>=2.1" "torchvision>=0.16" \
@@ -35,7 +37,8 @@ RUN uv pip install --system --no-cache . \
         | grep -i "^nvidia" | cut -d= -f1 \
         | xargs -r pip uninstall -y \
     && find /usr/local/lib/python3.11/site-packages \
-        -maxdepth 2 -name "nvidia*" -exec rm -rf {} + 2>/dev/null || true
+        -maxdepth 2 -name "nvidia*" -exec rm -rf {} + 2>/dev/null || true \
+    && pip install --no-cache-dir "wheel>=0.46.2" "setuptools>=78.1.1"
 
 COPY app ./app
 COPY alembic.ini ./alembic.ini
@@ -108,6 +111,11 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder --chown=appuser:appuser /build/app /app/app
 COPY --from=builder --chown=appuser:appuser /build/alembic /app/alembic
 COPY --from=builder --chown=appuser:appuser /build/alembic.ini /app/alembic.ini
+
+# La imagen base python:3.11-slim trae wheel/setuptools vulnerables en site-packages.
+# COPY desde builder superpone versiones nuevas pero no elimina los dist-info antiguos.
+# pip install --upgrade los elimina correctamente (CVE-2026-24049, CVE-2025-47273).
+RUN pip install --no-cache-dir "wheel>=0.46.2" "setuptools>=78.1.1"
 
 USER appuser
 
