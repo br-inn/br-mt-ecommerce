@@ -61,9 +61,7 @@ class ProductRepository(BaseRepository[Product]):
             if brand_row is not None:
                 kwargs["brand_id"] = brand_row.id
             else:
-                new_brand = Brand(
-                    code=brand_name.lower().replace(" ", "_"), name=brand_name
-                )
+                new_brand = Brand(code=brand_name.lower().replace(" ", "_"), name=brand_name)
                 self.session.add(new_brand)
                 await self.session.flush()
                 kwargs["brand_id"] = new_brand.id
@@ -83,9 +81,7 @@ class ProductRepository(BaseRepository[Product]):
             if family_row is not None:
                 kwargs["family_id"] = family_row.id
             else:
-                new_family = Family(
-                    code=family_name.lower().replace(" ", "_"), name=family_name
-                )
+                new_family = Family(code=family_name.lower().replace(" ", "_"), name=family_name)
                 self.session.add(new_family)
                 await self.session.flush()
                 kwargs["family_id"] = new_family.id

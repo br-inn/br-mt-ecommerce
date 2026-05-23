@@ -30,7 +30,9 @@ def _migrate(postgres_container: str) -> None:
     command.upgrade(cfg, "head")
 
 
-async def test_create_product_minimal_roundtrip(db_session: AsyncSession, make_product: Any) -> None:
+async def test_create_product_minimal_roundtrip(
+    db_session: AsyncSession, make_product: Any
+) -> None:
     """Crear con campos mínimos (sku, family) y leerlo back."""
     from app.db.models import Product
 

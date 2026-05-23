@@ -128,19 +128,13 @@ def test_products_constraints_enforced(alembic_sync_url: str, postgres_container
         # brand_id NOT NULL (mig 048)
         with engine.begin() as conn, pytest.raises(IntegrityError):
             conn.execute(
-                text(
-                    "INSERT INTO products (sku, family) VALUES ('TEST-V-004', 'gate_valve');"
-                )
+                text("INSERT INTO products (sku, family) VALUES ('TEST-V-004', 'gate_valve');")
             )
 
         # Cleanup — disable soft-delete trigger for test teardown
         with engine.begin() as conn:
-            conn.execute(
-                text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete")
-            )
+            conn.execute(text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete"))
             conn.execute(text("DELETE FROM products WHERE sku LIKE 'TEST-V-%';"))
-            conn.execute(
-                text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete")
-            )
+            conn.execute(text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete"))
     finally:
         engine.dispose()
