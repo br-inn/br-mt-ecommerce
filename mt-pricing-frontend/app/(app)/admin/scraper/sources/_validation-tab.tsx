@@ -45,15 +45,15 @@ export function ValidationTab({ source }: Props) {
   const activate = useActivateSource(source.id);
 
   const [testUrl, setTestUrl] = React.useState("");
-  const [recipeId, setRecipeId] = React.useState<string>("");
+  const [selectedRecipeId, setRecipeId] = React.useState<string>("");
   const [result, setResult] = React.useState<ValidateResponse | null>(null);
 
-  React.useEffect(() => {
-    if (recipes.length > 0 && !recipeId) {
-      const live = recipes.find((r) => r.is_live);
-      setRecipeId(live?.id ?? recipes[0]?.id ?? "");
-    }
-  }, [recipes, recipeId]);
+  // Derive effective recipe: user selection → live recipe → first recipe
+  const recipeId =
+    selectedRecipeId ||
+    recipes.find((r) => r.is_live)?.id ||
+    recipes[0]?.id ||
+    "";
 
   const handleValidate = async () => {
     if (!testUrl || !recipeId) return;

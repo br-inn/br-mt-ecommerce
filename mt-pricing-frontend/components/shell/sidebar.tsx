@@ -32,7 +32,6 @@ import {
   Rss,
   ScrollText,
   Search,
-  Settings,
   Shield,
   ShieldCheck,
   ShoppingBag,
