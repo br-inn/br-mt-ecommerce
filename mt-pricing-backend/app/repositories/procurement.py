@@ -371,9 +371,7 @@ class ProcurementRepository:
             )
         return pr
 
-    async def convert_pr_to_po(
-        self, pr_id: UUID, created_by: UUID | None = None
-    ) -> PurchaseOrder:
+    async def convert_pr_to_po(self, pr_id: UUID, created_by: UUID | None = None) -> PurchaseOrder:
         import datetime as _dt
 
         from app.db.models.inventory import PurchaseOrder

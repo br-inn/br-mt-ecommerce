@@ -55,9 +55,7 @@ class _FakeCost:
         self.supplier_code: str | None = kw.get("supplier_code")
         self.currency_origin: str = kw.get("currency_origin", "EUR")
         self.fx_rate_id: UUID | None = kw.get("fx_rate_id")
-        self.effective_at: datetime = kw.get(
-            "effective_at", datetime(2026, 6, 12, tzinfo=UTC)
-        )
+        self.effective_at: datetime = kw.get("effective_at", datetime(2026, 6, 12, tzinfo=UTC))
         self.breakdown: dict[str, Any] = kw.get("breakdown", {})
         self.scheme_landed_aed: Decimal | None = kw.get("scheme_landed_aed", Decimal("60.918"))
         self.status: str = kw.get("status", "active")

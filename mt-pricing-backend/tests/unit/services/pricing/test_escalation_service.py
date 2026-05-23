@@ -33,9 +33,7 @@ class _FakePrice:
     proposed_by: UUID | None = None
     escalated: bool = False
     escalated_at: datetime | None = None
-    updated_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=UTC) - timedelta(hours=72)
-    )
+    updated_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC) - timedelta(hours=72))
 
 
 @dataclass

@@ -1047,9 +1047,7 @@ async def get_kpis(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> O2CKpisOut:
     thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
-    first_of_month = datetime.now(UTC).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    first_of_month = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # Run 9 independent count queries in parallel (1 round-trip to DB)
     (

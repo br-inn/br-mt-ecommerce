@@ -307,9 +307,7 @@ async def get_specs_schema(
 async def export_products_csv(
     family: Annotated[str | None, Query()] = None,
     subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[
-        str | None, Query(max_length=64, alias="type")
-    ] = None,
+    type: Annotated[str | None, Query(max_length=64, alias="type")] = None,
     brand: Annotated[str | None, Query()] = None,
     translation_status: Annotated[str | None, Query(pattern=r"^(pending|draft|approved)$")] = None,
     lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
@@ -444,9 +442,7 @@ async def export_products_csv(
 async def list_products(
     family: Annotated[str | None, Query()] = None,
     subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[
-        str | None, Query(max_length=64, alias="type")
-    ] = None,
+    type: Annotated[str | None, Query(max_length=64, alias="type")] = None,
     brand: Annotated[str | None, Query()] = None,
     translation_status: Annotated[str | None, Query(pattern=r"^(pending|draft|approved)$")] = None,
     lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
@@ -655,9 +651,7 @@ async def create_product(
 async def get_facets(
     family: Annotated[str | None, Query()] = None,
     subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[
-        str | None, Query(max_length=64, alias="type")
-    ] = None,
+    type: Annotated[str | None, Query(max_length=64, alias="type")] = None,
     brand: Annotated[str | None, Query()] = None,
     material: Annotated[str | None, Query()] = None,
     dn: Annotated[str | None, Query(max_length=8)] = None,

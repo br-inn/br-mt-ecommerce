@@ -713,9 +713,7 @@ class MatchService:
                 extra={"error": str(_hitl_exc)[:120]},
             )
 
-    async def __maybe_enqueue_hitl_impl(
-        self, candidate: MatchCandidate, raw: CandidateRaw
-    ) -> None:
+    async def __maybe_enqueue_hitl_impl(self, candidate: MatchCandidate, raw: CandidateRaw) -> None:
         """Implementación interna — ver _maybe_enqueue_hitl.
 
         Lógica ampliada (mig 142 / US-SCR-04-08b):

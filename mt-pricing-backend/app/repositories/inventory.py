@@ -482,9 +482,7 @@ class InventoryRepository:
         await self.session.flush()
         return WarehouseRead.model_validate(wh)
 
-    async def patch_warehouse(
-        self, warehouse_id: UUID, payload: WarehousePatch
-    ) -> WarehouseRead:
+    async def patch_warehouse(self, warehouse_id: UUID, payload: WarehousePatch) -> WarehouseRead:
         from app.schemas.inventory import WarehouseRead
 
         result = await self.session.execute(select(Warehouse).where(Warehouse.id == warehouse_id))

@@ -190,11 +190,7 @@ def daily_digest(
         target_date_iso: fecha ISO-8601 opcional (e.g. "2026-05-12"). Si None,
             usa la fecha UTC actual. Útil para re-runs manuales o tests.
     """
-    target = (
-        date.fromisoformat(target_date_iso)
-        if target_date_iso
-        else datetime.now(tz=UTC).date()
-    )
+    target = date.fromisoformat(target_date_iso) if target_date_iso else datetime.now(tz=UTC).date()
     result = asyncio.run(_run_async(target))
     logger.info(
         "daily_digest: date=%s pending=%d auto_approved=%d approved=%d escalated=%d notifications=%d emails=%d",

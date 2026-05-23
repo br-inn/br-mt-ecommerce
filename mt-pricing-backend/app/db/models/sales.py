@@ -244,9 +244,7 @@ class StockReservation(UuidPkMixin, Base):
     )
 
     # Relationships
-    so_line: Mapped[SalesOrderLine] = relationship(
-        "SalesOrderLine", back_populates="reservations"
-    )
+    so_line: Mapped[SalesOrderLine] = relationship("SalesOrderLine", back_populates="reservations")
 
     __table_args__ = (
         CheckConstraint(

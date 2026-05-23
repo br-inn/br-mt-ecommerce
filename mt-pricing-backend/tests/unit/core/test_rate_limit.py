@@ -41,9 +41,7 @@ class _FakeRedis:
         self._buckets: dict[str, dict[str, float]] = {}
         self._fail = fail
 
-    def eval(
-        self, script: str, num_keys: int, *args: Any
-    ) -> list[Any]:
+    def eval(self, script: str, num_keys: int, *args: Any) -> list[Any]:
         if self._fail:
             raise RuntimeError("simulated redis failure")
         keys = list(args[:num_keys])

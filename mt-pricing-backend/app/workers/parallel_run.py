@@ -53,11 +53,7 @@ def parallel_run_diff(
     Returns:
         dict con date, generated_at, total_skus, flagged, items[].
     """
-    target = (
-        date.fromisoformat(target_date_iso)
-        if target_date_iso
-        else datetime.now(tz=UTC).date()
-    )
+    target = date.fromisoformat(target_date_iso) if target_date_iso else datetime.now(tz=UTC).date()
     result = asyncio.run(_run_async(target))
     logger.info(
         "parallel_run_diff: date=%s total_skus=%d flagged=%d",
