@@ -149,9 +149,16 @@ async def test_dashboard_unauthenticated_returns_401(client: AsyncClient) -> Non
 async def test_dashboard_empty_db_returns_zeroed_kpis(
     client: AsyncClient,
     authed_user: tuple[UUID, str],
+    db_session: AsyncSession,
 ) -> None:
     """DB vacía (salvo el user autenticado) → todos los counts = 0 o el mínimo."""
+    from sqlalchemy import text
+
     uid, email = authed_user
+
+    baseline_enabled_jobs = (
+        await db_session.execute(text("SELECT COUNT(*) FROM job_definitions WHERE enabled = true"))
+    ).scalar_one()
 
     res = await client.get("/api/v1/dashboard/stats", headers=_auth_headers(uid, email))
     assert res.status_code == 200, res.text
@@ -177,7 +184,7 @@ async def test_dashboard_empty_db_returns_zeroed_kpis(
     # Actividad / jobs vacíos.
     assert body["activity"]["audit_events_24h"] == 0
     assert body["activity"]["recent_events"] == []
-    assert body["jobs"]["enabled"] == 0
+    assert body["jobs"]["enabled"] == baseline_enabled_jobs
     assert body["jobs"]["runs_24h"] == 0
     assert body["jobs"]["failures_24h"] == 0
 
@@ -192,37 +199,25 @@ async def test_dashboard_with_seeded_data_returns_correct_counts(
     client: AsyncClient,
     db_session: AsyncSession,
     authed_user: tuple[UUID, str],
+    make_product: Any,
 ) -> None:
     """Seedea productos + un job + un audit event y verifica conteos."""
+    from sqlalchemy import text
+
     from app.db.models.audit import AuditEvent
     from app.db.models.job import JobDefinition, JobRun
-    from app.db.models.product import Product
 
     uid, email = authed_user
 
     # 3 productos: 2 active, 1 inactive; 1 complete, 1 partial, 1 blocked.
-    db_session.add_all(
-        [
-            Product(
-                sku="MT-V-001",
-                family="valves_ball",
-                lifecycle_status="active",
-                data_quality="complete",
-            ),
-            Product(
-                sku="MT-V-002",
-                family="valves_ball",
-                lifecycle_status="active",
-                data_quality="partial",
-            ),
-            Product(
-                sku="MT-V-003",
-                family="valves_ball",
-                lifecycle_status="deprecated",
-                data_quality="blocked",
-            ),
-        ]
-    )
+    await make_product("MT-V-001", lifecycle_status="active", data_quality="complete")
+    await make_product("MT-V-002", lifecycle_status="active", data_quality="partial")
+    await make_product("MT-V-003", lifecycle_status="deprecated", data_quality="blocked")
+
+    # Captura baseline de jobs enabled (seeded por migraciones) antes de añadir el test job.
+    baseline_enabled_jobs = (
+        await db_session.execute(text("SELECT COUNT(*) FROM job_definitions WHERE enabled = true"))
+    ).scalar_one()
 
     # 1 JobDefinition enabled + 1 JobRun success en 24h + 1 JobRun failed en 24h.
     job = JobDefinition(
@@ -283,7 +278,7 @@ async def test_dashboard_with_seeded_data_returns_correct_counts(
     assert body["catalog"]["products_partial"] == 1
     assert body["catalog"]["products_blocked"] == 1  # blocked = total - complete - partial.
 
-    assert body["jobs"]["enabled"] == 1
+    assert body["jobs"]["enabled"] == baseline_enabled_jobs + 1
     assert body["jobs"]["runs_24h"] == 2  # Excluye el run de -48h.
     assert body["jobs"]["failures_24h"] == 1
 
@@ -301,25 +296,15 @@ async def test_dashboard_translations_coverage_pct(
     client: AsyncClient,
     db_session: AsyncSession,
     authed_user: tuple[UUID, str],
+    make_product: Any,
 ) -> None:
     """4 productos, 2 con ES approved → 50% cobertura ES."""
-    from app.db.models.product import Product, ProductTranslation
+    from app.db.models.product import ProductTranslation
 
     uid, email = authed_user
 
-    skus = ["MT-A-1", "MT-A-2", "MT-A-3", "MT-A-4"]
-    db_session.add_all(
-        [
-            Product(
-                sku=sku,
-                family="adapters",
-                lifecycle_status="active",
-                data_quality="partial",
-            )
-            for sku in skus
-        ]
-    )
-    await db_session.flush()
+    for sku in ["MT-A-1", "MT-A-2", "MT-A-3", "MT-A-4"]:
+        await make_product(sku, family="adapters", lifecycle_status="active", data_quality="partial")
 
     # 2 traducciones ES approved + 1 ES draft (no cuenta).
     db_session.add_all(
