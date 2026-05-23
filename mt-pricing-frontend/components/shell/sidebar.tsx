@@ -29,6 +29,7 @@ import {
   Package,
   PiggyBank,
   Receipt,
+  Rss,
   ScrollText,
   Search,
   Settings,
@@ -176,6 +177,7 @@ const SECTION_SYS_ADMIN: readonly NavItem[] = [
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permissions: ["users:read"] },
   { href: "/admin/jobs", label: "Jobs", icon: Timer, permissions: ["jobs:read"] },
   { href: "/admin/scraper", label: "Scraper", icon: Search, permissions: ["products:read"] },
+  { href: "/admin/scraper/sources", label: "Scraper Sources", icon: Rss, permissions: ["admin:read"] },
   { href: "/admin/competitor-brands", label: "Marcas competidoras", icon: Building2, permissions: ["admin:read"] },
 ] as const;
 
