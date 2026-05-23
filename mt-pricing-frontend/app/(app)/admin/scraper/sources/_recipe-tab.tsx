@@ -96,6 +96,7 @@ export function RecipeTab({ source }: Props) {
       )}
 
       <NewRecipeDialog
+        key={String(dialogOpen)}
         source={source}
         liveRecipe={liveRecipe}
         open={dialogOpen}
@@ -145,15 +146,10 @@ function NewRecipeDialog({
 }) {
   const t = useTranslations("admin.scraperSources.recipe");
   const createRecipe = useCreateRecipe(source.id);
-  const [json, setJson] = React.useState("");
+  const [json, setJson] = React.useState(() =>
+    liveRecipe ? JSON.stringify(liveRecipe.recipe, null, 2) : EMPTY_RECIPE,
+  );
   const [jsonError, setJsonError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (open) {
-      setJson(liveRecipe ? JSON.stringify(liveRecipe.recipe, null, 2) : EMPTY_RECIPE);
-      setJsonError(null);
-    }
-  }, [open, liveRecipe]);
 
   const handleSave = async () => {
     let parsed: unknown;

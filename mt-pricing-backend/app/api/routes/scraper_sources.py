@@ -157,6 +157,7 @@ async def update_source(
     if source is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="source not found")
     await session.commit()
+    await session.refresh(source)
     return ScraperSourceRead.model_validate(source)
 
 
