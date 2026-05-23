@@ -55,10 +55,9 @@ from app.schemas.importer import (
 )
 from app.services.importer import ImporterService
 from app.services.importer.importer_service import (
+    _RUN_STORE,
     ImporterDomainError,
     ImportHeaderMismatchError,
-    ImportRunNotFoundError,
-    _RUN_STORE,
 )
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -123,15 +122,12 @@ async def analyze_import(
     try:
         header_idx, headers, samples = detect_header_row(file_bytes)
         proposed = suggest_mapping(headers, samples)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(
             status_code=422,
             detail={"code": "import_header_detection_failed", "title": str(exc)},
         ) from exc
-    sample_rows_safe = [
-        [str(v) if v is not None else None for v in row]
-        for row in samples
-    ]
+    sample_rows_safe = [[str(v) if v is not None else None for v in row] for row in samples]
 
     return AnalyzeImportResponse(
         filename=file.filename,
@@ -181,13 +177,18 @@ async def preview_import(
     custom_mapping = None
     if mapping_json:
         import json as _json
+
         from app.services.importer.mapping_detector import ColumnMappingItem as _CMI
+
         try:
             raw_mapping = _json.loads(mapping_json)
             if not isinstance(raw_mapping, list):
                 raise HTTPException(
                     status_code=422,
-                    detail={"code": "import_invalid_mapping", "title": "mapping_json debe ser un array"},
+                    detail={
+                        "code": "import_invalid_mapping",
+                        "title": "mapping_json debe ser un array",
+                    },
                 )
             parsed = [
                 _CMI(
@@ -204,7 +205,7 @@ async def preview_import(
             custom_mapping = parsed if parsed else None
         except HTTPException:
             raise
-        except Exception:  # noqa: BLE001
+        except Exception:
             raise HTTPException(
                 status_code=422,
                 detail={"code": "import_invalid_mapping", "title": "mapping_json inválido"},
@@ -315,9 +316,7 @@ async def get_report(
                 content=csv_text,
                 media_type="text/csv",
                 headers={
-                    "Content-Disposition": (
-                        f'attachment; filename="import_{run_id}_report.csv"'
-                    )
+                    "Content-Disposition": (f'attachment; filename="import_{run_id}_report.csv"')
                 },
             )
         return service.report_json(run_id, sample_per_bucket=sample_per_bucket)
@@ -330,9 +329,7 @@ async def get_report(
 # =============================================================================
 # Path donde el worker espera encontrar el PIM montado. Configurable via env
 # para facilitar overrides en CI; default coincide con docker-compose.dev.yml.
-_PIM_FIXTURE_PATH: str = os.environ.get(
-    "PIM_FIXTURE_PATH", "/fixtures/PIM completo.xlsx"
-)
+_PIM_FIXTURE_PATH: str = os.environ.get("PIM_FIXTURE_PATH", "/fixtures/PIM completo.xlsx")
 
 
 def _serialize_import_run(run: ImportRun) -> dict[str, Any]:
@@ -399,23 +396,18 @@ async def upload_and_run_pim(
         )
 
     # 1) Subir a Supabase Storage bucket imports-raw.
-    storage_path = (
-        f"pim/{datetime.utcnow():%Y/%m/%d}/{user.id}/{file.filename}"
-    )
+    storage_path = f"pim/{datetime.utcnow():%Y/%m/%d}/{user.id}/{file.filename}"
     try:
         from app.services.storage import upload_bytes
 
         upload_bytes(
             storage_path,
             file_bytes,
-            content_type=(
-                "application/vnd.openxmlformats-officedocument."
-                "spreadsheetml.sheet"
-            ),
+            content_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             bucket=settings.SUPABASE_STORAGE_BUCKET_IMPORTS,
             upsert=True,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail={
@@ -428,9 +420,7 @@ async def upload_and_run_pim(
     run = ImportRun(
         import_type="pim",
         source_filename=file.filename,
-        source_storage_path=(
-            f"{settings.SUPABASE_STORAGE_BUCKET_IMPORTS}/{storage_path}"
-        ),
+        source_storage_path=(f"{settings.SUPABASE_STORAGE_BUCKET_IMPORTS}/{storage_path}"),
         status="queued",
         triggered_by=user.id,
     )
@@ -450,7 +440,7 @@ async def upload_and_run_pim(
         )
         run.celery_task_id = async_result.id
         await session.commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         run.status = "failed"
         run.errors = [{"row": 0, "error": f"Celery dispatch failed: {exc}"}]
         await session.commit()
@@ -516,7 +506,7 @@ async def run_pim_from_fixture(
         )
         run.celery_task_id = async_result.id
         await session.commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         run.status = "failed"
         run.errors = [{"row": 0, "error": f"Celery dispatch failed: {exc}"}]
         await session.commit()
@@ -610,7 +600,8 @@ async def list_batch_runs(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     import_type: Annotated[str | None, Query(pattern=r"^(pim|costs|datasheets)$")] = None,
     status_filter: Annotated[
-        str | None, Query(alias="status", pattern=r"^(queued|running|completed|completed_with_errors|failed)$")
+        str | None,
+        Query(alias="status", pattern=r"^(queued|running|completed|completed_with_errors|failed)$"),
     ] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> dict[str, Any]:

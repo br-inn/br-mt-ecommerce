@@ -6,21 +6,25 @@ Endpoints:
 - POST /api/v1/admin/proxies         — añadir proxy al pool
 - DELETE /api/v1/admin/proxies/{proxy_b64} — eliminar proxy del pool
 """
+
 from __future__ import annotations
 
 import base64
 import logging
-from datetime import datetime, timezone
 from typing import Annotated
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import require_permissions
 from app.core.config import settings
 from app.db.models.user import User
-from app.services.scraper.circuit_breaker import CircuitBreaker, CircuitState, ProxyPool, get_circuit_breaker, get_proxy_pool
+from app.services.scraper.circuit_breaker import (
+    CircuitState,
+    get_circuit_breaker,
+    get_proxy_pool,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +114,9 @@ async def get_scraper_health(
 
     # Obtener Redis directo para stats
     try:
-        r_direct = aioredis.from_url(str(settings.REDIS_URL), encoding="utf-8", decode_responses=True)
+        r_direct = aioredis.from_url(
+            str(settings.REDIS_URL), encoding="utf-8", decode_responses=True
+        )
         for domain in _MONITORED_DOMAINS:
             stats = await cb.get_stats(domain)
             extra_stats = await _get_domain_stats_24h(r_direct, domain)
@@ -163,7 +169,9 @@ async def reset_circuit_breaker(
 ) -> None:
     """Fuerza el circuit breaker de un dominio a CLOSED (reset manual)."""
     if domain not in _MONITORED_DOMAINS:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' no monitoreado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' no monitoreado"
+        )
     cb = get_circuit_breaker()
     await cb.force_close(domain)
     logger.info("admin.circuit_breaker.reset", extra={"domain": domain})
@@ -190,7 +198,9 @@ async def suspend_circuit_breaker(
     este estado permanece hasta que se llame a ``/reset`` manualmente.
     """
     if domain not in _MONITORED_DOMAINS:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' no monitoreado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' no monitoreado"
+        )
     cb = get_circuit_breaker()
     await cb.force_open(domain)
     logger.info("admin.circuit_breaker.suspended", extra={"domain": domain})
@@ -232,7 +242,9 @@ async def add_proxy(
     proxy_pool = get_proxy_pool()
     proxy = body.proxy.strip()
     if not proxy:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="proxy no puede estar vacío")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="proxy no puede estar vacío"
+        )
 
     await proxy_pool.add_proxy(proxy)
     logger.info("admin.proxy.added", extra={"proxy": proxy[:40]})
@@ -264,5 +276,7 @@ async def remove_proxy(
     proxy_pool = get_proxy_pool()
     removed = await proxy_pool.remove_proxy(proxy)
     if removed == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proxy no encontrado en el pool")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Proxy no encontrado en el pool"
+        )
     logger.info("admin.proxy.removed", extra={"proxy": proxy[:40]})

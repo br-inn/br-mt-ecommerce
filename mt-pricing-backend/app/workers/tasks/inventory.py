@@ -32,7 +32,7 @@ from app.workers.worker import celery_app
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -87,16 +87,20 @@ def recalc_map_on_gr(self, gr_id: str) -> dict[str, Any]:  # type: ignore[no-unt
                         po_number = ""
                         try:
                             pol = await session.get(
-                                __import__("app.db.models.inventory", fromlist=["PurchaseOrderLine"]).PurchaseOrderLine,
+                                __import__(
+                                    "app.db.models.inventory", fromlist=["PurchaseOrderLine"]
+                                ).PurchaseOrderLine,
                                 gr.po_line_id,
                             )
                             if pol is not None:
                                 po = await session.get(
-                                    __import__("app.db.models.inventory", fromlist=["PurchaseOrder"]).PurchaseOrder,
+                                    __import__(
+                                        "app.db.models.inventory", fromlist=["PurchaseOrder"]
+                                    ).PurchaseOrder,
                                     pol.po_id,
                                 )
                                 po_number = po.po_number if po is not None else ""
-                        except Exception:  # noqa: BLE001
+                        except Exception:
                             pass
 
                         gr_event = GoodsReceivedEvent(
@@ -122,7 +126,7 @@ def recalc_map_on_gr(self, gr_id: str) -> dict[str, Any]:  # type: ignore[no-unt
                         session.add(sync_event)
                         await session.flush()
                         sync_event_id = str(sync_event.id)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     logger.warning(
                         "recalc_map_on_gr: could not create ERPSyncEvent for gr_id=%s",
                         gr_id,
@@ -159,13 +163,14 @@ def recalc_map_on_gr(self, gr_id: str) -> dict[str, Any]:  # type: ignore[no-unt
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _dispatch_price_recalc(sku: str) -> None:
     try:
         from app.workers.tasks.pricing import recalculate_sku_task
 
         recalculate_sku_task.delay(sku, "system")
         logger.info("recalc_map_on_gr: dispatched recalculate_sku_task sku=%s", sku)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning(
             "recalc_map_on_gr: could not dispatch recalculate_sku_task for sku=%s",
             sku,
@@ -180,7 +185,7 @@ def _dispatch_erp_event_by_id(event_id: str) -> None:
 
         push_erp_event.delay(event_id)
         logger.info("recalc_map_on_gr: dispatched push_erp_event event_id=%s", event_id)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning(
             "recalc_map_on_gr: push_erp_event dispatch failed event_id=%s",
             event_id,
@@ -199,16 +204,16 @@ async def _mark_gr_error(gr_id: str, tb: str) -> None:
                 gr.status = "error"
                 gr.notes = tb[:4000]
                 await session.commit()
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("recalc_map_on_gr: could not mark gr %s as error", gr_id)
 
 
 __all__ = [
-    "recalc_map_on_gr",
     "check_lot_expiry_warnings",
-    "run_rop_check",
-    "run_abc_classification",
     "generate_cycle_count_records",
+    "recalc_map_on_gr",
+    "run_abc_classification",
+    "run_rop_check",
 ]
 
 
@@ -233,9 +238,9 @@ def check_lot_expiry_warnings(self) -> dict[str, Any]:  # type: ignore[no-untype
     """
 
     async def _run() -> dict[str, Any]:
-        from datetime import date, timedelta
+        from datetime import date
 
-        from sqlalchemy import func, select, text
+        from sqlalchemy import select
 
         from app.db.engine import get_sessionmaker
         from app.db.models.inventory import (
@@ -250,12 +255,9 @@ def check_lot_expiry_warnings(self) -> dict[str, Any]:  # type: ignore[no-untype
             default_threshold = 30
 
             # Cargar umbrales configurados
-            threshold_rows = await session.execute(
-                select(ExpiryAlertThreshold)
-            )
+            threshold_rows = await session.execute(select(ExpiryAlertThreshold))
             thresholds: dict[str, int] = {
-                t.product_sku: t.threshold_days
-                for t in threshold_rows.scalars().all()
+                t.product_sku: t.threshold_days for t in threshold_rows.scalars().all()
             }
 
             # Lotes con expiry_date próxima (usando threshold por defecto o específico)
@@ -291,10 +293,12 @@ def check_lot_expiry_warnings(self) -> dict[str, Any]:  # type: ignore[no-untype
 
                 # Obtener qty_on_hand (primera posición con este lote)
                 pos_q = await session.execute(
-                    select(InventoryPosition).where(
+                    select(InventoryPosition)
+                    .where(
                         InventoryPosition.lot_id == lot.id,
                         InventoryPosition.stock_type == "unrestricted",
-                    ).limit(1)
+                    )
+                    .limit(1)
                 )
                 pos = pos_q.scalars().first()
                 qty_on_hand = float(pos.qty_on_hand) if pos else 0.0
@@ -353,9 +357,7 @@ def run_rop_check(self) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         async with get_sessionmaker()() as session:
             # Obtener posiciones unrestricted con ROP activo
             rp_q = await session.execute(
-                select(ReplenishmentParam).where(
-                    ReplenishmentParam.is_active.is_(True)
-                )
+                select(ReplenishmentParam).where(ReplenishmentParam.is_active.is_(True))
             )
             params = rp_q.scalars().all()
 
@@ -365,7 +367,9 @@ def run_rop_check(self) -> dict[str, Any]:  # type: ignore[no-untyped-def]
             for rp in params:
                 # Suma de qty_on_hand en el almacén para el SKU
                 qty_q = await session.execute(
-                    select(func.coalesce(func.sum(InventoryPosition.qty_on_hand), Decimal("0"))).where(
+                    select(
+                        func.coalesce(func.sum(InventoryPosition.qty_on_hand), Decimal("0"))
+                    ).where(
                         InventoryPosition.sku == rp.product_sku,
                         InventoryPosition.warehouse_id == rp.warehouse_id,
                         InventoryPosition.stock_type == "unrestricted",
@@ -378,11 +382,13 @@ def run_rop_check(self) -> dict[str, Any]:  # type: ignore[no-untyped-def]
 
                 # Evitar duplicar PRs auto-ROP activas para este SKU × almacén
                 existing_pr = await session.execute(
-                    select(PurchaseRequisition).where(
+                    select(PurchaseRequisition)
+                    .where(
                         PurchaseRequisition.product_sku == rp.product_sku,
                         PurchaseRequisition.status == "pending_approval",
                         PurchaseRequisition.notes.like("Auto-ROP%"),
-                    ).limit(1)
+                    )
+                    .limit(1)
                 )
                 if existing_pr.scalars().first() is not None:
                     continue
@@ -393,6 +399,7 @@ def run_rop_check(self) -> dict[str, Any]:  # type: ignore[no-untyped-def]
 
                 # Necesita un requester; usar sistema UUID cero (pseudo-system user)
                 from uuid import UUID as _UUID
+
                 system_user_id = _UUID("00000000-0000-0000-0000-000000000001")
 
                 pr = PurchaseRequisition(
@@ -468,15 +475,21 @@ def run_abc_classification(self, warehouse_id: str | None = None) -> dict[str, A
                     select(
                         InventoryPosition.sku,
                         func.sum(
-                            InventoryPosition.qty_on_hand * func.coalesce(InventoryPosition.map_aed, Decimal("0"))
+                            InventoryPosition.qty_on_hand
+                            * func.coalesce(InventoryPosition.map_aed, Decimal("0"))
                         ).label("consumption_value"),
-                    ).where(
+                    )
+                    .where(
                         InventoryPosition.warehouse_id == wh_id,
                         InventoryPosition.stock_type == "unrestricted",
-                    ).group_by(InventoryPosition.sku)
-                    .order_by(func.sum(
-                        InventoryPosition.qty_on_hand * func.coalesce(InventoryPosition.map_aed, Decimal("0"))
-                    ).desc())
+                    )
+                    .group_by(InventoryPosition.sku)
+                    .order_by(
+                        func.sum(
+                            InventoryPosition.qty_on_hand
+                            * func.coalesce(InventoryPosition.map_aed, Decimal("0"))
+                        ).desc()
+                    )
                 )
                 rows = pos_q.all()
                 if not rows:
@@ -488,7 +501,7 @@ def run_abc_classification(self, warehouse_id: str | None = None) -> dict[str, A
 
                 # Asignar clases ABC acumulativas
                 cumulative = Decimal("0")
-                classified_at = _dt.datetime.now(tz=_dt.timezone.utc)
+                classified_at = _dt.datetime.now(tz=_dt.UTC)
 
                 for row in rows:
                     val = row.consumption_value or Decimal("0")
@@ -504,22 +517,26 @@ def run_abc_classification(self, warehouse_id: str | None = None) -> dict[str, A
                         abc = "C"
 
                     # UPSERT via SQLAlchemy core
-                    stmt = pg_insert(ProductAbcClassification.__table__).values(
-                        id=func.gen_random_uuid(),
-                        product_sku=row.sku,
-                        warehouse_id=wh_id,
-                        abc_class=abc,
-                        annual_consumption_value=annual_val,
-                        pct_of_total=pct,
-                        classified_at=classified_at,
-                    ).on_conflict_do_update(
-                        constraint="uq_abc_sku_wh",
-                        set_={
-                            "abc_class": abc,
-                            "annual_consumption_value": annual_val,
-                            "pct_of_total": pct,
-                            "classified_at": classified_at,
-                        },
+                    stmt = (
+                        pg_insert(ProductAbcClassification.__table__)
+                        .values(
+                            id=func.gen_random_uuid(),
+                            product_sku=row.sku,
+                            warehouse_id=wh_id,
+                            abc_class=abc,
+                            annual_consumption_value=annual_val,
+                            pct_of_total=pct,
+                            classified_at=classified_at,
+                        )
+                        .on_conflict_do_update(
+                            constraint="uq_abc_sku_wh",
+                            set_={
+                                "abc_class": abc,
+                                "annual_consumption_value": annual_val,
+                                "pct_of_total": pct,
+                                "classified_at": classified_at,
+                            },
+                        )
                     )
                     await session.execute(stmt)
                     class_counts[abc] += 1
@@ -573,8 +590,9 @@ def generate_cycle_count_records(self: Any, schedule_id: str) -> dict[str, Any]:
             if not sched:
                 return {"skipped": True, "reason": "schedule not found or inactive"}
 
-            from app.db.models.inventory import CycleCount
             import datetime as _datetime
+
+            from app.db.models.inventory import CycleCount
 
             positions_q = _select(InventoryPosition).where(
                 InventoryPosition.warehouse_id == sched.warehouse_id,

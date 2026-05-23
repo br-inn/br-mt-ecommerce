@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.services.importer_materials.parser import MaterialRow
@@ -91,7 +91,7 @@ async def apply_material_rows(
         total_rows=len(rows),
         errors=err_count,
         failure_details=failure_details,
-        started_at=datetime.now(tz=timezone.utc),
+        started_at=datetime.now(tz=UTC),
     )
     try:
         if mode == "replace":
@@ -101,5 +101,5 @@ async def apply_material_rows(
             inserted = await repo.insert_many(valid)
         result.inserted = inserted
     finally:
-        result.finished_at = datetime.now(tz=timezone.utc)
+        result.finished_at = datetime.now(tz=UTC)
     return result

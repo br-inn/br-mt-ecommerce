@@ -10,9 +10,10 @@ Seeds: 20 GL accounts representativas + 14 posting periods 2026
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260527_110"
 down_revision = "20260525_115"
@@ -26,15 +27,30 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "gl_accounts",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("account_code", sa.Text(), nullable=False),
         sa.Column("account_name", sa.Text(), nullable=False),
         sa.Column("account_type", sa.Text(), nullable=False),
-        sa.Column("parent_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("gl_accounts.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "parent_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("gl_accounts.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("is_reconciling", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("is_blocked", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("currency", sa.CHAR(3), server_default="AED", nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "account_type IN ('ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE','CONTRA')",
             name="ck_gl_accounts_account_type",
@@ -49,7 +65,12 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "posting_periods",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("fiscal_year", sa.Integer(), nullable=False),
         sa.Column("period_num", sa.Integer(), nullable=False),
         sa.Column("period_name", sa.Text(), nullable=True),
@@ -57,9 +78,16 @@ def upgrade() -> None:
         sa.Column("date_to", sa.Date(), nullable=False),
         sa.Column("status", sa.Text(), server_default="open", nullable=False),
         sa.Column("closed_at", sa.TIMESTAMP(timezone=True), nullable=True),
-        sa.Column("closed_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "closed_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.CheckConstraint("period_num BETWEEN 1 AND 16", name="ck_posting_periods_period_num"),
-        sa.CheckConstraint("status IN ('open','closed','locked')", name="ck_posting_periods_status"),
+        sa.CheckConstraint(
+            "status IN ('open','closed','locked')", name="ck_posting_periods_status"
+        ),
         sa.UniqueConstraint("fiscal_year", "period_num", name="uq_posting_periods_fy_period"),
     )
     op.create_index("ix_posting_periods_fy", "posting_periods", ["fiscal_year", "period_num"])

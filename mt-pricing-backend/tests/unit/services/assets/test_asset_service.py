@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -101,7 +101,7 @@ def _make_session(assets: list[_FakeAsset] | None = None) -> Any:
     session.refresh = AsyncMock()
 
     # build execute mock that returns assets based on query
-    async def _execute(stmt: Any) -> Any:  # noqa: ARG001
+    async def _execute(stmt: Any) -> Any:
         result = MagicMock()
         scalars_result = MagicMock()
         scalars_result.all.return_value = list(assets)

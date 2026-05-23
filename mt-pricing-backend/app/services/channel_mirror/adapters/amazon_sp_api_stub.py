@@ -10,11 +10,10 @@ ASIN B0CXR4M7Z9). Para SKUs no conocidos, devuelve listing vacío
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.channel_mirror.ports import LiveListing, PublishResult
-
 
 # Listing canned para SKU MTV-1004 (ASIN B0CXR4M7Z9). Reproduce los campos
 # del mockup exactamente para que el frontend muestre los mismos drift/match.
@@ -50,9 +49,7 @@ class AmazonSPApiStub:
 
     channel_code: str = "amazon_uae"
 
-    async def pull_listing(
-        self, sku: str, external_id: str | None = None
-    ) -> LiveListing:
+    async def pull_listing(self, sku: str, external_id: str | None = None) -> LiveListing:
         canned = _CANNED_LISTINGS.get(sku)
         if canned is None:
             # SKU desconocido → listing inexistente.
@@ -62,7 +59,7 @@ class AmazonSPApiStub:
                 sku=sku,
                 fields={},
                 buybox_state="none",
-                fetched_at=datetime.now(tz=timezone.utc),
+                fetched_at=datetime.now(tz=UTC),
                 raw={"stub": True, "reason": "sku_not_found_in_canned"},
             )
         return LiveListing(
@@ -75,7 +72,7 @@ class AmazonSPApiStub:
             stock_qty=canned["stock_qty"],
             rating=canned["rating"],
             reviews_count=canned["reviews_count"],
-            fetched_at=datetime.now(tz=timezone.utc),
+            fetched_at=datetime.now(tz=UTC),
             raw={"stub": True, "asin": canned["external_id"]},
         )
 

@@ -13,23 +13,20 @@ Cubre:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+import datetime as _dt
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-import datetime as _dt
 
 from app.db.models.inventory import (
     CycleCountSchedule,
     ExpiryAlertThreshold,
     GoodsReceipt,
-    InventoryAlert,
     InventoryLot,
     InventoryPosition,
     JournalEntry,
@@ -65,8 +62,6 @@ from app.schemas.inventory import (
     WarehouseZoneRead,
 )
 from app.schemas.inventory_ops import (
-    AbcClassificationRunResult,
-    CriticalStockItem,
     CycleCountScheduleCreate,
     CycleCountScheduleRead,
     ExpiryAlertGroupRead,
@@ -78,7 +73,6 @@ from app.schemas.inventory_ops import (
     ReplenishmentParamCreate,
     ReplenishmentParamPatch,
     ReplenishmentParamRead,
-    RopCheckResult,
 )
 
 
@@ -101,7 +95,7 @@ class InventoryRepository:
         warehouse_id: UUID | None = None,
         zone_id: UUID | None = None,
     ) -> list[InventoryPositionRead]:
-        from app.db.models.product import Product  # noqa: PLC0415
+        from app.db.models.product import Product
 
         stmt = (
             select(
@@ -148,9 +142,7 @@ class InventoryRepository:
             out.append(data)
         return out
 
-    async def get_positions_by_sku(
-        self, sku: str
-    ) -> list[InventoryPositionRead]:
+    async def get_positions_by_sku(self, sku: str) -> list[InventoryPositionRead]:
         return await self.list_positions(sku=sku)
 
     async def get_availability(self, sku: str) -> list[InventoryAvailabilityRead]:
@@ -185,9 +177,7 @@ class InventoryRepository:
             for row in rows
         ]
 
-    async def get_map_history(
-        self, sku: str, *, limit: int = 50
-    ) -> list[MAPHistoryPoint]:
+    async def get_map_history(self, sku: str, *, limit: int = 50) -> list[MAPHistoryPoint]:
         stmt = (
             select(
                 GoodsReceipt.id.label("gr_id"),
@@ -230,26 +220,22 @@ class InventoryRepository:
         ]
 
     async def get_summary(self) -> InventorySummary:
-        skus_with_stock_stmt = select(
-            func.count(InventoryPosition.id)
-        ).where(InventoryPosition.qty_on_hand > 0)
-
-        total_value_stmt = select(
-            func.coalesce(
-                func.sum(InventoryPosition.total_stock_value_aed), Decimal("0")
-            )
+        skus_with_stock_stmt = select(func.count(InventoryPosition.id)).where(
+            InventoryPosition.qty_on_hand > 0
         )
 
-        skus_without_cost_stmt = select(
-            func.count(InventoryPosition.id)
-        ).where(
+        total_value_stmt = select(
+            func.coalesce(func.sum(InventoryPosition.total_stock_value_aed), Decimal("0"))
+        )
+
+        skus_without_cost_stmt = select(func.count(InventoryPosition.id)).where(
             and_(
                 InventoryPosition.qty_on_hand > 0,
                 InventoryPosition.map_aed.is_(None),
             )
         )
 
-        five_min_ago = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
+        five_min_ago = datetime.now(tz=_dt.UTC) - timedelta(minutes=5)
         pending_gr_stmt = select(func.count(GoodsReceipt.id)).where(
             and_(
                 GoodsReceipt.status == "pending",
@@ -280,10 +266,7 @@ class InventoryRepository:
             .order_by(StockMovementType.code)
         )
         result = await self.session.execute(stmt)
-        return [
-            StockMovementTypeRead.model_validate(row)
-            for row in result.scalars().all()
-        ]
+        return [StockMovementTypeRead.model_validate(row) for row in result.scalars().all()]
 
     async def create_movement(
         self, payload: StockMovementCreate, posted_by: UUID
@@ -314,7 +297,7 @@ class InventoryRepository:
             # Asiento genérico — cuentas por configurar según plan contable del cliente
             entry = JournalEntry(
                 source_movement_id=movement.id,
-                debit_account="1300",   # Inventario (activo)
+                debit_account="1300",  # Inventario (activo)
                 credit_account="4000",  # Proveedor / contraparte
                 amount=abs(payload.qty),
                 currency="AED",
@@ -325,22 +308,15 @@ class InventoryRepository:
         await self.session.refresh(movement)
 
         journal_entries = await self.session.execute(
-            select(JournalEntry).where(
-                JournalEntry.source_movement_id == movement.id
-            )
+            select(JournalEntry).where(JournalEntry.source_movement_id == movement.id)
         )
-        entries = [
-            JournalEntryRead.model_validate(e)
-            for e in journal_entries.scalars().all()
-        ]
+        entries = [JournalEntryRead.model_validate(e) for e in journal_entries.scalars().all()]
 
         result = StockMovementRead.model_validate(movement)
         result.journal_entries = entries
         return result
 
-    async def reverse_movement(
-        self, movement_id: UUID, posted_by: UUID
-    ) -> StockMovementRead:
+    async def reverse_movement(self, movement_id: UUID, posted_by: UUID) -> StockMovementRead:
         original = await self.session.get(StockMovement, movement_id)
         if not original:
             raise HTTPException(
@@ -370,16 +346,9 @@ class InventoryRepository:
         return reversal
 
     async def list_movements(self, *, limit: int = 50) -> list[StockMovementRead]:
-        stmt = (
-            select(StockMovement)
-            .order_by(StockMovement.posted_at.desc())
-            .limit(limit)
-        )
+        stmt = select(StockMovement).order_by(StockMovement.posted_at.desc()).limit(limit)
         result = await self.session.execute(stmt)
-        return [
-            StockMovementRead.model_validate(m)
-            for m in result.scalars().all()
-        ]
+        return [StockMovementRead.model_validate(m) for m in result.scalars().all()]
 
     # -----------------------------------------------------------------------
     # US-ERP-02-03: Lots
@@ -402,10 +371,7 @@ class InventoryRepository:
             stmt = stmt.where(and_(*conditions))
 
         result = await self.session.execute(stmt)
-        return [
-            InventoryLotRead.model_validate(lot)
-            for lot in result.scalars().all()
-        ]
+        return [InventoryLotRead.model_validate(lot) for lot in result.scalars().all()]
 
     async def get_lot(self, lot_id: UUID) -> InventoryLotRead:
         lot = await self.session.get(InventoryLot, lot_id)
@@ -416,9 +382,7 @@ class InventoryRepository:
             )
         return InventoryLotRead.model_validate(lot)
 
-    async def patch_lot_quality(
-        self, lot_id: UUID, quality_status: str
-    ) -> InventoryLotRead:
+    async def patch_lot_quality(self, lot_id: UUID, quality_status: str) -> InventoryLotRead:
         valid = {"released", "hold", "blocked"}
         if quality_status not in valid:
             raise HTTPException(
@@ -506,10 +470,7 @@ class InventoryRepository:
     async def list_warehouses(self) -> list[WarehouseRead]:
         stmt = select(Warehouse).order_by(Warehouse.code)
         result = await self.session.execute(stmt)
-        return [
-            WarehouseRead.model_validate(wh)
-            for wh in result.scalars().all()
-        ]
+        return [WarehouseRead.model_validate(wh) for wh in result.scalars().all()]
 
     async def create_warehouse(self, payload: WarehouseCreate) -> WarehouseRead:
         wh = Warehouse(
@@ -521,11 +482,10 @@ class InventoryRepository:
         await self.session.flush()
         return WarehouseRead.model_validate(wh)
 
-    async def patch_warehouse(self, warehouse_id: UUID, payload: "WarehousePatch") -> "WarehouseRead":
-        from app.schemas.inventory import WarehousePatch, WarehouseRead
-        result = await self.session.execute(
-            select(Warehouse).where(Warehouse.id == warehouse_id)
-        )
+    async def patch_warehouse(self, warehouse_id: UUID, payload: WarehousePatch) -> WarehouseRead:
+        from app.schemas.inventory import WarehouseRead
+
+        result = await self.session.execute(select(Warehouse).where(Warehouse.id == warehouse_id))
         wh = result.scalar_one_or_none()
         if not wh:
             raise HTTPException(status_code=404, detail="Almacén no encontrado")
@@ -543,10 +503,7 @@ class InventoryRepository:
             .order_by(WarehouseZone.code)
         )
         result = await self.session.execute(stmt)
-        return [
-            WarehouseZoneRead.model_validate(z)
-            for z in result.scalars().all()
-        ]
+        return [WarehouseZoneRead.model_validate(z) for z in result.scalars().all()]
 
     async def create_zone(
         self, warehouse_id: UUID, payload: WarehouseZoneCreate
@@ -568,10 +525,7 @@ class InventoryRepository:
             .order_by(WarehouseLocation.bin_code)
         )
         result = await self.session.execute(stmt)
-        return [
-            WarehouseLocationRead.model_validate(loc)
-            for loc in result.scalars().all()
-        ]
+        return [WarehouseLocationRead.model_validate(loc) for loc in result.scalars().all()]
 
     async def create_location(
         self, zone_id: UUID, payload: WarehouseLocationCreate
@@ -669,9 +623,7 @@ class InventoryRepository:
                 InventoryLot.product_sku == product_sku,
                 InventoryLot.quality_status == "released",
             )
-            .order_by(
-                InventoryLot.expiry_date.asc().nullslast()
-            )
+            .order_by(InventoryLot.expiry_date.asc().nullslast())
         )
         result = await self.session.execute(stmt)
         rows = result.all()
@@ -756,7 +708,7 @@ class InventoryRepository:
             rp.lead_time_days = payload.lead_time_days
         if payload.is_active is not None:
             rp.is_active = payload.is_active
-        rp.updated_at = _dt.datetime.now(tz=_dt.timezone.utc)
+        rp.updated_at = _dt.datetime.now(tz=_dt.UTC)
         await self.session.flush()
         return ReplenishmentParamRead.model_validate(rp)
 
@@ -774,14 +726,9 @@ class InventoryRepository:
             stmt = stmt.where(ProductAbcClassification.warehouse_id == warehouse_id)
         if abc_class:
             stmt = stmt.where(ProductAbcClassification.abc_class == abc_class)
-        stmt = stmt.order_by(
-            ProductAbcClassification.annual_consumption_value.desc()
-        )
+        stmt = stmt.order_by(ProductAbcClassification.annual_consumption_value.desc())
         result = await self.session.execute(stmt)
-        return [
-            ProductAbcClassificationRead.model_validate(r)
-            for r in result.scalars().all()
-        ]
+        return [ProductAbcClassificationRead.model_validate(r) for r in result.scalars().all()]
 
     async def list_cycle_count_schedules(
         self,
@@ -791,10 +738,7 @@ class InventoryRepository:
         if warehouse_id:
             stmt = stmt.where(CycleCountSchedule.warehouse_id == warehouse_id)
         result = await self.session.execute(stmt.order_by(CycleCountSchedule.abc_class))
-        return [
-            CycleCountScheduleRead.model_validate(r)
-            for r in result.scalars().all()
-        ]
+        return [CycleCountScheduleRead.model_validate(r) for r in result.scalars().all()]
 
     async def create_cycle_count_schedule(
         self, payload: CycleCountScheduleCreate
@@ -816,7 +760,7 @@ class InventoryRepository:
 
     async def get_inventory_kpis(self) -> InventoryKpisRead:
         today = _dt.date.today()
-        now = _dt.datetime.now(tz=_dt.timezone.utc)
+        now = _dt.datetime.now(tz=_dt.UTC)
         thirty_days_ago = now - _dt.timedelta(days=30)
         expiry_cutoff = today + _dt.timedelta(days=30)
 
@@ -833,7 +777,10 @@ class InventoryRepository:
         # COGS proxy: suma de (qty_received × actual_unit_price) en GRs procesados últimos 30d
         cogs_stmt = select(
             func.coalesce(
-                func.sum(GoodsReceipt.qty_received * func.coalesce(GoodsReceipt.actual_unit_price, Decimal("0"))),
+                func.sum(
+                    GoodsReceipt.qty_received
+                    * func.coalesce(GoodsReceipt.actual_unit_price, Decimal("0"))
+                ),
                 Decimal("0"),
             )
         ).where(
@@ -864,9 +811,7 @@ class InventoryRepository:
         complete_gr = (await self.session.execute(complete_gr_stmt)).scalar() or 0
 
         fill_rate = (
-            Decimal(str(complete_gr)) / Decimal(str(total_gr)) * 100
-            if total_gr > 0
-            else None
+            Decimal(str(complete_gr)) / Decimal(str(total_gr)) * 100 if total_gr > 0 else None
         )
 
         # Stockout count: posiciones unrestricted con qty_on_hand <= 0

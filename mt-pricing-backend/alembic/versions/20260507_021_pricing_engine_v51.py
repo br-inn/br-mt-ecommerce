@@ -37,6 +37,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260507_021"
@@ -153,9 +154,7 @@ def upgrade() -> None:
         $fn$ LANGUAGE plpgsql;
         """
     )
-    op.execute(
-        "DROP TRIGGER IF EXISTS prices_initial_status_trg ON prices"
-    )
+    op.execute("DROP TRIGGER IF EXISTS prices_initial_status_trg ON prices")
     op.execute(
         """
         CREATE TRIGGER prices_initial_status_trg
@@ -190,9 +189,7 @@ def upgrade() -> None:
         $fn$ LANGUAGE plpgsql;
         """
     )
-    op.execute(
-        "DROP TRIGGER IF EXISTS prices_state_machine_trg ON prices"
-    )
+    op.execute("DROP TRIGGER IF EXISTS prices_state_machine_trg ON prices")
     op.execute(
         """
         CREATE TRIGGER prices_state_machine_trg

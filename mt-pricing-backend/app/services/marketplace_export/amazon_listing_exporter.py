@@ -3,6 +3,7 @@
 All 46 columns of the Amazon UAE PlumbingFixture feed template.
 Static values are per the reference Excel "VOLCADO AMAZON".
 """
+
 from __future__ import annotations
 
 import csv
@@ -84,16 +85,23 @@ _WARNING_RULES = [
 class AmazonListingExporter:
     """Assembles Amazon UAE flat-file rows and validates field completeness."""
 
-    def build_row(self, product: Any, listing: Any | None, channel_listing: Any | None) -> dict[str, Any]:
+    def build_row(
+        self, product: Any, listing: Any | None, channel_listing: Any | None
+    ) -> dict[str, Any]:
         """Return a dict with all 46 Amazon feed fields populated."""
         images = sorted(
-            [a for a in (getattr(product, "assets", None) or []) if getattr(a, "kind", "") == "image"],
+            [
+                a
+                for a in (getattr(product, "assets", None) or [])
+                if getattr(a, "kind", "") == "image"
+            ],
             key=lambda a: getattr(a, "position", 99),
         )
         img_urls = [getattr(img, "public_url", "") or "" for img in images]
 
         body_materials = [
-            m for m in (getattr(product, "materials", None) or [])
+            m
+            for m in (getattr(product, "materials", None) or [])
             if getattr(m, "component", "") == "body" and getattr(m, "position", 0) == 0
         ]
         material_type = body_materials[0].material if body_materials else ""
@@ -105,17 +113,27 @@ class AmazonListingExporter:
         connection_type = conns[0].connection_type if conns else ""
 
         pt = next(
-            (t for t in (getattr(product, "tech_tables", None) or [])
-             if getattr(t, "kind", "") == "pressure_temperature"),
+            (
+                t
+                for t in (getattr(product, "tech_tables", None) or [])
+                if getattr(t, "kind", "") == "pressure_temperature"
+            ),
             None,
         )
         pressure = float(pt.data.get("pn")) if pt and pt.data.get("pn") is not None else ""
-        temp_min = float(pt.data.get("temp_min_c")) if pt and pt.data.get("temp_min_c") is not None else ""
-        temp_max = float(pt.data.get("temp_max_c")) if pt and pt.data.get("temp_max_c") is not None else ""
+        temp_min = (
+            float(pt.data.get("temp_min_c")) if pt and pt.data.get("temp_min_c") is not None else ""
+        )
+        temp_max = (
+            float(pt.data.get("temp_max_c")) if pt and pt.data.get("temp_max_c") is not None else ""
+        )
 
         dim_table = next(
-            (t for t in (getattr(product, "tech_tables", None) or [])
-             if getattr(t, "kind", "") == "dimensions_by_dn"),
+            (
+                t
+                for t in (getattr(product, "tech_tables", None) or [])
+                if getattr(t, "kind", "") == "dimensions_by_dn"
+            ),
             None,
         )
         dim_row: dict[str, Any] = {}
@@ -126,9 +144,7 @@ class AmazonListingExporter:
         cert_codes = ", ".join(
             c.certification_code for c in certs if getattr(c, "certification_code", None)
         )
-        cert_standards = ", ".join(
-            c.standard for c in certs if getattr(c, "standard", None)
-        )
+        cert_standards = ", ".join(c.standard for c in certs if getattr(c, "standard", None))
         cert_url = next(
             (getattr(c, "document_url", "") for c in certs if getattr(c, "document_url", None)),
             "",
@@ -153,7 +169,9 @@ class AmazonListingExporter:
             "model": getattr(product, "sku", ""),
             "country_of_origin": getattr(product, "country_of_origin", "ES") or "ES",
             "condition_type": "New",
-            "product_description": getattr(listing, "listing_description", "") or "" if listing else "",
+            "product_description": getattr(listing, "listing_description", "") or ""
+            if listing
+            else "",
             "bullet_point1": bullets[0] if len(bullets) > 0 else "",
             "bullet_point2": bullets[1] if len(bullets) > 1 else "",
             "bullet_point3": bullets[2] if len(bullets) > 2 else "",
@@ -221,16 +239,24 @@ class AmazonListingExporter:
                 warnings.append({"field": field, "code": code, "message": message})
 
         bullets_filled = sum(
-            1 for k in ("bullet_point1", "bullet_point2", "bullet_point3",
-                        "bullet_point4", "bullet_point5")
+            1
+            for k in (
+                "bullet_point1",
+                "bullet_point2",
+                "bullet_point3",
+                "bullet_point4",
+                "bullet_point5",
+            )
             if row.get(k)
         )
         if bullets_filled < 5:
-            warnings.append({
-                "field": "bullet_points",
-                "code": "INCOMPLETE_BULLETS",
-                "message": f"Only {bullets_filled}/5 bullet points filled. Amazon recommends all 5.",
-            })
+            warnings.append(
+                {
+                    "field": "bullet_points",
+                    "code": "INCOMPLETE_BULLETS",
+                    "message": f"Only {bullets_filled}/5 bullet points filled. Amazon recommends all 5.",
+                }
+            )
 
         return errors, warnings
 

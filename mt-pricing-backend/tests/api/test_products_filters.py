@@ -74,9 +74,7 @@ async def _seed_admin(session: AsyncSession) -> tuple[UUID, str]:
         await session.flush()
     uid = uuid4()
     email = f"filt-{uid.hex[:6]}@mt.ae"
-    user = User(
-        id=uid, email=email, full_name="F", locale="es", is_active=True, role_id=role.id
-    )
+    user = User(id=uid, email=email, full_name="F", locale="es", is_active=True, role_id=role.id)
     session.add(user)
     await session.flush()
     return uid, email
@@ -105,23 +103,22 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 
 
 def _payload(sku: str, **kw: Any) -> dict[str, Any]:
-    base = {
+    base: dict[str, Any] = {
         "sku": sku,
-        "name_en": f"Brass valve {sku}",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
         "pn": "PN16",
     }
+    # name_en is no longer a product column (mig 065: moved to product_translations)
+    kw.pop("name_en", None)
     base.update(kw)
     return base
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_filter_by_dn(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_filter_by_dn(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
@@ -137,9 +134,7 @@ async def test_filter_by_dn(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_filter_by_material(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_filter_by_material(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
@@ -166,9 +161,7 @@ async def test_include_total_returns_total_count(
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
     for i in range(3):
-        await client.post(
-            "/api/v1/products", json=_payload(f"MT-TOT-{i:03d}"), headers=headers
-        )
+        await client.post("/api/v1/products", json=_payload(f"MT-TOT-{i:03d}"), headers=headers)
 
     r = await client.get(
         "/api/v1/products?material=brass&include_total=true&limit=2", headers=headers
@@ -178,18 +171,14 @@ async def test_include_total_returns_total_count(
     assert body["total"] is not None
     assert body["total"] >= 3
     # Sin include_total → total None.
-    r2 = await client.get(
-        "/api/v1/products?material=brass&limit=2", headers=headers
-    )
+    r2 = await client.get("/api/v1/products?material=brass&limit=2", headers=headers)
     assert r2.status_code == 200
     assert r2.json()["total"] is None
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_full_text_search_q_param(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_full_text_search_q_param(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 

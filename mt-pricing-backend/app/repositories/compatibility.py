@@ -15,12 +15,10 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import and_, delete, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.compatibility import ProductCompatibility
-from app.db.models.product import Product
 
 # Mapa de inversos semánticos que deben sincronizarse.
 _INVERSE: dict[str, str] = {
@@ -211,9 +209,7 @@ class CompatibilityRepo:
                 await self.session.execute(inv_stmt)
 
         # 2. Borrar todos los outgoing.
-        del_stmt = delete(ProductCompatibility).where(
-            ProductCompatibility.product_sku == sku
-        )
+        del_stmt = delete(ProductCompatibility).where(ProductCompatibility.product_sku == sku)
         await self.session.execute(del_stmt)
         await self.session.flush()
 
@@ -274,10 +270,8 @@ class CompatibilityRepo:
         if dn is not None:
             stmt = stmt.where(
                 and_(
-                    (ProductCompatibility.dn_min.is_(None))
-                    | (ProductCompatibility.dn_min <= dn),
-                    (ProductCompatibility.dn_max.is_(None))
-                    | (ProductCompatibility.dn_max >= dn),
+                    (ProductCompatibility.dn_min.is_(None)) | (ProductCompatibility.dn_min <= dn),
+                    (ProductCompatibility.dn_max.is_(None)) | (ProductCompatibility.dn_max >= dn),
                 )
             )
         result = await self.session.execute(stmt)

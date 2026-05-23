@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -23,6 +23,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mk_user() -> Any:
     user = MagicMock()

@@ -42,7 +42,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db_session, require_role
-from app.db.models.billing import EInvoiceSubmission, Invoice, PaymentPromise
+from app.db.models.billing import EInvoiceSubmission, Invoice
 from app.db.models.user import User
 from app.schemas.billing import (
     ARAgingReport,
@@ -62,7 +62,7 @@ from app.schemas.billing import (
 from app.services import billing as svc
 
 router = APIRouter(
-    prefix="/api/v1/billing",
+    prefix="/billing",
     tags=["billing"],
     dependencies=[Depends(require_role("admin", "gerente"))],
 )
@@ -75,6 +75,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 async def _get_invoice_or_404(session: AsyncSession, invoice_id: UUID) -> Invoice:
     inv = await svc.get_invoice(session, invoice_id)
     if not inv:
@@ -85,6 +86,7 @@ async def _get_invoice_or_404(session: AsyncSession, invoice_id: UUID) -> Invoic
 # ---------------------------------------------------------------------------
 # US-ERP-05-01 — Invoices CRUD + Document chain
 # ---------------------------------------------------------------------------
+
 
 @router.post("/invoices", response_model=InvoiceRead, status_code=status.HTTP_201_CREATED)
 async def create_invoice(
@@ -145,7 +147,11 @@ async def get_invoice_chain(
     return chain
 
 
-@router.post("/invoices/from-delivery/{delivery_id}", response_model=InvoiceRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/invoices/from-delivery/{delivery_id}",
+    response_model=InvoiceRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_invoice_from_delivery(
     delivery_id: UUID,
     session: DbSession,
@@ -163,6 +169,7 @@ async def create_invoice_from_delivery(
 # ---------------------------------------------------------------------------
 # US-ERP-05-02 — Post / Cancel / Reverse
 # ---------------------------------------------------------------------------
+
 
 @router.post("/invoices/{invoice_id}/post", response_model=InvoiceRead)
 async def post_invoice(
@@ -196,7 +203,11 @@ async def cancel_invoice(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@router.post("/invoices/{invoice_id}/reverse", response_model=InvoiceRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/invoices/{invoice_id}/reverse",
+    response_model=InvoiceRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def reverse_invoice(
     invoice_id: UUID,
     session: DbSession,
@@ -216,7 +227,8 @@ async def reverse_invoice(
 # US-ERP-05-03 — Dunning
 # ---------------------------------------------------------------------------
 
-@router.get("/dunning", response_model=list[dict])
+
+@router.get("/dunning", response_model=list[dict[str, Any]])
 async def get_dunning(
     session: DbSession,
     current_user: CurrentUser,
@@ -248,7 +260,12 @@ async def escalate_dunning(
 # US-ERP-05-04 — E-Invoice
 # ---------------------------------------------------------------------------
 
-@router.post("/e-invoices/{invoice_id}/submit", response_model=EInvoiceSubmissionRead, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/e-invoices/{invoice_id}/submit",
+    response_model=EInvoiceSubmissionRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def submit_e_invoice(
     invoice_id: UUID,
     req: EInvoiceSubmitRequest,
@@ -294,18 +311,25 @@ async def retry_e_invoice(
 # US-ERP-05-05 — AR Aging + Payment Promises
 # ---------------------------------------------------------------------------
 
+_AsOfDateQ = Annotated[date | None, Query()]
+
+
 @router.get("/ar-aging", response_model=ARAgingReport)
 async def get_ar_aging(
     session: DbSession,
     current_user: CurrentUser,
-    as_of_date: date | None = Query(default=None),
+    as_of_date: _AsOfDateQ = None,
 ) -> Any:
     """AR Aging report por customer, segmentado en buckets estándar."""
     buckets = await svc.get_ar_aging(session, as_of_date)
     return ARAgingReport(as_of_date=as_of_date or date.today(), buckets=buckets)
 
 
-@router.post("/payment-promises", response_model=PaymentPromiseRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/payment-promises",
+    response_model=PaymentPromiseRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_payment_promise(
     data: PaymentPromiseCreate,
     session: DbSession,
@@ -334,6 +358,7 @@ async def patch_payment_promise(
 # ---------------------------------------------------------------------------
 # US-ERP-05-06 — KPIs
 # ---------------------------------------------------------------------------
+
 
 @router.get("/kpis", response_model=BillingKPIs)
 async def get_billing_kpis(

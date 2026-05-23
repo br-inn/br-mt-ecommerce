@@ -50,9 +50,7 @@ def test_build_path_external_mirror_prefix() -> None:
 def test_build_path_thumbnail_size_required() -> None:
     """role='thumbnail' requiere thumbnail_size 256/512/1024."""
     with pytest.raises(ValueError, match="thumbnail_size"):
-        storage_svc.build_product_image_path(
-            sku="MT-V-038", role="thumbnail", ext="webp"
-        )
+        storage_svc.build_product_image_path(sku="MT-V-038", role="thumbnail", ext="webp")
 
 
 def test_build_path_thumbnail_path_format() -> None:
@@ -82,9 +80,7 @@ def test_build_path_generates_uuid_when_no_image_id() -> None:
 
 def test_build_path_normalizes_extension() -> None:
     """Extensión con punto o mayúsculas se normaliza a sin-punto + lowercase."""
-    path = storage_svc.build_product_image_path(
-        sku="X", role="primary", ext=".PNG", image_id="i"
-    )
+    path = storage_svc.build_product_image_path(sku="X", role="primary", ext=".PNG", image_id="i")
     assert path == "master/X/i.png"
 
 
@@ -125,9 +121,7 @@ def _make_mock_client(signed_url: str = "https://example.com/signed?token=xyz") 
 
 def test_create_signed_url_invokes_supabase_with_default_ttl() -> None:
     client, bucket_op = _make_mock_client()
-    result = storage_svc.create_signed_url(
-        "master/MT-V-038/abc.png", client=client
-    )
+    result = storage_svc.create_signed_url("master/MT-V-038/abc.png", client=client)
     bucket_op.create_signed_url.assert_called_once_with(
         path="master/MT-V-038/abc.png", expires_in=3600
     )
@@ -138,9 +132,7 @@ def test_create_signed_url_invokes_supabase_with_default_ttl() -> None:
 
 def test_create_signed_url_clamps_ttl_to_max() -> None:
     client, bucket_op = _make_mock_client()
-    result = storage_svc.create_signed_url(
-        "x.png", ttl_seconds=99999, client=client
-    )
+    result = storage_svc.create_signed_url("x.png", ttl_seconds=99999, client=client)
     bucket_op.create_signed_url.assert_called_once_with(path="x.png", expires_in=86400)
     assert result["expires_in"] == 86400
 

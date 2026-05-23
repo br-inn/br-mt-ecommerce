@@ -1,5 +1,6 @@
 # mt-pricing-backend/app/services/ficha_enrichment/document_saver.py
 """Guarda el PDF de la ficha técnica como Document controlado + asset_links a los SKUs."""
+
 from __future__ import annotations
 
 import logging
@@ -37,12 +38,12 @@ async def save_ficha_document(
         return None
 
     # Verificar qué SKUs existen (ProductAsset.sku es FK NOT NULL)
-    result = await session.execute(
-        select(Product.sku).where(Product.sku.in_(skus))
-    )
+    result = await session.execute(select(Product.sku).where(Product.sku.in_(skus)))
     existing_skus = [row[0] for row in result.fetchall()]
     if not existing_skus:
-        logger.warning("document_saver: ningún SKU de la serie existe en DB, omitiendo document save")
+        logger.warning(
+            "document_saver: ningún SKU de la serie existe en DB, omitiendo document save"
+        )
         return None
 
     anchor_sku = existing_skus[0]
@@ -54,7 +55,8 @@ async def save_ficha_document(
             supabase_url = os.environ.get("SUPABASE_URL", "")
             supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
             if supabase_url and supabase_key:
-                from supabase import create_client  # noqa: PLC0415
+                from supabase import create_client
+
                 client = create_client(supabase_url, supabase_key)
                 client.storage.from_(_PDF_BUCKET).upload(
                     path=storage_path,
@@ -66,7 +68,8 @@ async def save_ficha_document(
 
     try:
         # Evitar duplicados: si ya existe un asset con este storage_path, reusar
-        from sqlalchemy import select as _sel  # noqa: PLC0415
+        from sqlalchemy import select as _sel
+
         existing_asset_r = await session.execute(
             _sel(ProductAsset).where(
                 ProductAsset.bucket == _PDF_BUCKET,

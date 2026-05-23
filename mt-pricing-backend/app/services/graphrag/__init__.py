@@ -33,4 +33,4 @@ from app.services.graphrag.ports import (
     GraphStorePort,
 )
 
-__all__ = ["GraphStorePort", "GraphNode", "GraphEdge"]
+__all__ = ["GraphEdge", "GraphNode", "GraphStorePort"]

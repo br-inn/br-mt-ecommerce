@@ -5,6 +5,7 @@ Sin DB ni Celery — Protocols inyectados (PricingService, ProductRepo, AuditRep
 
 from __future__ import annotations
 
+from datetime import UTC
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -64,9 +65,7 @@ async def test_run_empty_catalog() -> None:
     audit = MagicMock()
     audit.record = AsyncMock()
 
-    svc = BulkRecalcService(
-        pricing_service=pricing, product_repo=products, audit_repo=audit
-    )
+    svc = BulkRecalcService(pricing_service=pricing, product_repo=products, audit_repo=audit)
     result = await svc.run(actor=_mk_user())
 
     assert result.skus_total == 0
@@ -87,7 +86,10 @@ async def test_run_happy_path_status_counts_and_avg_margin() -> None:
     pricing = MagicMock()
     pricing.recalculate_for_product = AsyncMock(
         side_effect=[
-            [_mk_price(status="auto_approved", margin="0.30"), _mk_price(status="pending_review", margin="0.20")],
+            [
+                _mk_price(status="auto_approved", margin="0.30"),
+                _mk_price(status="pending_review", margin="0.20"),
+            ],
             [_mk_price(status="auto_approved", margin="0.40")],
         ]
     )
@@ -96,9 +98,7 @@ async def test_run_happy_path_status_counts_and_avg_margin() -> None:
     audit = MagicMock()
     audit.record = AsyncMock()
 
-    svc = BulkRecalcService(
-        pricing_service=pricing, product_repo=products, audit_repo=audit
-    )
+    svc = BulkRecalcService(pricing_service=pricing, product_repo=products, audit_repo=audit)
     result = await svc.run(actor=_mk_user())
 
     assert result.skus_total == 2
@@ -127,9 +127,7 @@ async def test_run_continues_on_pricing_domain_error() -> None:
     audit = MagicMock()
     audit.record = AsyncMock()
 
-    svc = BulkRecalcService(
-        pricing_service=pricing, product_repo=products, audit_repo=audit
-    )
+    svc = BulkRecalcService(pricing_service=pricing, product_repo=products, audit_repo=audit)
     result = await svc.run(actor=_mk_user())
 
     assert result.skus_failed == 1
@@ -140,17 +138,13 @@ async def test_run_continues_on_pricing_domain_error() -> None:
 
 async def test_run_continues_on_unhandled_exception() -> None:
     pricing = MagicMock()
-    pricing.recalculate_for_product = AsyncMock(
-        side_effect=[RuntimeError("boom"), [_mk_price()]]
-    )
+    pricing.recalculate_for_product = AsyncMock(side_effect=[RuntimeError("boom"), [_mk_price()]])
     products = MagicMock()
     products.list_active_skus = AsyncMock(return_value=["MT-V-A", "MT-V-B"])
     audit = MagicMock()
     audit.record = AsyncMock()
 
-    svc = BulkRecalcService(
-        pricing_service=pricing, product_repo=products, audit_repo=audit
-    )
+    svc = BulkRecalcService(pricing_service=pricing, product_repo=products, audit_repo=audit)
     result = await svc.run(actor=_mk_user())
 
     assert result.skus_failed == 1
@@ -176,9 +170,7 @@ async def test_run_failure_rate_alert_at_threshold() -> None:
     audit = MagicMock()
     audit.record = AsyncMock()
 
-    svc = BulkRecalcService(
-        pricing_service=pricing, product_repo=products, audit_repo=audit
-    )
+    svc = BulkRecalcService(pricing_service=pricing, product_repo=products, audit_repo=audit)
     result = await svc.run(actor=_mk_user())
 
     # 19 procesados, 1 fail → failure_rate = 1/19 ≈ 0.0526 > 0.05
@@ -243,9 +235,7 @@ async def test_run_audit_failure_doesnt_break_run() -> None:
     audit = MagicMock()
     audit.record = AsyncMock(side_effect=RuntimeError("audit DB down"))
 
-    svc = BulkRecalcService(
-        pricing_service=pricing, product_repo=products, audit_repo=audit
-    )
+    svc = BulkRecalcService(pricing_service=pricing, product_repo=products, audit_repo=audit)
     result = await svc.run(actor=_mk_user())
 
     assert result.skus_processed == 1
@@ -258,15 +248,11 @@ async def test_run_marks_skus_with_no_prices_as_skipped() -> None:
     pricing = MagicMock()
     pricing.recalculate_for_product = AsyncMock(side_effect=[[], [_mk_price()]])
     products = MagicMock()
-    products.list_active_skus = AsyncMock(
-        return_value=["MT-V-NO-COST", "MT-V-OK"]
-    )
+    products.list_active_skus = AsyncMock(return_value=["MT-V-NO-COST", "MT-V-OK"])
     audit = MagicMock()
     audit.record = AsyncMock()
 
-    svc = BulkRecalcService(
-        pricing_service=pricing, product_repo=products, audit_repo=audit
-    )
+    svc = BulkRecalcService(pricing_service=pricing, product_repo=products, audit_repo=audit)
     result = await svc.run(actor=_mk_user())
 
     assert result.skus_skipped == 1
@@ -277,10 +263,10 @@ async def test_run_marks_skus_with_no_prices_as_skipped() -> None:
 # Result serialization
 # ---------------------------------------------------------------------------
 def test_to_dict_round_trip() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     r = BulkRecalcResult(
-        started_at=datetime(2026, 5, 7, 2, 0, tzinfo=timezone.utc),
+        started_at=datetime(2026, 5, 7, 2, 0, tzinfo=UTC),
     )
     r.skus_total = 5
     r.skus_processed = 3

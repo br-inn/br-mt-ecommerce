@@ -34,8 +34,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260508_037"
 down_revision: str | None = "80af479d704d"
@@ -62,7 +63,11 @@ def upgrade() -> None:
         sa.Column(
             "lifecycle_status",
             postgresql.ENUM(
-                "draft", "active", "deprecated", "replaced", "discontinued",
+                "draft",
+                "active",
+                "deprecated",
+                "replaced",
+                "discontinued",
                 name="lifecycle_status",
                 create_type=False,
             ),

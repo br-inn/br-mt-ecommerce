@@ -4,6 +4,7 @@ Implementa FetcherPort. No tiene dependencias externas. El precio sintético
 es determinístico por ASIN (seed derivado de hash) para que los tests
 sean reproducibles.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -22,7 +23,7 @@ class AmazonSPFetcherStub:
     async def fetch_competitor_price(self, asin: str) -> CompetitorPrice:
         # Seed por ASIN para determinismo en tests
         seed = int(hashlib.md5(asin.encode(), usedforsecurity=False).hexdigest(), 16) % (2**32)
-        rng = random.Random(seed)  # noqa: S311 — stub, no criptográfico
+        rng = random.Random(seed)
         price_aed = round(rng.uniform(10.0, 1000.0), 2)
         return CompetitorPrice(
             asin=asin,

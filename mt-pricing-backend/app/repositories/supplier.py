@@ -40,9 +40,7 @@ class SupplierRepository(BaseRepository[Supplier]):
             clauses.append(Supplier.contract_currency == contract_currency.upper())
         if search:
             term = f"%{search}%"
-            clauses.append(
-                or_(Supplier.code.ilike(term), Supplier.name.ilike(term))
-            )
+            clauses.append(or_(Supplier.code.ilike(term), Supplier.name.ilike(term)))
 
         total: int | None = None
         if include_total:

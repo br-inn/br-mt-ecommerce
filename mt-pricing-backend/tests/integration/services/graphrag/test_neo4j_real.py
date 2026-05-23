@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+pytest.importorskip("neo4j")
+
 from app.services.graphrag.ports import GraphEdge, GraphNode
 
 if TYPE_CHECKING:
@@ -31,7 +33,7 @@ pytestmark = pytest.mark.integration
 # Fixtures
 # =============================================================================
 @pytest.fixture
-def neo4j_driver(neo4j_container: str) -> "Driver":
+def neo4j_driver(neo4j_container: str) -> Driver:
     """Driver fresco apuntando al testcontainer (o instancia externa)."""
     import os
 
@@ -45,7 +47,7 @@ def neo4j_driver(neo4j_container: str) -> "Driver":
 
 
 @pytest.fixture
-def store(neo4j_driver: "Driver") -> "Neo4jGraphStore":
+def store(neo4j_driver: Driver) -> Neo4jGraphStore:
     """Adapter sobre el driver del fixture; limpia toda la DB al inicio."""
     from app.services.graphrag.adapters.neo4j_real import Neo4jGraphStore
 
@@ -59,7 +61,7 @@ def store(neo4j_driver: "Driver") -> "Neo4jGraphStore":
 # =============================================================================
 # Health
 # =============================================================================
-def test_health_check_reports_healthy(store: "Neo4jGraphStore") -> None:
+def test_health_check_reports_healthy(store: Neo4jGraphStore) -> None:
     diag = store.health_check()
     assert diag["healthy"] is True
     assert diag["backend"] == "neo4j_real"
@@ -71,7 +73,7 @@ def test_health_check_reports_healthy(store: "Neo4jGraphStore") -> None:
 # =============================================================================
 # merge_node
 # =============================================================================
-def test_merge_node_creates_with_props(store: "Neo4jGraphStore") -> None:
+def test_merge_node_creates_with_props(store: Neo4jGraphStore) -> None:
     store.merge_node(
         GraphNode(
             label="Product",
@@ -84,20 +86,16 @@ def test_merge_node_creates_with_props(store: "Neo4jGraphStore") -> None:
 
 
 def test_merge_node_is_idempotent_and_merges_props(
-    store: "Neo4jGraphStore",
+    store: Neo4jGraphStore,
 ) -> None:
     """Second merge upserts props, no second node."""
-    store.merge_node(
-        GraphNode(label="Product", primary_key="SKU-002", properties={"a": 1})
-    )
-    store.merge_node(
-        GraphNode(label="Product", primary_key="SKU-002", properties={"b": 2})
-    )
+    store.merge_node(GraphNode(label="Product", primary_key="SKU-002", properties={"a": 1}))
+    store.merge_node(GraphNode(label="Product", primary_key="SKU-002", properties={"b": 2}))
     diag = store.health_check()
     assert diag["nodes"] == 1
 
 
-def test_merge_node_invalid_label_raises(store: "Neo4jGraphStore") -> None:
+def test_merge_node_invalid_label_raises(store: Neo4jGraphStore) -> None:
     with pytest.raises(ValueError, match="Invalid Cypher label"):
         store.merge_node(GraphNode(label="bad-label!", primary_key="x"))
 
@@ -105,7 +103,7 @@ def test_merge_node_invalid_label_raises(store: "Neo4jGraphStore") -> None:
 # =============================================================================
 # merge_edge + query_neighbors
 # =============================================================================
-def test_merge_edge_auto_creates_endpoints(store: "Neo4jGraphStore") -> None:
+def test_merge_edge_auto_creates_endpoints(store: Neo4jGraphStore) -> None:
     """merge_edge debe crear nodos endpoints si no existen — idiom MERGE Cypher."""
     store.merge_edge(
         GraphEdge(
@@ -121,7 +119,7 @@ def test_merge_edge_auto_creates_endpoints(store: "Neo4jGraphStore") -> None:
     assert diag["edges"] == 1
 
 
-def test_merge_edge_idempotent_same_triple(store: "Neo4jGraphStore") -> None:
+def test_merge_edge_idempotent_same_triple(store: Neo4jGraphStore) -> None:
     edge = GraphEdge(
         src_label="Product",
         src_pk="SKU-IDEM",
@@ -136,7 +134,7 @@ def test_merge_edge_idempotent_same_triple(store: "Neo4jGraphStore") -> None:
     assert diag["edges"] == 1
 
 
-def test_query_neighbors_returns_outgoing(store: "Neo4jGraphStore") -> None:
+def test_query_neighbors_returns_outgoing(store: Neo4jGraphStore) -> None:
     store.merge_node(
         GraphNode(
             label="Product",
@@ -173,7 +171,7 @@ def test_query_neighbors_returns_outgoing(store: "Neo4jGraphStore") -> None:
     assert by_type["MADE_OF"][1].primary_key == "ss316"
 
 
-def test_query_neighbors_filters_by_edge_type(store: "Neo4jGraphStore") -> None:
+def test_query_neighbors_filters_by_edge_type(store: Neo4jGraphStore) -> None:
     store.merge_edge(
         GraphEdge(
             src_label="Product",
@@ -192,15 +190,13 @@ def test_query_neighbors_filters_by_edge_type(store: "Neo4jGraphStore") -> None:
             dst_pk="brass",
         )
     )
-    only_branded = store.query_neighbors(
-        "Product", "SKU-Q2", edge_type="BRANDED"
-    )
+    only_branded = store.query_neighbors("Product", "SKU-Q2", edge_type="BRANDED")
     assert len(only_branded) == 1
     assert only_branded[0][0].type == "BRANDED"
 
 
 def test_query_neighbors_unknown_node_returns_empty(
-    store: "Neo4jGraphStore",
+    store: Neo4jGraphStore,
 ) -> None:
     assert store.query_neighbors("Product", "DOES-NOT-EXIST") == []
 
@@ -209,7 +205,7 @@ def test_query_neighbors_unknown_node_returns_empty(
 # delete_subgraph
 # =============================================================================
 def test_delete_subgraph_removes_node_and_incident_edges(
-    store: "Neo4jGraphStore",
+    store: Neo4jGraphStore,
 ) -> None:
     store.merge_edge(
         GraphEdge(
@@ -235,9 +231,7 @@ def test_delete_subgraph_removes_node_and_incident_edges(
 # =============================================================================
 # Constraint enforcement (uniqueness por primary_key dentro del label)
 # =============================================================================
-def test_uniqueness_constraint_enforced(
-    store: "Neo4jGraphStore", neo4j_driver: "Driver"
-) -> None:
+def test_uniqueness_constraint_enforced(store: Neo4jGraphStore, neo4j_driver: Driver) -> None:
     """Constraint uniqueness por (Label, primary_key) creada lazy — un INSERT
     duplicado vía Cypher CREATE (sin MERGE) debería fallar.
     """
@@ -248,6 +242,4 @@ def test_uniqueness_constraint_enforced(
 
     with neo4j_driver.session(database="neo4j") as sess:
         with pytest.raises(ConstraintError):
-            sess.run(
-                "CREATE (n:Product {primary_key: $pk})", pk="UNI-1"
-            ).consume()
+            sess.run("CREATE (n:Product {primary_key: $pk})", pk="UNI-1").consume()

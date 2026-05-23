@@ -211,9 +211,7 @@ async def admin_patch_attribute(
     service: AttributeService = Depends(get_attribute_service),
 ) -> AttributeDefinitionResponse:
     try:
-        row = await service.patch_definition(
-            attr_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_definition(attr_id, data.model_dump(exclude_unset=True))
     except AttributeDomainError as e:
         _raise_domain(e)
     return AttributeDefinitionResponse.model_validate(row)
@@ -267,16 +265,14 @@ async def admin_create_option(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_patch_option(
-    attr_id: UUID,  # noqa: ARG001 — kept for URL stability
+    attr_id: UUID,
     option_id: UUID,
     data: AttributeOptionPatch,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: AttributeService = Depends(get_attribute_service),
 ) -> AttributeOptionResponse:
     try:
-        row = await service.patch_option(
-            option_id, data.model_dump(exclude_unset=True)
-        )
+        row = await service.patch_option(option_id, data.model_dump(exclude_unset=True))
     except AttributeDomainError as e:
         _raise_domain(e)
     return AttributeOptionResponse.model_validate(row)
@@ -290,7 +286,7 @@ async def admin_patch_option(
     responses={404: {"model": ProblemDetails}},
 )
 async def admin_delete_option(
-    attr_id: UUID,  # noqa: ARG001
+    attr_id: UUID,
     option_id: UUID,
     _user: User = Depends(require_permissions("admin:vocabularies")),
     service: AttributeService = Depends(get_attribute_service),

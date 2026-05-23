@@ -51,9 +51,7 @@ class CalibratorTrainingNotReady(CalibratorTrainingError):
     """No hay suficientes golden labels para entrenar."""
 
     def __init__(self, found: int, required: int) -> None:
-        super().__init__(
-            f"insufficient golden labels: {found} found, {required} required"
-        )
+        super().__init__(f"insufficient golden labels: {found} found, {required} required")
         self.found = found
         self.required = required
 
@@ -108,9 +106,7 @@ class CalibratorTrainer:
 
         labels = await self.golden_repo.list_for_training(since=cutoff)
         if len(labels) < self.min_samples:
-            raise CalibratorTrainingNotReady(
-                found=len(labels), required=self.min_samples
-            )
+            raise CalibratorTrainingNotReady(found=len(labels), required=self.min_samples)
 
         scores = [float(label_row.score) for label_row in labels]
         ys = [int(label_row.label) for label_row in labels]
@@ -185,9 +181,9 @@ def _relative_improvement(before: float, after: float) -> float:
 
 __all__ = [
     "AUTO_PROMOTE_MIN_RELATIVE_IMPROVEMENT",
+    "MIN_SAMPLES",
     "CalibratorTrainer",
     "CalibratorTrainingError",
     "CalibratorTrainingNotReady",
-    "MIN_SAMPLES",
     "TrainingResult",
 ]

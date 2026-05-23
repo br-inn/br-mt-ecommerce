@@ -277,17 +277,13 @@ def validate_value_matches_type(payload: AttributeValueBase, data_type: DataType
     # to be non-None; for range expect at least one of value_min/value_max.
     if data_type == "range":
         if payload.value_min is None and payload.value_max is None:
-            raise ValueError(
-                "data_type=range requires value_min and/or value_max."
-            )
+            raise ValueError("data_type=range requires value_min and/or value_max.")
         return
 
     field = expected[0]
     populated_field_value = getattr(payload, field)
     if populated_field_value is None:
-        raise ValueError(
-            f"data_type={data_type} requires field '{field}' to be set."
-        )
+        raise ValueError(f"data_type={data_type} requires field '{field}' to be set.")
     # Verify no other typed fields are also set (range excepted above).
     other_fields = (
         "value_number",
@@ -296,9 +292,7 @@ def validate_value_matches_type(payload: AttributeValueBase, data_type: DataType
         "value_enum_id",
     )
     range_set = (payload.value_min is not None) or (payload.value_max is not None)
-    extras = [
-        f for f in other_fields if f != field and getattr(payload, f) is not None
-    ]
+    extras = [f for f in other_fields if f != field and getattr(payload, f) is not None]
     if extras or range_set:
         raise ValueError(
             f"data_type={data_type} expects only '{field}'; got "

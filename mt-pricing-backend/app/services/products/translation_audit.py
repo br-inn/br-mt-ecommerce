@@ -19,7 +19,6 @@ agrupen por traducción.
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from app.db.models.user import User
 from app.repositories.audit import AuditRepository

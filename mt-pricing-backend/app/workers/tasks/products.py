@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from app.workers.worker import celery_app
@@ -67,11 +66,9 @@ async def _run_async(
     from sqlalchemy import select, text
 
     from app.db.engine import get_sessionmaker
-    from app.db.models.product import Product
+    from app.db.models.product import Product, ProductTranslation
     from app.repositories.audit import AuditRepository
     from app.services.products.pvf_classifier import classify
-
-    from app.db.models.product import ProductTranslation
 
     actor_uuid = _UUID(actor_id) if actor_id else None
     SessionFactory = get_sessionmaker()
@@ -111,8 +108,7 @@ async def _run_async(
             .select_from(Product)
             .outerjoin(
                 ProductTranslation,
-                (ProductTranslation.sku == Product.sku)
-                & (ProductTranslation.lang == "en"),
+                (ProductTranslation.sku == Product.sku) & (ProductTranslation.lang == "en"),
             )
             .where(Product.deleted_at.is_(None))
         )
@@ -127,7 +123,7 @@ async def _run_async(
                 continue
             try:
                 r = classify(name_en)
-            except Exception as exc:  # noqa: BLE001 — defensivo
+            except Exception as exc:
                 counters["errors"] += 1
                 if len(sample_errors) < 20:
                     sample_errors.append(f"{sku}: {exc!s}")

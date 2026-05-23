@@ -1,5 +1,6 @@
 # mt-pricing-backend/app/services/ficha_enrichment/product_creator.py
 """Crea un Product nuevo en DB a partir de los datos extraídos de la ficha técnica."""
+
 from __future__ import annotations
 
 import logging
@@ -17,9 +18,19 @@ from app.schemas.ficha_enrich import FichaExtractionResult, SkuApplyResult
 logger = logging.getLogger(__name__)
 
 _PATCHABLE_SCALARS = {
-    "family", "subfamily", "type", "material", "dn", "pn",
-    "connection", "brand", "weight", "weight_unit",
-    "temp_min_c", "temp_max_c", "pressure_max_bar",
+    "family",
+    "subfamily",
+    "type",
+    "material",
+    "dn",
+    "pn",
+    "connection",
+    "brand",
+    "weight",
+    "weight_unit",
+    "temp_min_c",
+    "temp_max_c",
+    "pressure_max_bar",
 }
 
 
@@ -36,9 +47,7 @@ async def _resolve_family_id(session: AsyncSession, family_value: str) -> uuid.U
     """Busca family_id por code o name (case-insensitive). Devuelve None si no existe."""
     low = family_value.lower()
     result = await session.execute(
-        select(Family).where(
-            (func.lower(Family.code) == low) | (func.lower(Family.name) == low)
-        )
+        select(Family).where((func.lower(Family.code) == low) | (func.lower(Family.name) == low))
     )
     family = result.scalars().first()
     return family.id if family else None
@@ -120,6 +129,7 @@ async def create_product_from_extraction(
             logger.warning("create_product: cannot set %s on new product: %s", field, exc)
 
     from app.services.ficha_enrichment.series_resolver import dn_to_size
+
     effective_dn = product.dn
     if not effective_dn:
         try:
@@ -136,6 +146,7 @@ async def create_product_from_extraction(
             applied.append("size")
 
     from app.services.ficha_enrichment.differ import _specs_to_dict
+
     specs_patch = _specs_to_dict(extraction)
     if specs_patch:
         product.specs = specs_patch

@@ -15,8 +15,6 @@ import pytest
 from app.services.comparator import (
     FLAG_COMPARATOR_ENABLED,
     ComparatorServiceFactory,
-    FullGraphRagComparatorAdapter,
-    HybridComparatorAdapter,
     NoopComparatorService,
     RagOnlyComparatorAdapter,
 )
@@ -37,6 +35,7 @@ def _reset_flags() -> None:
     # _local_cache. Use a minimal mock so set_local_flag works end-to-end.
     prev = get_default_service()
     from unittest.mock import MagicMock
+
     set_default_service(MagicMock())
     clear_local_cache()
     yield
@@ -47,6 +46,7 @@ def _reset_flags() -> None:
 # ---------------------------------------------------------------------------
 # Flag OFF → Noop (backward compat)
 # ---------------------------------------------------------------------------
+
 
 def test_factory_returns_noop_when_flag_off() -> None:
     """Default: flag OFF (sin bootstrap) → stub."""
@@ -64,6 +64,7 @@ def test_factory_returns_noop_when_flag_explicitly_false() -> None:
 # AC-1 — flag ON + COMPARATOR_ADAPTER=rag_only → RagOnlyComparatorAdapter
 # ---------------------------------------------------------------------------
 
+
 def test_factory_returns_rag_only_when_flag_on_and_adapter_rag_only() -> None:
     """AC-1: flag ON + rag_only → RagOnlyComparatorAdapter (Fase 1 activo)."""
     set_local_flag(FLAG_COMPARATOR_ENABLED, True)
@@ -76,6 +77,7 @@ def test_factory_returns_rag_only_when_flag_on_and_adapter_rag_only() -> None:
 # ---------------------------------------------------------------------------
 # AC-3 — swap via COMPARATOR_ADAPTER
 # ---------------------------------------------------------------------------
+
 
 def test_factory_raises_for_hybrid_adapter_fase1() -> None:
     """AC-3: COMPARATOR_ADAPTER=hybrid → ValueError en Fase 1 (no disponible)."""
@@ -107,6 +109,7 @@ def test_factory_falls_back_to_rag_only_for_unknown_adapter() -> None:
 # ---------------------------------------------------------------------------
 # Port compatibility — backward compat
 # ---------------------------------------------------------------------------
+
 
 def test_factory_each_call_returns_comparator_port_instance() -> None:
     """Cada call devuelve una instancia que satisface ComparatorPort."""

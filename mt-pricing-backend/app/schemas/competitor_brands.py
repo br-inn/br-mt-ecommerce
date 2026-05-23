@@ -1,4 +1,5 @@
 """Pydantic schemas para el módulo de marcas competidoras."""
+
 from __future__ import annotations
 
 from datetime import datetime

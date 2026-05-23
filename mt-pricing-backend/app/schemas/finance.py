@@ -18,12 +18,12 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
-
+from pydantic import BaseModel, ConfigDict
 
 # ---------------------------------------------------------------------------
 # Shared config
 # ---------------------------------------------------------------------------
+
 
 class _OrmBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -32,6 +32,7 @@ class _OrmBase(BaseModel):
 # ---------------------------------------------------------------------------
 # US-ERP-06-01 — Chart of Accounts
 # ---------------------------------------------------------------------------
+
 
 class GlAccountCreate(BaseModel):
     account_code: str
@@ -67,6 +68,7 @@ class GlAccountOut(_OrmBase):
 # US-ERP-06-01 — Posting Periods
 # ---------------------------------------------------------------------------
 
+
 class PostingPeriodCreate(BaseModel):
     fiscal_year: int
     period_num: int
@@ -91,6 +93,7 @@ class PostingPeriodOut(_OrmBase):
 # ---------------------------------------------------------------------------
 # US-ERP-06-02 — Cost Centers
 # ---------------------------------------------------------------------------
+
 
 class CostCenterCreate(BaseModel):
     cc_code: str
@@ -119,6 +122,7 @@ class CostCenterOut(_OrmBase):
 # US-ERP-06-02 — Profit Centers
 # ---------------------------------------------------------------------------
 
+
 class ProfitCenterCreate(BaseModel):
     pc_code: str
     pc_name: str
@@ -139,6 +143,7 @@ class ProfitCenterOut(_OrmBase):
 # ---------------------------------------------------------------------------
 # US-ERP-06-03 — Universal Journal
 # ---------------------------------------------------------------------------
+
 
 class FinancialEntryCreate(BaseModel):
     entry_number: str
@@ -192,6 +197,7 @@ class FinancialEntryOut(_OrmBase):
 # ---------------------------------------------------------------------------
 # US-ERP-06-04 — AP Aging + Payment Run
 # ---------------------------------------------------------------------------
+
 
 class VendorOpenItemCreate(BaseModel):
     vendor_id: str
@@ -257,6 +263,7 @@ class PaymentRunOut(_OrmBase):
 # US-ERP-06-05 — Standard Cost + Variance
 # ---------------------------------------------------------------------------
 
+
 class StandardCostCreate(BaseModel):
     product_sku: str
     fiscal_year: int
@@ -296,6 +303,7 @@ class PriceVarianceOut(_OrmBase):
 # ---------------------------------------------------------------------------
 # US-ERP-06-06 — P&L + Balance Sheet + Trial Balance
 # ---------------------------------------------------------------------------
+
 
 class PlLineOut(BaseModel):
     fiscal_year: int
@@ -355,6 +363,7 @@ class TrialBalanceOut(BaseModel):
 # US-ERP-06-07 — Period Close + Tax Provisions
 # ---------------------------------------------------------------------------
 
+
 class PeriodCloseChecklistOut(_OrmBase):
     id: UUID
     fiscal_year: int | None
@@ -399,6 +408,7 @@ class CitProvisionResult(BaseModel):
 # US-ERP-06-08 — FX Revaluation + SoD Controls
 # ---------------------------------------------------------------------------
 
+
 class FxRevalResult(BaseModel):
     fiscal_year: int
     period: int
@@ -435,6 +445,7 @@ class EntryReviewApproveOut(BaseModel):
 # ---------------------------------------------------------------------------
 # US-ERP-06-09 — CO-PA + Budget vs Actual + Cash Flow
 # ---------------------------------------------------------------------------
+
 
 class CopaLineOut(BaseModel):
     profit_center_code: str
@@ -496,11 +507,11 @@ class CashFlowOut(BaseModel):
     fiscal_year: int
     period_from: int
     period_to: int
-    operating_inflows: Decimal   # cobros clientes (1100)
+    operating_inflows: Decimal  # cobros clientes (1100)
     operating_outflows: Decimal  # pagos proveedores (2100)
     net_operating: Decimal
-    net_investing: Decimal = Decimal("0")   # stub
-    net_financing: Decimal = Decimal("0")   # stub
+    net_investing: Decimal = Decimal("0")  # stub
+    net_financing: Decimal = Decimal("0")  # stub
     net_change: Decimal
     opening_cash: Decimal = Decimal("0")
     closing_cash: Decimal

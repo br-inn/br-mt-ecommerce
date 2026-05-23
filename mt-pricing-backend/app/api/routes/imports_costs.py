@@ -75,10 +75,7 @@ class _PendingCostService:  # pragma: no cover — sólo si Agent F no merge aú
             status_code=503,
             detail={
                 "code": "costs_service_unavailable",
-                "title": (
-                    "POST /costs (US-1A-04-03) aún no merged. "
-                    "Importer apply en holding."
-                ),
+                "title": ("POST /costs (US-1A-04-03) aún no merged. Importer apply en holding."),
             },
         )
 
@@ -120,9 +117,7 @@ async def preview_costs_import(
         )
     file_bytes = await file.read()
     try:
-        state = await service.preview(
-            file_bytes=file_bytes, filename=file.filename, actor=user
-        )
+        state = await service.preview(file_bytes=file_bytes, filename=file.filename, actor=user)
     except ImporterDomainError as e:
         _raise_domain(e)
 

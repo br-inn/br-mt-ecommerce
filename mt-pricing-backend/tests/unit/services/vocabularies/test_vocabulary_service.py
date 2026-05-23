@@ -6,8 +6,7 @@ All tests use in-memory fakes — no DB required.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, date
-from typing import Any
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -314,9 +313,7 @@ class TestProductVocabularyService:
         service._cert_catalog.get = AsyncMock(return_value=cert)
         service.cert_repo.replace_all = AsyncMock(return_value=[])
 
-        await service.replace_certifications(
-            "MT-V-001", [{"certification_id": cert_id}]
-        )
+        await service.replace_certifications("MT-V-001", [{"certification_id": cert_id}])
 
         service.cert_repo.replace_all.assert_called_once()
         session.commit.assert_called_once()

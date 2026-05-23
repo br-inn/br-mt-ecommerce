@@ -14,9 +14,11 @@ from uuid import UUID
 
 from app.services.feature_flags.flag_service import (
     FLAG_LIVE_NETWORK_NOON_UAE,
-    FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE as _FLAG_PATCHRIGHT,
     get_default_service,
     is_enabled,
+)
+from app.services.feature_flags.flag_service import (
+    FLAG_PATCHRIGHT_SCRAPER_AMAZON_UAE as _FLAG_PATCHRIGHT,
 )
 from app.services.feature_flags.kill_switch import is_kill_switch_engaged
 
@@ -62,14 +64,14 @@ class _EmptyFetcher:
     def __init__(self, channel: str) -> None:
         self.channel = channel
 
-    async def fetch(self, query: "Query", *, sku: str | None = None) -> "list[CandidateRaw]":
+    async def fetch(self, query: Query, *, sku: str | None = None) -> list[CandidateRaw]:
         return []
 
 
 class _BlockFallbackWrapper:
     """Envuelve un fetcher real; devuelve el fallback si es bloqueado."""
 
-    def __init__(self, primary: "FetcherPort", fallback: "FetcherPort") -> None:
+    def __init__(self, primary: FetcherPort, fallback: FetcherPort) -> None:
         self._primary = primary
         self._fallback = fallback
 
@@ -77,9 +79,10 @@ class _BlockFallbackWrapper:
     def channel(self) -> str:
         return self._primary.channel  # type: ignore[attr-defined]
 
-    async def fetch(self, query: "Query", *, sku: str | None = None) -> "list[CandidateRaw]":
-        from app.services.matching.scraper_errors import ScraperBlockedError
+    async def fetch(self, query: Query, *, sku: str | None = None) -> list[CandidateRaw]:
         import logging
+
+        from app.services.matching.scraper_errors import ScraperBlockedError
 
         try:
             return await self._primary.fetch(query, sku=sku)
@@ -94,9 +97,10 @@ class _BlockFallbackWrapper:
 def _get_amazon_uae_fetcher(
     brand_id: UUID | None = None,
     brand_attribute_map: dict | None = None,
-) -> "FetcherPort":
+) -> FetcherPort:
     """Prioridad: curl_cffi → patchright → vacío (nunca stubs)."""
     import logging
+
     log = logging.getLogger(__name__)
     empty = _EmptyFetcher("amazon_uae")
 
@@ -110,10 +114,13 @@ def _get_amazon_uae_fetcher(
             log.warning("curl_cffi no disponible en este contenedor — amazon_uae desactivado")
             return empty
 
-        fallback: "FetcherPort"
+        fallback: FetcherPort
         if patchright_active:
             try:
-                from app.services.matching.adapters.patchright_amazon_uae import PatchrightAmazonUaeFetcher
+                from app.services.matching.adapters.patchright_amazon_uae import (
+                    PatchrightAmazonUaeFetcher,
+                )
+
                 fallback = _BlockFallbackWrapper(PatchrightAmazonUaeFetcher(), empty)
             except ImportError:
                 fallback = empty
@@ -127,7 +134,9 @@ def _get_amazon_uae_fetcher(
 
     if patchright_active:
         try:
-            from app.services.matching.adapters.patchright_amazon_uae import PatchrightAmazonUaeFetcher
+            from app.services.matching.adapters.patchright_amazon_uae import (
+                PatchrightAmazonUaeFetcher,
+            )
         except ImportError:
             log.warning("patchright no disponible en este contenedor — amazon_uae desactivado")
             return empty
@@ -141,7 +150,7 @@ def get_fetcher(
     *,
     brand_id: UUID | None = None,
     brand_attribute_map: dict | None = None,
-) -> "FetcherPort":
+) -> FetcherPort:
     """Devuelve el fetcher adecuado para un canal.
 
     Args:
@@ -169,10 +178,10 @@ def get_fetcher(
 
 async def resolve_fetcher(
     channel: str,
-    session: "AsyncSession",
+    session: AsyncSession,
     *,
-    html_fetcher: "HtmlFetcher | None" = None,
-) -> "FetcherPort":
+    html_fetcher: HtmlFetcher | None = None,
+) -> FetcherPort:
     """Resuelve un canal a un fetcher.
 
     Canales hardcodeados (``SUPPORTED_CHANNELS``) delegan en ``get_fetcher()``.

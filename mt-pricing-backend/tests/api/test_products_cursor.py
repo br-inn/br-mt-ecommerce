@@ -68,7 +68,9 @@ async def _seed_admin(session: AsyncSession) -> tuple[UUID, str]:
             perm_ids.append(p.id)
         else:
             perm_ids.append(existing.id)
-    role = (await session.execute(select(Role).where(Role.code == "pim_admin"))).scalar_one_or_none()
+    role = (
+        await session.execute(select(Role).where(Role.code == "pim_admin"))
+    ).scalar_one_or_none()
     if role is None:
         role = Role(code="pim_admin", name="pim_admin", permissions_snapshot=perms_codes)
         session.add(role)
@@ -109,7 +111,6 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 def _payload(sku: str) -> dict[str, Any]:
     return {
         "sku": sku,
-        "name_en": f"Product {sku}",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
@@ -119,9 +120,7 @@ def _payload(sku: str) -> dict[str, Any]:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_pagination_cursor_two_pages(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_pagination_cursor_two_pages(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
@@ -146,9 +145,7 @@ async def test_pagination_cursor_two_pages(
     assert decoded["sku"] == body1["items"][-1]["sku"]
 
     # Página 2 — pasamos el cursor.
-    r2 = await client.get(
-        f"/api/v1/products?limit=2&cursor={next_cursor}", headers=headers
-    )
+    r2 = await client.get(f"/api/v1/products?limit=2&cursor={next_cursor}", headers=headers)
     assert r2.status_code == 200, r2.text
     body2 = r2.json()
     assert len(body2["items"]) == 1
@@ -161,15 +158,11 @@ async def test_pagination_cursor_two_pages(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_invalid_cursor_returns_400(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_invalid_cursor_returns_400(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
-    r = await client.get(
-        "/api/v1/products?cursor=!!not-base64!!", headers=headers
-    )
+    r = await client.get("/api/v1/products?cursor=!!not-base64!!", headers=headers)
     assert r.status_code == 400
     body = r.json()
     assert body["detail"]["code"] == "invalid_cursor"
@@ -184,17 +177,13 @@ async def test_cursor_missing_sku_key_returns_400(
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
     bad_cursor = base64.urlsafe_b64encode(b'{"foo":"bar"}').rstrip(b"=").decode()
-    r = await client.get(
-        f"/api/v1/products?cursor={bad_cursor}", headers=headers
-    )
+    r = await client.get(f"/api/v1/products?cursor={bad_cursor}", headers=headers)
     assert r.status_code == 400
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_limit_exceeds_max_returns_422(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_limit_exceeds_max_returns_422(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_admin(db_session)
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
     r = await client.get("/api/v1/products?limit=500", headers=headers)

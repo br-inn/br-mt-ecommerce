@@ -19,7 +19,7 @@ Patrón mirror de :mod:`app.services.channel_mirror.ports` (ports-and-adapters).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -42,6 +42,7 @@ _VLM_UNCERTAIN_CONFIDENCE_THRESHOLD = Decimal("0.50")
 # ---------------------------------------------------------------------------
 # Adapter Fase 1 — RagOnly (activo)
 # ---------------------------------------------------------------------------
+
 
 class RagOnlyComparatorAdapter(ComparatorPort):
     """Adapter RAG puro — Fase 1 activo.
@@ -100,7 +101,6 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             return
 
         from app.db.models.comparator import MatchDecision
-        from app.db.models.match_candidate import MatchCandidate
         from app.services.matching.human_queue_service import HumanQueueService
 
         # Idempotencia: bloquear cualquier decisión duplicada para este par
@@ -139,9 +139,7 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             deal_breakers = vlm_data.get("deal_breakers_triggered") or None
             judge_model_version = vlm_data.get("model_version")
 
-        if judge_confidence is not None and not (
-            Decimal("0") <= judge_confidence <= Decimal("1")
-        ):
+        if judge_confidence is not None and not (Decimal("0") <= judge_confidence <= Decimal("1")):
             logger.warning(
                 "comparator.rag_only.confirm_match: confidence fuera de rango [0,1] "
                 "listing_id=%s confidence=%s — forzado a None",
@@ -162,7 +160,7 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             judge_image_regions=judge_image_regions,
             deal_breakers_triggered=deal_breakers,
             judge_model_version=judge_model_version if judge_verdict is not None else None,
-            judge_at=datetime.now(tz=timezone.utc) if judge_verdict is not None else None,
+            judge_at=datetime.now(tz=UTC) if judge_verdict is not None else None,
         )
         self._session.add(decision)
         await self._session.flush()
@@ -187,16 +185,10 @@ class RagOnlyComparatorAdapter(ComparatorPort):
                 canonical_domains = await get_canonical_domains(
                     session=self._session, product_sku=product_sku
                 )
-                boosted_conf, was_boosted = apply_ris_boost(
-                    cal_conf, ris_result, canonical_domains
-                )
+                boosted_conf, was_boosted = apply_ris_boost(cal_conf, ris_result, canonical_domains)
 
-                listing_stmt = select(CompetitorListing).where(
-                    CompetitorListing.id == listing_id
-                )
-                listing_row = (
-                    await self._session.execute(listing_stmt)
-                ).scalar_one_or_none()
+                listing_stmt = select(CompetitorListing).where(CompetitorListing.id == listing_id)
+                listing_row = (await self._session.execute(listing_stmt)).scalar_one_or_none()
                 if listing_row is not None:
                     listing_row.reverse_image_hits = [
                         {"url": h.url, "domain": h.domain, "similarity": h.similarity}
@@ -296,7 +288,7 @@ class RagOnlyComparatorAdapter(ComparatorPort):
             judge_image_regions=r_image_regions,
             deal_breakers_triggered=r_deal_breakers,
             judge_model_version=r_model_version if r_verdict is not None else None,
-            judge_at=datetime.now(tz=timezone.utc) if r_verdict is not None else None,
+            judge_at=datetime.now(tz=UTC) if r_verdict is not None else None,
         )
         self._session.add(decision)
         await self._session.flush()

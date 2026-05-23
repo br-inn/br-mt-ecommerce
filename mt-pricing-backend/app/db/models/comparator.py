@@ -54,7 +54,7 @@ from app.db.types import HAS_PGVECTOR, UUID_PG
 # Embedding dim 1536 (ADR-012 §17.1: OpenAI text-embedding-3-small / similares).
 # Fase 1: nullable — research workstream decide modelo final en S5+.
 if HAS_PGVECTOR:  # pragma: no cover
-    from pgvector.sqlalchemy import Vector  # type: ignore[import-not-found]
+    from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
 
     _EMBEDDING_TYPE: Any = Vector(1536)
 else:  # pragma: no cover
@@ -77,21 +77,15 @@ class CompetitorBrand(UuidPkMixin, TimestampMixin, Base):
         String(100), nullable=False, server_default=text("'industrial'")
     )
     amazon_category_node: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    last_scraped_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # US-SCR-04-03: monitoreo continuo de precios activo para esta marca
     monitoring_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
 
-    __table_args__ = (
-        Index("ux_competitor_brands_name", func.lower(name), unique=True),
-    )
+    __table_args__ = (Index("ux_competitor_brands_name", func.lower(name), unique=True),)
 
     @property
     def effective_search_term(self) -> str:
@@ -99,7 +93,7 @@ class CompetitorBrand(UuidPkMixin, TimestampMixin, Base):
 
 
 class BrandExtractor(UuidPkMixin, TimestampMixin, Base):
-    """Mapeo de atributos generado por LLM por marca × marketplace (US-SCR-05-01).
+    """Mapeo de atributos generado por LLM por marca x marketplace (US-SCR-05-01).
 
     Generado una vez en Bootstrap mode via Claude; reutilizado sin LLM en cada
     monitoring scrape. ``attribute_map`` traduce labels de Amazon al schema
@@ -126,12 +120,8 @@ class BrandExtractor(UuidPkMixin, TimestampMixin, Base):
         server_default=text("'{}'::text[]"),
     )
     generated_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    generated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    last_used_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     hit_rate: Mapped[Decimal] = mapped_column(
         Numeric(5, 4), nullable=False, server_default=text("0")
     )
@@ -173,21 +163,15 @@ class CompetitorListing(UuidPkMixin, TimestampMixin, Base):
 
     # Embedding pgvector dim 1536 — nullable hasta que research workstream
     # entregue el modelo de embedding firmado.
-    embedding: Mapped[list[float] | None] = mapped_column(
-        _EMBEDDING_TYPE, nullable=True
-    )
+    embedding: Mapped[list[float] | None] = mapped_column(_EMBEDDING_TYPE, nullable=True)
 
     # Match opcional contra catálogo MT
     matched_product_sku: Mapped[str | None] = mapped_column(
         Text, ForeignKey("products.sku", ondelete="SET NULL"), nullable=True
     )
-    match_confidence: Mapped[Decimal | None] = mapped_column(
-        Numeric(5, 4), nullable=True
-    )
+    match_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
 
-    last_seen_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Reverse Image Search — US-F15-02-03
     reverse_image_hits: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
@@ -249,9 +233,7 @@ class MatchDecision(UuidPkMixin, TimestampMixin, Base):
         nullable=False,
     )
     decision: Mapped[str] = mapped_column(String(16), nullable=False)
-    confidence: Mapped[Decimal | None] = mapped_column(
-        Numeric(5, 4), nullable=True
-    )
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     evidence_jsonb: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
         nullable=False,
@@ -271,9 +253,7 @@ class MatchDecision(UuidPkMixin, TimestampMixin, Base):
     judge_confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
     judge_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
     judge_image_regions: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    deal_breakers_triggered: Mapped[list[str] | None] = mapped_column(
-        ARRAY(Text()), nullable=True
-    )
+    deal_breakers_triggered: Mapped[list[str] | None] = mapped_column(ARRAY(Text()), nullable=True)
     judge_model_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     judge_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -341,14 +321,14 @@ class ProductEquivalence(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    product_id_a: Mapped[UUID] = mapped_column(
-        UUID_PG,
-        ForeignKey("products.id", ondelete="CASCADE"),
+    product_id_a: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
         nullable=False,
     )
-    product_id_b: Mapped[UUID] = mapped_column(
-        UUID_PG,
-        ForeignKey("products.id", ondelete="CASCADE"),
+    product_id_b: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("products.sku", ondelete="CASCADE"),
         nullable=False,
     )
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.8)
@@ -364,6 +344,11 @@ class ProductEquivalence(Base):
         UniqueConstraint("product_id_a", "product_id_b", name="uq_product_equivalences_pair"),
         Index("ix_product_equivalences_product_id_a", "product_id_a"),
         Index("ix_product_equivalences_product_id_b", "product_id_b"),
+        Index(
+            "ix_product_equivalences_synced",
+            "synced_to_kg",
+            postgresql_where=text("synced_to_kg = false"),
+        ),
     )
 
 
@@ -387,15 +372,11 @@ class ExtractorAlert(Base):
         nullable=False,
     )
     marketplace: Mapped[str] = mapped_column(String(32), nullable=False)
-    triggered_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     hit_rate_now: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     hit_rate_baseline: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     delta_pp: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
-    resolved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_by: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -430,9 +411,7 @@ class PriceCalibrationRange(Base):
     category_id: Mapped[str] = mapped_column(String(64), nullable=False)
     expected_min_p10: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
     expected_max_p90: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
-    currency: Mapped[str] = mapped_column(
-        String(3), nullable=False, server_default=text("'AED'")
-    )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'AED'"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -466,9 +445,7 @@ class ComparatorModelRegistry(Base):
     model_name: Mapped[str] = mapped_column(String(128), nullable=False)
     base_model: Mapped[str] = mapped_column(String(256), nullable=False)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
-    eval_metrics_jsonb: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB, nullable=True
-    )
+    eval_metrics_jsonb: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     trained_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -481,9 +458,7 @@ class ComparatorModelRegistry(Base):
         server_default="candidate",
     )
 
-    __table_args__ = (
-        Index("ix_comparator_model_registry_status", "status"),
-    )
+    __table_args__ = (Index("ix_comparator_model_registry_status", "status"),)
 
 
 class ManufacturerWhitelist(Base):
@@ -503,9 +478,7 @@ class ManufacturerWhitelist(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    manufacturer_name: Mapped[str] = mapped_column(
-        String(128), nullable=False, unique=True
-    )
+    manufacturer_name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     canonical_domains: Mapped[list[str]] = mapped_column(
         ARRAY(Text()),
         nullable=False,
@@ -532,9 +505,7 @@ class ManufacturerWhitelist(Base):
         server_default=func.now(),
     )
 
-    __table_args__ = (
-        Index("idx_manufacturers_whitelist_active", "active"),
-    )
+    __table_args__ = (Index("idx_manufacturers_whitelist_active", "active"),)
 
 
 __all__ = [

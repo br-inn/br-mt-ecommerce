@@ -22,6 +22,8 @@ os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
 os.environ.setdefault("SUPABASE_ANON_KEY", "anon-test")
 os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "service-test")
 
+from datetime import UTC
+
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -35,7 +37,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 class _FakeListing:
     def __init__(self, **kwargs: Any) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         self.id: UUID = kwargs.get("id", uuid4())
         self.product_sku: str = kwargs["product_sku"]
@@ -51,13 +53,13 @@ class _FakeListing:
         self.live_snapshot_jsonb = kwargs.get("live_snapshot", {})
         self.diff_summary = kwargs.get("diff_summary", {})
         self.is_active: bool = kwargs.get("is_active", True)
-        self.created_at = kwargs.get("created_at", datetime.now(tz=timezone.utc))
-        self.updated_at = kwargs.get("updated_at", datetime.now(tz=timezone.utc))
+        self.created_at = kwargs.get("created_at", datetime.now(tz=UTC))
+        self.updated_at = kwargs.get("updated_at", datetime.now(tz=UTC))
 
 
 class _FakeEvent:
     def __init__(self, **kwargs: Any) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         self.id: UUID = kwargs.get("id", uuid4())
         self.channel_code: str = kwargs["channel_code"]
@@ -67,17 +69,15 @@ class _FakeEvent:
         self.summary = kwargs.get("summary")
         self.payload_jsonb = kwargs.get("payload", {})
         self.duration_ms = kwargs.get("duration_ms")
-        self.created_at = kwargs.get("created_at", datetime.now(tz=timezone.utc))
-        self.updated_at = kwargs.get("updated_at", datetime.now(tz=timezone.utc))
+        self.created_at = kwargs.get("created_at", datetime.now(tz=UTC))
+        self.updated_at = kwargs.get("updated_at", datetime.now(tz=UTC))
 
 
 class _FakeListingsRepo:
     def __init__(self) -> None:
         self.store: dict[tuple[str, str], _FakeListing] = {}
 
-    async def get_by_channel_sku(
-        self, channel_code: str, sku: str
-    ) -> _FakeListing | None:
+    async def get_by_channel_sku(self, channel_code: str, sku: str) -> _FakeListing | None:
         return self.store.get((channel_code, sku))
 
     async def upsert(self, **kwargs: Any) -> _FakeListing:
@@ -133,17 +133,15 @@ class _FakeEventsRepo:
 # ---------------------------------------------------------------------------
 @pytest_asyncio.fixture
 async def app_client() -> AsyncIterator[tuple[AsyncClient, dict[str, Any]]]:
+    from app.api.deps import get_db_session
     from app.api.routes.channels_mirror import (
         get_channel_adapters,
         get_mirror_service,
+    )
+    from app.api.routes.channels_mirror import (
         router as mirror_router,
     )
-    from app.api.deps import get_db_session, require_permissions
     from app.db.models.user import User
-    from app.repositories.channel_listings import (
-        ChannelListingRepository,
-        ChannelSyncEventRepository,
-    )
     from app.services.channel_mirror.mirror_service import MirrorService
 
     # Build app
@@ -211,10 +209,8 @@ async def app_client() -> AsyncIterator[tuple[AsyncClient, dict[str, Any]]]:
     class _FakeAdapter:
         channel_code = "amazon_uae"
 
-        async def pull_listing(
-            self, sku: str, external_id: str | None = None
-        ) -> LiveListing:
-            from datetime import datetime, timezone
+        async def pull_listing(self, sku: str, external_id: str | None = None) -> LiveListing:
+            from datetime import datetime
 
             if sku == "MTV-1004":
                 return LiveListing(
@@ -236,7 +232,7 @@ async def app_client() -> AsyncIterator[tuple[AsyncClient, dict[str, Any]]]:
                     stock_qty=312,
                     rating=4.6,
                     reviews_count=184,
-                    fetched_at=datetime.now(tz=timezone.utc),
+                    fetched_at=datetime.now(tz=UTC),
                 )
             return LiveListing(
                 channel_code="amazon_uae",
@@ -290,11 +286,14 @@ async def app_client() -> AsyncIterator[tuple[AsyncClient, dict[str, Any]]]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         try:
-            yield client, {
-                "listings": listings_repo,
-                "events": events_repo,
-                "canonical": canonical_db,
-            }
+            yield (
+                client,
+                {
+                    "listings": listings_repo,
+                    "events": events_repo,
+                    "canonical": canonical_db,
+                },
+            )
         finally:
             routes_mod.ChannelListingRepository = original_listings_cls  # type: ignore[assignment]
             routes_mod.ChannelSyncEventRepository = original_events_cls  # type: ignore[assignment]
@@ -383,9 +382,7 @@ async def test_publish_endpoint_404_without_listing(
     app_client: tuple[AsyncClient, dict[str, Any]],
 ) -> None:
     client, _ = app_client
-    resp = await client.post(
-        "/api/v1/channels/amazon_uae/MTV-1004/publish", json={}
-    )
+    resp = await client.post("/api/v1/channels/amazon_uae/MTV-1004/publish", json={})
     assert resp.status_code == 404
 
 
@@ -394,9 +391,7 @@ async def test_sync_log_endpoint_returns_recent_events(
 ) -> None:
     client, _ = app_client
     await client.post("/api/v1/channels/amazon_uae/MTV-1004/sync")
-    await client.post(
-        "/api/v1/channels/amazon_uae/MTV-1004/publish", json={}
-    )
+    await client.post("/api/v1/channels/amazon_uae/MTV-1004/publish", json={})
     resp = await client.get("/api/v1/channels/amazon_uae/sync-log?limit=10")
     assert resp.status_code == 200, resp.text
     rows = resp.json()

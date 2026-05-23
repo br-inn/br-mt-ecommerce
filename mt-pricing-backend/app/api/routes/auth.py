@@ -85,7 +85,7 @@ async def logout(
     """
     try:
         get_supabase_admin().auth.admin.sign_out(str(user.id))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("supabase sign_out failed for %s", user.id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

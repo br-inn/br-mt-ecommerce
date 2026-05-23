@@ -26,7 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
 from app.db.models.user import User
-from app.repositories.feature_flags import FeatureFlagRepository  # noqa: F401 — used by get_flag_service
+from app.repositories.feature_flags import (
+    FeatureFlagRepository,
+)
 from app.schemas.feature_flags import (
     FeatureFlagItem,
     FeatureFlagListResponse,
@@ -124,9 +126,7 @@ async def update_flag(
                 "known_flags": sorted(KNOWN_FLAGS),
             },
         )
-    await flag_service.set_flag(
-        key, payload.enabled, updated_by=user.id
-    )
+    await flag_service.set_flag(key, payload.enabled, updated_by=user.id)
     # Reload para devolver audit columns.
     repo = flag_service.flag_repo
     row = await repo.get(key)  # type: ignore[attr-defined]

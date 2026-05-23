@@ -30,7 +30,6 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
-
 DOCUMENT_TYPES = (
     "ficha_tecnica",
     "manual",
@@ -67,7 +66,7 @@ class Document(UuidPkMixin, Base):
     )
 
     # Relationship hacia ProductAsset (joined eager — siempre se quiere el binario).
-    asset: Mapped["ProductAsset"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    asset: Mapped[ProductAsset] = relationship(  # type: ignore[name-defined]
         "ProductAsset",
         foreign_keys=[asset_id],
         lazy="joined",
@@ -78,9 +77,7 @@ class Document(UuidPkMixin, Base):
             "type IN (" + ", ".join(f"'{t}'" for t in DOCUMENT_TYPES) + ")",
             name="ck_documents_type",
         ),
-        UniqueConstraint(
-            "code", "version", "language", name="uq_documents_code_version_language"
-        ),
+        UniqueConstraint("code", "version", "language", name="uq_documents_code_version_language"),
         Index("ix_doc_type", "type"),
         Index("ix_doc_asset", "asset_id"),
         Index("ix_doc_series", "series_id"),

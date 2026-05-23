@@ -15,14 +15,14 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_current_user, get_db_session
 from app.api.routes.matches import dataset_router
 
 pytestmark = pytest.mark.unit
@@ -97,7 +97,8 @@ def _build_app(session_mock: Any) -> tuple[FastAPI, _FakeUser]:
         for dep in getattr(getattr(route, "dependant", None), "dependencies", []):
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call):  # noqa: ARG001
+
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow

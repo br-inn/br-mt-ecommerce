@@ -20,9 +20,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260507_004"
 down_revision: str | None = "20260506_003"
@@ -99,8 +100,7 @@ def upgrade() -> None:
     )
     # Una sola moneda base (partial unique).
     op.execute(
-        "CREATE UNIQUE INDEX uq_currencies_one_base ON currencies (is_base) "
-        "WHERE is_base = true;"
+        "CREATE UNIQUE INDEX uq_currencies_one_base ON currencies (is_base) WHERE is_base = true;"
     )
 
     # Seed currencies — orden: base primero. Usamos SQL literal con escape
@@ -109,7 +109,7 @@ def upgrade() -> None:
         symbol_sql = "NULL" if symbol is None else "'" + symbol.replace("'", "''") + "'"
         op.execute(
             f"INSERT INTO currencies (code, name, symbol, decimals, is_base) "
-            f"VALUES ('{code}', '{name.replace(chr(39), chr(39)*2)}', "
+            f"VALUES ('{code}', '{name.replace(chr(39), chr(39) * 2)}', "
             f"        {symbol_sql}, {decimals}, {str(is_base).lower()}) "
             f"ON CONFLICT (code) DO NOTHING;"
         )
@@ -188,7 +188,7 @@ def upgrade() -> None:
         desc_sql = description.replace("'", "''") if description else ""
         op.execute(
             f"INSERT INTO schemes (code, name, description, cost_components_template) "
-            f"VALUES ('{code}', '{name.replace(chr(39), chr(39)*2)}', "
+            f"VALUES ('{code}', '{name.replace(chr(39), chr(39) * 2)}', "
             f"        '{desc_sql}', '{components_sql}'::jsonb) "
             f"ON CONFLICT (code) DO NOTHING;"
         )

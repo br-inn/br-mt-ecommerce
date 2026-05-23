@@ -25,6 +25,7 @@ pytestmark = pytest.mark.unit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_session(calibration_obj):
     """Construye un AsyncSession mock que devuelve ``calibration_obj`` como scalar."""
     session = AsyncMock()
@@ -45,6 +46,7 @@ def _make_calibration(p10: str, p90: str):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_price_normal_passes() -> None:

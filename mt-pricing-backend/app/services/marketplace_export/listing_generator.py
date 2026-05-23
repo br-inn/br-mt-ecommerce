@@ -3,6 +3,7 @@
 Generates listing_title, listing_description, bullet_points[], search_keywords
 for Amazon UAE PlumbingFixture category from product technical data.
 """
+
 from dataclasses import dataclass
 from typing import Any
 

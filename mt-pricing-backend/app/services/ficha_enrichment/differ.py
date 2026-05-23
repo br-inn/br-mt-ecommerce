@@ -1,11 +1,12 @@
 """Compara campos extraídos del PDF con los valores actuales del producto en DB."""
+
 from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
 
 from app.db.models.product import Product
-from app.schemas.ficha_enrich import FieldDiff, FichaExtractionResult
+from app.schemas.ficha_enrich import FichaExtractionResult, FieldDiff
 
 _SCALAR_FIELD_MAP: dict[str, str] = {
     "family": "family",
@@ -40,12 +41,14 @@ class FichaEnrichmentDiffer:
             if isinstance(current_val, Decimal):
                 current_val = float(current_val)
             has_change = _values_differ(current_val, extracted_val)
-            diffs.append(FieldDiff(
-                field_name=extracted_field,
-                current_value=current_val,
-                extracted_value=extracted_val,
-                has_change=has_change,
-            ))
+            diffs.append(
+                FieldDiff(
+                    field_name=extracted_field,
+                    current_value=current_val,
+                    extracted_value=extracted_val,
+                    has_change=has_change,
+                )
+            )
 
         # specs JSONB diff — como bloque
         specs_extracted = _specs_to_dict(extraction)
@@ -53,73 +56,82 @@ class FichaEnrichmentDiffer:
             current_specs = dict(product.specs or {})
             merged = {**current_specs, **specs_extracted}
             has_change = any(
-                _values_differ(current_specs.get(k), v)
-                for k, v in specs_extracted.items()
+                _values_differ(current_specs.get(k), v) for k, v in specs_extracted.items()
             )
-            diffs.append(FieldDiff(
-                field_name="specs",
-                current_value=current_specs,
-                extracted_value=merged,
-                has_change=has_change,
-            ))
+            diffs.append(
+                FieldDiff(
+                    field_name="specs",
+                    current_value=current_specs,
+                    extracted_value=merged,
+                    has_change=has_change,
+                )
+            )
 
         # materials — como bloque
         if extraction.materials:
-            diffs.append(FieldDiff(
-                field_name="materials",
-                current_value=None,
-                extracted_value=[m.model_dump() for m in extraction.materials],
-                has_change=True,
-            ))
+            diffs.append(
+                FieldDiff(
+                    field_name="materials",
+                    current_value=None,
+                    extracted_value=[m.model_dump() for m in extraction.materials],
+                    has_change=True,
+                )
+            )
 
         # dimensions — como bloque
         if extraction.dimensions:
-            diffs.append(FieldDiff(
-                field_name="dimensions_by_dn",
-                current_value=None,
-                extracted_value=[d.model_dump() for d in extraction.dimensions],
-                has_change=True,
-            ))
+            diffs.append(
+                FieldDiff(
+                    field_name="dimensions_by_dn",
+                    current_value=None,
+                    extracted_value=[d.model_dump() for d in extraction.dimensions],
+                    has_change=True,
+                )
+            )
 
         # translations — como bloque
         if extraction.translations:
-            diffs.append(FieldDiff(
-                field_name="translations",
-                current_value=None,
-                extracted_value=[t.model_dump() for t in extraction.translations],
-                has_change=True,
-            ))
+            diffs.append(
+                FieldDiff(
+                    field_name="translations",
+                    current_value=None,
+                    extracted_value=[t.model_dump() for t in extraction.translations],
+                    has_change=True,
+                )
+            )
 
         # pt_curve_points — como bloque
         if extraction.pt_curve_points:
-            diffs.append(FieldDiff(
-                field_name="pt_curve_points",
-                current_value=None,
-                extracted_value=extraction.pt_curve_points,
-                has_change=True,
-            ))
+            diffs.append(
+                FieldDiff(
+                    field_name="pt_curve_points",
+                    current_value=None,
+                    extracted_value=extraction.pt_curve_points,
+                    has_change=True,
+                )
+            )
 
         # extracted_assets — como bloque
         if extraction.extracted_assets:
-            diffs.append(FieldDiff(
-                field_name="assets",
-                current_value=None,
-                extracted_value=[a.model_dump() for a in extraction.extracted_assets],
-                has_change=True,
-            ))
+            diffs.append(
+                FieldDiff(
+                    field_name="assets",
+                    current_value=None,
+                    extracted_value=[a.model_dump() for a in extraction.extracted_assets],
+                    has_change=True,
+                )
+            )
 
         return diffs
 
     def compute_batch(
         self,
         products: list,  # list[Product]
-        extraction: "FichaExtractionResult",
+        extraction: FichaExtractionResult,
     ) -> list:  # list[SkuDiffResult]
         from app.schemas.ficha_enrich import SkuDiffResult
-        return [
-            SkuDiffResult(sku=p.sku, diffs=self.compute(p, extraction))
-            for p in products
-        ]
+
+        return [SkuDiffResult(sku=p.sku, diffs=self.compute(p, extraction)) for p in products]
 
 
 def _values_differ(current: Any, extracted: Any) -> bool:

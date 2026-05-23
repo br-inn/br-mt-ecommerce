@@ -26,8 +26,8 @@ __all__ = [
     "dispose_engine",
     "get_db_session",
     "get_engine",
-    "get_sessionmaker",
     "get_session",
+    "get_sessionmaker",
     "make_engine",
 ]
 

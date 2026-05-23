@@ -1,7 +1,7 @@
 """Mapping fila Excel `PIM completo.xlsx` → payload `products`.
 
 Wrapper sobre :func:`app.services.importer.column_mapper.map_row` (la fuente de
-verdad canónica del mapping, validada contra el PIM real 5085 rows × 17 cols).
+verdad canónica del mapping, validada contra el PIM real 5085 rows x 17 cols).
 
 Diferencia: `map_row` tradicional asume el header literal validado por
 ``parse_xlsx_stream``. Aquí exponemos también :func:`map_pim_row_to_product`
@@ -40,22 +40,9 @@ def map_pim_row_to_product(row: tuple[Any, ...] | list[Any]) -> dict[str, Any]:
         # SKU vacio == fila inutil — el importer la cuenta como error_row.
         raise ValueError("SKU vacio (col 'Referencia de variante').")
 
-    # Backfill `name_en` cuando erp_name vino vacío (22.2% del PIM real). El
-    # column_mapper canónico marca esto como error fatal (refleja el escenario
-    # del wizard sincrono que sí lo reporta como error en Pantalla 10), pero
-    # para el batch importer preferimos persistir con un placeholder y dejar
-    # data_quality='partial' para que TI/Comercial lo backfilleen vía LLM o
-    # manualmente.
-    #
-    # Fase B (mig 065): name_en ya no es columna de products. El payload sigue
-    # llevándolo y el ProductService.create_product lo extrae para upsertear en
-    # product_translations(lang='en') vía _extract_en_translation_payload.
-    if "name_en" not in payload or not payload.get("name_en"):
-        payload["name_en"] = f"[Producto sin nombre {sku}]"
+    # Si erp_name está vacío, marcar data_quality como partial.
+    if not payload.get("erp_name"):
         payload["data_quality"] = "partial"
-        # Removemos del error list la entrada de "name_en no derivable" porque
-        # el placeholder la resuelve para persistencia (deja la fila usable).
-        errors = [e for e in errors if "name_en no derivable" not in e]
 
     if errors:
         # Errores no-fatales recolectados para inspeccion. La fila aún se

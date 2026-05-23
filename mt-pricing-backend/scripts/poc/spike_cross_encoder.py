@@ -32,7 +32,7 @@ import os
 import random
 import sys
 import time
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +48,7 @@ LOCAL_COST_PER_CALL_USD = 0.00
 # ---------------------------------------------------------------------------
 # Dataset loading
 # ---------------------------------------------------------------------------
+
 
 def _load_dataset(path: Path, max_skus: int = MAX_SKUS_SAMPLE) -> list[dict[str, Any]]:
     """Carga hasta max_skus SKUs del JSONL.
@@ -101,18 +102,21 @@ def _generate_synthetic_data(n_skus: int = 50, n_candidates: int = 5) -> list[di
             else:
                 alt = products[(i + j + 1) % len(products)][0]
                 candidates.append(f"{alt} — candidato alternativo {j}")
-        records.append({
-            "sku": f"SYNTH-{i:04d}",
-            "query": q_text,
-            "candidates": candidates,
-            "relevant_index": relevant_index,
-        })
+        records.append(
+            {
+                "sku": f"SYNTH-{i:04d}",
+                "query": q_text,
+                "candidates": candidates,
+                "relevant_index": relevant_index,
+            }
+        )
     return records
 
 
 # ---------------------------------------------------------------------------
 # Metrics helpers
 # ---------------------------------------------------------------------------
+
 
 def _precision_at_1(results: list[tuple[int, list[int]]]) -> float:
     """Precision@1: fracción de queries donde el top-1 es el relevante."""
@@ -155,6 +159,7 @@ def _latency_percentile(latencies_ms: list[float], p: int) -> float:
 # Cohere Reranker
 # ---------------------------------------------------------------------------
 
+
 def _run_cohere(
     records: list[dict[str, Any]],
     n_candidates: int,
@@ -162,9 +167,7 @@ def _run_cohere(
     """Evalúa Cohere Rerank v3. Retorna métricas o None si no disponible."""
     api_key = os.environ.get("COHERE_API_KEY", "")
     if not api_key:
-        logger.warning(
-            "COHERE_API_KEY no configurada — saltando evaluación Cohere Reranker"
-        )
+        logger.warning("COHERE_API_KEY no configurada — saltando evaluación Cohere Reranker")
         return None
 
     try:
@@ -203,7 +206,7 @@ def _run_cohere(
             )
             resp.raise_for_status()
             data = resp.json()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Cohere API error: %s", exc)
             errors += 1
             continue
@@ -235,6 +238,7 @@ def _run_cohere(
 # Local Cross-Encoder
 # ---------------------------------------------------------------------------
 
+
 def _run_local_cross_encoder(
     records: list[dict[str, Any]],
     n_candidates: int,
@@ -253,7 +257,7 @@ def _run_local_cross_encoder(
     logger.info("Cargando modelo local: %s", model_name)
     try:
         model = CrossEncoder(model_name)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("Error cargando modelo %s: %s", model_name, exc)
         return None
 
@@ -292,6 +296,7 @@ def _run_local_cross_encoder(
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
+
 
 def _print_comparison_table(
     cohere_metrics: dict[str, Any] | None,
@@ -342,7 +347,7 @@ def _save_results(
     result = {
         "cohere": cohere_metrics,
         "cross_encoder_local": local_metrics,
-        "run_at": datetime.now(timezone.utc).isoformat(),
+        "run_at": datetime.now(UTC).isoformat(),
         "sample_size": sample_size,
     }
     with open(output_path, "w", encoding="utf-8") as f:
@@ -354,6 +359,7 @@ def _save_results(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(

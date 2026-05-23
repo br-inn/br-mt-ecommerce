@@ -50,9 +50,7 @@ async def test_apply_create_calls_cost_service() -> None:
     cost_service = MagicMock()
     cost_service.create_cost = AsyncMock(return_value=MagicMock(id="x"))
     diffs = [_diff(CostRowAction.CREATE)]
-    res = await apply_cost_diffs(
-        diffs, _mk_actor(), cost_service=cost_service, run_id="r1"
-    )
+    res = await apply_cost_diffs(diffs, _mk_actor(), cost_service=cost_service, run_id="r1")
     assert res.created == 1
     assert res.updated == 0
     assert res.errors == 0
@@ -67,9 +65,7 @@ async def test_apply_update_increments_counter() -> None:
     cost_service = MagicMock()
     cost_service.create_cost = AsyncMock()
     diffs = [_diff(CostRowAction.UPDATE)]
-    res = await apply_cost_diffs(
-        diffs, _mk_actor(), cost_service=cost_service, run_id="r1"
-    )
+    res = await apply_cost_diffs(diffs, _mk_actor(), cost_service=cost_service, run_id="r1")
     assert res.updated == 1
     assert res.created == 0
 
@@ -82,9 +78,7 @@ async def test_apply_skips_no_change_orphan_error() -> None:
         _diff(CostRowAction.ORPHAN, row=2),
         _diff(CostRowAction.ERROR, row=3),
     ]
-    res = await apply_cost_diffs(
-        diffs, _mk_actor(), cost_service=cost_service, run_id="r1"
-    )
+    res = await apply_cost_diffs(diffs, _mk_actor(), cost_service=cost_service, run_id="r1")
     assert res.no_change == 1
     assert res.orphans == 1
     assert res.errors == 1
@@ -93,13 +87,9 @@ async def test_apply_skips_no_change_orphan_error() -> None:
 
 async def test_apply_handles_fx_missing() -> None:
     cost_service = MagicMock()
-    cost_service.create_cost = AsyncMock(
-        side_effect=FxMissingError("no fx for EUR @ 2026-05-07")
-    )
+    cost_service.create_cost = AsyncMock(side_effect=FxMissingError("no fx for EUR @ 2026-05-07"))
     diffs = [_diff(CostRowAction.CREATE)]
-    res = await apply_cost_diffs(
-        diffs, _mk_actor(), cost_service=cost_service, run_id="r1"
-    )
+    res = await apply_cost_diffs(diffs, _mk_actor(), cost_service=cost_service, run_id="r1")
     assert res.errors_fx_missing == 1
     assert res.created == 0
     assert len(res.failure_details) == 1
@@ -108,13 +98,12 @@ async def test_apply_handles_fx_missing() -> None:
 
 async def test_apply_continues_on_unexpected_error() -> None:
     cost_service = MagicMock()
-    cost_service.create_cost = AsyncMock(
-        side_effect=[RuntimeError("boom"), MagicMock(id="ok")]
-    )
-    diffs = [_diff(CostRowAction.CREATE, row=1, sku="A"), _diff(CostRowAction.CREATE, row=2, sku="B")]
-    res = await apply_cost_diffs(
-        diffs, _mk_actor(), cost_service=cost_service, run_id="r1"
-    )
+    cost_service.create_cost = AsyncMock(side_effect=[RuntimeError("boom"), MagicMock(id="ok")])
+    diffs = [
+        _diff(CostRowAction.CREATE, row=1, sku="A"),
+        _diff(CostRowAction.CREATE, row=2, sku="B"),
+    ]
+    res = await apply_cost_diffs(diffs, _mk_actor(), cost_service=cost_service, run_id="r1")
     # Primera falla, segunda OK.
     assert res.errors == 1
     assert res.created == 1

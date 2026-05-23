@@ -20,24 +20,14 @@ class ExportManifest(UuidPkMixin, TimestampMixin, Base):
     __tablename__ = "exports_manifest"
 
     channel_code: Mapped[str] = mapped_column(String(64), nullable=False)
-    scheme_code: Mapped[str] = mapped_column(
-        String(64), nullable=False, server_default=text("''")
-    )
+    scheme_code: Mapped[str] = mapped_column(String(64), nullable=False, server_default=text("''"))
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default=text("'pending'")
     )
-    rows_exported: Mapped[int] = mapped_column(
-        Integer(), nullable=False, server_default=text("0")
-    )
-    rows_blocked: Mapped[int] = mapped_column(
-        Integer(), nullable=False, server_default=text("0")
-    )
-    file_ref: Mapped[str] = mapped_column(
-        Text(), nullable=False, server_default=text("''")
-    )
-    fx_as_of: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    rows_exported: Mapped[int] = mapped_column(Integer(), nullable=False, server_default=text("0"))
+    rows_blocked: Mapped[int] = mapped_column(Integer(), nullable=False, server_default=text("0"))
+    file_ref: Mapped[str] = mapped_column(Text(), nullable=False, server_default=text("''"))
+    fx_as_of: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     generated_by: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         ForeignKey("users.id", ondelete="SET NULL"),

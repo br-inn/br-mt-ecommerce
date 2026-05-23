@@ -12,7 +12,7 @@ Escenarios:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -127,9 +127,8 @@ def _build_app(session: Any) -> tuple[FastAPI, _FakeUser]:
                 if dep.call is None:
                     continue
                 fn = dep.call
-                if (
-                    fn.__module__ == require_permissions.__module__
-                    and fn.__qualname__.startswith("require_permissions.")
+                if fn.__module__ == require_permissions.__module__ and fn.__qualname__.startswith(
+                    "require_permissions."
                 ):
                     app.dependency_overrides[fn] = _override_perms_factory()
 
@@ -153,8 +152,8 @@ async def test_price_timeline_returns_events_asc() -> None:
     actor = _FakeUser()
     actor.id = actor_id
 
-    t1 = datetime(2026, 5, 12, 10, 0, 0, tzinfo=timezone.utc)
-    t2 = datetime(2026, 5, 12, 11, 0, 0, tzinfo=timezone.utc)
+    t1 = datetime(2026, 5, 12, 10, 0, 0, tzinfo=UTC)
+    t2 = datetime(2026, 5, 12, 11, 0, 0, tzinfo=UTC)
 
     evt1 = _FakeAuditEvent(
         id=1,

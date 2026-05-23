@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helper async runner para Celery (no async-native)
 # ---------------------------------------------------------------------------
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -45,10 +45,11 @@ def recalculate_sku_task(self, product_sku: str, actor_id: str) -> dict[str, Any
     """Re-propone precios para un SKU en TODOS los channels live × scheme soportado."""
 
     async def _run() -> dict[str, Any]:
+        from sqlalchemy import select
+
         from app.db.engine import get_sessionmaker
         from app.db.models.user import User
         from app.services.pricing import PricingService
-        from sqlalchemy import select
 
         async with get_sessionmaker()() as session:
             user = (
@@ -61,7 +62,7 @@ def recalculate_sku_task(self, product_sku: str, actor_id: str) -> dict[str, Any
             try:
                 prices = await service.recalculate_for_product(product_sku, user)
                 await session.commit()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 await session.rollback()
                 raise
         return {
@@ -80,8 +81,8 @@ def recalculate_catalog_task(actor_id: str) -> dict[str, Any]:
     async def _run() -> dict[str, Any]:
         from sqlalchemy import select
 
-        from app.db.models.product import Product
         from app.db.engine import get_sessionmaker
+        from app.db.models.product import Product
 
         async with get_sessionmaker()() as session:
             # Fase B (mig 066): active deriva de lifecycle_status='active'.
@@ -114,8 +115,8 @@ def fx_cascade_task(fx_rate_id: str) -> dict[str, Any]:
     async def _run() -> dict[str, Any]:
         from sqlalchemy import select
 
-        from app.db.models.pricing import FXRate
         from app.db.engine import get_sessionmaker
+        from app.db.models.pricing import FXRate
 
         async with get_sessionmaker()() as session:
             stmt = select(FXRate).where(FXRate.id == UUID(fx_rate_id))

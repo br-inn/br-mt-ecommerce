@@ -77,9 +77,7 @@ def _normalize(v: Any) -> Any:
     return v
 
 
-def _compute_field_diff(
-    payload: dict[str, Any], current: Product
-) -> dict[str, dict[str, Any]]:
+def _compute_field_diff(payload: dict[str, Any], current: Product) -> dict[str, dict[str, Any]]:
     diff: dict[str, dict[str, Any]] = {}
     for f in COMPARED_FIELDS:
         if f not in payload:
@@ -91,9 +89,7 @@ def _compute_field_diff(
     return diff
 
 
-async def _bulk_load_existing(
-    session: AsyncSession, skus: Sequence[str]
-) -> dict[str, Product]:
+async def _bulk_load_existing(session: AsyncSession, skus: Sequence[str]) -> dict[str, Product]:
     if not skus:
         return {}
     stmt = select(Product).where(Product.sku.in_(skus))
@@ -101,9 +97,7 @@ async def _bulk_load_existing(
     return {p.sku: p for p in result.scalars().all()}
 
 
-async def compute_diff(
-    session: AsyncSession, parsed_rows: Sequence[ParsedRow]
-) -> list[RowDiff]:
+async def compute_diff(session: AsyncSession, parsed_rows: Sequence[ParsedRow]) -> list[RowDiff]:
     """Genera el diff por fila contra el estado actual de `products`.
 
     Lee los SKUs existentes en una sola query (``WHERE sku = ANY``) y compara

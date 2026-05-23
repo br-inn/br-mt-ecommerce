@@ -22,9 +22,7 @@ def _has_pim() -> bool:
     return os.path.exists(PIM_REAL_PATH)
 
 
-pytestmark = pytest.mark.skipif(
-    not _has_pim(), reason=f"PIM real no disponible en {PIM_REAL_PATH}"
-)
+pytestmark = pytest.mark.skipif(not _has_pim(), reason=f"PIM real no disponible en {PIM_REAL_PATH}")
 
 
 def test_parse_real_pim_max_50_rows() -> None:

@@ -1,4 +1,5 @@
 """Verifica que populate_conformal escribe las columnas conformal."""
+
 from __future__ import annotations
 
 from app.services.matching.match_service import populate_conformal_fields

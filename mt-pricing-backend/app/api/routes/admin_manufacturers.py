@@ -29,6 +29,7 @@ router = APIRouter(prefix="/admin/manufacturers-whitelist", tags=["Manufacturers
 # Schemas (inline — tabla interna admin, sin cliente externo)
 # ---------------------------------------------------------------------------
 
+
 class ManufacturerWhitelistItem(BaseModel):
     """Representación pública de un registro de manufacturers_whitelist."""
 
@@ -66,6 +67,7 @@ class ManufacturerWhitelistToggleResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "",

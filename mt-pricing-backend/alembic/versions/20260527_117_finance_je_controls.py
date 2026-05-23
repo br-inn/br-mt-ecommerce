@@ -11,9 +11,10 @@ Note: FX revaluation logic is in the API/Celery layer (no new tables).
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260527_117"
 down_revision = "20260527_116"
@@ -27,11 +28,23 @@ def upgrade() -> None:
     # -------------------------------------------------------------------------
     op.create_table(
         "journal_entry_controls",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "user_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("control_type", sa.Text(), nullable=False),
         sa.Column("gl_account_code", sa.Text(), nullable=True),
-        sa.Column("effective_from", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False),
+        sa.Column(
+            "effective_from", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False
+        ),
         sa.Column("effective_to", sa.Date(), nullable=True),
         sa.CheckConstraint(
             "control_type IN ('PREPARER','REVIEWER','APPROVER')",

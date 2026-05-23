@@ -15,12 +15,11 @@ Convención: las funciones que aceptan ``slug`` resuelven aliases vía
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, delete, func, or_, select, text, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.taxonomy_registry import (
@@ -32,7 +31,6 @@ from app.db.models.taxonomy_registry import (
     TaxonomyNodeParent,
     TaxonomyType,
 )
-
 
 # ---------------------------------------------------------------------------
 # TaxonomyType
@@ -49,9 +47,7 @@ class TaxonomyTypeRepository:
         stmt = select(TaxonomyType).where(TaxonomyType.id == type_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def get_by_slug(
-        self, slug: str, *, resolve_aliases: bool = True
-    ) -> TaxonomyType | None:
+    async def get_by_slug(self, slug: str, *, resolve_aliases: bool = True) -> TaxonomyType | None:
         """Resuelve por slug; opcionalmente sigue aliases de TaxonomyAlias.
 
         Para tipos: los aliases viven a nivel de TaxonomyAlias (que apunta
@@ -70,9 +66,7 @@ class TaxonomyTypeRepository:
         filterable_only: bool = False,
     ) -> Sequence[TaxonomyType]:
         """Lista tipos para construir el sidebar / registro."""
-        stmt = select(TaxonomyType).order_by(
-            TaxonomyType.display_order, TaxonomyType.slug
-        )
+        stmt = select(TaxonomyType).order_by(TaxonomyType.display_order, TaxonomyType.slug)
         if active_only:
             stmt = stmt.where(TaxonomyType.active.is_(True))
         if filterable_only:
@@ -86,9 +80,7 @@ class TaxonomyTypeRepository:
         await self.session.flush()
         return instance
 
-    async def update(
-        self, slug: str, **fields: Any
-    ) -> TaxonomyType | None:
+    async def update(self, slug: str, **fields: Any) -> TaxonomyType | None:
         instance = await self.get_by_slug(slug, resolve_aliases=False)
         if instance is None:
             return None
@@ -136,9 +128,7 @@ class TaxonomyNodeRepository:
         stmt = select(TaxonomyNode).where(TaxonomyNode.id == node_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def resolve_slug(
-        self, type_id: UUID, slug: str
-    ) -> TaxonomyNode | None:
+    async def resolve_slug(self, type_id: UUID, slug: str) -> TaxonomyNode | None:
         """Resuelve slug → node siguiendo TaxonomyAlias si no encuentra directo."""
         # 1. Match directo
         stmt = select(TaxonomyNode).where(
@@ -232,9 +222,7 @@ class TaxonomyNodeRepository:
         await self.session.flush()
         return instance
 
-    async def update(
-        self, node_id: UUID, **fields: Any
-    ) -> TaxonomyNode | None:
+    async def update(self, node_id: UUID, **fields: Any) -> TaxonomyNode | None:
         instance = await self.get_by_id(node_id)
         if instance is None:
             return None
@@ -286,9 +274,7 @@ class TaxonomyNodeRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_ancestors(
-        self, descendant_id: UUID
-    ) -> Sequence[TaxonomyNode]:
+    async def get_ancestors(self, descendant_id: UUID) -> Sequence[TaxonomyNode]:
         """Lista ancestros (excluyendo self) vía closure table."""
         stmt = (
             select(TaxonomyNode)
@@ -347,26 +333,18 @@ class ProductTaxonomyLinkRepository:
         current_only: bool = True,
     ) -> Sequence[ProductTaxonomyLink]:
         """Lista links de un producto con filtros opcionales."""
-        stmt = select(ProductTaxonomyLink).where(
-            ProductTaxonomyLink.product_sku == product_sku
-        )
+        stmt = select(ProductTaxonomyLink).where(ProductTaxonomyLink.product_sku == product_sku)
         if role is not None:
             stmt = stmt.where(ProductTaxonomyLink.role == role)
         if current_only:
             stmt = stmt.where(ProductTaxonomyLink.valid_until.is_(None))
         if type_slug is not None:
             stmt = (
-                stmt.join(
-                    TaxonomyNode, TaxonomyNode.id == ProductTaxonomyLink.node_id
-                )
-                .join(
-                    TaxonomyType, TaxonomyType.id == TaxonomyNode.type_id
-                )
+                stmt.join(TaxonomyNode, TaxonomyNode.id == ProductTaxonomyLink.node_id)
+                .join(TaxonomyType, TaxonomyType.id == TaxonomyNode.type_id)
                 .where(TaxonomyType.slug == type_slug)
             )
-        stmt = stmt.order_by(
-            ProductTaxonomyLink.role, ProductTaxonomyLink.weight.desc()
-        )
+        stmt = stmt.order_by(ProductTaxonomyLink.role, ProductTaxonomyLink.weight.desc())
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -377,9 +355,7 @@ class ProductTaxonomyLinkRepository:
         role: str | None = None,
         current_only: bool = True,
     ) -> Sequence[ProductTaxonomyLink]:
-        stmt = select(ProductTaxonomyLink).where(
-            ProductTaxonomyLink.node_id == node_id
-        )
+        stmt = select(ProductTaxonomyLink).where(ProductTaxonomyLink.node_id == node_id)
         if role is not None:
             stmt = stmt.where(ProductTaxonomyLink.role == role)
         if current_only:

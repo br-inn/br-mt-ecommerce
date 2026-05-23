@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.supabase import get_supabase_admin
 from app.db.models.audit import AuditEvent
-from app.db.models.user import Permission, Role, User
+from app.db.models.user import Permission, User
 from app.repositories.user import (
     PermissionRepository,
     RoleRepository,
@@ -109,7 +109,7 @@ class AuthService:
         )
         # Reload con role (None) para mantener invariante del caller.
         loaded = await self.user_repo.get_with_role(user.id)
-        assert loaded is not None  # noqa: S101 — invariante post-flush
+        assert loaded is not None
         return loaded
 
     # ---------- Profile + permissions ----------
@@ -185,7 +185,7 @@ class AuthService:
         )
 
         loaded = await self.user_repo.get_with_role(user.id)
-        assert loaded is not None  # noqa: S101
+        assert loaded is not None
         return loaded
 
     async def revoke_role(
@@ -217,7 +217,7 @@ class AuthService:
         # cortar UI inmediatamente. ADR-032.
         try:
             self._sign_out_supabase(user.id)
-        except Exception:  # noqa: BLE001 — best-effort, no romper transacción
+        except Exception:
             logger.exception("supabase.auth.admin.sign_out failed for %s", user.id)
 
         # Publicar evento Realtime — el frontend del user (si está abierto)
@@ -237,7 +237,7 @@ class AuthService:
         )
 
         loaded = await self.user_repo.get_with_role(user.id)
-        assert loaded is not None  # noqa: S101
+        assert loaded is not None
         return loaded
 
     async def force_logout(
@@ -260,7 +260,7 @@ class AuthService:
             )
         try:
             self._sign_out_supabase(user.id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("supabase.auth.admin.sign_out failed for %s", user.id)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -337,7 +337,7 @@ class AuthService:
                     "redirect_to": redirect_url,
                 },
             )
-        except Exception as exc:  # noqa: BLE001 — supabase-py raises broad
+        except Exception as exc:
             logger.exception("supabase.auth.admin.invite_user_by_email failed")
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -377,11 +377,11 @@ class AuthService:
         self.session.add(user)
         try:
             await self.session.flush()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("Insert public.users failed; compensating auth.user delete")
             try:
                 admin.auth.admin.delete_user(str(auth_user_id))
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("Compensation delete_user failed for %s", auth_user_id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -405,7 +405,7 @@ class AuthService:
         )
 
         loaded = await self.user_repo.get_with_role(user.id)
-        assert loaded is not None  # noqa: S101
+        assert loaded is not None
         return loaded
 
     # ---------- Resend invite ----------
@@ -446,7 +446,7 @@ class AuthService:
                     },
                 }
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("resend invite failed for %s", user.email)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,

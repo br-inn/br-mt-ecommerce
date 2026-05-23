@@ -43,7 +43,7 @@ Endpoints US-ERP-03-06 — Dashboard KPIs:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID, uuid4
@@ -52,7 +52,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, get_current_user, require_permissions, require_role
+from app.api.deps import get_current_user, get_db_session, require_permissions, require_role
 from app.db.models.inventory import GoodsReceipt, PurchaseOrder, PurchaseOrderLine
 from app.db.models.procurement import (
     InvoiceTolerance,
@@ -75,9 +75,9 @@ from app.schemas.procurement import (
     InvoiceToleranceOut,
     InvoiceToleranceUpdate,
     PRCreate,
+    ProcurementKpiOut,
     PROut,
     PRReject,
-    ProcurementKpiOut,
     RfqComparisonItem,
     RfqComparisonOut,
     RfqCreate,
@@ -106,6 +106,7 @@ _APPROVER_ROLES = ("gerente", "ti")
 # ---------------------------------------------------------------------------
 # Purchase Requisitions
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/requisitions",
@@ -139,6 +140,7 @@ async def convert_pr_to_po(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     from app.repositories.procurement import ProcurementRepository
+
     repo = ProcurementRepository(db)
     po = await repo.convert_pr_to_po(pr_id, created_by=current_user.id)
     await db.commit()
@@ -197,6 +199,7 @@ async def get_pr(
     role_code = user.role.code if user.role else None
     if role_code not in _APPROVER_ROLES and pr.requester_id != user.id:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "pr_forbidden", "title": "Solo puedes ver tus propias PRs"},
@@ -285,6 +288,7 @@ async def cancel_pr(
 # Approval Rules (admin)
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/approval-rules",
     response_model=list[ApprovalRuleOut],
@@ -333,9 +337,7 @@ async def update_approval_rule(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ApprovalRuleOut:
     repo = ProcurementRepository(session)
-    rule = await repo.update_approval_rule(
-        rule_id, data.model_dump(exclude_unset=True)
-    )
+    rule = await repo.update_approval_rule(rule_id, data.model_dump(exclude_unset=True))
     await session.commit()
     await session.refresh(rule)
     return ApprovalRuleOut.model_validate(rule)
@@ -380,6 +382,7 @@ async def get_pr_decisions(
 # ---------------------------------------------------------------------------
 # Vendor Product Conditions / PIR
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/vendor-conditions",
@@ -446,10 +449,12 @@ async def update_vendor_condition(
 # US-ERP-03-04 — Vendor Invoices + 3-way match
 # ---------------------------------------------------------------------------
 
+
 def _next_invoice_number() -> str:
     """Genera número de factura interno provisional (INVYYYYMMDD-XXXX)."""
-    from datetime import date as _date
     import random
+    from datetime import date as _date
+
     return f"INV{_date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
 
 
@@ -568,6 +573,7 @@ async def release_invoice_block(
 # Invoice Tolerances CRUD
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/invoice-tolerances",
     response_model=list[InvoiceToleranceOut],
@@ -620,7 +626,9 @@ async def update_invoice_tolerance(
 ) -> InvoiceToleranceOut:
     tol = await session.get(InvoiceTolerance, tol_id)
     if tol is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tolerancia no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tolerancia no encontrada"
+        )
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(tol, field, value)
     session.add(tol)
@@ -632,6 +640,7 @@ async def update_invoice_tolerance(
 # ---------------------------------------------------------------------------
 # US-ERP-03-05 — Source List
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/source-list",
@@ -670,6 +679,7 @@ async def create_source_list(
     payload = data.model_dump()
     if payload.get("valid_from") is None:
         from datetime import date as _date
+
         payload["valid_from"] = _date.today()
     sl = SourceList(id=uuid4(), **payload)
     session.add(sl)
@@ -725,9 +735,11 @@ async def delete_source_list(
 # RFQ
 # ---------------------------------------------------------------------------
 
+
 def _next_rfq_number() -> str:
-    from datetime import date as _date
     import random
+    from datetime import date as _date
+
     return f"RFQ{_date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
 
 
@@ -818,7 +830,7 @@ async def create_rfq_response(
     if existing:
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(existing, field, value)
-        existing.responded_at = datetime.now(tz=timezone.utc)
+        existing.responded_at = datetime.now(tz=UTC)
         session.add(existing)
         await session.commit()
         await session.refresh(existing)
@@ -833,7 +845,7 @@ async def create_rfq_response(
         lead_time_days=data.lead_time_days,
         valid_until=data.valid_until,
         notes=data.notes,
-        responded_at=datetime.now(tz=timezone.utc),
+        responded_at=datetime.now(tz=UTC),
     )
     session.add(resp)
     # Actualizar status de RFQ
@@ -868,7 +880,9 @@ async def rfq_comparison(
 
     # Calcular scores: score = 0.6*(1/precio_norm) + 0.4*(1/lead_time_norm)
     prices = [r.unit_price for r in responses if r.unit_price is not None and r.unit_price > 0]
-    leads = [r.lead_time_days for r in responses if r.lead_time_days is not None and r.lead_time_days > 0]
+    leads = [
+        r.lead_time_days for r in responses if r.lead_time_days is not None and r.lead_time_days > 0
+    ]
 
     min_price = min(prices) if prices else None
     min_lead = min(leads) if leads else None
@@ -876,7 +890,14 @@ async def rfq_comparison(
     items: list[RfqComparisonItem] = []
     for r in responses:
         score: float | None = None
-        if min_price and r.unit_price and r.unit_price > 0 and min_lead and r.lead_time_days and r.lead_time_days > 0:
+        if (
+            min_price
+            and r.unit_price
+            and r.unit_price > 0
+            and min_lead
+            and r.lead_time_days
+            and r.lead_time_days > 0
+        ):
             price_norm = float(r.unit_price) / float(min_price)
             lead_norm = float(r.lead_time_days) / float(min_lead)
             score = round(0.6 * (1 / price_norm) + 0.4 * (1 / lead_norm), 4)
@@ -900,6 +921,7 @@ async def rfq_comparison(
 # US-ERP-03-06 — Dashboard KPIs + Spend Analysis
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/kpis",
     response_model=ProcurementKpiOut,
@@ -914,25 +936,25 @@ async def procurement_kpis(
 
     # open_pr_count — PRs en pending_approval o approved
     pr_count_result = await session.execute(
-        select(func.count()).select_from(PurchaseRequisition).where(
-            PurchaseRequisition.status.in_(("pending_approval", "approved"))
-        )
+        select(func.count())
+        .select_from(PurchaseRequisition)
+        .where(PurchaseRequisition.status.in_(("pending_approval", "approved")))
     )
     open_pr_count: int = pr_count_result.scalar_one() or 0
 
     # open_po_count — POs en approved/sent/partially_received (equivalente a confirmed/partial)
     po_count_result = await session.execute(
-        select(func.count()).select_from(PurchaseOrder).where(
-            PurchaseOrder.status.in_(("confirmed", "partial"))
-        )
+        select(func.count())
+        .select_from(PurchaseOrder)
+        .where(PurchaseOrder.status.in_(("confirmed", "partial")))
     )
     open_po_count: int = po_count_result.scalar_one() or 0
 
     # pending_invoice_count y blocked_invoice_amount
     inv_pending_result = await session.execute(
-        select(func.count()).select_from(VendorInvoice).where(
-            VendorInvoice.status.in_(("pending", "blocked"))
-        )
+        select(func.count())
+        .select_from(VendorInvoice)
+        .where(VendorInvoice.status.in_(("pending", "blocked")))
     )
     pending_invoice_count: int = inv_pending_result.scalar_one() or 0
 
@@ -992,7 +1014,7 @@ async def spend_analysis(
 ) -> SpendAnalysisOut:
     period_days_map = {"30d": 30, "90d": 90, "365d": 365}
     days = period_days_map[period]
-    since = datetime.now(tz=timezone.utc) - timedelta(days=days)
+    since = datetime.now(tz=UTC) - timedelta(days=days)
 
     # Spend by vendor — desde VendorInvoices aprobadas/pagadas en el período
     vendor_result = await session.execute(

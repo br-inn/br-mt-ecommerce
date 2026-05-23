@@ -13,9 +13,8 @@ from __future__ import annotations
 
 import decimal
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -25,15 +24,10 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, require_permissions
+from app.api.deps import get_current_user, get_db_session
 from app.api.routes.matches import router as matches_router
 from app.db.models.match_agent import MatchAgentConfig
 from app.db.models.match_candidate import MatchCandidate
-from app.repositories.match_agent import (
-    MatchAgentConfigRepository,
-    MatchAgentDecisionRepository,
-)
-from app.schemas.match_agent import MatchAgentConfigResponse
 
 pytestmark = pytest.mark.integration
 
@@ -54,7 +48,7 @@ def _make_config_row(
     row.mode = mode
     row.alpha = alpha if alpha is not None else decimal.Decimal("0.10")
     row.min_labels_gate = min_labels_gate
-    row.updated_at = datetime.now(tz=timezone.utc)
+    row.updated_at = datetime.now(tz=UTC)
     row.updated_by = None
     return row
 
@@ -66,22 +60,18 @@ def _make_config_row(
 _FAKE_USER_ID = uuid.uuid4()
 
 
+class _FakeRole:
+    code: str = "admin"
+
+
 class _FakeUser:
     id: UUID = _FAKE_USER_ID
     email: str = "test@example.com"
+    role: _FakeRole = _FakeRole()
 
 
 def _fake_user() -> _FakeUser:
     return _FakeUser()
-
-
-def _require_permissions_noop(_perm: str):
-    """Factory que devuelve un override que ignora el permiso y retorna el user."""
-
-    def _inner():
-        return _FakeUser()
-
-    return _inner
 
 
 @pytest_asyncio.fixture
@@ -96,9 +86,10 @@ async def _mini_app(db_session: AsyncSession) -> FastAPI:
 
     mini.dependency_overrides[get_db_session] = _get_session
 
-    # Permisos siempre concedidos
-    for perm in ("matches:read", "matches:write"):
-        mini.dependency_overrides[require_permissions(perm)] = _require_permissions_noop(perm)
+    # Bypass auth: override get_current_user con un admin fake (evita JWKS lookup
+    # y la creación de funciones nuevas por require_permissions que rompería los
+    # dependency_overrides al no coincidir por identidad de objeto).
+    mini.dependency_overrides[get_current_user] = _fake_user
 
     return mini
 
@@ -171,7 +162,9 @@ async def seeded_config(db_session: AsyncSession) -> MatchAgentConfig:
 # ---------------------------------------------------------------------------
 
 
-async def test_get_agent_config(authed_client: AsyncClient, seeded_config: MatchAgentConfig) -> None:
+async def test_get_agent_config(
+    authed_client: AsyncClient, seeded_config: MatchAgentConfig
+) -> None:
     resp = await authed_client.get("/api/v1/matches/agent/config")
     assert resp.status_code == 200
     body = resp.json()
@@ -187,9 +180,7 @@ async def test_get_agent_config(authed_client: AsyncClient, seeded_config: Match
 async def test_put_agent_config_changes_alpha(
     authed_client: AsyncClient, seeded_config: MatchAgentConfig
 ) -> None:
-    resp = await authed_client.put(
-        "/api/v1/matches/agent/config", json={"alpha": 0.05}
-    )
+    resp = await authed_client.put("/api/v1/matches/agent/config", json={"alpha": 0.05})
     assert resp.status_code == 200
     assert float(resp.json()["alpha"]) == pytest.approx(0.05)
 
@@ -198,9 +189,7 @@ async def test_put_agent_config_active_blocked_without_labels(
     authed_client: AsyncClient, seeded_config: MatchAgentConfig
 ) -> None:
     """No se puede pasar a active sin alcanzar el gate de labels."""
-    resp = await authed_client.put(
-        "/api/v1/matches/agent/config", json={"mode": "active"}
-    )
+    resp = await authed_client.put("/api/v1/matches/agent/config", json={"mode": "active"})
     assert resp.status_code == 409
     assert resp.json()["detail"]["code"] == "labels_gate_not_reached"
 

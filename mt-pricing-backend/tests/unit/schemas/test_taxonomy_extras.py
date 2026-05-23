@@ -80,9 +80,7 @@ class TestSeriesSchemas:
 
     def test_pressure_rating_negative_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            SeriesCreate(
-                code="x", name_en="X", pressure_rating_pn=-1
-            )
+            SeriesCreate(code="x", name_en="X", pressure_rating_pn=-1)
 
     def test_temperature_bounds(self) -> None:
         s = SeriesCreate(
@@ -126,9 +124,7 @@ class TestSeriesTranslationSchemas:
 # ---------------------------------------------------------------------------
 class TestMaterialSchemas:
     def test_create_with_family_kind(self) -> None:
-        m = MaterialCreate(
-            code="laton", name="Latón", family_kind="metal", sort_order=10
-        )
+        m = MaterialCreate(code="laton", name="Latón", family_kind="metal", sort_order=10)
         assert m.family_kind == "metal"
 
     def test_create_invalid_code(self) -> None:

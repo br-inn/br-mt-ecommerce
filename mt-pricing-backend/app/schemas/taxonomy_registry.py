@@ -44,9 +44,7 @@ ValueKindLiteral = Literal[
     "freetext",
     "reference_to_other_type",
 ]
-LinkRoleLiteral = Literal[
-    "belongs_to", "compatible_with", "replaces", "recommends"
-]
+LinkRoleLiteral = Literal["belongs_to", "compatible_with", "replaces", "recommends"]
 
 # Sanity: los Literal types deben coincidir con las constantes del modelo.
 assert set(VALUE_KINDS) == {

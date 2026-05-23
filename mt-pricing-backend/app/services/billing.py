@@ -15,12 +15,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.billing import (
@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _compute_line_totals(
     qty: Decimal,
     unit_price: Decimal,
@@ -61,7 +62,7 @@ def _compute_line_totals(
 
 
 def _generate_invoice_number(prefix: str = "INV") -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     short = str(uuid4()).split("-")[0].upper()
     return f"{prefix}-{ts}-{short}"
 
@@ -97,6 +98,7 @@ def _build_xml_stub(invoice: Invoice) -> str:
 # ---------------------------------------------------------------------------
 # Invoice CRUD
 # ---------------------------------------------------------------------------
+
 
 async def create_invoice(session: AsyncSession, data: InvoiceCreate) -> Invoice:
     invoice = Invoice(
@@ -180,6 +182,7 @@ async def get_invoice_chain(session: AsyncSession, invoice: Invoice) -> dict[str
     chain: dict[str, Any] = {"invoice": invoice, "so": None, "delivery": None}
     if invoice.so_id:
         from app.db.models.sales import SalesOrder
+
         r = await session.execute(select(SalesOrder).where(SalesOrder.id == invoice.so_id))
         so = r.scalar_one_or_none()
         if so:
@@ -192,6 +195,7 @@ async def get_invoice_chain(session: AsyncSession, invoice: Invoice) -> dict[str
             }
     if invoice.delivery_id:
         from app.db.models.sales import OutboundDelivery
+
         r = await session.execute(
             select(OutboundDelivery).where(OutboundDelivery.id == invoice.delivery_id)
         )
@@ -214,9 +218,7 @@ async def create_invoice_from_delivery(
     """Crea invoice copiando precio del SO lines asociados al delivery."""
     from app.db.models.sales import OutboundDelivery, OutboundDeliveryLine, SalesOrderLine
 
-    r = await session.execute(
-        select(OutboundDelivery).where(OutboundDelivery.id == delivery_id)
-    )
+    r = await session.execute(select(OutboundDelivery).where(OutboundDelivery.id == delivery_id))
     delivery = r.scalar_one_or_none()
     if not delivery:
         raise ValueError(f"Delivery {delivery_id} not found")
@@ -231,9 +233,7 @@ async def create_invoice_from_delivery(
     sol_ids = [dl.so_line_id for dl in dlv_lines if dl.so_line_id]
     sol_map: dict = {}
     if sol_ids:
-        r3 = await session.execute(
-            select(SalesOrderLine).where(SalesOrderLine.id.in_(sol_ids))
-        )
+        r3 = await session.execute(select(SalesOrderLine).where(SalesOrderLine.id.in_(sol_ids)))
         sol_map = {sol.id: sol for sol in r3.scalars().all()}
 
     inv_lines: list[InvoiceLineCreate_] = []
@@ -257,6 +257,7 @@ async def create_invoice_from_delivery(
     customer_id = "unknown"
     if delivery.so_id:
         from app.db.models.sales import SalesOrder
+
         r4 = await session.execute(select(SalesOrder).where(SalesOrder.id == delivery.so_id))
         so = r4.scalar_one_or_none()
         if so:
@@ -323,6 +324,7 @@ class InvoiceLineCreate_:
 # ---------------------------------------------------------------------------
 # US-ERP-05-02 — Post / Cancel / Reverse
 # ---------------------------------------------------------------------------
+
 
 async def post_invoice(session: AsyncSession, invoice: Invoice) -> Invoice:
     """Postea invoice: status → posted, FI entries, customer_open_items."""
@@ -539,6 +541,7 @@ async def reverse_invoice(session: AsyncSession, invoice: Invoice) -> Invoice:
 # US-ERP-05-03 — Dunning
 # ---------------------------------------------------------------------------
 
+
 async def get_dunning_invoices(
     session: AsyncSession,
     customer_id: str | None = None,
@@ -557,7 +560,7 @@ async def get_dunning_invoices(
 
     # Load dunning levels
     dl_result = await session.execute(
-        select(DunningLevel).where(DunningLevel.is_active == True).order_by(DunningLevel.level)  # noqa: E712
+        select(DunningLevel).where(DunningLevel.is_active == True).order_by(DunningLevel.level)
     )
     levels = list(dl_result.scalars().all())
 
@@ -599,7 +602,9 @@ async def escalate_dunning(
 
     days_overdue = (today - invoice.due_date).days
     dl_result = await session.execute(
-        select(DunningLevel).where(DunningLevel.is_active == True).order_by(DunningLevel.level.desc())  # noqa: E712
+        select(DunningLevel)
+        .where(DunningLevel.is_active == True)
+        .order_by(DunningLevel.level.desc())
     )
     levels = list(dl_result.scalars().all())
     current_level = 0
@@ -625,6 +630,7 @@ async def escalate_dunning(
 # US-ERP-05-04 — E-Invoice / ZATCA
 # ---------------------------------------------------------------------------
 
+
 async def submit_e_invoice(
     session: AsyncSession,
     invoice: Invoice,
@@ -648,7 +654,7 @@ async def submit_e_invoice(
         invoice_id=invoice.id,
         standard=req.standard,
         submission_ref=f"{req.standard}-{uuid4().hex[:8].upper()}",
-        submitted_at=datetime.now(timezone.utc),
+        submitted_at=datetime.now(UTC),
         status="submitted",
         xml_payload=xml_payload,
         qr_code=qr_code,
@@ -679,7 +685,7 @@ async def retry_e_invoice(
         submission_type=sub.submission_type,
         status="submitted",
         retry_count=sub.retry_count + 1,
-        submitted_at=datetime.now(timezone.utc),
+        submitted_at=datetime.now(UTC),
         request_payload=sub.request_payload,
     )
     session.add(new_sub)
@@ -692,6 +698,7 @@ async def retry_e_invoice(
 # US-ERP-05-05 — AR Aging + Payment Promises
 # ---------------------------------------------------------------------------
 
+
 async def get_ar_aging(
     session: AsyncSession,
     as_of_date: date | None = None,
@@ -700,7 +707,7 @@ async def get_ar_aging(
 
     q = select(Invoice).where(
         Invoice.status == "posted",
-        Invoice.total_amount != None,  # noqa: E711
+        Invoice.total_amount != None,
     )
     result = await session.execute(q)
     invoices = list(result.scalars().all())
@@ -754,9 +761,7 @@ async def patch_payment_promise(
     promise_id: UUID,
     data: PaymentPromisePatch,
 ) -> PaymentPromise:
-    r = await session.execute(
-        select(PaymentPromise).where(PaymentPromise.id == promise_id)
-    )
+    r = await session.execute(select(PaymentPromise).where(PaymentPromise.id == promise_id))
     pp = r.scalar_one_or_none()
     if not pp:
         raise ValueError(f"PaymentPromise {promise_id} not found")
@@ -770,6 +775,7 @@ async def patch_payment_promise(
 # ---------------------------------------------------------------------------
 # US-ERP-05-06 — KPIs
 # ---------------------------------------------------------------------------
+
 
 async def get_billing_kpis(session: AsyncSession) -> BillingKPIs:
     today = date.today()

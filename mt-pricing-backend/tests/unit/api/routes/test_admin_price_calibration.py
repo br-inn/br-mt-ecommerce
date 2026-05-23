@@ -110,7 +110,7 @@ def _build_app(
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
 
-                async def _allow(_call=call):  # noqa: ARG001
+                async def _allow(_call=call):
                     return the_user
 
                 app.dependency_overrides[call] = _allow
@@ -149,8 +149,12 @@ async def test_list_returns_empty_when_no_ranges() -> None:
 
 async def test_list_returns_existing_ranges() -> None:
     """GET /admin/price-calibration → lista con rangos existentes."""
-    row1 = _make_range_row(category_id="valve_family", min_p10=Decimal("15.00"), max_p90=Decimal("850.00"))
-    row2 = _make_range_row(category_id="fitting_family", min_p10=Decimal("2.50"), max_p90=Decimal("320.00"))
+    row1 = _make_range_row(
+        category_id="valve_family", min_p10=Decimal("15.00"), max_p90=Decimal("850.00")
+    )
+    row2 = _make_range_row(
+        category_id="fitting_family", min_p10=Decimal("2.50"), max_p90=Decimal("320.00")
+    )
 
     session = AsyncMock()
     session.execute.side_effect = [
@@ -175,9 +179,8 @@ async def test_list_returns_existing_ranges() -> None:
 async def test_import_csv_validates_negative_min() -> None:
     """POST /admin/price-calibration/import-csv con expected_min_p10 < 0 → HTTP 422."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\n"
-        "valve_family,-5.00,850.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,-5.00,850.00,AED\n"
+    )
 
     session = AsyncMock()
     app = _build_app(session)
@@ -198,9 +201,8 @@ async def test_import_csv_validates_negative_min() -> None:
 async def test_import_csv_validates_min_greater_than_max() -> None:
     """POST /admin/price-calibration/import-csv con min >= max → HTTP 422."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\n"
-        "valve_family,900.00,100.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,900.00,100.00,AED\n"
+    )
 
     session = _make_session_with_begin([])
     app = _build_app(session)
@@ -233,15 +235,17 @@ def _make_session_with_begin(
 async def test_import_csv_upserts_valid_rows() -> None:
     """POST /admin/price-calibration/import-csv con CSV válido → inserted: 2, updated: 0."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\n"
-        "valve_family,15.00,850.00,AED\n"
-        "fitting_family,2.50,320.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\n"
+        b"valve_family,15.00,850.00,AED\n"
+        b"fitting_family,2.50,320.00,AED\n"
+    )
 
-    session = _make_session_with_begin([
-        _make_scalar_one_or_none_result(None),  # valve_family → no existe
-        _make_scalar_one_or_none_result(None),  # fitting_family → no existe
-    ])
+    session = _make_session_with_begin(
+        [
+            _make_scalar_one_or_none_result(None),  # valve_family → no existe
+            _make_scalar_one_or_none_result(None),  # fitting_family → no existe
+        ]
+    )
 
     app = _build_app(session)
     async with await _client(app) as ac:
@@ -260,9 +264,8 @@ async def test_import_csv_upserts_valid_rows() -> None:
 async def test_import_csv_counts_updates_for_existing_rows() -> None:
     """POST /admin/price-calibration/import-csv con fila existente → updated: 1."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\n"
-        "valve_family,20.00,900.00,AED\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,20.00,900.00,AED\n"
+    )
 
     existing_row = _make_range_row(
         category_id="valve_family",
@@ -270,9 +273,11 @@ async def test_import_csv_counts_updates_for_existing_rows() -> None:
         max_p90=Decimal("850.00"),
     )
 
-    session = _make_session_with_begin([
-        _make_scalar_one_or_none_result(existing_row),  # valve_family → existe
-    ])
+    session = _make_session_with_begin(
+        [
+            _make_scalar_one_or_none_result(existing_row),  # valve_family → existe
+        ]
+    )
 
     app = _build_app(session)
     async with await _client(app) as ac:
@@ -299,20 +304,21 @@ async def test_recalibrate_dispatches_task() -> None:
     session = AsyncMock()
     app = _build_app(session)
 
-    with patch(
-        "app.api.routes.admin_price_calibration.recalibrate_price_ranges"
-        if False  # el import es diferido dentro del endpoint
-        else "app.workers.tasks.price_sanity.recalibrate_price_ranges",
-    ) as mock_task, patch(
-        "app.api.routes.admin_price_calibration.recalibrate_price_ranges",
-        create=True,
+    with (
+        patch(
+            "app.api.routes.admin_price_calibration.recalibrate_price_ranges"
+            if False  # el import es diferido dentro del endpoint
+            else "app.workers.tasks.price_sanity.recalibrate_price_ranges",
+        ) as mock_task,
+        patch(
+            "app.api.routes.admin_price_calibration.recalibrate_price_ranges",
+            create=True,
+        ),
     ):
         pass  # parche no aplica aquí — usamos el approach directo abajo
 
     # Parchamos la importación dentro del endpoint (import diferido)
-    with patch(
-        "app.workers.tasks.price_sanity.recalibrate_price_ranges"
-    ) as mock_task:
+    with patch("app.workers.tasks.price_sanity.recalibrate_price_ranges") as mock_task:
         mock_task.delay.return_value = fake_async_result
 
         # Inyectamos el mock en el namespace del módulo del router
@@ -350,9 +356,7 @@ async def test_recalibrate_dispatches_task_via_module_patch() -> None:
 
     # Parcheamos en el módulo de origen (price_sanity) antes de que el endpoint
     # haga su import diferido.
-    with patch(
-        "app.workers.tasks.price_sanity.recalibrate_price_ranges"
-    ) as mock_task:
+    with patch("app.workers.tasks.price_sanity.recalibrate_price_ranges") as mock_task:
         mock_task.delay.return_value = fake_async_result
 
         async with await _client(app) as ac:
@@ -368,9 +372,8 @@ async def test_recalibrate_dispatches_task_via_module_patch() -> None:
 async def test_import_csv_rejects_invalid_currency() -> None:
     """POST /admin/price-calibration/import-csv con currency no permitida → HTTP 422."""
     csv_content = (
-        "category_id,expected_min_p10,expected_max_p90,currency\n"
-        "valve_family,15.00,850.00,GBP\n"
-    ).encode("utf-8")
+        b"category_id,expected_min_p10,expected_max_p90,currency\nvalve_family,15.00,850.00,GBP\n"
+    )
 
     session = _make_session_with_begin([])
     app = _build_app(session)

@@ -169,7 +169,7 @@ def _extract_size_token(dn_value: Any) -> str:
         return ""
 
     # Already inch format: contains a quote character or fraction like '1/2'
-    if any(c in text for c in ('"', '”', '’')) or re.search(r"\d/\d", text):
+    if any(c in text for c in ('"', "”", "’")) or re.search(r"\d/\d", text):
         clean = text.replace("”", '"').replace("’", '"')
         if not clean.endswith('"'):
             clean = clean.rstrip("\"'") + '"'
@@ -320,9 +320,7 @@ class QueryBuilder:
         # 1. ERP name query — highest priority: the full English product name from
         #    the ERP is the most descriptive and should be tried first on Amazon.
         if erp_name:
-            out.append(
-                Query(text=erp_name, source=channel, lang="en", type="erp_name")
-            )
+            out.append(Query(text=erp_name, source=channel, lang="en", type="erp_name"))
 
         # 2. Type-spec: English `type` field + material + size (structured fallback).
         if product_type and (material_en or size_token):
@@ -432,6 +430,7 @@ def build_queries(sku: dict[str, Any], channels: Iterable[str] | None = None) ->
 # Tier-based query builder (migrado de MT_Pricing_Run_Kit/src/search_builder_v4.py)
 # ---------------------------------------------------------------------------
 
+
 def _dedupe_words(s: str) -> str:
     """Remove consecutive and globally-duplicate words, preserving order."""
     seen_lower: set[str] = set()
@@ -533,11 +532,9 @@ def build_tiers(
         size_in = web.get("size_in", "") or str(excel.get("medidas_clean", "")).replace('"', "")
         web_mat = web.get("material", "")
         mat_t0 = web_mat.replace("_", " ") if web_mat else ""
-        for comp in (product_data.get("competitors") or []):
+        for comp in product_data.get("competitors") or []:
             cat_list = comp.get("category_match") or []
-            if not any(
-                c.lower() == cat.lower() or c.lower() in cat.lower() for c in cat_list
-            ):
+            if not any(c.lower() == cat.lower() or c.lower() in cat.lower() for c in cat_list):
                 continue
             parts = [comp["brand_canonical"].lower(), cat_singular]
             if mat_t0:
@@ -589,9 +586,7 @@ def build_tiers(
         out.append(("T4_product_name", product_name))
 
     # ── T5: raw EN name (fallback) ────────────────────────────────────────────
-    nombre_en = str(
-        product_data.get("nombre_en") or product_data.get("name_en") or ""
-    ).strip()
+    nombre_en = str(product_data.get("nombre_en") or product_data.get("name_en") or "").strip()
     if nombre_en:
         out.append(("T5_fallback", nombre_en))
 

@@ -1,4 +1,5 @@
 """Validar/descartar deben escribir golden_labels + label + human_outcome."""
+
 from __future__ import annotations
 
 import decimal
@@ -6,8 +7,8 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.match_candidate import MatchCandidate
 

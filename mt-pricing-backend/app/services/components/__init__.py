@@ -5,4 +5,4 @@ from app.services.components.components_service import (
     ComponentsService,
 )
 
-__all__ = ["ComponentsService", "ComponentsDomainError"]
+__all__ = ["ComponentsDomainError", "ComponentsService"]

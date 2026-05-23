@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20260507_013"
@@ -127,9 +126,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DELETE FROM job_definitions WHERE code = 'cleanup_force_logout_events';"
-    )
+    op.execute("DELETE FROM job_definitions WHERE code = 'cleanup_force_logout_events';")
     op.execute(
         """
         DO $$

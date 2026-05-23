@@ -14,8 +14,32 @@ from app.db.models.attributes import (
     FamilyAttribute,
 )
 from app.db.models.audit import AuditEvent
+from app.db.models.billing import (
+    DunningHistory,
+    DunningLevel,
+    EInvoiceSubmission,
+    Invoice,
+    InvoiceLine,
+    PaymentPromise,
+)
+from app.db.models.cdc_event import CdcEvent
+from app.db.models.certificates import Certificate, CertificateScope
+from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
+from app.db.models.channels import Channel, ChannelStateHistory
+from app.db.models.comparator import (
+    BrandExtractor,
+    CompetitorBrand,
+    CompetitorListing,
+    ManufacturerWhitelist,
+    MatchDecision,
+)
+from app.db.models.comparator_config import ComparatorConfig
 from app.db.models.compatibility import ProductCompatibility
-from app.db.models.comparator import BrandExtractor, CompetitorBrand, CompetitorListing, ManufacturerWhitelist, MatchDecision
+from app.db.models.components import ProductConnection, ProductMaterial
+from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
+from app.db.models.cost_scheme import CostScheme
+from app.db.models.currency import Currency
+from app.db.models.datasheet_import_run import ProductDatasheet
 from app.db.models.dimensions import (
     ActuationCode,
     DimensionCell,
@@ -27,38 +51,27 @@ from app.db.models.dimensions import (
 from app.db.models.documents import Document
 from app.db.models.dr_drills import DrDrill
 from app.db.models.exports import ExportManifest, LastGoodExport
-from app.db.models.components import ProductConnection, ProductMaterial
-from app.db.models.tech_tables import ProductTechTable
-from app.db.models.cdc_event import CdcEvent
-from app.db.models.graphrag import KgIntegrityResult
-from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
-from app.db.models.channels import Channel, ChannelStateHistory
-from app.db.models.cost import Cost  # US-1A-04-02 — moved from pricing.py
-from app.db.models.cost_scheme import CostScheme
-from app.db.models.currency import Currency
-from app.db.models.datasheet_import_run import ProductDatasheet
 from app.db.models.feature_flag import FeatureFlag
+from app.db.models.finance import (
+    Budget,
+    CostCenter,
+    FinancialEntry,
+    GlAccount,
+    JournalEntryControl,
+    PaymentRun,
+    PaymentRunItem,
+    PeriodCloseChecklist,
+    PostingPeriod,
+    PriceVariance,
+    ProfitCenter,
+    StandardCost,
+    TaxProvision,
+    VendorOpenItem,
+)
 from app.db.models.golden_label import CalibratorVersion, GoldenLabel
+from app.db.models.graphrag import KgIntegrityResult
+from app.db.models.hitl_queue import HitlQueue
 from app.db.models.import_run import ImportRun
-from app.db.models.job import JobDefinition, JobRun
-from app.db.models.match_candidate import MatchCandidate
-from app.db.models.material_compatibility import MaterialCompatibility
-from app.db.models.notification import Notification
-from app.db.models.pricing import (
-    ExceptionRule,
-    FXRate,
-    Price,
-    PriceApprovalEvent,
-)
-from app.db.models.product import (
-    DnNpsReference,
-    Product,
-    ProductBoreDimension,
-    ProductImage,
-    ProductRelease,
-    ProductTranslation,
-    ProductUomConversion,
-)
 from app.db.models.inventory import (
     CostLot,
     CycleCountSchedule,
@@ -79,6 +92,22 @@ from app.db.models.inventory import (
     WarehouseLocation,
     WarehouseZone,
 )
+from app.db.models.job import JobDefinition, JobRun
+from app.db.models.marketplace_listing import MarketplaceListing
+from app.db.models.match_agent import MatchAgentConfig, MatchAgentDecision
+from app.db.models.match_candidate import MatchCandidate
+from app.db.models.match_rule_stat import MatchRuleStat
+from app.db.models.material_compatibility import MaterialCompatibility
+from app.db.models.norm_equivalence import NormEquivalence
+from app.db.models.notification import Notification
+from app.db.models.price_alerts import PriceAlert
+from app.db.models.price_history import PriceHistoryRaw
+from app.db.models.pricing import (
+    ExceptionRule,
+    FXRate,
+    Price,
+    PriceApprovalEvent,
+)
 from app.db.models.procurement import (
     ApprovalDecision,
     ApprovalRule,
@@ -91,6 +120,22 @@ from app.db.models.procurement import (
     VendorInvoice,
     VendorProductCondition,
 )
+from app.db.models.product import (
+    DnNpsReference,
+    Product,
+    ProductBoreDimension,
+    ProductImage,
+    ProductRelease,
+    ProductTranslation,
+    ProductUomConversion,
+)
+from app.db.models.product_models import (
+    ModelDimensionRow,
+    ModelFlowData,
+    ModelTechTable,
+    ProductModel,
+)
+from app.db.models.rule_suggestion import RuleSuggestion
 from app.db.models.sales import (
     AtpCheckingRule,
     CreditMemo,
@@ -104,56 +149,13 @@ from app.db.models.sales import (
     SalesOrderLine,
     StockReservation,
 )
-from app.db.models.billing import (
-    DunningHistory,
-    DunningLevel,
-    EInvoiceSubmission,
-    Invoice,
-    InvoiceLine,
-    PaymentPromise,
-)
-from app.db.models.supplier import Supplier
-from app.db.models.user import Permission, Role, RolePermission, User
-from app.db.models.finance import (
-    GlAccount,
-    PostingPeriod,
-    CostCenter,
-    ProfitCenter,
-    FinancialEntry,
-    VendorOpenItem,
-    PaymentRun,
-    PaymentRunItem,
-    StandardCost,
-    PriceVariance,
-    PeriodCloseChecklist,
-    TaxProvision,
-    JournalEntryControl,
-    Budget,
-)
-from app.db.models.product_models import (  # noqa: F401
-    ModelDimensionRow,
-    ModelFlowData,
-    ModelTechTable,
-    ProductModel,
-)
-from app.db.models.certificates import Certificate, CertificateScope  # noqa: F401
-from app.db.models.unmatched_offer import UnmatchedOffer  # noqa: F401
-from app.db.models.price_history import PriceHistoryRaw  # noqa: F401
-from app.db.models.price_alerts import PriceAlert  # noqa: F401
-from app.db.models.hitl_queue import HitlQueue  # noqa: F401
-from app.db.models.taxonomy_profile import TaxonomyProfile  # noqa: F401
-from app.db.models.comparator_config import ComparatorConfig  # noqa: F401
-from app.db.models.unit_transform import UnitTransform  # noqa: F401
-from app.db.models.norm_equivalence import NormEquivalence  # noqa: F401
-from app.db.models.match_rule_stat import MatchRuleStat  # noqa: F401
-from app.db.models.rule_suggestion import RuleSuggestion  # noqa: F401
-from app.db.models.marketplace_listing import MarketplaceListing  # noqa: F401
-from app.db.models.match_agent import MatchAgentConfig, MatchAgentDecision  # noqa: F401
-from app.db.models.scraper_sources import (  # noqa: F401
+from app.db.models.scraper_sources import (
     ScraperSource,
     ScraperSourceRecipe,
     ScraperSourceTestRun,
 )
+from app.db.models.supplier import Supplier
+from app.db.models.taxonomy_profile import TaxonomyProfile
 from app.db.models.taxonomy_registry import (
     FamilySchema,
     ProductTaxonomyLink,
@@ -163,6 +165,10 @@ from app.db.models.taxonomy_registry import (
     TaxonomyNodeParent,
     TaxonomyType,
 )
+from app.db.models.tech_tables import ProductTechTable
+from app.db.models.unit_transform import UnitTransform
+from app.db.models.unmatched_offer import UnmatchedOffer
+from app.db.models.user import Permission, Role, RolePermission, User
 from app.db.models.vocabularies import (
     Application,
     Brand,

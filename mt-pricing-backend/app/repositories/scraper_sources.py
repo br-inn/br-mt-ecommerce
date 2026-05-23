@@ -1,4 +1,5 @@
 """Repositorio de ScraperSource y sus recetas versionadas."""
+
 from __future__ import annotations
 
 from typing import Any

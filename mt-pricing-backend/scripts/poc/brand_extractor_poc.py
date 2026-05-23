@@ -108,7 +108,7 @@ async def run_dry(brand_name: str) -> None:
 
     covered = len(result)
     total = len(raw_pairs)
-    print(f"\n📊 Coverage: {covered}/{total} attributes mapped ({covered/total*100:.0f}%)")
+    print(f"\n📊 Coverage: {covered}/{total} attributes mapped ({covered / total * 100:.0f}%)")
 
 
 async def run_with_db(brand_id: str, marketplace: str) -> None:
@@ -116,11 +116,12 @@ async def run_with_db(brand_id: str, marketplace: str) -> None:
     import uuid as _uuid
 
     from app.core.database import AsyncSessionLocal
-    from app.db.models.comparator import BrandExtractor, CompetitorBrand
+    from sqlalchemy import select
+
+    from app.db.models.comparator import CompetitorBrand
     from app.services.matching.adapter_registry import get_fetcher
     from app.services.matching.ports import Query
     from app.services.scraper.brand_extractor_service import BrandExtractorService
-    from sqlalchemy import select
 
     brand_uuid = _uuid.UUID(brand_id)
 
@@ -137,7 +138,9 @@ async def run_with_db(brand_id: str, marketplace: str) -> None:
         svc = BrandExtractorService(session)
         existing = await svc.get_mapping(brand_uuid, marketplace)
         if existing:
-            logger.info("Existing mapping found (%d entries). Use --force to regenerate.", len(existing))
+            logger.info(
+                "Existing mapping found (%d entries). Use --force to regenerate.", len(existing)
+            )
             print(json.dumps(existing, indent=2))
             return
 

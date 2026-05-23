@@ -129,11 +129,7 @@ class CalibratorVersionRepository:
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def list_recent(self, limit: int = 20) -> Sequence[CalibratorVersion]:
-        stmt = (
-            select(CalibratorVersion)
-            .order_by(CalibratorVersion.trained_at.desc())
-            .limit(limit)
-        )
+        stmt = select(CalibratorVersion).order_by(CalibratorVersion.trained_at.desc()).limit(limit)
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def promote(
@@ -169,7 +165,7 @@ class CalibratorVersionRepository:
         )
         await self.session.flush()
         target = await self.get_by_version(version)
-        assert target is not None  # noqa: S101
+        assert target is not None
         return target
 
 

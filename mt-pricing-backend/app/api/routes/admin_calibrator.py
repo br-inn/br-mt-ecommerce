@@ -96,7 +96,8 @@ async def train_calibrator(
 ) -> CalibratorTrainResponse:
     since = None
     if payload.since_days is not None:
-        from datetime import UTC, datetime as _dt
+        from datetime import UTC
+        from datetime import datetime as _dt
 
         since = _dt.now(tz=UTC) - timedelta(days=payload.since_days)
     try:

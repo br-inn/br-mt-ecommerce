@@ -158,9 +158,7 @@ def downgrade() -> None:
     )
 
     # 3. Borrar rol
-    op.execute(
-        "DELETE FROM roles WHERE code = 'responsable_compras' AND is_system = true;"
-    )
+    op.execute("DELETE FROM roles WHERE code = 'responsable_compras' AND is_system = true;")
 
     # 4. Borrar permisos nuevos
     op.execute(

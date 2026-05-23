@@ -51,9 +51,7 @@ def _emit_jwt(*, sub: str, email: str) -> str:
     )
 
 
-async def _seed_user_with_perms(
-    session: AsyncSession, perms_codes: list[str]
-) -> tuple[UUID, str]:
+async def _seed_user_with_perms(session: AsyncSession, perms_codes: list[str]) -> tuple[UUID, str]:
     from app.db.models.user import Permission, Role, RolePermission, User
 
     perm_ids = []
@@ -69,13 +67,9 @@ async def _seed_user_with_perms(
         else:
             perm_ids.append(existing.id)
     role_code = "supplier_admin"
-    role = (
-        await session.execute(select(Role).where(Role.code == role_code))
-    ).scalar_one_or_none()
+    role = (await session.execute(select(Role).where(Role.code == role_code))).scalar_one_or_none()
     if role is None:
-        role = Role(
-            code=role_code, name=role_code, permissions_snapshot=perms_codes
-        )
+        role = Role(code=role_code, name=role_code, permissions_snapshot=perms_codes)
         session.add(role)
         await session.flush()
         for pid in perm_ids:
@@ -83,9 +77,7 @@ async def _seed_user_with_perms(
         await session.flush()
     uid = uuid4()
     email = f"sup-{uid.hex[:6]}@mt.ae"
-    user = User(
-        id=uid, email=email, full_name="S", locale="es", is_active=True, role_id=role.id
-    )
+    user = User(id=uid, email=email, full_name="S", locale="es", is_active=True, role_id=role.id)
     session.add(user)
     await session.flush()
     return uid, email
@@ -139,9 +131,7 @@ def _payload(code: str = "MT_VALVES_ES") -> dict[str, Any]:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_supplier_happy_path(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_create_supplier_happy_path(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
     await _seed_currency(db_session, "EUR")
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
@@ -163,22 +153,16 @@ async def test_create_supplier_duplicate_returns_409(
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
 
     code = "MT_DUP"
-    r1 = await client.post(
-        "/api/v1/suppliers", json=_payload(code), headers=headers
-    )
+    r1 = await client.post("/api/v1/suppliers", json=_payload(code), headers=headers)
     assert r1.status_code == 201
-    r2 = await client.post(
-        "/api/v1/suppliers", json=_payload(code), headers=headers
-    )
+    r2 = await client.post("/api/v1/suppliers", json=_payload(code), headers=headers)
     assert r2.status_code == 409
     assert r2.json()["detail"]["code"] == "supplier_duplicate_code"
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_supplier_by_code(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_get_supplier_by_code(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
     await _seed_currency(db_session, "EUR")
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
@@ -196,9 +180,7 @@ async def test_get_supplier_by_code(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_list_suppliers_with_filter(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_list_suppliers_with_filter(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
     await _seed_currency(db_session, "EUR")
     await _seed_currency(db_session, "USD")
@@ -223,9 +205,7 @@ async def test_list_suppliers_with_filter(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_put_supplier_happy_path(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_put_supplier_happy_path(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
     await _seed_currency(db_session, "EUR")
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
@@ -245,9 +225,7 @@ async def test_put_supplier_happy_path(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_patch_supplier_partial(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_patch_supplier_partial(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
     await _seed_currency(db_session, "EUR")
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
@@ -266,9 +244,7 @@ async def test_patch_supplier_partial(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_delete_supplier_returns_405(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_delete_supplier_returns_405(client: AsyncClient, db_session: AsyncSession) -> None:
     uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
     await _seed_currency(db_session, "EUR")
     headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}

@@ -12,7 +12,7 @@ import io
 import logging
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.services.pricing_export.publisher import ExportResult, PublishPayload
@@ -47,24 +47,28 @@ class AmazonUAEAdapter:
         for idx, row in enumerate(payload.rows):
             sku = row.get("sku", "")
             if not sku:
-                errors.append({
-                    "field": "sku",
-                    "row": idx,
-                    "code": "MISSING_SKU",
-                    "message": f"Fila {idx}: campo 'sku' ausente o vacío.",
-                })
+                errors.append(
+                    {
+                        "field": "sku",
+                        "row": idx,
+                        "code": "MISSING_SKU",
+                        "message": f"Fila {idx}: campo 'sku' ausente o vacío.",
+                    }
+                )
             price = row.get("price_aed", 0)
             try:
                 price_val = float(price)
             except (TypeError, ValueError):
                 price_val = 0.0
             if price_val <= 0:
-                errors.append({
-                    "field": "price_aed",
-                    "row": idx,
-                    "code": "INVALID_PRICE",
-                    "message": f"Fila {idx}: 'price_aed' debe ser > 0 (recibido: {price!r}).",
-                })
+                errors.append(
+                    {
+                        "field": "price_aed",
+                        "row": idx,
+                        "code": "INVALID_PRICE",
+                        "message": f"Fila {idx}: 'price_aed' debe ser > 0 (recibido: {price!r}).",
+                    }
+                )
         return errors
 
     # ------------------------------------------------------------------
@@ -89,7 +93,7 @@ class AmazonUAEAdapter:
                 rows_blocked=len(errors),
                 errors=errors,
                 shadow_mode=True,
-                exported_at=datetime.now(tz=timezone.utc),
+                exported_at=datetime.now(tz=UTC),
             )
 
         # Generar CSV con misma lógica que export_csv
@@ -115,7 +119,7 @@ class AmazonUAEAdapter:
         csv_content = buf.getvalue()
 
         # Escribir en /tmp sin retornar bytes al cliente
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S%f")
         shadow_filename = f"shadow_amazon_uae_{timestamp}.csv"
         shadow_path = os.path.join(tempfile.gettempdir(), shadow_filename)
         with open(shadow_path, "w", encoding="utf-8", newline="") as fh:
@@ -134,7 +138,7 @@ class AmazonUAEAdapter:
             rows_blocked=rows_blocked,
             submission_id=f"shadow-amz-{uuid4()}",
             shadow_mode=True,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={"shadow_path": shadow_path, "scheme_code": payload.scheme_code},
         )
 
@@ -174,7 +178,7 @@ class AmazonUAEAdapter:
             rows_exported=rows_exported,
             rows_blocked=rows_blocked,
             shadow_mode=False,
-            exported_at=datetime.now(tz=timezone.utc),
+            exported_at=datetime.now(tz=UTC),
             raw={"stub": True, "scheme_code": payload.scheme_code},
         )
         return csv_bytes, result

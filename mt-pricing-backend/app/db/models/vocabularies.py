@@ -45,9 +45,7 @@ class Certification(UuidPkMixin, Base):
     issued_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     scope: Mapped[str | None] = mapped_column(Text, nullable=True)
     logo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -56,7 +54,7 @@ class Certification(UuidPkMixin, Base):
     )
 
     # Reverse side — products that carry this certification.
-    product_certifications: Mapped[list["ProductCertification"]] = relationship(
+    product_certifications: Mapped[list[ProductCertification]] = relationship(
         back_populates="certification", cascade="all, delete-orphan"
     )
 
@@ -69,9 +67,7 @@ class Application(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -80,7 +76,7 @@ class Application(UuidPkMixin, Base):
     )
 
     # Reverse side — products that have this application.
-    product_applications: Mapped[list["ProductApplication"]] = relationship(
+    product_applications: Mapped[list[ProductApplication]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
 
@@ -124,9 +120,7 @@ class ProductCertification(Base):
     )
     owner_id: Mapped[str] = mapped_column(Text, nullable=False)
 
-    certificate_pdf_asset_id: Mapped[UUID | None] = mapped_column(
-        UUID_PG, nullable=True
-    )
+    certificate_pdf_asset_id: Mapped[UUID | None] = mapped_column(UUID_PG, nullable=True)
     obtained_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     expires_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -134,10 +128,8 @@ class ProductCertification(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    certification: Mapped["Certification"] = relationship(
-        back_populates="product_certifications"
-    )
-    product: Mapped["Product"] = relationship(  # type: ignore[name-defined]
+    certification: Mapped[Certification] = relationship(back_populates="product_certifications")
+    product: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product",
         back_populates="product_certifications",
     )
@@ -171,20 +163,14 @@ class ProductApplication(Base):
         primary_key=True,
         nullable=False,
     )
-    is_primary: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
-    position: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, server_default=text("0")
-    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    application: Mapped["Application"] = relationship(
-        back_populates="product_applications"
-    )
-    product: Mapped["Product"] = relationship(  # type: ignore[name-defined]
+    application: Mapped[Application] = relationship(back_populates="product_applications")
+    product: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product",
         back_populates="product_applications",
     )
@@ -213,9 +199,7 @@ class Brand(UuidPkMixin, Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     logo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     website_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -234,12 +218,8 @@ class Family(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sort_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -269,12 +249,8 @@ class Subfamily(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sort_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -312,12 +288,8 @@ class ProductType(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sort_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -328,9 +300,7 @@ class ProductType(UuidPkMixin, Base):
     subfamily: Mapped[Subfamily] = relationship(back_populates="product_types")
 
     __table_args__ = (
-        UniqueConstraint(
-            "subfamily_id", "code", name="uq_product_types_subfamily_code"
-        ),
+        UniqueConstraint("subfamily_id", "code", name="uq_product_types_subfamily_code"),
         Index("idx_product_types_subfamily", "subfamily_id"),
         Index("idx_product_types_active", "active"),
     )
@@ -353,12 +323,8 @@ class Division(UuidPkMixin, Base):
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sort_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -390,14 +356,12 @@ class ProductDivision(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    product: Mapped["Product"] = relationship(  # type: ignore[name-defined]
+    product: Mapped[Product] = relationship(  # type: ignore[name-defined]
         "Product", back_populates="product_divisions"
     )
     division: Mapped[Division] = relationship()
 
-    __table_args__ = (
-        Index("idx_product_divisions_division", "division_id"),
-    )
+    __table_args__ = (Index("idx_product_divisions_division", "division_id"),)
 
 
 class SeriesTier(UuidPkMixin, Base):
@@ -407,13 +371,9 @@ class SeriesTier(UuidPkMixin, Base):
 
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    rank: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, server_default=text("99")
-    )
+    rank: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("99"))
     display_color: Mapped[str | None] = mapped_column(Text, nullable=True)
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -446,18 +406,13 @@ class Series(UuidPkMixin, Base):
     features_tags: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, server_default=text("'{}'::text[]")
     )
-    sort_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     thread_standard: Mapped[str | None] = mapped_column(
-        String(32), nullable=True,
-        comment="ISO 228-1 (BSP) | ISO 7/1 (BSPT) | ASME B1.20.1 (NPT)"
+        String(32), nullable=True, comment="ISO 228-1 (BSP) | ISO 7/1 (BSPT) | ASME B1.20.1 (NPT)"
     )
     revision: Mapped[str | None] = mapped_column(Text, nullable=True)
     revision_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -466,13 +421,13 @@ class Series(UuidPkMixin, Base):
     )
 
     tier: Mapped[SeriesTier | None] = relationship()
-    translations: Mapped[list["SeriesTranslation"]] = relationship(
+    translations: Mapped[list[SeriesTranslation]] = relationship(
         back_populates="series", cascade="all, delete-orphan"
     )
-    series_divisions: Mapped[list["SeriesDivision"]] = relationship(
+    series_divisions: Mapped[list[SeriesDivision]] = relationship(
         back_populates="series", cascade="all, delete-orphan"
     )
-    series_certifications: Mapped[list["SeriesCertification"]] = relationship(
+    series_certifications: Mapped[list[SeriesCertification]] = relationship(
         back_populates="series", cascade="all, delete-orphan"
     )
 
@@ -531,9 +486,7 @@ class SeriesDivision(Base):
     series: Mapped[Series] = relationship(back_populates="series_divisions")
     division: Mapped[Division] = relationship()
 
-    __table_args__ = (
-        Index("idx_series_divisions_division", "division_id"),
-    )
+    __table_args__ = (Index("idx_series_divisions_division", "division_id"),)
 
 
 class SeriesCertification(Base):
@@ -558,9 +511,7 @@ class SeriesCertification(Base):
     series: Mapped[Series] = relationship(back_populates="series_certifications")
     certification: Mapped[Certification] = relationship()
 
-    __table_args__ = (
-        Index("idx_series_certifications_cert", "certification_id"),
-    )
+    __table_args__ = (Index("idx_series_certifications_cert", "certification_id"),)
 
 
 class Material(UuidPkMixin, Base):
@@ -576,12 +527,8 @@ class Material(UuidPkMixin, Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     family_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sort_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

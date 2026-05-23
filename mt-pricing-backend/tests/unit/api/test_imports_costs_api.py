@@ -30,6 +30,8 @@ from app.api.deps import get_current_user, get_db_session, require_permissions
 from app.api.routes.imports_costs import (
     get_cost_service,
     get_importer_costs_service,
+)
+from app.api.routes.imports_costs import (
     router as imports_costs_router,
 )
 from app.services.importer_costs import (
@@ -162,9 +164,8 @@ def _build_app(*, with_orphans: bool = False) -> tuple[FastAPI, _FakeUser, Magic
                 if dep.call is None:
                     continue
                 fn = dep.call
-                if (
-                    fn.__module__ == require_permissions.__module__
-                    and fn.__qualname__.startswith("require_permissions.")
+                if fn.__module__ == require_permissions.__module__ and fn.__qualname__.startswith(
+                    "require_permissions."
                 ):
                     app.dependency_overrides[fn] = _override_perms_factory()
 

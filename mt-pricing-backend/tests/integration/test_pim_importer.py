@@ -259,7 +259,7 @@ async def test_pim_importer_inserts_5_rows(
     assert "MT-T02" in skus
     # Verifica casts (Decimal/JSONB).
     p1 = next(p for p in products if p.sku == "MT-T01")
-    assert p1.name_en == "Test Valve T01"
+    assert p1.erp_name == "Test Valve T01"
     assert p1.intrastat_code == "84818019"
     # dimensions JSONB.
     assert p1.dimensions.get("high_mm") == "100"

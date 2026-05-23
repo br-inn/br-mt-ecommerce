@@ -21,7 +21,6 @@ from app.services.matching.calibrator import (
     IsotonicCalibrator,
 )
 
-
 # ------------------------------------------------------------------ #
 # Helpers
 # ------------------------------------------------------------------ #
@@ -56,7 +55,9 @@ def _make_cal_data(
 class TestConformalWrapperVennAbers:
     """Grupo de tests que fuerzan el path Venn-Abers interno (sin mapie)."""
 
-    def _make_wrapper_venn_abers(self, cal: IsotonicCalibrator, alpha: float = 0.02) -> ConformalWrapper:
+    def _make_wrapper_venn_abers(
+        self, cal: IsotonicCalibrator, alpha: float = 0.02
+    ) -> ConformalWrapper:
         """Crea un ConformalWrapper con method='venn_abers' (evita mapie)."""
         wrapper = ConformalWrapper(calibrator=cal, method="venn_abers", alpha=alpha)
         return wrapper
@@ -91,9 +92,7 @@ class TestConformalWrapperVennAbers:
 
         coverage = covered / len(test_scores)
         # Cobertura empírica debe ser >= 0.98 (con tolerancia ±0.005 → >= 0.975)
-        assert coverage >= 0.975, (
-            f"Cobertura empírica {coverage:.4f} < umbral 0.975"
-        )
+        assert coverage >= 0.975, f"Cobertura empírica {coverage:.4f} < umbral 0.975"
 
     def test_insufficient_samples_raises(self) -> None:
         """Menos de 200 muestras → ValueError."""
@@ -126,9 +125,7 @@ class TestConformalWrapperVennAbers:
         pred = wrapper.predict_with_interval(0.95)
         # Verificar que lower_bound > 0.70 y priority='low'
         assert pred.lower_bound > 0.70, f"Expected lower > 0.70, got {pred.lower_bound}"
-        assert pred.review_priority == "low", (
-            f"Expected 'low', got {pred.review_priority!r}"
-        )
+        assert pred.review_priority == "low", f"Expected 'low', got {pred.review_priority!r}"
 
     def test_review_priority_high(self) -> None:
         """conf_upper < 0.50 → review_priority='high'."""
@@ -147,9 +144,7 @@ class TestConformalWrapperVennAbers:
 
         pred = wrapper.predict_with_interval(0.05)
         assert pred.upper_bound < 0.50, f"Expected upper < 0.50, got {pred.upper_bound}"
-        assert pred.review_priority == "high", (
-            f"Expected 'high', got {pred.review_priority!r}"
-        )
+        assert pred.review_priority == "high", f"Expected 'high', got {pred.review_priority!r}"
 
     def test_review_priority_none(self) -> None:
         """Intervalo intermedio → review_priority=None.

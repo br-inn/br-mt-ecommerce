@@ -14,7 +14,8 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import Float, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PgUUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.types import TypeDecorator, TypeEngine
 
 # ---------------------------------------------------------------------------
@@ -39,9 +40,9 @@ JSONB_ARRAY_DEFAULT = text("'[]'::jsonb")
 # pgvector — opcional Sprint 1 (los modelos lo declaran nullable)
 # ---------------------------------------------------------------------------
 try:  # pragma: no cover — depende de que `pgvector` esté instalada
-    from pgvector.sqlalchemy import Vector  # type: ignore[import-not-found]
+    from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
 
-    Vector1024: type[TypeEngine[Any]] = Vector(1024)  # type: ignore[assignment, misc]
+    Vector1024: type[TypeEngine[Any]] = Vector(1024)
     HAS_PGVECTOR = True
 except ImportError:  # pragma: no cover
     # Fallback: ARRAY(Float) — funcionalmente equivalente para CRUD pero sin
@@ -56,12 +57,12 @@ class JSONBValidatedDict(TypeDecorator[dict[str, Any]]):
     impl = JSONB
     cache_ok = True
 
-    def process_bind_param(self, value: Any, dialect: Any) -> Any:  # noqa: ANN401
+    def process_bind_param(self, value: Any, dialect: Any) -> Any:
         if value is None:
             return {}
         return value
 
-    def process_result_value(self, value: Any, dialect: Any) -> Any:  # noqa: ANN401
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
         return value if value is not None else {}
 
 

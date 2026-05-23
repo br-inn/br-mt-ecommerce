@@ -154,7 +154,11 @@ class CircuitBreaker:
 
             logger.debug(
                 "circuit_breaker.failure_recorded",
-                extra={"domain": domain, "failures": failures, "threshold": self._failure_threshold},
+                extra={
+                    "domain": domain,
+                    "failures": failures,
+                    "threshold": self._failure_threshold,
+                },
             )
 
             if failures >= self._failure_threshold:
@@ -197,7 +201,9 @@ class CircuitBreaker:
                 "recovery_timeout": self._recovery_timeout,
             }
         except Exception as exc:
-            logger.warning("circuit_breaker.stats_error", extra={"domain": domain, "error": str(exc)[:120]})
+            logger.warning(
+                "circuit_breaker.stats_error", extra={"domain": domain, "error": str(exc)[:120]}
+            )
             return {
                 "domain": domain,
                 "state": "unknown",
@@ -215,7 +221,10 @@ class CircuitBreaker:
             await r.delete(state_key, failures_key, opened_at_key)
             logger.info("circuit_breaker.force_closed", extra={"domain": domain})
         except Exception as exc:
-            logger.warning("circuit_breaker.force_close_error", extra={"domain": domain, "error": str(exc)[:120]})
+            logger.warning(
+                "circuit_breaker.force_close_error",
+                extra={"domain": domain, "error": str(exc)[:120]},
+            )
 
     async def force_open(self, domain: str) -> None:
         """Fuerza el circuit a OPEN sin TTL (pausar canal manualmente).
@@ -227,12 +236,15 @@ class CircuitBreaker:
             r = await self._get_redis()
             state_key, _, opened_at_key = self._keys(domain)
             forced_key = f"circuit:{domain}:forced"
-            await r.set(state_key, CircuitState.OPEN)   # sin TTL — permanente
+            await r.set(state_key, CircuitState.OPEN)  # sin TTL — permanente
             await r.set(opened_at_key, str(time.time()))
             await r.set(forced_key, "1")
             logger.warning("circuit_breaker.force_opened", extra={"domain": domain})
         except Exception as exc:
-            logger.warning("circuit_breaker.force_open_error", extra={"domain": domain, "error": str(exc)[:120]})
+            logger.warning(
+                "circuit_breaker.force_open_error",
+                extra={"domain": domain, "error": str(exc)[:120]},
+            )
 
     async def close(self) -> None:
         if self._redis is not None:

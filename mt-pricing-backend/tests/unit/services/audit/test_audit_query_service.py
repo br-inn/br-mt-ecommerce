@@ -12,7 +12,7 @@ Estrategia:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -71,7 +71,7 @@ class _FakeResult:
         self._rows = rows
 
     def all(self) -> list[tuple[Any, Any]]:
-        return [(MagicMock(_mapping=None, **{"0": r[0], "1": r[1]}), None) for r in self._rows]  # noqa
+        return [(MagicMock(_mapping=None, **{"0": r[0], "1": r[1]}), None) for r in self._rows]
 
 
 class _StubAsyncSession:
@@ -88,7 +88,7 @@ class _StubAsyncSession:
         rows = self.rows
 
         class _R:
-            def all(self_inner) -> list[Any]:  # noqa: ARG002, N805
+            def all(self_inner) -> list[Any]:
                 return [_RowProxy(a, b) for a, b in rows]
 
         return _R()
@@ -114,7 +114,7 @@ def _make_event(
 ) -> _FakeAuditEvent:
     return _FakeAuditEvent(
         id=id_,
-        event_at=datetime.now(tz=timezone.utc) - timedelta(minutes=minutes_ago),
+        event_at=datetime.now(tz=UTC) - timedelta(minutes=minutes_ago),
         entity_type=entity_type,
         entity_id=entity_id,
         action=action,
@@ -238,8 +238,8 @@ async def test_filters_temporal_range() -> None:
     rows = []
     session = _StubAsyncSession(rows)
     svc = AuditQueryService(session)  # type: ignore[arg-type]
-    since = datetime.now(tz=timezone.utc) - timedelta(days=7)
-    until = datetime.now(tz=timezone.utc)
+    since = datetime.now(tz=UTC) - timedelta(days=7)
+    until = datetime.now(tz=UTC)
     filters = AuditQueryFilters(since=since, until=until)
     result = await svc.query(filters)
     assert result.items == []
@@ -252,9 +252,7 @@ async def test_filters_actions_in() -> None:
     ]
     session = _StubAsyncSession(rows)
     svc = AuditQueryService(session)  # type: ignore[arg-type]
-    result = await svc.query(
-        AuditQueryFilters(actions=("price.proposed", "price.approved"))
-    )
+    result = await svc.query(AuditQueryFilters(actions=("price.proposed", "price.approved")))
     assert len(result.items) == 2
 
 
@@ -262,6 +260,6 @@ async def test_query_with_cursor_continues_pagination() -> None:
     rows = [(_make_event(50), None)]
     session = _StubAsyncSession(rows)
     svc = AuditQueryService(session)  # type: ignore[arg-type]
-    cursor_at = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    cursor_at = datetime.now(tz=UTC) - timedelta(hours=1)
     result = await svc.query(AuditQueryFilters(), cursor=(cursor_at, 100))
     assert len(result.items) == 1

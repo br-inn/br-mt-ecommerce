@@ -12,8 +12,12 @@ _RECIPE = {
         {"name": "title", "selector": "h2.name", "extract": "text"},
         {"name": "brand", "selector": "span.brand", "extract": "text"},
         {"name": "price_aed", "selector": "span.price", "type": "currency"},
-        {"name": "in_stock", "selector": "span.stock", "type": "bool",
-         "transform": {"op": "map_values", "mapping": {"In Stock": "true", "Out": "false"}}},
+        {
+            "name": "in_stock",
+            "selector": "span.stock",
+            "type": "bool",
+            "transform": {"op": "map_values", "mapping": {"In Stock": "true", "Out": "false"}},
+        },
         {"name": "missing", "selector": "span.does-not-exist", "extract": "text"},
     ],
 }

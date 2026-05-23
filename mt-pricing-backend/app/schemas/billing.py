@@ -8,10 +8,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Invoice
 # ---------------------------------------------------------------------------
+
 
 class InvoiceLineCreate(BaseModel):
     product_sku: str
@@ -94,6 +94,7 @@ class InvoiceChain(BaseModel):
 # Dunning
 # ---------------------------------------------------------------------------
 
+
 class DunningLevelRead(BaseModel):
     id: UUID
     level: int
@@ -124,6 +125,7 @@ class DunningEscalateRequest(BaseModel):
 # E-Invoice
 # ---------------------------------------------------------------------------
 
+
 class EInvoiceSubmitRequest(BaseModel):
     standard: str = "ZATCA_PHASE2"
     seller_name: str | None = None
@@ -150,6 +152,7 @@ class EInvoiceSubmissionRead(BaseModel):
 # ---------------------------------------------------------------------------
 # Payment Promises
 # ---------------------------------------------------------------------------
+
 
 class PaymentPromiseCreate(BaseModel):
     invoice_id: UUID
@@ -184,6 +187,7 @@ class PaymentPromiseRead(BaseModel):
 # AR Aging
 # ---------------------------------------------------------------------------
 
+
 class ARAgingBucket(BaseModel):
     customer_id: str
     current: Decimal = Decimal("0")
@@ -202,6 +206,7 @@ class ARAgingReport(BaseModel):
 # ---------------------------------------------------------------------------
 # KPIs
 # ---------------------------------------------------------------------------
+
 
 class BillingKPIs(BaseModel):
     dso: Decimal | None = None

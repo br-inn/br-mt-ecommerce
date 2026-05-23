@@ -1,4 +1,5 @@
 """Unit tests for AmazonListingGenerator — Anthropic SDK mocked."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -39,18 +40,20 @@ def _make_product_context() -> dict:
 
 @pytest.mark.asyncio
 async def test_generate_returns_structured_content():
-    mock_response = _mock_claude_response({
-        "listing_title": "MT Valves PN30 Ball Valve 1/2 Brass",
-        "listing_description": "Long neck ball valve threaded BSP.",
-        "bullet_points": [
-            "PN30 pressure rated",
-            "Brass CW617N body",
-            "BSP threaded",
-            "Temp -20°C to 120°C",
-            "CE and ACS certified",
-        ],
-        "search_keywords": "ball valve brass PN30 BSP 1/2",
-    })
+    mock_response = _mock_claude_response(
+        {
+            "listing_title": "MT Valves PN30 Ball Valve 1/2 Brass",
+            "listing_description": "Long neck ball valve threaded BSP.",
+            "bullet_points": [
+                "PN30 pressure rated",
+                "Brass CW617N body",
+                "BSP threaded",
+                "Temp -20°C to 120°C",
+                "CE and ACS certified",
+            ],
+            "search_keywords": "ball valve brass PN30 BSP 1/2",
+        }
+    )
 
     with patch(
         "app.services.marketplace_export.listing_generator.anthropic.AsyncAnthropic"

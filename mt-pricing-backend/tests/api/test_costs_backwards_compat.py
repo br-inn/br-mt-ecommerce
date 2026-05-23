@@ -16,10 +16,9 @@ Patrón: FastAPI ad-hoc + dependency_overrides (sin DB ni JWT real).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -30,6 +29,8 @@ from app.api.deps import get_current_user, get_db_session
 from app.api.routes.costs import (
     get_cost_service,
     products_costs_router,
+)
+from app.api.routes.costs import (
     router as costs_router,
 )
 from app.services.costs.cost_service import CreateCostResult
@@ -56,7 +57,7 @@ class _FakeUser:
 
 class _FakeCost:
     def __init__(self, **kw: Any) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.id: UUID = kw.get("id", uuid4())
         self.sku: str = kw.get("sku", "MT-V-038")
         self.scheme_code: str = kw.get("scheme_code", "FBA")
@@ -65,9 +66,7 @@ class _FakeCost:
         self.fx_rate_id: UUID | None = kw.get("fx_rate_id")
         self.effective_at: datetime = kw.get("effective_at", now)
         self.breakdown: dict[str, Any] = kw.get("breakdown", {"fob_eur": "12.40"})
-        self.scheme_landed_aed: Decimal | None = kw.get(
-            "scheme_landed_aed", Decimal("60.9180")
-        )
+        self.scheme_landed_aed: Decimal | None = kw.get("scheme_landed_aed", Decimal("60.9180"))
         self.status: str = kw.get("status", "active")
         self.fx_inferred: bool = kw.get("fx_inferred", False)
         self.version: int = kw.get("version", 1)
@@ -123,7 +122,8 @@ def _build_app(svc: _FakeCostService, user: _FakeUser) -> FastAPI:
         for dep in dependant.dependencies:
             call = dep.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call):  # noqa: ARG001
+
+                async def _allow(_call=call):
                     return user
 
                 app.dependency_overrides[call] = _allow

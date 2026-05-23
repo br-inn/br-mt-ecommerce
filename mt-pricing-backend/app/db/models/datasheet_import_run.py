@@ -50,9 +50,7 @@ class ProductDatasheet(UuidPkMixin, TimestampMixin, Base):
     kind: Mapped[str] = mapped_column(String(32), nullable=False)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     original_filename: Mapped[str] = mapped_column(Text, nullable=False)
-    file_size_bytes: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
     # SKUs asociados (lista plana; la tabla N:M la dejamos para Fase 1.5+
     # — el ProductService.attach_datasheet decide la persistencia final).
@@ -79,9 +77,7 @@ class ProductDatasheet(UuidPkMixin, TimestampMixin, Base):
             "kind IN ('ficha_tecnica','compliance','manual')",
             name="ck_product_datasheets_kind",
         ),
-        UniqueConstraint(
-            "storage_path", name="uq_product_datasheets_storage_path"
-        ),
+        UniqueConstraint("storage_path", name="uq_product_datasheets_storage_path"),
         Index("idx_product_datasheets_kind", "kind"),
     )
 

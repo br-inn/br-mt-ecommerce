@@ -166,9 +166,7 @@ class TestProductCertificationsEndpoints:
         user = _FakeUser()
         svc = MagicMock(spec=ProductVocabularyService)
         svc.add_certification = AsyncMock(
-            side_effect=VocabularyDomainError(
-                "Cert not found", "certification_not_found", 404
-            )
+            side_effect=VocabularyDomainError("Cert not found", "certification_not_found", 404)
         )
 
         test_app = _build_app(user, svc)
@@ -214,9 +212,7 @@ class TestProductCertificationsEndpoints:
         async with AsyncClient(
             transport=ASGITransport(app=test_app), base_url="http://test"
         ) as client:
-            resp = await client.delete(
-                f"/api/v1/products/MT-V-001/certifications/{cert_id}"
-            )
+            resp = await client.delete(f"/api/v1/products/MT-V-001/certifications/{cert_id}")
 
         assert resp.status_code == 204
 
@@ -225,18 +221,14 @@ class TestProductCertificationsEndpoints:
         user = _FakeUser()
         svc = MagicMock(spec=ProductVocabularyService)
         svc.remove_certification = AsyncMock(
-            side_effect=VocabularyDomainError(
-                "Not linked", "product_certification_not_found", 404
-            )
+            side_effect=VocabularyDomainError("Not linked", "product_certification_not_found", 404)
         )
 
         test_app = _build_app(user, svc)
         async with AsyncClient(
             transport=ASGITransport(app=test_app), base_url="http://test"
         ) as client:
-            resp = await client.delete(
-                f"/api/v1/products/MT-V-001/certifications/{uuid4()}"
-            )
+            resp = await client.delete(f"/api/v1/products/MT-V-001/certifications/{uuid4()}")
 
         assert resp.status_code == 404
 
@@ -330,9 +322,7 @@ class TestProductApplicationsEndpoints:
         async with AsyncClient(
             transport=ASGITransport(app=test_app), base_url="http://test"
         ) as client:
-            resp = await client.delete(
-                f"/api/v1/products/MT-V-001/applications/{app_id}"
-            )
+            resp = await client.delete(f"/api/v1/products/MT-V-001/applications/{app_id}")
 
         assert resp.status_code == 204
 
@@ -341,17 +331,13 @@ class TestProductApplicationsEndpoints:
         user = _FakeUser()
         svc = MagicMock(spec=ProductVocabularyService)
         svc.remove_application = AsyncMock(
-            side_effect=VocabularyDomainError(
-                "Not linked", "product_application_not_found", 404
-            )
+            side_effect=VocabularyDomainError("Not linked", "product_application_not_found", 404)
         )
 
         test_app = _build_app(user, svc)
         async with AsyncClient(
             transport=ASGITransport(app=test_app), base_url="http://test"
         ) as client:
-            resp = await client.delete(
-                f"/api/v1/products/MT-V-001/applications/{uuid4()}"
-            )
+            resp = await client.delete(f"/api/v1/products/MT-V-001/applications/{uuid4()}")
 
         assert resp.status_code == 404

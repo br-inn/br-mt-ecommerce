@@ -38,7 +38,6 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
-
 # ---------------------------------------------------------------------------
 # Constants — espejo de los CHECK constraints en la migración 049
 # ---------------------------------------------------------------------------
@@ -84,9 +83,7 @@ class TaxonomyType(UuidPkMixin, Base):
     __tablename__ = "taxonomy_types"
 
     slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    is_system: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     label_i18n: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
@@ -97,12 +94,8 @@ class TaxonomyType(UuidPkMixin, Base):
     value_kind: Mapped[str] = mapped_column(
         Text, nullable=False, server_default=text("'enum_open'")
     )
-    filterable: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
-    display_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    filterable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     ui_layout: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
@@ -115,12 +108,8 @@ class TaxonomyType(UuidPkMixin, Base):
     external_mappings: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    schema_version: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("1")
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -128,12 +117,12 @@ class TaxonomyType(UuidPkMixin, Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    nodes: Mapped[list["TaxonomyNode"]] = relationship(
+    nodes: Mapped[list[TaxonomyNode]] = relationship(
         back_populates="type",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    aliases: Mapped[list["TaxonomyAlias"]] = relationship(
+    aliases: Mapped[list[TaxonomyAlias]] = relationship(
         back_populates="type",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -146,9 +135,7 @@ class TaxonomyType(UuidPkMixin, Base):
             name="ck_taxonomy_types_slug_format",
         ),
         CheckConstraint(
-            "value_kind IN ("
-            + ", ".join(f"'{v}'" for v in VALUE_KINDS)
-            + ")",
+            "value_kind IN (" + ", ".join(f"'{v}'" for v in VALUE_KINDS) + ")",
             name="ck_taxonomy_types_value_kind",
         ),
         CheckConstraint(
@@ -196,24 +183,18 @@ class TaxonomyNode(UuidPkMixin, Base):
     attributes: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    display_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     valid_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
-    valid_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     superseded_by: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         ForeignKey("taxonomy_nodes.id", ondelete="SET NULL"),
         nullable=True,
     )
     node_acl: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -222,19 +203,17 @@ class TaxonomyNode(UuidPkMixin, Base):
     )
 
     type: Mapped[TaxonomyType] = relationship(back_populates="nodes")
-    parent: Mapped["TaxonomyNode | None"] = relationship(
+    parent: Mapped[TaxonomyNode | None] = relationship(
         remote_side="TaxonomyNode.id",
         foreign_keys=[parent_id],
     )
-    successor: Mapped["TaxonomyNode | None"] = relationship(
+    successor: Mapped[TaxonomyNode | None] = relationship(
         remote_side="TaxonomyNode.id",
         foreign_keys=[superseded_by],
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "type_id", "slug", name="uq_taxonomy_nodes_type_slug"
-        ),
+        UniqueConstraint("type_id", "slug", name="uq_taxonomy_nodes_type_slug"),
         CheckConstraint(
             "slug ~ '^[a-z][a-z0-9_]*$'",
             name="ck_taxonomy_nodes_slug_format",
@@ -296,12 +275,8 @@ class TaxonomyNodeParent(Base):
         ForeignKey("taxonomy_nodes.id", ondelete="RESTRICT"),
         primary_key=True,
     )
-    is_primary: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
-    weight: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, server_default=text("0")
-    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    weight: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -350,12 +325,8 @@ class TaxonomyNodeDescendant(Base):
 
     __table_args__ = (
         CheckConstraint("depth >= 0", name="ck_taxonomy_descendants_depth"),
-        Index(
-            "idx_taxonomy_descendants_descendant", "descendant_id"
-        ),
-        Index(
-            "idx_taxonomy_descendants_depth", "ancestor_id", "depth"
-        ),
+        Index("idx_taxonomy_descendants_descendant", "descendant_id"),
+        Index("idx_taxonomy_descendants_depth", "ancestor_id", "depth"),
     )
 
 
@@ -385,9 +356,7 @@ class TaxonomyAlias(Base):
         ForeignKey("taxonomy_nodes.id", ondelete="CASCADE"),
         nullable=False,
     )
-    valid_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -395,9 +364,7 @@ class TaxonomyAlias(Base):
     type: Mapped[TaxonomyType] = relationship(back_populates="aliases")
 
     __table_args__ = (
-        PrimaryKeyConstraint(
-            "type_id", "alias_slug", name="pk_taxonomy_aliases"
-        ),
+        PrimaryKeyConstraint("type_id", "alias_slug", name="pk_taxonomy_aliases"),
         CheckConstraint(
             "alias_slug ~ '^[a-z][a-z0-9_]*$'",
             name="ck_taxonomy_aliases_slug_format",
@@ -431,18 +398,12 @@ class ProductTaxonomyLink(Base):
         ForeignKey("taxonomy_nodes.id", ondelete="RESTRICT"),
         primary_key=True,
     )
-    role: Mapped[str] = mapped_column(
-        Text, primary_key=True, server_default=text("'belongs_to'")
-    )
-    weight: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, server_default=text("0")
-    )
+    role: Mapped[str] = mapped_column(Text, primary_key=True, server_default=text("'belongs_to'"))
+    weight: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
     valid_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
-    valid_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[UUID | None] = mapped_column(
         UUID_PG,
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -487,14 +448,10 @@ class FamilySchema(UuidPkMixin, Base):
     __tablename__ = "family_schemas"
 
     family_slug: Mapped[str] = mapped_column(Text, nullable=False)
-    schema_version: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("1")
-    )
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     json_schema: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     valid_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

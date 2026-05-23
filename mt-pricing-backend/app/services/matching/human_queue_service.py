@@ -14,7 +14,7 @@ Diseño:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -121,7 +121,7 @@ class HumanQueueService:
 
         row.label = label
         row.reviewer_user_id = reviewer_user_id
-        row.reviewed_at = datetime.now(tz=timezone.utc)
+        row.reviewed_at = datetime.now(tz=UTC)
 
         await self._session.flush()
         await self._session.refresh(row)
@@ -145,9 +145,9 @@ class HumanQueueService:
             Número de filas actualizadas (0 si listing o candidato no existen).
         """
         # Resolver (source, source_id) del listing para identificar el candidato exacto
-        listing_stmt = select(
-            CompetitorListing.source, CompetitorListing.source_id
-        ).where(CompetitorListing.id == listing_id)
+        listing_stmt = select(CompetitorListing.source, CompetitorListing.source_id).where(
+            CompetitorListing.id == listing_id
+        )
         listing_result = await self._session.execute(listing_stmt)
         listing_row = listing_result.one_or_none()
         if listing_row is None:

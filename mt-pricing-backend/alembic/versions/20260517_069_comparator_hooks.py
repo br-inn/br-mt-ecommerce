@@ -31,8 +31,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
+
 from alembic import op
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 
 revision: str = "20260517_069"
 down_revision: str | None = "20260516_068"
@@ -115,8 +117,7 @@ def upgrade() -> None:
     # autogenerate de Alembic la entienda; ahora la convertimos a VECTOR(1536)
     # real (preserva nullable) — sólo si la extensión está habilitada.
     op.execute(
-        "ALTER TABLE competitor_listings "
-        "ALTER COLUMN embedding TYPE vector(1536) USING NULL;"
+        "ALTER TABLE competitor_listings ALTER COLUMN embedding TYPE vector(1536) USING NULL;"
     )
 
     op.create_index(
@@ -225,19 +226,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DELETE FROM feature_flags WHERE key = 'COMPARATOR_ENABLED';"
-    )
+    op.execute("DELETE FROM feature_flags WHERE key = 'COMPARATOR_ENABLED';")
 
     op.drop_index("ix_match_decisions_sku", table_name="match_decisions")
     op.drop_index("ix_match_decisions_listing", table_name="match_decisions")
     op.drop_table("match_decisions")
 
     op.execute("DROP INDEX IF EXISTS ix_competitor_listings_embedding_hnsw;")
-    op.drop_index(
-        "ix_competitor_listings_matched_sku", table_name="competitor_listings"
-    )
-    op.drop_index(
-        "ux_competitor_listings_source", table_name="competitor_listings"
-    )
+    op.drop_index("ix_competitor_listings_matched_sku", table_name="competitor_listings")
+    op.drop_index("ux_competitor_listings_source", table_name="competitor_listings")
     op.drop_table("competitor_listings")

@@ -110,7 +110,7 @@ def main() -> None:
 
     try:
         existing = asyncio.run(_fetch_existing_ranges())
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"ADVERTENCIA: No se pudo conectar a DB ({exc}). Usando filas de ejemplo.")
         _write_csv(output_path, _EXAMPLE_ROWS, is_example=True)
         sys.exit(0)

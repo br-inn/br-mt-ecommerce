@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from app.db.engine import get_sessionmaker
@@ -41,7 +41,7 @@ async def _run_async(target_date: date) -> dict:
     max_retries=3,
 )
 def parallel_run_diff(
-    self: Any,  # noqa: ANN401 — celery bound task
+    self: Any,
     target_date_iso: str | None = None,
 ) -> dict:
     """Genera el reporte de parallel run para la fecha dada.
@@ -53,11 +53,7 @@ def parallel_run_diff(
     Returns:
         dict con date, generated_at, total_skus, flagged, items[].
     """
-    target = (
-        date.fromisoformat(target_date_iso)
-        if target_date_iso
-        else datetime.now(tz=timezone.utc).date()
-    )
+    target = date.fromisoformat(target_date_iso) if target_date_iso else datetime.now(tz=UTC).date()
     result = asyncio.run(_run_async(target))
     logger.info(
         "parallel_run_diff: date=%s total_skus=%d flagged=%d",

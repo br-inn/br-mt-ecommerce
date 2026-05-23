@@ -147,9 +147,7 @@ class ChannelStateHistory(UuidPkMixin, Base):
         lazy="select",
     )
 
-    __table_args__ = (
-        Index("idx_channel_state_history_channel", "channel_id"),
-    )
+    __table_args__ = (Index("idx_channel_state_history_channel", "channel_id"),)
 
 
 __all__ = ["CHANNEL_STATES", "Channel", "ChannelStateHistory"]

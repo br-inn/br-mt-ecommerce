@@ -25,7 +25,7 @@ def health_ping() -> str:
     # PIM completo.xlsx tiene 5086 filas × ~1.3s/fila ≈ 110 min worst-case.
     # Default Celery 540s mata el task antes — subimos a 2h hard / 1h45 soft.
     soft_time_limit=6300,  # 105 min — suficiente para los 5086 + buffer
-    time_limit=7200,        # 2 h hard cap
+    time_limit=7200,  # 2 h hard cap
 )
 def run_pim_import_task(
     self,
@@ -71,9 +71,7 @@ def run_pim_import_task(
                     "error_rows": run.error_rows,
                 }
             except Exception as exc:
-                logger.exception(
-                    "run_pim_import_task failed run_id=%s: %s", run_id, exc
-                )
+                logger.exception("run_pim_import_task failed run_id=%s: %s", run_id, exc)
                 # PimImporter ya marcó failed en BD si llegó a empezar.
                 raise
 

@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_db_session, require_permissions
 from app.db.models.user import User
 from app.schemas.common import ProblemDetails
 from app.schemas.vocabularies import (
@@ -381,9 +381,7 @@ async def replace_product_certifications(
     try:
         # Fase 5 — model_dump(mode='json') normaliza Enums a strings antes de
         # propagar al repo/service.
-        await service.replace_certifications(
-            sku, [d.model_dump(mode="json") for d in data]
-        )
+        await service.replace_certifications(sku, [d.model_dump(mode="json") for d in data])
     except VocabularyDomainError as e:
         _raise_domain(e)
     links = await service.list_certifications(sku)

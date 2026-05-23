@@ -22,10 +22,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.inventory import GoodsReceipt, PurchaseOrder, PurchaseOrderLine
 from app.db.models.procurement import InvoiceTolerance, VendorInvoice
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _pct_diff(a: Decimal, b: Decimal) -> Decimal:
     """Retorna diferencia porcentual (a - b) / b * 100. Cero si b == 0."""
@@ -37,6 +37,7 @@ def _pct_diff(a: Decimal, b: Decimal) -> Decimal:
 # ---------------------------------------------------------------------------
 # Core function
 # ---------------------------------------------------------------------------
+
 
 async def perform_three_way_match(
     invoice_id: UUID,
@@ -83,33 +84,23 @@ async def perform_three_way_match(
     po_line_ids = [l.id for l in po_lines]
 
     # Para precio unitario de referencia (solo aplica si hay 1 línea)
-    po_unit_price: Decimal | None = (
-        po_lines[0].unit_price if len(po_lines) == 1 else None
-    )
+    po_unit_price: Decimal | None = po_lines[0].unit_price if len(po_lines) == 1 else None
 
     # 4. Cargar GRs ligados a las líneas de esta PO
     gr_result = await session.execute(
         select(GoodsReceipt).where(GoodsReceipt.po_line_id.in_(po_line_ids))
     )
     grs = list(gr_result.scalars().all())
-    gr_total_qty: Decimal | None = (
-        sum(g.qty_received for g in grs) if grs else None
-    )
+    gr_total_qty: Decimal | None = sum(g.qty_received for g in grs) if grs else None
 
     # 5. Cantidad facturada estimada (solo disponible si PO es de 1 línea)
     invoice_qty: Decimal | None = None
     if po_unit_price and po_unit_price > 0:
-        invoice_qty = (invoice.total_amount / po_unit_price).quantize(
-            Decimal("0.0001")
-        )
+        invoice_qty = (invoice.total_amount / po_unit_price).quantize(Decimal("0.0001"))
 
     # 6. Diferencias porcentuales
     ref_qty = gr_total_qty if gr_total_qty is not None else po_total_qty
-    qty_diff_pct = (
-        _pct_diff(invoice_qty, ref_qty)
-        if invoice_qty is not None
-        else Decimal("0")
-    )
+    qty_diff_pct = _pct_diff(invoice_qty, ref_qty) if invoice_qty is not None else Decimal("0")
     price_diff_pct = _pct_diff(invoice.total_amount, po_total_amount)
 
     # 7. Cargar tolerancias activas

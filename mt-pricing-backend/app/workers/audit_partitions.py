@@ -14,7 +14,7 @@ existente en migration 001 `job_definitions.audit_partitions_ensure`).
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -112,7 +112,7 @@ def ensure_partitions(self: Any, months_ahead: int = 2) -> dict[str, Any]:
     # Engine síncrono ad-hoc — la task corre en proceso Celery, no necesita asyncio.
     sync_url = str(settings.ALEMBIC_DATABASE_URL)
     engine = create_engine(sync_url, future=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     created: list[str] = []
     existing: list[str] = []

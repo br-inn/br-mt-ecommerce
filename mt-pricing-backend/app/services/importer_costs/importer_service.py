@@ -24,19 +24,19 @@ import logging
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, BinaryIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.user import User
 from app.services.importer.importer_service import (
-    ImportFileTooLargeError,
+    MAX_FILE_SIZE_BYTES,
     ImporterDomainError,
+    ImportFileTooLargeError,
     ImportHeaderMismatchError,
     ImportRunInvalidStateError,
     ImportRunNotFoundError,
-    MAX_FILE_SIZE_BYTES,
 )
 from app.services.importer_costs.applier import (
     ApplyCostsResult,
@@ -120,7 +120,7 @@ class ImporterCostsService:
         bio: BinaryIO = io.BytesIO(file_bytes)
         try:
             parse_result = parse_costs_xlsx_stream(bio)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ImporterDomainError(
                 code="import_costs_parse_failed",
                 message=f"Error parseando archivo: {exc}",
@@ -139,7 +139,7 @@ class ImporterCostsService:
             kind="costs",
             filename=filename,
             status="preview_ready",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             created_by=actor.email if actor is not None else None,
             file_bytes=file_bytes,
             parse_result=parse_result,
@@ -169,9 +169,7 @@ class ImporterCostsService:
         if state is None:
             raise ImportRunNotFoundError(run_id)
         if state.status != "preview_ready":
-            raise ImportRunInvalidStateError(
-                run_id, current=state.status, expected="preview_ready"
-            )
+            raise ImportRunInvalidStateError(run_id, current=state.status, expected="preview_ready")
         lock = _RUN_LOCKS.setdefault(run_id, asyncio.Lock())
         async with lock:
             state.status = "applying"
@@ -188,7 +186,7 @@ class ImporterCostsService:
                 state.summary["applied_updated"] = result.updated
                 state.summary["applied_errors"] = result.errors
                 state.summary["applied_errors_fx_missing"] = result.errors_fx_missing
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.exception("Costs importer apply failed run_id=%s", run_id)
                 state.status = "failed"
                 state.error = f"{type(exc).__name__}: {exc!s}"
@@ -267,9 +265,5 @@ class ImporterCostsService:
             "summary": state.summary,
             "orphans": state.orphans.to_dict(),
             "samples": buckets,
-            "apply": (
-                state.apply_result.to_dict()
-                if state.apply_result is not None
-                else None
-            ),
+            "apply": (state.apply_result.to_dict() if state.apply_result is not None else None),
         }

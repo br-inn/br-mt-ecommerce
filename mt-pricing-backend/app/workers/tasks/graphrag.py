@@ -38,11 +38,11 @@ async def _run_dispatch(batch_size: int) -> dict[str, Any]:
 
 
 @celery_app.task(name="mt.graphrag.process_cdc_batch", bind=True)
-def process_cdc_batch(self, batch_size: int = 100) -> dict[str, Any]:  # noqa: ANN001
+def process_cdc_batch(self, batch_size: int = 100) -> dict[str, Any]:
     """Procesa hasta ``batch_size`` rows pending de ``cdc_events``."""
     try:
         result = asyncio.run(_run_dispatch(batch_size=batch_size))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("graphrag.cdc.batch.failed", error=str(exc))
         raise
     logger.info("graphrag.cdc.batch.ok", **result)
@@ -63,7 +63,7 @@ def sync_product_to_kg(self, product_id: str, operation: str = "upsert") -> dict
     start = time.time()
     try:
         result = asyncio.run(_sync_product(product_id=product_id, operation=operation))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception(
             "graphrag.sync_product.failed",
             product_id=product_id,
@@ -124,7 +124,7 @@ def ingest_equivalences_from_pdf(
     """
     try:
         result = asyncio.run(_ingest_equivalences(pdf_path=pdf_path, use_fixture=use_fixture))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("graphrag.ingest_equivalences.failed", pdf_path=pdf_path, error=str(exc))
         raise
     logger.info("graphrag.ingest_equivalences.ok", **result)
@@ -157,7 +157,7 @@ async def _ingest_equivalences(pdf_path: str, use_fixture: bool) -> dict[str, An
             )
             graph.merge_edge(edge)
             synced += 1
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "graphrag.ingest_equivalences.edge_failed sku_a=%s sku_b=%s err=%s",
                 sku_a,
@@ -191,7 +191,7 @@ def _extract_from_pdf(pdf_path: str) -> list[tuple[str, str, float, str]]:
                     sku_a, sku_b = m.group(1).upper(), m.group(2).upper()
                     if sku_a != sku_b:
                         pairs.append((sku_a, sku_b, 0.85, "pdf"))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("graphrag.extract_pdf.failed path=%s err=%s", pdf_path, exc)
 
     return pairs
@@ -213,7 +213,7 @@ def kg_integrity_check() -> dict[str, Any]:
     """Verifica integridad del KG y persiste resultado. Schedule: 02:00 UTC daily."""
     try:
         result = asyncio.run(_run_kg_integrity_check())
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("graphrag.kg_integrity.failed", error=str(exc))
         return {"status": "error", "error": str(exc)}
 
@@ -252,9 +252,7 @@ async def _run_kg_integrity_check() -> dict[str, Any]:
                 with driver.session(database=database) as s:
                     nc = s.run("MATCH (n) RETURN count(n) AS cnt").single()["cnt"]
                     ec = s.run("MATCH ()-[r]->() RETURN count(r) AS cnt").single()["cnt"]
-                    on = s.run(
-                        "MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt"
-                    ).single()["cnt"]
+                    on = s.run("MATCH (n) WHERE NOT (n)--() RETURN count(n) AS cnt").single()["cnt"]
                     return nc, ec, on
 
             node_count, edge_count, orphan_nodes = await asyncio.to_thread(_query)
@@ -271,9 +269,8 @@ async def _run_kg_integrity_check() -> dict[str, Any]:
 
     try:
         session_factory = get_sessionmaker()
-        async with session_factory() as session:
-            async with session.begin():
-                session.add(KgIntegrityResult(**result_data))
+        async with session_factory() as session, session.begin():
+            session.add(KgIntegrityResult(**result_data))
     except Exception as exc:
         logger.warning("graphrag.kg_integrity.persist_failed: %s", exc)
 

@@ -3,6 +3,7 @@
 Patrón: Bronze/Silver/Gold — las ofertas sin match viven en Silver (unmatched_offers)
 y se re-intentan matchear cuando el pipeline mejora o periódicamente.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,7 +16,7 @@ from app.workers.worker import celery_app
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Any) -> Any:  # noqa: ANN401
+def _run_async(coro: Any) -> Any:
     return asyncio.run(coro)
 
 
@@ -35,14 +36,15 @@ def rematch_unmatched_pool(self: Any, batch_size: int = 50) -> dict[str, Any]:  
     """
 
     async def _run() -> dict[str, Any]:
+        from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.pool import NullPool
+
         from app.core.config import settings
         from app.db.models.unmatched_offer import UnmatchedOffer
         from app.repositories.unmatched_offers import UnmatchedOfferRepository
         from app.services.matching.adapter_registry import get_fetcher
         from app.services.matching.match_service import MatchService
-        from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-        from sqlalchemy.pool import NullPool
 
         engine = create_async_engine(
             str(settings.DATABASE_URL),
@@ -144,10 +146,11 @@ def cleanup_unmatched_pool(max_age_days: int = 30, max_attempts: int = 3) -> dic
     """Elimina ofertas del pool con TTL vencido y máximo de intentos alcanzado."""
 
     async def _run() -> dict[str, Any]:
-        from app.core.config import settings
         from sqlalchemy import delete, text
         from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
         from sqlalchemy.pool import NullPool
+
+        from app.core.config import settings
         from app.db.models.unmatched_offer import UnmatchedOffer
 
         engine = create_async_engine(

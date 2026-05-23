@@ -1,4 +1,5 @@
 """Tests de schemas del agente de validación."""
+
 from __future__ import annotations
 
 import pytest

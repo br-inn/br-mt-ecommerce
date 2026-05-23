@@ -27,9 +27,7 @@ def _mk_product(sku: str, **fields: Any) -> Product:
 
 def test_compute_field_diff_detects_changes() -> None:
     p = _mk_product("X1", dn="DN15", material="brass")
-    diff = _compute_field_diff(
-        {"dn": "DN50", "material": "brass", "name_en": "n"}, p
-    )
+    diff = _compute_field_diff({"dn": "DN50", "material": "brass", "name_en": "n"}, p)
     assert "dn" in diff
     assert diff["dn"] == {"from": "DN15", "to": "DN50"}
     # material no cambió.
@@ -84,9 +82,7 @@ async def test_compute_diff_marks_update_when_field_changed() -> None:
 
 @pytest.mark.asyncio
 async def test_compute_diff_skip_locked_when_only_locked_field_changed() -> None:
-    existing = _mk_product(
-        "LOCK-001", dn="DN15", material="brass", manual_locked_fields=["dn"]
-    )
+    existing = _mk_product("LOCK-001", dn="DN15", material="brass", manual_locked_fields=["dn"])
     session = MagicMock()
     result = MagicMock()
     result.scalars.return_value.all.return_value = [existing]
@@ -122,8 +118,8 @@ async def test_compute_diff_update_when_some_locked_others_not() -> None:
             row_index=1,
             sku="MIX-001",
             payload={
-                "dn": "DN50",          # locked → skip
-                "material": "ss316",   # unlocked → update
+                "dn": "DN50",  # locked → skip
+                "material": "ss316",  # unlocked → update
                 "name_en": "n",
                 "family": "f",
             },
@@ -138,9 +134,7 @@ async def test_compute_diff_update_when_some_locked_others_not() -> None:
 
 @pytest.mark.asyncio
 async def test_compute_diff_no_change_when_identical() -> None:
-    existing = _mk_product(
-        "SAME-001", dn="DN15", material="brass", manual_locked_fields=[]
-    )
+    existing = _mk_product("SAME-001", dn="DN15", material="brass", manual_locked_fields=[])
     session = MagicMock()
     result = MagicMock()
     result.scalars.return_value.all.return_value = [existing]

@@ -107,7 +107,11 @@ def test_get_default_initializes_neo4j_driver_with_settings() -> None:
             # antes de que el factory lo importe.
             with patch.dict(
                 "sys.modules",
-                {"neo4j": MagicMock(GraphDatabase=MagicMock(driver=MagicMock(return_value=fake_driver)))},
+                {
+                    "neo4j": MagicMock(
+                        GraphDatabase=MagicMock(driver=MagicMock(return_value=fake_driver))
+                    )
+                },
             ):
                 # Re-importar para obtener nuevo lazy import path:
                 # en este caso el factory hace `from neo4j import GraphDatabase`

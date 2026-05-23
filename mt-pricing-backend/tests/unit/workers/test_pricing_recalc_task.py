@@ -142,10 +142,9 @@ async def test_acquire_mutex_returns_true_when_redis_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Si get_redis no está disponible o falla, mutex defaultea a True (no-op)."""
-    from app.workers.tasks import pricing_recalc as task_mod
-
     # Monkeypatch para forzar excepción dentro de _acquire_mutex
     import app.core.redis as redis_mod
+    from app.workers.tasks import pricing_recalc as task_mod
 
     def _boom() -> Any:
         raise RuntimeError("redis offline")

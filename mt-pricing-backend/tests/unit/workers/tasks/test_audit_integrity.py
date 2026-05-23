@@ -9,12 +9,8 @@ Estrategia:
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
@@ -169,9 +165,7 @@ class TestNightlyIntegrityCheckTask:
                 "app.workers.tasks.audit_integrity.settings.ALEMBIC_DATABASE_URL",
                 "postgresql+psycopg://fake/db",
             ),
-            patch(
-                "app.workers.tasks.audit_integrity.settings.AUDIT_SIGNING_KEY"
-            ) as mock_key,
+            patch("app.workers.tasks.audit_integrity.settings.AUDIT_SIGNING_KEY") as mock_key,
         ):
             mock_key.get_secret_value.return_value = ""  # sin firma en test
 
@@ -210,9 +204,7 @@ class TestNightlyIntegrityCheckTask:
                 "app.workers.tasks.audit_integrity.settings.ALEMBIC_DATABASE_URL",
                 "postgresql+psycopg://fake/db",
             ),
-            patch(
-                "app.workers.tasks.audit_integrity.settings.AUDIT_SIGNING_KEY"
-            ) as mock_key,
+            patch("app.workers.tasks.audit_integrity.settings.AUDIT_SIGNING_KEY") as mock_key,
         ):
             mock_key.get_secret_value.return_value = ""
 
@@ -246,9 +238,7 @@ class TestNightlyIntegrityCheckTask:
                 "app.workers.tasks.audit_integrity.settings.ALEMBIC_DATABASE_URL",
                 "postgresql+psycopg://fake/db",
             ),
-            patch(
-                "app.workers.tasks.audit_integrity.settings.AUDIT_SIGNING_KEY"
-            ) as mock_key,
+            patch("app.workers.tasks.audit_integrity.settings.AUDIT_SIGNING_KEY") as mock_key,
         ):
             mock_key.get_secret_value.return_value = ""
 

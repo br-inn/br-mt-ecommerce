@@ -1,4 +1,5 @@
 """Pydantic schemas para Brand Extractor (US-SCR-05-03)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -40,6 +41,6 @@ class ExtractorCoverageStats(BaseModel):
     marketplace: str
     hit_rate_current: float
     hit_rate_baseline: float  # asumida 0.80 si no hay alerta previa
-    delta_pp: float           # (baseline - current) * 100, positivo = degradación
+    delta_pp: float  # (baseline - current) * 100, positivo = degradación
     alert_active: bool
     alert_id: UUID | None = None

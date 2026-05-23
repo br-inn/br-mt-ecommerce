@@ -2,6 +2,7 @@
 
 F1 soporta selectores CSS (via selectolax). XPath queda para una fase posterior.
 """
+
 from __future__ import annotations
 
 import re

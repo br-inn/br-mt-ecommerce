@@ -70,9 +70,7 @@ async def test_vision_only_when_regex_empty() -> None:
     def _regex(_b: bytes) -> DatasheetSpecs:
         return DatasheetSpecs()  # empty
 
-    vision_mock = _mk_vision(
-        {"dn": "DN65", "pn": "PN25", "material": "ss316"}, confidence=0.9
-    )
+    vision_mock = _mk_vision({"dn": "DN65", "pn": "PN25", "material": "ss316"}, confidence=0.9)
     extractor = DualExtractor(regex_extractor=_regex, vision_extractor=vision_mock)
 
     res = await extractor.extract(pdf_bytes=b"%PDF", filename="x.pdf")
@@ -90,9 +88,7 @@ async def test_agreement_uses_max_confidence() -> None:
     def _regex(_b: bytes) -> DatasheetSpecs:
         return DatasheetSpecs(dn="DN50", material="brass")
 
-    vision_mock = _mk_vision(
-        {"dn": "DN50", "material": "brass", "pn": "PN16"}, confidence=0.85
-    )
+    vision_mock = _mk_vision({"dn": "DN50", "material": "brass", "pn": "PN16"}, confidence=0.85)
     extractor = DualExtractor(regex_extractor=_regex, vision_extractor=vision_mock)
 
     res = await extractor.extract(pdf_bytes=b"%PDF", filename="x.pdf")
@@ -159,9 +155,7 @@ async def test_regex_exception_doesnt_break_when_vision_provides() -> None:
         raise RuntimeError("regex died")
 
     vision_mock = _mk_vision({"dn": "DN50"}, confidence=0.9)
-    extractor = DualExtractor(
-        regex_extractor=_broken_regex, vision_extractor=vision_mock
-    )
+    extractor = DualExtractor(regex_extractor=_broken_regex, vision_extractor=vision_mock)
     res = await extractor.extract(pdf_bytes=b"%PDF", filename="x.pdf")
     assert res.error is not None
     assert "regex_failed" in res.error
@@ -174,9 +168,7 @@ async def test_vision_exception_falls_back_to_regex() -> None:
 
     flaky_vision = AsyncMock()
     flaky_vision.extract = AsyncMock(side_effect=RuntimeError("openai down"))
-    extractor = DualExtractor(
-        regex_extractor=_regex, vision_extractor=flaky_vision
-    )
+    extractor = DualExtractor(regex_extractor=_regex, vision_extractor=flaky_vision)
     res = await extractor.extract(pdf_bytes=b"%PDF", filename="x.pdf")
     # Aún con vision crash, regex output queda persistido.
     assert res.specs["dn"] == "DN50"
@@ -189,9 +181,7 @@ async def test_empty_specs_overall_confidence_zero() -> None:
         return DatasheetSpecs()
 
     vision_mock = _mk_vision({}, confidence=0.0)
-    extractor = DualExtractor(
-        regex_extractor=_regex, vision_extractor=vision_mock
-    )
+    extractor = DualExtractor(regex_extractor=_regex, vision_extractor=vision_mock)
     res = await extractor.extract(pdf_bytes=b"%PDF", filename="x.pdf")
     assert res.specs == {}
     assert res.overall_confidence == 0.0

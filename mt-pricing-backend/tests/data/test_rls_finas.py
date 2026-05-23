@@ -20,8 +20,7 @@ Cobertura mínima requerida (5+ tests; cubrimos 8 escenarios críticos):
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -39,8 +38,9 @@ pytestmark = [pytest.mark.integration]
 # ---------------------------------------------------------------------------
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
@@ -50,7 +50,7 @@ def _migrate(postgres_container: str) -> None:
 # ---------------------------------------------------------------------------
 # Helpers — set role + minimal data fixtures
 # ---------------------------------------------------------------------------
-async def _as_role(session: "AsyncSession", role: str) -> None:
+async def _as_role(session: AsyncSession, role: str) -> None:
     """Configura el rol aplicativo + cambia a `mt_app` (RLS aplicable)."""
     # `app.user_role` lo lee `resolve_user_role()`.
     await session.execute(text(f"SET LOCAL app.user_role = '{role}'"))
@@ -58,18 +58,20 @@ async def _as_role(session: "AsyncSession", role: str) -> None:
     await session.execute(text("SET LOCAL ROLE mt_app"))
 
 
-async def _reset_role(session: "AsyncSession") -> None:
+async def _reset_role(session: AsyncSession) -> None:
     await session.execute(text("RESET ROLE"))
     await session.execute(text("RESET app.user_role"))
 
 
-async def _ensure_test_sku(session: "AsyncSession", sku: str = "TEST-RLS-001") -> str:
+async def _ensure_test_sku(session: AsyncSession, sku: str = "TEST-RLS-001") -> str:
     await _reset_role(session)
     await session.execute(
         text(
             """
-            INSERT INTO products (sku, name_en, family, brand, data_quality)
-            VALUES (:sku, 'RLS Test SKU', 'ball_valve', 'TestBrand', 'complete')
+            INSERT INTO products (sku, family, brand, data_quality, brand_id, family_id)
+            SELECT :sku, 'ball_valve', 'TestBrand', 'complete',
+                   (SELECT id FROM brands WHERE code = 'default'),
+                   (SELECT id FROM families WHERE code = 'default')
             ON CONFLICT (sku) DO NOTHING
             """
         ),
@@ -78,7 +80,7 @@ async def _ensure_test_sku(session: "AsyncSession", sku: str = "TEST-RLS-001") -
     return sku
 
 
-async def _ensure_mt_app_role(session: "AsyncSession") -> None:
+async def _ensure_mt_app_role(session: AsyncSession) -> None:
     """Asegura que el role mt_app exista (si la migración 001 no lo creó aún)."""
     await session.execute(
         text(
@@ -99,7 +101,7 @@ async def _ensure_mt_app_role(session: "AsyncSession") -> None:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
-async def test_comercial_can_insert_into_costs(db_session: "AsyncSession") -> None:
+async def test_comercial_can_insert_into_costs(db_session: AsyncSession) -> None:
     await _ensure_mt_app_role(db_session)
     sku = await _ensure_test_sku(db_session)
 
@@ -125,7 +127,7 @@ async def test_comercial_can_insert_into_costs(db_session: "AsyncSession") -> No
                         :eff, 'active')
                 """
             ),
-            {"sku": sku, "eff": datetime.now(tz=timezone.utc)},
+            {"sku": sku, "eff": datetime.now(tz=UTC)},
         )
         # Sin excepción → policy permitió.
     finally:
@@ -133,7 +135,7 @@ async def test_comercial_can_insert_into_costs(db_session: "AsyncSession") -> No
 
 
 async def test_comercial_cannot_insert_price_with_status_approved(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     await _ensure_mt_app_role(db_session)
     sku = await _ensure_test_sku(db_session, "TEST-RLS-002")
@@ -173,10 +175,12 @@ async def test_comercial_cannot_insert_price_with_status_approved(
     finally:
         await _reset_role(db_session)
 
-    assert raised, "comercial NO debe poder INSERT prices con status='approved' (RLS o trigger initial_status)"
+    assert raised, (
+        "comercial NO debe poder INSERT prices con status='approved' (RLS o trigger initial_status)"
+    )
 
 
-async def test_ti_can_update_products_name_en(db_session: "AsyncSession") -> None:
+async def test_ti_can_update_products_erp_name(db_session: AsyncSession) -> None:
     await _ensure_mt_app_role(db_session)
     sku = await _ensure_test_sku(db_session, "TEST-RLS-003")
 
@@ -189,7 +193,7 @@ async def test_ti_can_update_products_name_en(db_session: "AsyncSession") -> Non
     await _as_role(db_session, "ti")
     try:
         await db_session.execute(
-            text("UPDATE products SET name_en = :n WHERE sku = :sku"),
+            text("UPDATE products SET erp_name = :n WHERE sku = :sku"),
             {"n": "Renamed by TI", "sku": sku},
         )
     finally:
@@ -197,13 +201,13 @@ async def test_ti_can_update_products_name_en(db_session: "AsyncSession") -> Non
 
     # Verify (as superuser).
     res = await db_session.execute(
-        text("SELECT name_en FROM products WHERE sku = :sku"), {"sku": sku}
+        text("SELECT erp_name FROM products WHERE sku = :sku"), {"sku": sku}
     )
     assert res.scalar() == "Renamed by TI"
 
 
 async def test_audit_events_update_raises_forbidden_mutation(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     await _ensure_mt_app_role(db_session)
     # Insertar un audit event como superuser.
@@ -240,7 +244,7 @@ async def test_audit_events_update_raises_forbidden_mutation(
 
 
 async def test_comercial_select_audit_events_returns_empty(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     await _ensure_mt_app_role(db_session)
     # Inserta un evento como superuser para tener algo que filtrar.
@@ -265,9 +269,7 @@ async def test_comercial_select_audit_events_returns_empty(
     await _as_role(db_session, "comercial")
     try:
         res = await db_session.execute(
-            text(
-                "SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDIT'"
-            )
+            text("SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDIT'")
         )
         count = res.scalar()
     finally:
@@ -277,7 +279,7 @@ async def test_comercial_select_audit_events_returns_empty(
 
 
 async def test_auditor_can_select_audit_events(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     await _ensure_mt_app_role(db_session)
     await db_session.execute(
@@ -301,9 +303,7 @@ async def test_auditor_can_select_audit_events(
     await _as_role(db_session, "auditor")
     try:
         res = await db_session.execute(
-            text(
-                "SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDITOR'"
-            )
+            text("SELECT COUNT(*) FROM audit_events WHERE entity_id = 'TEST-RLS-AUDITOR'")
         )
         count = res.scalar()
     finally:
@@ -313,7 +313,7 @@ async def test_auditor_can_select_audit_events(
 
 
 async def test_invalid_initial_status_blocked_by_trigger(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
 ) -> None:
     """Trigger 021 prices_initial_status_trg bloquea INSERTs con status terminal."""
     sku = await _ensure_test_sku(db_session, "TEST-RLS-INIT")

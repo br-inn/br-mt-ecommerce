@@ -108,15 +108,13 @@ async def enhanced_score(
         amazon_specs = dict(candidate.raw_payload)
 
     amazon_image_url: str | None = (
-        candidate.raw_payload.get("image_url")
-        if candidate.raw_payload
-        else None
+        candidate.raw_payload.get("image_url") if candidate.raw_payload else None
     )
 
     # ─── CAPA 0: Scorer determinista ───
     try:
         layer0_score, layer0_breakdown = score_match(product_data, amazon_specs, amazon_title)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("enhanced_score: error en score_match (capa 0): %s", exc)
         return EnhancedMatchResult(
             score=0,
@@ -154,9 +152,7 @@ async def enhanced_score(
         )
 
     # ─── CAPA 1: Enriquecimiento con LLM ───
-    logger.debug(
-        "enhanced_score: capa 0 score=%d → enriqueciendo con LLM", layer0_score
-    )
+    logger.debug("enhanced_score: capa 0 score=%d → enriqueciendo con LLM", layer0_score)
 
     # Obtener descripción desde raw_payload (guardada por curl_cffi_amazon_uae).
     amazon_description = ""
@@ -173,7 +169,7 @@ async def enhanced_score(
             amazon_description=amazon_description,
             amazon_specs_raw=amazon_specs if amazon_specs else None,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # Si LLM falla → mantener resultado de capa 0
         logger.exception("enhanced_score: error en LLM extractor (capa 1): %s", exc)
         return EnhancedMatchResult(
@@ -192,7 +188,7 @@ async def enhanced_score(
     # Re-run scorer con specs enriquecidas
     try:
         layer1_score, layer1_breakdown = score_match(product_data, enriched_specs, amazon_title)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("enhanced_score: error en score_match capa 1 (re-run): %s", exc)
         # Fallback al resultado de capa 0
         return EnhancedMatchResult(
@@ -204,9 +200,7 @@ async def enhanced_score(
             llm_specs=llm_dict,
         )
 
-    logger.debug(
-        "enhanced_score: capa 1 score=%d confidence=%.2f", layer1_score, llm_confidence
-    )
+    logger.debug("enhanced_score: capa 1 score=%d confidence=%.2f", layer1_score, llm_confidence)
 
     # AUTO_VALIDATE: score suficientemente alto tras enriquecimiento con confianza alta
     if layer1_score >= LAYER1_AUTO_VALIDATE_THRESHOLD and llm_confidence >= LAYER1_MIN_CONFIDENCE:
@@ -237,7 +231,7 @@ async def enhanced_score(
 
     try:
         visual_verdict, visual_reason = await compare_product_images(mt_image_url, amazon_image_url)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # Si visión falla → HUMAN_QUEUE con score de capa 1
         logger.exception("enhanced_score: error en vision_matcher (capa 2): %s", exc)
         return EnhancedMatchResult(
@@ -250,9 +244,7 @@ async def enhanced_score(
             llm_specs=llm_dict if llm_dict else None,
         )
 
-    logger.debug(
-        "enhanced_score: visión verdict=%s reason=%s", visual_verdict.value, visual_reason
-    )
+    logger.debug("enhanced_score: visión verdict=%s reason=%s", visual_verdict.value, visual_reason)
 
     # FILTRO NEGATIVO: solo DIFFERENT_TYPE descarta
     if visual_verdict == VisualVerdict.DIFFERENT_TYPE:
@@ -278,4 +270,4 @@ async def enhanced_score(
     )
 
 
-__all__ = ["EnhancedMatchResult", "enhanced_score", "LAYER0_AUTO_VALIDATE_THRESHOLD"]
+__all__ = ["LAYER0_AUTO_VALIDATE_THRESHOLD", "EnhancedMatchResult", "enhanced_score"]

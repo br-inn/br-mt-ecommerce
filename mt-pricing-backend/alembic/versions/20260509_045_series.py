@@ -39,9 +39,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects.postgresql import ARRAY as PgARRAY
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
+
+from alembic import op
 
 revision: str = "20260509_045"
 down_revision: str | None = "20260509_044"
@@ -166,9 +167,7 @@ def upgrade() -> None:
     )
     op.create_index("idx_series_tier", "series", ["tier_id"])
     op.create_index("idx_series_active", "series", ["active"])
-    op.create_index(
-        "idx_series_pressure_rating", "series", ["pressure_rating_pn"]
-    )
+    op.create_index("idx_series_pressure_rating", "series", ["pressure_rating_pn"])
 
     # ------------------------------------------------------------------
     # series_translations — ES / AR / EN
@@ -228,9 +227,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "idx_series_divisions_division", "series_divisions", ["division_id"]
-    )
+    op.create_index("idx_series_divisions_division", "series_divisions", ["division_id"])
 
     # ------------------------------------------------------------------
     # series_certifications — paquete default de certs por serie
@@ -285,9 +282,7 @@ def upgrade() -> None:
             nullable=True,
         ),
     )
-    op.create_index(
-        "idx_products_display_pair_sku", "products", ["display_pair_sku"]
-    )
+    op.create_index("idx_products_display_pair_sku", "products", ["display_pair_sku"])
 
     # ------------------------------------------------------------------
     # Backfill: distinct series TEXT → series rows
@@ -322,9 +317,7 @@ def downgrade() -> None:
     op.drop_index("idx_products_series_id", table_name="products")
     op.drop_column("products", "series_id")
 
-    op.drop_index(
-        "idx_series_certifications_cert", table_name="series_certifications"
-    )
+    op.drop_index("idx_series_certifications_cert", table_name="series_certifications")
     op.drop_table("series_certifications")
 
     op.drop_index("idx_series_divisions_division", table_name="series_divisions")

@@ -22,9 +22,7 @@ async def main() -> None:
         await s.execute(text("DELETE FROM product_images"))
         await s.execute(text("DELETE FROM products"))
         await s.execute(text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete"))
-        await s.execute(
-            text("DELETE FROM audit_events WHERE reason LIKE 'PIM batch import run%'")
-        )
+        await s.execute(text("DELETE FROM audit_events WHERE reason LIKE 'PIM batch import run%'"))
         await s.commit()
     print("reset done")
 

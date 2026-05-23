@@ -1,4 +1,5 @@
 """Schemas para CDC (Change Data Capture) events — Supabase Realtime → Celery."""
+
 from __future__ import annotations
 
 from datetime import datetime

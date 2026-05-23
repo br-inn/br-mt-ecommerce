@@ -15,8 +15,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
+
+from alembic import op
 
 revision: str = "20260514_063"
 down_revision: str | None = "20260514_062"
@@ -56,9 +57,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_ptp_product", "pressure_temperature_points", ["product_sku"]
-    )
+    op.create_index("ix_ptp_product", "pressure_temperature_points", ["product_sku"])
 
 
 def downgrade() -> None:

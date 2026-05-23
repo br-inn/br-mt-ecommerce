@@ -14,10 +14,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.deps import get_current_user, get_db_session, require_permissions
+from app.api.deps import get_current_user, get_db_session
 from app.api.routes.products import router as products_router
-from app.services.specs.specs_registry import SpecsRegistry
-from app.services.specs.specs_validator import SpecsValidator
 
 pytestmark = pytest.mark.unit
 
@@ -25,6 +23,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------
+
 
 class _FakeRole:
     def __init__(self, perms: list[str]) -> None:
@@ -43,6 +42,7 @@ class _FakeUser:
 # ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
+
 
 def _build_app(user: _FakeUser) -> FastAPI:
     app = FastAPI()
@@ -67,8 +67,10 @@ def _build_app(user: _FakeUser) -> FastAPI:
         for dependency in dependant.dependencies:
             call = dependency.call
             if call is not None and getattr(call, "__name__", "") == "_check":
-                async def _allow(_call=call) -> _FakeUser:  # noqa: ARG001
+
+                async def _allow(_call=call) -> _FakeUser:
                     return user
+
                 app.dependency_overrides[call] = _allow
 
     return app
@@ -78,13 +80,12 @@ def _build_app(user: _FakeUser) -> FastAPI:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_specs_schema_valve_ball() -> None:
     """GET /products/specs/schema?family=valve&subfamily=ball returns valve_ball schema."""
     app = _build_app(_FakeUser())
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/products/specs/schema?family=valve&subfamily=ball")
 
     assert resp.status_code == 200
@@ -98,9 +99,7 @@ async def test_get_specs_schema_valve_ball() -> None:
 async def test_get_specs_schema_filter() -> None:
     """GET /products/specs/schema?family=filter returns filter schema."""
     app = _build_app(_FakeUser())
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/products/specs/schema?family=filter")
 
     assert resp.status_code == 200
@@ -113,9 +112,7 @@ async def test_get_specs_schema_filter() -> None:
 async def test_get_specs_schema_unknown_family_returns_default() -> None:
     """Unknown family falls back to _default schema (permissive)."""
     app = _build_app(_FakeUser())
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/products/specs/schema?family=unknown_xyz")
 
     assert resp.status_code == 200
@@ -129,9 +126,7 @@ async def test_get_specs_schema_unknown_family_returns_default() -> None:
 async def test_get_specs_schema_missing_family_returns_422() -> None:
     """GET without required `family` query param returns 422."""
     app = _build_app(_FakeUser())
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/v1/products/specs/schema")
 
     assert resp.status_code == 422

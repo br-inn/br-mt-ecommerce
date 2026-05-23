@@ -4,6 +4,7 @@ priority_score = uncertainty_score × product_value_aed.
 Matches con alta incertidumbre (confidence < 0.6) en productos caros (> 1000 AED)
 se encolan automáticamente desde price_monitor_task y match_service.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

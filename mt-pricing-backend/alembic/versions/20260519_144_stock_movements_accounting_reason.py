@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260519_144"
@@ -57,19 +58,19 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     # Seed: SCRAP movement type
     # ------------------------------------------------------------------
-    op.execute(sa.text("""
+    op.execute(
+        sa.text("""
         INSERT INTO stock_movement_types
             (code, name, direction, posts_accounting, reason_code)
         VALUES
             ('SCRAP', 'Scrapping / Write-off', 'OUT', true, 'SCRAP')
         ON CONFLICT (code) DO NOTHING
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:
-    op.execute(sa.text(
-        "DELETE FROM stock_movement_types WHERE code = 'SCRAP'"
-    ))
+    op.execute(sa.text("DELETE FROM stock_movement_types WHERE code = 'SCRAP'"))
     op.drop_column("stock_movement_types", "reason_code")
     op.drop_column("stock_movements", "reason_code")
     op.drop_column("stock_movements", "accounting_document_id")

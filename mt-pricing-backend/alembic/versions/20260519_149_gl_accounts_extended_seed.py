@@ -21,8 +21,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision: str = "20260519_149"
 down_revision: str | None = "20260519_148"
@@ -31,7 +32,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute(text("""
+    op.execute(
+        text("""
         INSERT INTO gl_accounts
             (account_code, account_name, account_type, normal_balance, is_active)
         VALUES
@@ -227,7 +229,8 @@ def upgrade() -> None:
             ('6220', 'Impairment Loss - Goodwill',                 'EXPENSE',   'DEBIT',  true),
             ('6230', 'Provision for Bad Debts',                    'EXPENSE',   'DEBIT',  true)
         ON CONFLICT (account_code) DO NOTHING
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

@@ -22,9 +22,8 @@ import asyncio
 import json
 import os
 import sys
-import warnings
-from collections import Counter
 from pathlib import Path
+
 
 # ---------------------------------------------------------------------------
 # .env loader — intenta cargar .env del directorio raíz del proyecto si existe
@@ -55,8 +54,8 @@ _LABEL_MAP: dict[str, int] = {"accept": 1, "reject": 0}
 
 async def _fetch_pairs(database_url: str) -> list[dict]:
     """Consulta match_candidates WHERE label IN ('accept','reject') AND status='validated'."""
-    from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
 
     engine = create_async_engine(database_url, echo=False)
     rows: list[dict] = []
@@ -84,7 +83,9 @@ async def _fetch_pairs(database_url: str) -> list[dict]:
                         "sku_mt": r["product_sku"],
                         "candidate_id": r["candidate_id"],
                         "title": r["title"],
-                        "specs_jsonb": r["specs_jsonb"] if isinstance(r["specs_jsonb"], dict) else json.loads(r["specs_jsonb"] or "{}"),
+                        "specs_jsonb": r["specs_jsonb"]
+                        if isinstance(r["specs_jsonb"], dict)
+                        else json.loads(r["specs_jsonb"] or "{}"),
                         "label": _LABEL_MAP[r["label"]],
                     }
                 )
@@ -157,16 +158,12 @@ def _validate_file(path: Path) -> bool:
             # Campos obligatorios
             missing = _REQUIRED_FIELDS - set(obj.keys())
             if missing:
-                errors.append(
-                    f"Línea {line_number}: campos faltantes — {sorted(missing)}"
-                )
+                errors.append(f"Línea {line_number}: campos faltantes — {sorted(missing)}")
                 continue
 
             # Label ∈ {0, 1}
             if obj["label"] not in (0, 1):
-                errors.append(
-                    f"Línea {line_number}: label={obj['label']!r} no es 0 ni 1"
-                )
+                errors.append(f"Línea {line_number}: label={obj['label']!r} no es 0 ni 1")
 
             # Duplicados
             key = (str(obj["sku_mt"]), str(obj["candidate_id"]))

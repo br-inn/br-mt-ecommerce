@@ -125,9 +125,7 @@ class SchemaMapper:
 
     # ------------------------------------------------------------------ mappers
     @classmethod
-    def _map_product(
-        cls, payload: dict[str, Any]
-    ) -> tuple[list[GraphNode], list[GraphEdge]]:
+    def _map_product(cls, payload: dict[str, Any]) -> tuple[list[GraphNode], list[GraphEdge]]:
         sku = cls._str_or_none(payload.get("sku"))
         if sku is None:
             return [], []
@@ -193,9 +191,7 @@ class SchemaMapper:
         return nodes, edges
 
     @classmethod
-    def _map_supplier(
-        cls, payload: dict[str, Any]
-    ) -> tuple[list[GraphNode], list[GraphEdge]]:
+    def _map_supplier(cls, payload: dict[str, Any]) -> tuple[list[GraphNode], list[GraphEdge]]:
         code = cls._str_or_none(payload.get("code"))
         if code is None:
             return [], []
@@ -229,9 +225,7 @@ class SchemaMapper:
         return nodes, edges
 
     @classmethod
-    def _map_cost(
-        cls, payload: dict[str, Any]
-    ) -> tuple[list[GraphNode], list[GraphEdge]]:
+    def _map_cost(cls, payload: dict[str, Any]) -> tuple[list[GraphNode], list[GraphEdge]]:
         cost_id = cls._str_or_none(payload.get("id"))
         sku = cls._str_or_none(payload.get("sku"))
         if cost_id is None:

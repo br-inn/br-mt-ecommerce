@@ -1,5 +1,6 @@
 # mt-pricing-backend/tests/unit/importer/test_column_mapper_flexible.py
 """Tests para map_row_with_mapping (mapeo flexible)."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -9,8 +10,7 @@ from app.services.importer.mapping_detector import ColumnMappingItem
 
 
 def _mapping(*items: tuple[str, str, str]) -> list[ColumnMappingItem]:
-    return [ColumnMappingItem(excel_col=e, target_field=t, transform=tr)
-            for e, t, tr in items]
+    return [ColumnMappingItem(excel_col=e, target_field=t, transform=tr) for e, t, tr in items]
 
 
 def test_maps_scalar_fields():
@@ -45,6 +45,7 @@ def test_maps_jsonb_dimensions_with_cm_to_mm():
 def test_jsonb_values_are_json_serializable():
     """Los valores JSONB deben ser serializables por json.dumps (sin Decimal)."""
     import json
+
     headers = ["SKU", "Alto pieza (cm)"]
     row = ("1010", 10.5)
     mapping = _mapping(

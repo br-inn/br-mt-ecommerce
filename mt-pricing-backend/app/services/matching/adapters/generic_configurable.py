@@ -4,12 +4,14 @@ Implementa el FetcherPort existente. F1 soporta el modo de fetch 'static'
 (curl_cffi). Los modos 'headless'/'stealth' se implementan en una fase posterior:
 construir un fetcher para esos modos lanza NotImplementedError.
 """
+
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from app.services.matching.ports import CandidateRaw, Query
 from app.services.scraper.recipe_extractor import extract_records
@@ -88,11 +90,7 @@ class GenericConfigurableFetcher:
                 price_aed = Decimal(str(price_raw))
             except (InvalidOperation, ValueError):
                 price_aed = None
-        specs = {
-            k: v
-            for k, v in record.items()
-            if k not in _CANONICAL_FIELDS and v is not None
-        }
+        specs = {k: v for k, v in record.items() if k not in _CANONICAL_FIELDS and v is not None}
         return CandidateRaw(
             source=self.channel,
             external_id=str(record["external_id"]),
@@ -102,5 +100,5 @@ class GenericConfigurableFetcher:
             delivery_text=record.get("delivery_text"),
             specs=specs,
             raw_payload={"recipe_source": self.channel, "extracted": record},
-            fetched_at=datetime.now(tz=timezone.utc),
+            fetched_at=datetime.now(tz=UTC),
         )

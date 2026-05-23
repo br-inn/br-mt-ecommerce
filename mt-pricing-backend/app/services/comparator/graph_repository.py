@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 # Port (interfaz abstracta)
 # ---------------------------------------------------------------------------
 
+
 class GraphRepository(ABC):
     """Puerto de repositorio de grafo para el subsistema de comparación.
 
@@ -95,6 +96,7 @@ class GraphRepository(ABC):
 # ---------------------------------------------------------------------------
 # PostgresGraphRepository — activo Fase 1
 # ---------------------------------------------------------------------------
+
 
 class PostgresGraphRepository(GraphRepository):
     """Repositorio de grafo sobre Postgres relacional.
@@ -172,6 +174,7 @@ class PostgresGraphRepository(GraphRepository):
 # Neo4jGraphRepository — activo con GRAPHRAG_BACKEND=neo4j (US-F15-01-04)
 # ---------------------------------------------------------------------------
 
+
 class Neo4jGraphRepository(GraphRepository):
     """Repositorio de grafo sobre Neo4j 5 — activo con ``GRAPHRAG_BACKEND=neo4j``.
 
@@ -183,8 +186,8 @@ class Neo4jGraphRepository(GraphRepository):
 
     def __init__(self, graph_store: Any = None) -> None:
         """Args:
-            graph_store: instancia de :class:`GraphStorePort` (Neo4jGraphStore
-                real o Neo4jStubGraphStore para tests). Inyectado vía factory.
+        graph_store: instancia de :class:`GraphStorePort` (Neo4jGraphStore
+            real o Neo4jStubGraphStore para tests). Inyectado vía factory.
         """
         self._graph_store = graph_store
 
@@ -218,7 +221,7 @@ class Neo4jGraphRepository(GraphRepository):
                 }
                 for edge, neighbor_node in neighbors
             ]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "neo4j_graph_repo.get_product_neighbors failed sku=%s: %s",
                 product_sku,
@@ -252,23 +255,19 @@ class Neo4jGraphRepository(GraphRepository):
             product_matches = [n for _e, n in neighbors if n.label == "Product"]
             supplier_hints = [n for _e, n in neighbors if n.label == "Supplier"]
             graph_confidence = (
-                len(product_matches) / (len(product_matches) + 1)
-                if product_matches
-                else 0.0
+                len(product_matches) / (len(product_matches) + 1) if product_matches else 0.0
             )
             return {
                 "competitor_listing_id": str(competitor_listing_id),
                 "product_matches": [
-                    {"primary_key": n.primary_key, **dict(n.properties)}
-                    for n in product_matches
+                    {"primary_key": n.primary_key, **dict(n.properties)} for n in product_matches
                 ],
                 "supplier_hints": [
-                    {"primary_key": n.primary_key, **dict(n.properties)}
-                    for n in supplier_hints
+                    {"primary_key": n.primary_key, **dict(n.properties)} for n in supplier_hints
                 ],
                 "graph_confidence": graph_confidence,
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "neo4j_graph_repo.get_competitor_context failed listing_id=%s: %s",
                 competitor_listing_id,
@@ -290,7 +289,7 @@ class Neo4jGraphRepository(GraphRepository):
                 "healthy": store_health.get("healthy", False),
                 "store_health": store_health,
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("neo4j_graph_repo.health_check failed: %s", exc)
             return {
                 "backend": "neo4j_graph_repository",
@@ -303,6 +302,7 @@ class Neo4jGraphRepository(GraphRepository):
 # Factory helper
 # ---------------------------------------------------------------------------
 
+
 def get_graph_repository(session_factory: Any = None) -> GraphRepository:
     """Devuelve el :class:`GraphRepository` activo según ``GRAPHRAG_BACKEND``.
 
@@ -311,18 +311,21 @@ def get_graph_repository(session_factory: Any = None) -> GraphRepository:
     """
     try:
         from app.core.config import settings
+
         backend = settings.GRAPHRAG_BACKEND
-    except Exception:  # noqa: BLE001 — config opcional en tests
+    except Exception:
         backend = "stub"
 
     if backend == "neo4j":
         try:
             from app.services.graphrag.adapters.factory import get_default_graph_store
+
             graph_store = get_default_graph_store()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error(
                 "comparator.graph_repository: neo4j import failed — "
-                "Neo4jGraphRepository iniciará sin graph_store: %s", exc
+                "Neo4jGraphRepository iniciará sin graph_store: %s",
+                exc,
             )
             graph_store = None
         return Neo4jGraphRepository(graph_store=graph_store)

@@ -15,7 +15,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-_PATCH_TARGET = "app.services.graphrag.adapters.get_default_graph_store"
+_PATCH_TARGET = "app.workers.tasks.graphrag.get_default_graph_store"
 
 
 def _make_mock_graph() -> MagicMock:
@@ -36,7 +36,7 @@ def test_fixture_mode_syncs_edges() -> None:
 
 
 def test_fixture_mode_merges_nodes() -> None:
-    """Cada par hace MERGE de 2 nodos Product (5 pares × 2 = 10 calls)."""
+    """Cada par hace MERGE de 2 nodos Product (5 pares x 2 = 10 calls)."""
     mock_graph = _make_mock_graph()
     with patch(_PATCH_TARGET, return_value=mock_graph):
         from app.workers.tasks.graphrag import _ingest_equivalences

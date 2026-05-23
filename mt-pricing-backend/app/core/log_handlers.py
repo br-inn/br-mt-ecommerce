@@ -27,24 +27,26 @@ from app.core.config import settings
 
 # Misma lista que app/core/logging.py — duplicada aquí para mantener este módulo
 # auto-contenido (no importa structlog runtime).
-_REDACTED_KEYS: frozenset[str] = frozenset({
-    "password",
-    "passwd",
-    "secret",
-    "token",
-    "access_token",
-    "refresh_token",
-    "jwt",
-    "api_key",
-    "apikey",
-    "service_role_key",
-    "anon_key",
-    "authorization",
-    "cookie",
-    "set-cookie",
-    "x-api-key",
-    "x-supabase-auth",
-})
+_REDACTED_KEYS: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "access_token",
+        "refresh_token",
+        "jwt",
+        "api_key",
+        "apikey",
+        "service_role_key",
+        "anon_key",
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "x-api-key",
+        "x-supabase-auth",
+    }
+)
 
 DEFAULT_FLUSH_INTERVAL_SECONDS = 5.0
 DEFAULT_BUFFER_SIZE = 50
@@ -73,10 +75,28 @@ def _record_to_payload(record: logging.LogRecord) -> dict[str, Any]:
     }
     # Atributos custom inyectados via `logger.info(..., extra={...})`.
     standard = {
-        "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
-        "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
-        "created", "msecs", "relativeCreated", "thread", "threadName",
-        "processName", "process", "message", "taskName",
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "message",
+        "taskName",
     }
     for key, value in record.__dict__.items():
         if key in standard:

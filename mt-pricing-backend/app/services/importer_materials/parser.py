@@ -84,9 +84,7 @@ def _validate_left_headers(header: tuple[Any, ...]) -> tuple[list[str], list[str
     norm = [_normalize_header(h) for h in header]
     for i, expected in enumerate(_REQUIRED_LEFT_HEADERS):
         if i >= len(norm) or norm[i] != expected:
-            errors.append(
-                f"col {i}: header esperado {expected!r}, recibido {norm[i]!r}."
-            )
+            errors.append(f"col {i}: header esperado {expected!r}, recibido {norm[i]!r}.")
     return errors, norm
 
 
@@ -160,9 +158,9 @@ def parse_materials_xlsx_stream(
                 continue
 
             errors: list[str] = []
-            descriptor = _cast_text(row[0] if 0 < len(row) else None)
+            descriptor = _cast_text(row[0] if len(row) > 0 else None)
             try:
-                temp = _cast_decimal(row[1] if 1 < len(row) else None)
+                temp = _cast_decimal(row[1] if len(row) > 1 else None)
             except ValueError as exc:
                 errors.append(f"col 'temperatura_c': {exc}")
                 temp = None

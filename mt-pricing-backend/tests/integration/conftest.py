@@ -14,7 +14,7 @@ import pytest
 
 
 @pytest.fixture(scope="session")
-def neo4j_driver():  # noqa: ANN201
+def neo4j_driver():
     """Driver Neo4j sincrónico apuntando a la instancia local de dev.
 
     Lee credenciales de variables de entorno con fallback a defaults dev.

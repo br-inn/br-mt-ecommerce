@@ -31,8 +31,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
+
+from alembic import op
 
 revision: str = "20260507_025"
 down_revision: str | None = "20260507_024"
@@ -160,9 +161,7 @@ def upgrade() -> None:
         """
     )
 
-    op.execute(
-        "DROP TRIGGER IF EXISTS trg_cdc_emit_product ON products"
-    )
+    op.execute("DROP TRIGGER IF EXISTS trg_cdc_emit_product ON products")
     op.execute(
         """
         CREATE TRIGGER trg_cdc_emit_product
@@ -209,9 +208,7 @@ def downgrade() -> None:
         );
         """
     )
-    op.execute(
-        "DELETE FROM permissions WHERE code = 'graphrag:admin'"
-    )
+    op.execute("DELETE FROM permissions WHERE code = 'graphrag:admin'")
 
     op.execute("DROP TRIGGER IF EXISTS trg_cdc_emit_product ON products")
     op.execute("DROP FUNCTION IF EXISTS cdc_emit_product()")

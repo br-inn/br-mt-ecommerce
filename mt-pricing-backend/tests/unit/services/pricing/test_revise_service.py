@@ -33,8 +33,11 @@ def _mk_session() -> MagicMock:
 
 
 def _mk_revised_price(
-    *, amount: Decimal = Decimal("100"), margin: Decimal = Decimal("0.30"),
-    status: str = "revised", previous_amount: Decimal | None = Decimal("90"),
+    *,
+    amount: Decimal = Decimal("100"),
+    margin: Decimal = Decimal("0.30"),
+    status: str = "revised",
+    previous_amount: Decimal | None = Decimal("90"),
 ) -> Any:
     price = MagicMock()
     price.id = uuid4()

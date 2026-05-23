@@ -7,7 +7,6 @@ el flag está OFF o la API key está vacía.
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from app.services.comparator.interfaces import VlmJudgePort, VlmJudgeVerdict
 

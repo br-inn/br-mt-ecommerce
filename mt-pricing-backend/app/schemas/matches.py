@@ -147,6 +147,7 @@ class MatchBulkValidateResponse(BaseModel):
 # Three-way summary — US-ERP-03-04 / matching pricing
 # ---------------------------------------------------------------------------
 
+
 class ThreeWaySummaryResponse(BaseModel):
     """Resumen three-way match de pricing para un SKU.
 

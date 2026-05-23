@@ -16,7 +16,7 @@ RBAC:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -45,9 +45,7 @@ router = APIRouter(prefix="/admin/jobs", tags=["Jobs Admin"])
 def _serialize_run(run: JobRun) -> JobRunResponse:
     duration_ms: int | None = None
     if run.started_at and run.finished_at:
-        duration_ms = int(
-            (run.finished_at - run.started_at).total_seconds() * 1000
-        )
+        duration_ms = int((run.finished_at - run.started_at).total_seconds() * 1000)
     return JobRunResponse(
         id=run.id,
         job_id=run.job_id,
@@ -82,11 +80,7 @@ async def list_jobs(
         stmt = stmt.where(JobDefinition.enabled.is_(enabled))
     if owner is not None:
         stmt = stmt.where(JobDefinition.owner == owner)
-    stmt = (
-        stmt.order_by(JobDefinition.next_run_at.asc().nullslast())
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = stmt.order_by(JobDefinition.next_run_at.asc().nullslast()).limit(limit).offset(offset)
     result = await session.execute(stmt)
     rows = result.scalars().all()
     return [JobDefinitionListItem.model_validate(j) for j in rows]
@@ -150,7 +144,7 @@ async def create_job(
         kwargs=payload.kwargs,
         enabled=payload.enabled,
         edited_by=actor.id,
-        edited_at=datetime.now(tz=timezone.utc),
+        edited_at=datetime.now(tz=UTC),
     )
     return JobDefinitionResponse.model_validate(obj)
 
@@ -208,7 +202,7 @@ async def update_job(
     for k, v in data.items():
         setattr(obj, k, v)
     obj.edited_by = actor.id
-    obj.edited_at = datetime.now(tz=timezone.utc)
+    obj.edited_at = datetime.now(tz=UTC)
     await session.flush()
     return JobDefinitionResponse.model_validate(obj)
 
@@ -246,7 +240,7 @@ async def run_job_now(
             },
         )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     run = JobRun(
         id=uuid4(),
         job_id=job.id,
@@ -275,10 +269,10 @@ async def run_job_now(
         celery_task_id = async_result.id
         run.celery_task_id = celery_task_id
         await session.flush()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         run.status = "failure"
         run.error = f"Celery dispatch failed: {exc}"
-        run.finished_at = datetime.now(tz=timezone.utc)
+        run.finished_at = datetime.now(tz=UTC)
         await session.flush()
         # No 503 fatal — el frontend muestra el run failed. Devolvemos 503 sólo
         # si la app está corriendo en modo donde Celery debería existir.

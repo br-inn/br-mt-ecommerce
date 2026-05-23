@@ -139,8 +139,13 @@ class TestSchemaAndSeed:
             # display_order: family=5, subfamily=6, product_type=7,
             # division=10, series=20, tier=30, material=40.
             assert slugs == [
-                "family", "subfamily", "product_type",
-                "division", "series", "tier", "material",
+                "family",
+                "subfamily",
+                "product_type",
+                "division",
+                "series",
+                "tier",
+                "material",
             ]
             assert all(r[1] is True for r in rows)
             kinds = {r[0]: r[2] for r in rows}
@@ -169,25 +174,13 @@ class TestConstraints:
         try:
             # slug con mayúscula → falla
             with engine.begin() as conn, pytest.raises(IntegrityError):
-                conn.execute(
-                    text(
-                        "INSERT INTO taxonomy_types (slug) VALUES ('Market')"
-                    )
-                )
+                conn.execute(text("INSERT INTO taxonomy_types (slug) VALUES ('Market')"))
             # slug con guión → falla
             with engine.begin() as conn, pytest.raises(IntegrityError):
-                conn.execute(
-                    text(
-                        "INSERT INTO taxonomy_types (slug) VALUES ('mar-ket')"
-                    )
-                )
+                conn.execute(text("INSERT INTO taxonomy_types (slug) VALUES ('mar-ket')"))
             # slug comenzando con dígito → falla
             with engine.begin() as conn, pytest.raises(IntegrityError):
-                conn.execute(
-                    text(
-                        "INSERT INTO taxonomy_types (slug) VALUES ('1market')"
-                    )
-                )
+                conn.execute(text("INSERT INTO taxonomy_types (slug) VALUES ('1market')"))
         finally:
             engine.dispose()
 
@@ -215,10 +208,7 @@ class TestConstraints:
         try:
             with engine.begin() as conn, pytest.raises(IntegrityError):
                 conn.execute(
-                    text(
-                        "INSERT INTO taxonomy_types (slug, depth_max) "
-                        "VALUES ('foo_baz', 0)"
-                    )
+                    text("INSERT INTO taxonomy_types (slug, depth_max) VALUES ('foo_baz', 0)")
                 )
         finally:
             engine.dispose()
@@ -231,9 +221,7 @@ class TestConstraints:
         try:
             with engine.begin() as conn:
                 type_id = conn.execute(
-                    text(
-                        "SELECT id FROM taxonomy_types WHERE slug = 'division'"
-                    )
+                    text("SELECT id FROM taxonomy_types WHERE slug = 'division'")
                 ).scalar_one()
                 node_id = conn.execute(
                     text(
@@ -245,19 +233,13 @@ class TestConstraints:
 
             with engine.begin() as conn, pytest.raises(IntegrityError):
                 conn.execute(
-                    text(
-                        "UPDATE taxonomy_nodes SET superseded_by = id WHERE id = :nid"
-                    ),
+                    text("UPDATE taxonomy_nodes SET superseded_by = id WHERE id = :nid"),
                     {"nid": node_id},
                 )
 
             # Cleanup
             with engine.begin() as conn:
-                conn.execute(
-                    text(
-                        "DELETE FROM taxonomy_nodes WHERE slug = 'test_self_supersede'"
-                    )
-                )
+                conn.execute(text("DELETE FROM taxonomy_nodes WHERE slug = 'test_self_supersede'"))
         finally:
             engine.dispose()
 
@@ -287,18 +269,13 @@ class TestConstraints:
             # Mismo slug + mismo type → falla
             with engine.begin() as conn, pytest.raises(IntegrityError):
                 conn.execute(
-                    text(
-                        "INSERT INTO taxonomy_nodes (type_id, slug) "
-                        "VALUES (:tid, 'shared_slug')"
-                    ),
+                    text("INSERT INTO taxonomy_nodes (type_id, slug) VALUES (:tid, 'shared_slug')"),
                     {"tid": division_type_id},
                 )
 
             # Cleanup
             with engine.begin() as conn:
-                conn.execute(
-                    text("DELETE FROM taxonomy_nodes WHERE slug = 'shared_slug'")
-                )
+                conn.execute(text("DELETE FROM taxonomy_nodes WHERE slug = 'shared_slug'"))
         finally:
             engine.dispose()
 
@@ -313,8 +290,8 @@ class TestConstraints:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO products (sku, name_en, family, brand_id, family_id)
-                        SELECT 'TEST-LINK-001', 'Test Product', 'ball_valve',
+                        INSERT INTO products (sku, family, brand_id, family_id)
+                        SELECT 'TEST-LINK-001', 'ball_valve',
                                (SELECT id FROM brands WHERE code = 'default'),
                                (SELECT id FROM families WHERE code = 'default')
                         ON CONFLICT DO NOTHING
@@ -345,15 +322,9 @@ class TestConstraints:
             # solo limpiar el nodo y los links.
             with engine.begin() as conn:
                 conn.execute(
-                    text(
-                        "DELETE FROM product_taxonomy_links WHERE product_sku = 'TEST-LINK-001'"
-                    )
+                    text("DELETE FROM product_taxonomy_links WHERE product_sku = 'TEST-LINK-001'")
                 )
-                conn.execute(
-                    text(
-                        "DELETE FROM taxonomy_nodes WHERE slug = 'test_link_node'"
-                    )
-                )
+                conn.execute(text("DELETE FROM taxonomy_nodes WHERE slug = 'test_link_node'"))
         finally:
             engine.dispose()
 
@@ -390,15 +361,13 @@ class TestClosureTable:
                     {"nid": node_id},
                 ).fetchall()
                 # Self-row depth 0
-                assert any(
-                    r[0] == r[1] == node_id and r[2] == 0 for r in rows
-                ), "self-row no insertada por trigger"
+                assert any(r[0] == r[1] == node_id and r[2] == 0 for r in rows), (
+                    "self-row no insertada por trigger"
+                )
 
             # Cleanup
             with engine.begin() as conn:
-                conn.execute(
-                    text("DELETE FROM taxonomy_nodes WHERE slug = 'closure_root'")
-                )
+                conn.execute(text("DELETE FROM taxonomy_nodes WHERE slug = 'closure_root'"))
         finally:
             engine.dispose()
 
@@ -417,22 +386,19 @@ class TestClosureTable:
                 ).scalar_one()
                 a_id = conn.execute(
                     text(
-                        "INSERT INTO taxonomy_nodes (type_id, slug) "
-                        "VALUES (:tid, :s) RETURNING id"
+                        "INSERT INTO taxonomy_nodes (type_id, slug) VALUES (:tid, :s) RETURNING id"
                     ),
                     {"tid": division_type_id, "s": slug_a},
                 ).scalar_one()
                 b_id = conn.execute(
                     text(
-                        "INSERT INTO taxonomy_nodes (type_id, slug) "
-                        "VALUES (:tid, :s) RETURNING id"
+                        "INSERT INTO taxonomy_nodes (type_id, slug) VALUES (:tid, :s) RETURNING id"
                     ),
                     {"tid": division_type_id, "s": slug_b},
                 ).scalar_one()
                 c_id = conn.execute(
                     text(
-                        "INSERT INTO taxonomy_nodes (type_id, slug) "
-                        "VALUES (:tid, :s) RETURNING id"
+                        "INSERT INTO taxonomy_nodes (type_id, slug) VALUES (:tid, :s) RETURNING id"
                     ),
                     {"tid": division_type_id, "s": slug_c},
                 ).scalar_one()
@@ -473,9 +439,7 @@ class TestClosureTable:
                 # B's ancestors
                 (c_id, b_id, 1),
             }
-            assert expected <= actual, (
-                f"Closure incompleta: faltan {expected - actual}"
-            )
+            assert expected <= actual, f"Closure incompleta: faltan {expected - actual}"
 
             # Cleanup en orden: borrar A primero (es descendiente), luego B, luego C
             with engine.begin() as conn:
@@ -486,9 +450,7 @@ class TestClosureTable:
         finally:
             engine.dispose()
 
-    def test_multi_inheritance_accumulates_ancestors(
-        self, upgraded_db: str
-    ) -> None:
+    def test_multi_inheritance_accumulates_ancestors(self, upgraded_db: str) -> None:
         """Nodo con dos parents distintos: ambos aparecen como ancestors (depth 1)."""
         from sqlalchemy import create_engine, text
 
@@ -503,22 +465,19 @@ class TestClosureTable:
                 ).scalar_one()
                 p1 = conn.execute(
                     text(
-                        "INSERT INTO taxonomy_nodes (type_id, slug) "
-                        "VALUES (:tid, :s) RETURNING id"
+                        "INSERT INTO taxonomy_nodes (type_id, slug) VALUES (:tid, :s) RETURNING id"
                     ),
                     {"tid": division_type_id, "s": slug_p1},
                 ).scalar_one()
                 p2 = conn.execute(
                     text(
-                        "INSERT INTO taxonomy_nodes (type_id, slug) "
-                        "VALUES (:tid, :s) RETURNING id"
+                        "INSERT INTO taxonomy_nodes (type_id, slug) VALUES (:tid, :s) RETURNING id"
                     ),
                     {"tid": division_type_id, "s": slug_p2},
                 ).scalar_one()
                 child = conn.execute(
                     text(
-                        "INSERT INTO taxonomy_nodes (type_id, slug) "
-                        "VALUES (:tid, :s) RETURNING id"
+                        "INSERT INTO taxonomy_nodes (type_id, slug) VALUES (:tid, :s) RETURNING id"
                     ),
                     {"tid": division_type_id, "s": slug_child},
                 ).scalar_one()
@@ -570,7 +529,7 @@ class TestModelsRegistration:
 
     def test_taxonomy_models_in_metadata(self) -> None:
         from app.db import Base
-        from app.db import models as _  # noqa: F401
+        from app.db import models as _
 
         expected = {
             "taxonomy_types",

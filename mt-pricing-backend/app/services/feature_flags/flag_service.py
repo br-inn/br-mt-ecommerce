@@ -145,9 +145,7 @@ class FlagService:
     ) -> bool:
         """Persiste flag y purga cache. Devuelve el valor seteado."""
         if key not in KNOWN_FLAGS:
-            raise ValueError(
-                f"Flag desconocido: {key!r}. Permitidos: {KNOWN_FLAGS}"
-            )
+            raise ValueError(f"Flag desconocido: {key!r}. Permitidos: {KNOWN_FLAGS}")
         await self.flag_repo.upsert(key=key, value=value, updated_by=updated_by)  # type: ignore[attr-defined]
         await self._cache_invalidate(key)
         logger.info(
@@ -162,7 +160,7 @@ class FlagService:
     async def _db_get(self, key: str) -> bool:
         try:
             value = await self.flag_repo.get_value(key)  # type: ignore[attr-defined]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "feature_flag.db_lookup_failed",
                 extra={"key": key, "error": str(exc)},
@@ -175,7 +173,7 @@ class FlagService:
             return None
         try:
             raw = await self.redis.get(f"{CACHE_NS}:{key}")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "feature_flag.cache_get_failed",
                 extra={"key": key, "error": str(exc)},
@@ -196,7 +194,7 @@ class FlagService:
                 "1" if value else "0",
                 ex=CACHE_TTL_SECONDS,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "feature_flag.cache_set_failed",
                 extra={"key": key, "error": str(exc)},
@@ -207,7 +205,7 @@ class FlagService:
             return
         try:
             await self.redis.delete(f"{CACHE_NS}:{key}")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "feature_flag.cache_invalidate_failed",
                 extra={"key": key, "error": str(exc)},
@@ -300,7 +298,7 @@ def set_local_flag(key: str, value: bool) -> None:
 # ---------------------------------------------------------------------------
 # Shadow publish Amazon helper — US-1B-04-04
 # ---------------------------------------------------------------------------
-async def is_shadow_publish_amazon_enabled(session: "AsyncSession") -> bool:
+async def is_shadow_publish_amazon_enabled(session: AsyncSession) -> bool:
     """Retorna True si feature flag shadow_publish_amazon está activo.
 
     Consulta directo a DB (sin cache Redis) — usar sólo en paths no críticos.
@@ -318,7 +316,7 @@ async def is_shadow_publish_amazon_enabled(session: "AsyncSession") -> bool:
 # ---------------------------------------------------------------------------
 # Reverse image search helper — US-RND-01-09
 # ---------------------------------------------------------------------------
-async def is_reverse_image_search_enabled(session: "AsyncSession") -> bool:
+async def is_reverse_image_search_enabled(session: AsyncSession) -> bool:
     """Retorna True si feature flag reverse_image_search está activo.
 
     OFF por defecto — R&D only; no seed en BD.
@@ -336,7 +334,7 @@ async def is_reverse_image_search_enabled(session: "AsyncSession") -> bool:
 # ---------------------------------------------------------------------------
 # Channel recommendation helper — US-1B-03-04
 # ---------------------------------------------------------------------------
-async def is_channel_recommendation_enabled(session: "AsyncSession") -> bool:
+async def is_channel_recommendation_enabled(session: AsyncSession) -> bool:
     """Retorna True si feature flag channel_recommendation está activo.
 
     Consulta directo a DB (sin cache Redis) — usar sólo en paths no críticos.
@@ -366,8 +364,8 @@ __all__ = [
     "FLAG_REVERSE_IMAGE_SEARCH",
     "FLAG_SHADOW_PUBLISH_AMAZON",
     "FLAG_VLM_JUDGE",
-    "FlagService",
     "KNOWN_FLAGS",
+    "FlagService",
     "clear_local_cache",
     "get_default_service",
     "is_channel_recommendation_enabled",

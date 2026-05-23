@@ -381,9 +381,7 @@ class TestSafeFetchImage:
         import httpx
 
         with respx.mock(assert_all_called=False) as mock:
-            mock.get("https://example.com/missing.jpg").mock(
-                return_value=httpx.Response(404)
-            )
+            mock.get("https://example.com/missing.jpg").mock(return_value=httpx.Response(404))
             with pytest.raises(SSRFViolation) as exc:
                 safe_fetch_image("https://example.com/missing.jpg")
             assert exc.value.code == "ssrf_blocked_http"

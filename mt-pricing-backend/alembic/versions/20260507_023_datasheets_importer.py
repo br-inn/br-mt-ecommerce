@@ -27,8 +27,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260507_023"
 down_revision: str | None = "20260507_022"
@@ -49,9 +50,7 @@ def upgrade() -> None:
         sa.Column("kind", sa.String(length=32), nullable=False),
         sa.Column("storage_path", sa.Text(), nullable=False),
         sa.Column("original_filename", sa.Text(), nullable=False),
-        sa.Column(
-            "file_size_bytes", sa.Integer(), nullable=False, server_default=sa.text("0")
-        ),
+        sa.Column("file_size_bytes", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column(
             "sku_list",
             postgresql.JSONB(astext_type=sa.Text()),
@@ -100,9 +99,7 @@ def upgrade() -> None:
         ),
         sa.UniqueConstraint("storage_path", name="uq_product_datasheets_storage_path"),
     )
-    op.create_index(
-        "idx_product_datasheets_kind", "product_datasheets", ["kind"]
-    )
+    op.create_index("idx_product_datasheets_kind", "product_datasheets", ["kind"])
     op.execute(
         "CREATE TRIGGER trg_product_datasheets_updated_at "
         "BEFORE UPDATE ON product_datasheets "
@@ -121,9 +118,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Revierte sólo la tabla nueva. El CHECK de import_runs.import_type
     # se queda con todos los kinds (lo gestiona la 019 al hacer downgrade).
-    op.execute(
-        "DROP TRIGGER IF EXISTS trg_product_datasheets_updated_at "
-        "ON product_datasheets;"
-    )
+    op.execute("DROP TRIGGER IF EXISTS trg_product_datasheets_updated_at ON product_datasheets;")
     op.drop_index("idx_product_datasheets_kind", table_name="product_datasheets")
     op.drop_table("product_datasheets")

@@ -9,15 +9,12 @@ Sin DB real. Cubren:
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.services.image_search.clip_service import (
-    ImageSearchResult,
     StubBackend,
-    get_image_backend,
 )
 
 

@@ -60,9 +60,7 @@ def test_match_when_both_empty() -> None:
 def test_queued_overrides_other_states() -> None:
     canonical = {"image_4 (AR)": "img/x_ar.jpg"}
     live: dict[str, object] = {"image_4 (AR)": ""}
-    diffs = canonical_vs_live(
-        canonical, live, queued_fields={"image_4 (AR)"}
-    )
+    diffs = canonical_vs_live(canonical, live, queued_fields={"image_4 (AR)"})
     assert diffs[0].status == DIFF_STATUS_QUEUED
     # AR detection from "(AR)" suffix
     assert diffs[0].lang == "ar"
@@ -96,9 +94,7 @@ def test_explicit_fields_order_filters_keys() -> None:
 def test_summary_counts() -> None:
     canonical = {"a": "x", "b": "y", "c": "z", "d": "w"}
     live = {"a": "x", "b": "different", "c": ""}
-    diffs = canonical_vs_live(
-        canonical, live, queued_fields={"d"}
-    )
+    diffs = canonical_vs_live(canonical, live, queued_fields={"d"})
     counts = summarize(diffs)
     assert counts["match"] == 1
     assert counts["drift"] == 1
@@ -160,9 +156,7 @@ def test_mockup_scenario_replays_frontend_states() -> None:
         "image_main": "amazon-cdn/.../71kQ_…",
         "image_4 (AR)": "",
     }
-    diffs = canonical_vs_live(
-        canonical, live, queued_fields={"image_4 (AR)"}
-    )
+    diffs = canonical_vs_live(canonical, live, queued_fields={"image_4 (AR)"})
     by_field = {d.field: d.status for d in diffs}
     assert by_field["title_en"] == DIFF_STATUS_DRIFT
     assert by_field["title_ar"] == DIFF_STATUS_MISSING

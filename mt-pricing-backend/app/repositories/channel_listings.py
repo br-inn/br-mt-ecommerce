@@ -25,9 +25,7 @@ class ChannelListingRepository:
     async def get_by_id(self, listing_id: UUID) -> ChannelListing | None:
         return await self.session.get(ChannelListing, listing_id)
 
-    async def get_by_channel_sku(
-        self, channel_code: str, sku: str
-    ) -> ChannelListing | None:
+    async def get_by_channel_sku(self, channel_code: str, sku: str) -> ChannelListing | None:
         stmt = select(ChannelListing).where(
             ChannelListing.channel_code == channel_code,
             ChannelListing.product_sku == sku,
@@ -148,9 +146,7 @@ class ChannelSyncEventRepository:
         await self.session.flush()
         return evt
 
-    async def recent(
-        self, channel_code: str, *, limit: int = 50
-    ) -> Sequence[ChannelSyncEvent]:
+    async def recent(self, channel_code: str, *, limit: int = 50) -> Sequence[ChannelSyncEvent]:
         stmt = (
             select(ChannelSyncEvent)
             .where(ChannelSyncEvent.channel_code == channel_code)
@@ -166,10 +162,7 @@ def _matches_status(summary: dict[str, Any], target: str) -> bool:
     if not isinstance(summary, dict):
         return False
     if target == "clean":
-        return all(
-            int(summary.get(k, 0) or 0) == 0
-            for k in ("drift", "missing", "queued")
-        )
+        return all(int(summary.get(k, 0) or 0) == 0 for k in ("drift", "missing", "queued"))
     return int(summary.get(target, 0) or 0) > 0
 
 

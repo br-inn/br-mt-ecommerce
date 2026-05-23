@@ -158,4 +158,4 @@ def test_productresponse_lifecycle_default_active() -> None:
 
 
 def test_allowed_sets_have_expected_size() -> None:
-    assert len(ALLOWED_LIFECYCLE_STATUS) == 5
+    assert len(ALLOWED_LIFECYCLE_STATUS) == 6

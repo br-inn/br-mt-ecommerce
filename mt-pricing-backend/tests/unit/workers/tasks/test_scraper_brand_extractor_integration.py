@@ -10,6 +10,7 @@ Strategy:
   AC-3: No extractor → empty mapping, no record_hit, no LLM
   AC-4: price_monitor_task resolves brand by name, loads mapping, updates normalized_jsonb
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -52,6 +53,7 @@ def _make_brand(name: str = "TestBrand", is_active: bool = True) -> MagicMock:
 
 # ── Tests: adapter_registry.get_fetcher kwargs propagation ───────────────────
 
+
 class TestGetFetcherKwargs:
     """AC-1 / AC-5: get_fetcher passes brand_id + brand_attribute_map to _get_amazon_uae_fetcher."""
 
@@ -90,18 +92,15 @@ class TestGetFetcherKwargs:
 
     def test_noon_uae_returns_empty_fetcher_ignoring_brand_kwargs(self) -> None:
         """brand_id / brand_attribute_map are silently ignored for noon_uae (no mapping support)."""
-        with patch(
-            "app.services.matching.adapter_registry._live_for", return_value=False
-        ):
+        with patch("app.services.matching.adapter_registry._live_for", return_value=False):
             from app.services.matching.adapter_registry import get_fetcher
 
-            fetcher = get_fetcher(
-                "noon_uae", brand_id=uuid4(), brand_attribute_map={"x": "y"}
-            )
+            fetcher = get_fetcher("noon_uae", brand_id=uuid4(), brand_attribute_map={"x": "y"})
             assert fetcher.channel == "noon_uae"
 
 
 # ── Tests: canonical field hit detection (AC-2) ───────────────────────────────
+
 
 class TestCanonicalHitDetection:
     """AC-2: hit_rate convergence driven by per-candidate hit/miss detection."""
@@ -124,9 +123,7 @@ class TestCanonicalHitDetection:
 
     def test_canonical_fields_extracted_from_mapping(self) -> None:
         canonical_fields = {
-            v["field"]
-            for v in SAMPLE_MAPPING.values()
-            if isinstance(v, dict) and "field" in v
+            v["field"] for v in SAMPLE_MAPPING.values() if isinstance(v, dict) and "field" in v
         }
         assert canonical_fields == {"material", "dn"}
 
@@ -135,8 +132,8 @@ class TestCanonicalHitDetection:
         """record_hit called once per candidate; hit=True only when canonical field present."""
         brand_id = uuid4()
         candidates = [
-            _make_candidate(specs={"material": "Bronze"}),           # hit
-            _make_candidate(specs={"color": "red"}),                 # miss
+            _make_candidate(specs={"material": "Bronze"}),  # hit
+            _make_candidate(specs={"color": "red"}),  # miss
             _make_candidate(specs={"material": "PVC", "dn": "DN25"}),  # hit
         ]
         canonical_fields = {"material", "dn"}
@@ -149,14 +146,17 @@ class TestCanonicalHitDetection:
             await mock_svc.record_hit(brand_id, "amazon_uae", hit=hit)
 
         assert mock_svc.record_hit.call_count == 3
-        mock_svc.record_hit.assert_has_calls([
-            call(brand_id, "amazon_uae", hit=True),
-            call(brand_id, "amazon_uae", hit=False),
-            call(brand_id, "amazon_uae", hit=True),
-        ])
+        mock_svc.record_hit.assert_has_calls(
+            [
+                call(brand_id, "amazon_uae", hit=True),
+                call(brand_id, "amazon_uae", hit=False),
+                call(brand_id, "amazon_uae", hit=True),
+            ]
+        )
 
 
 # ── Tests: AC-3 — no extractor → graceful fallback ───────────────────────────
+
 
 class TestNoExtractorFallback:
     """AC-3: No BrandExtractor in DB → empty mapping, no record_hit, no LLM call."""
@@ -184,8 +184,7 @@ class TestNoExtractorFallback:
 
         if mapping is not None:  # guard — same condition as in scrape_brand_task
             canonical_fields: set = {
-                v["field"] for v in mapping.values()
-                if isinstance(v, dict) and "field" in v
+                v["field"] for v in mapping.values() if isinstance(v, dict) and "field" in v
             }
             for candidate in candidates:
                 hit = bool(canonical_fields & set(candidate.specs.keys()))
@@ -208,18 +207,19 @@ class TestNoExtractorFallback:
 
         if mapping is not None:  # guard passes — extractor row exists
             canonical_fields: set = {
-                v["field"] for v in mapping.values()
-                if isinstance(v, dict) and "field" in v
+                v["field"] for v in mapping.values() if isinstance(v, dict) and "field" in v
             }
             for candidate in candidates:
                 hit = bool(canonical_fields & set(candidate.specs.keys()))
                 await mock_svc.record_hit(brand_id, "amazon_uae", hit=hit)
 
         assert mock_svc.record_hit.call_count == 2
-        mock_svc.record_hit.assert_has_calls([
-            call(brand_id, "amazon_uae", hit=False),
-            call(brand_id, "amazon_uae", hit=False),
-        ])
+        mock_svc.record_hit.assert_has_calls(
+            [
+                call(brand_id, "amazon_uae", hit=False),
+                call(brand_id, "amazon_uae", hit=False),
+            ]
+        )
 
     @pytest.mark.asyncio
     async def test_get_mapping_called_exactly_once(self) -> None:
@@ -237,6 +237,7 @@ class TestNoExtractorFallback:
 
 
 # ── Tests: AC-4 — price_monitor_task brand resolution ────────────────────────
+
 
 class TestPriceMonitorBrandResolution:
     """AC-4: price_monitor_task loads mapping when CompetitorBrand found by name."""

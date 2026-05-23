@@ -10,7 +10,7 @@ negocio:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -137,7 +137,7 @@ class MatchCandidateRepository(BaseRepository[MatchCandidate]):
             return None
         obj.status = "validated"
         obj.validated_by = user_id
-        obj.validated_at = datetime.now(tz=timezone.utc)
+        obj.validated_at = datetime.now(tz=UTC)
         obj.discarded_reason = None
         await self.session.flush()
         return obj

@@ -218,9 +218,7 @@ class ConformalWrapper:
             ValueError: si len(cal_scores) < 200.
         """
         if len(cal_scores) < 200:
-            raise ValueError(
-                f"Insufficient calibration samples (min 200), got {len(cal_scores)}"
-            )
+            raise ValueError(f"Insufficient calibration samples (min 200), got {len(cal_scores)}")
         if len(cal_scores) != len(labels):
             raise ValueError("cal_scores and labels must have same length")
 
@@ -238,19 +236,22 @@ class ConformalWrapper:
 
     def _fit_mapie(self, cal_scores: list[float], y_true: list[float]) -> None:
         """Ajusta MapieRegressor con cv='prefit' sobre el calibrador base."""
-        import numpy as np  # noqa: PLC0415
+        import numpy as np
 
         # Wrapper sklearn-compatible que delega en IsotonicCalibrator
-        from sklearn.base import BaseEstimator, RegressorMixin  # type: ignore[import-untyped]  # noqa: PLC0415
+        from sklearn.base import (  # type: ignore[import-untyped]
+            BaseEstimator,
+            RegressorMixin,
+        )
 
         class _CalWrapper(BaseEstimator, RegressorMixin):  # type: ignore[misc]
             def __init__(self, cal: IsotonicCalibrator) -> None:
                 self.cal = cal
 
-            def fit(self, X: Any, y: Any) -> "_CalWrapper":  # noqa: N803
+            def fit(self, X: Any, y: Any) -> _CalWrapper:
                 return self
 
-            def predict(self, X: Any) -> Any:  # noqa: N803
+            def predict(self, X: Any) -> Any:
                 return np.array([self.cal.calibrate(float(x[0])) for x in X])
 
         X_arr = np.array(cal_scores).reshape(-1, 1)
@@ -292,7 +293,7 @@ class ConformalWrapper:
 
     def _predict_mapie(self, score: float, point_estimate: float) -> tuple[float, float]:
         """Predice intervalo usando MAPIE."""
-        import numpy as np  # noqa: PLC0415
+        import numpy as np
 
         X_arr = np.array([[score]])
         _, intervals = self._mapie.predict(X_arr, alpha=self.alpha)
@@ -312,7 +313,7 @@ class ConformalWrapper:
             return (point_estimate, point_estimate)
 
         if _NUMPY_AVAILABLE:
-            import numpy as np  # noqa: PLC0415
+            import numpy as np
 
             margin = float(np.quantile(self._residuals, 1.0 - self.alpha))
         else:
@@ -367,9 +368,9 @@ def expected_calibration_error(
 
 
 __all__ = [
-    "IsotonicCalibrator",
-    "ConformalWrapper",
     "ConformalPrediction",
+    "ConformalWrapper",
+    "IsotonicCalibrator",
     "brier_score",
     "expected_calibration_error",
 ]

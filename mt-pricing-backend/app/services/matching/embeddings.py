@@ -7,6 +7,7 @@ Carga lazy: el modelo NO se instancia al importar el módulo — solo cuando
 se llama por primera vez a `embed_offer()`. Esto evita penalizar el startup
 del backend (que no necesita embeddings) y solo afecta al worker.
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,7 +20,7 @@ _model = None
 
 
 def _get_model() -> Any:
-    global _model  # noqa: PLW0603
+    global _model
     if _model is None:
         from sentence_transformers import SentenceTransformer  # lazy import
 
@@ -42,7 +43,7 @@ def embed_offer(title: str, brand: str | None, specs: dict[str, Any]) -> list[fl
         specs.get("material") or "",
         specs.get("size") or "",
         specs.get("thread") or "",
-        specs.get("pn") and f"PN{specs['pn']}" or "",
+        (specs.get("pn") and f"PN{specs['pn']}") or "",
     ]
     text = " | ".join(p for p in parts if p)
     model = _get_model()
@@ -64,7 +65,7 @@ def embed_sku(sku_dict: dict[str, Any]) -> list[float]:
         specs.get("material") or sku_dict.get("material") or "",
         specs.get("size") or sku_dict.get("size") or "",
         specs.get("thread") or sku_dict.get("thread") or "",
-        sku_dict.get("pn") and f"PN{sku_dict['pn']}" or "",
+        (sku_dict.get("pn") and f"PN{sku_dict['pn']}") or "",
     ]
     text = " | ".join(p for p in parts if p)
     model = _get_model()

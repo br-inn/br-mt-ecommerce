@@ -68,7 +68,7 @@ class Neo4jGraphStore:
 
     def __init__(
         self,
-        driver: "Driver",
+        driver: Driver,
         *,
         database: str = "neo4j",
     ) -> None:
@@ -81,7 +81,7 @@ class Neo4jGraphStore:
     def database(self) -> str:
         return self._database
 
-    def _session(self) -> "Session":
+    def _session(self) -> Session:
         return self._driver.session(database=self._database)
 
     def _ensure_constraint(self, label: str) -> None:
@@ -90,14 +90,13 @@ class Neo4jGraphStore:
             if safe in self._ensured_labels:
                 return
             cypher = (
-                f"CREATE CONSTRAINT IF NOT EXISTS "
-                f"FOR (n:{safe}) REQUIRE n.primary_key IS UNIQUE"
+                f"CREATE CONSTRAINT IF NOT EXISTS FOR (n:{safe}) REQUIRE n.primary_key IS UNIQUE"
             )
             try:
                 with self._session() as s:
                     s.run(cypher).consume()
                 self._ensured_labels.add(safe)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "neo4j_real.ensure_constraint failed label=%s err=%s",
                     safe,
@@ -107,10 +106,7 @@ class Neo4jGraphStore:
     def merge_node(self, node: GraphNode) -> None:
         label = _safe_label(node.label)
         self._ensure_constraint(label)
-        cypher = (
-            f"MERGE (n:{label} {{primary_key: $pk}}) "
-            f"SET n += $props"
-        )
+        cypher = f"MERGE (n:{label} {{primary_key: $pk}}) SET n += $props"
         with self._session() as s:
             s.run(
                 cypher,
@@ -195,9 +191,7 @@ class Neo4jGraphStore:
 
     def delete_subgraph(self, label: str, primary_key: str) -> None:
         safe = _safe_label(label)
-        cypher = (
-            f"MATCH (n:{safe} {{primary_key: $pk}}) DETACH DELETE n"
-        )
+        cypher = f"MATCH (n:{safe} {{primary_key: $pk}}) DETACH DELETE n"
         with self._session() as s:
             s.run(cypher, pk=primary_key).consume()
 
@@ -219,7 +213,7 @@ class Neo4jGraphStore:
                     "edges": edges,
                     "healthy": True,
                 }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("neo4j_real.health_check failed: %s", exc)
             return {
                 "backend": "neo4j_real",

@@ -16,7 +16,7 @@ Convenciones:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -65,7 +65,9 @@ MT_DELIVERY_DAYS = 2
 CHANNEL_MULTIPLIERS: dict[str, Decimal] = {
     "amazon_uae": Decimal("1.00"),
     "noon_uae": Decimal("1.00"),
-    "b2c_direct": Decimal("0.95"),  # Marketing propio menor → más margen, precio levemente competitivo
+    "b2c_direct": Decimal(
+        "0.95"
+    ),  # Marketing propio menor → más margen, precio levemente competitivo
     "b2b_direct": Decimal("0.85"),  # Distribuidor descuenta volumen
     "marketplace_listing": Decimal("1.00"),
 }
@@ -85,7 +87,7 @@ class PricingResult:
     formula: str
     breakdown: dict[str, Any] = field(default_factory=dict)
     alerts: list[dict[str, Any]] = field(default_factory=list)
-    fx_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    fx_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     has_velocity_premium: bool = False
     has_critical_alerts: bool = False
     has_warnings: bool = False
@@ -100,7 +102,7 @@ class PricingResult:
         return [_decimals_to_str(a) for a in self.alerts]
 
 
-def _decimals_to_str(obj: Any) -> Any:  # noqa: ANN401
+def _decimals_to_str(obj: Any) -> Any:
     """Convierte Decimals recursivamente a str para JSONB-safe."""
     if isinstance(obj, Decimal):
         return str(obj)
@@ -325,9 +327,7 @@ class PricingRuleEngine:
         referral_aed = pvp_min_calc * REFERRAL_PCT
         bancos_aed = pvp_min_calc * BANCOS_PCT
         devol_aed = pvp_min_calc * DEVOLUCIONES_PCT
-        total_costes = (
-            coste + logistica + fba_fee + vat_aed + referral_aed + bancos_aed + devol_aed
-        )
+        total_costes = coste + logistica + fba_fee + vat_aed + referral_aed + bancos_aed + devol_aed
 
         return {
             "pvp_min": _round(pvp_min_calc, 2),
@@ -347,9 +347,7 @@ class PricingRuleEngine:
     # ----------------------------------------------------------------------
     # 2.9 — regla_analyze_candidates
     # ----------------------------------------------------------------------
-    def analyze_candidates(
-        self, candidates: list[dict[str, Any]] | None
-    ) -> dict[str, Any]:
+    def analyze_candidates(self, candidates: list[dict[str, Any]] | None) -> dict[str, Any]:
         if not candidates:
             return {
                 "median_aed": None,
@@ -606,12 +604,12 @@ class PricingRuleEngine:
     # ----------------------------------------------------------------------
     def calculate(
         self,
-        product: Any,  # noqa: ANN401  — Product ORM o dict
-        channel: Any,  # noqa: ANN401  — Channel ORM o dict
-        scheme: Any,  # noqa: ANN401  — CostScheme ORM o dict
-        cost: Any,  # noqa: ANN401  — Cost ORM o dict
+        product: Any,
+        channel: Any,
+        scheme: Any,
+        cost: Any,
         fx_rate: Decimal | None = None,
-        prev_price: Any | None = None,  # noqa: ANN401
+        prev_price: Any | None = None,
         market: dict[str, Any] | None = None,
         master_data: dict[str, Any] | None = None,
         scheme_min_margin: Decimal | None = None,
@@ -623,7 +621,7 @@ class PricingRuleEngine:
         sin tocar BD.
         """
 
-        def g(obj: Any, attr: str, default: Any = None) -> Any:  # noqa: ANN401
+        def g(obj: Any, attr: str, default: Any = None) -> Any:
             if obj is None:
                 return default
             if isinstance(obj, dict):
@@ -635,9 +633,7 @@ class PricingRuleEngine:
         subfamily = g(product, "subfamily")
         material = g(product, "material") or ""
         weight_raw = g(product, "weight")
-        weight: Decimal | None = (
-            Decimal(str(weight_raw)) if weight_raw is not None else None
-        )
+        weight: Decimal | None = Decimal(str(weight_raw)) if weight_raw is not None else None
         name = g(product, "name_en")
 
         # Determinar grupo G1/G2 — heurística simple (industrial = G2)
@@ -676,7 +672,10 @@ class PricingRuleEngine:
             market = scenario_overrides.get("market")
         market_summary = market or self.analyze_candidates(None)
         if scenario_overrides and scenario_overrides.get("median_aed"):
-            market_summary = {**market_summary, "median_aed": Decimal(str(scenario_overrides["median_aed"]))}
+            market_summary = {
+                **market_summary,
+                "median_aed": Decimal(str(scenario_overrides["median_aed"])),
+            }
 
         # Política agresiva (2.10-2.14)
         policy = self.apply_aggressive_policy(
@@ -770,7 +769,7 @@ class PricingRuleEngine:
             formula=policy["formula"],
             breakdown=breakdown_final,
             alerts=alerts,
-            fx_at=datetime.now(tz=timezone.utc),
+            fx_at=datetime.now(tz=UTC),
             has_velocity_premium=has_velocity_premium,
             has_critical_alerts=has_critical,
             has_warnings=has_warnings,
@@ -779,4 +778,4 @@ class PricingRuleEngine:
         )
 
 
-__all__ = ["PricingRuleEngine", "PricingResult"]
+__all__ = ["PricingResult", "PricingRuleEngine"]

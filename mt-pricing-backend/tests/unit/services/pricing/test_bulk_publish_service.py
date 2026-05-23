@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -92,9 +92,7 @@ async def test_publish_continues_on_domain_error() -> None:
 async def test_publish_rolls_back_on_first_domain_error() -> None:
     sess = _mk_session()
     pricing = MagicMock()
-    pricing.export = AsyncMock(
-        side_effect=[PricingDomainError("foo", "bar", 409)]
-    )
+    pricing.export = AsyncMock(side_effect=[PricingDomainError("foo", "bar", 409)])
     svc = BulkPublishService(sess, pricing_service=pricing)
     res = await svc.publish([uuid4(), uuid4()], _mk_user(), rollback_on_error=True)
     # Sólo se intenta el primero porque rollback corta.
@@ -111,9 +109,7 @@ async def test_publish_queue_publisher_accept() -> None:
     pricing.export = AsyncMock(return_value=p1)
 
     queue_mock = AsyncMock(return_value=True)
-    svc = BulkPublishService(
-        sess, pricing_service=pricing, queue_publisher=queue_mock
-    )
+    svc = BulkPublishService(sess, pricing_service=pricing, queue_publisher=queue_mock)
     res = await svc.publish([uuid4()], _mk_user())
     assert len(res.published) == 1
     queue_mock.assert_awaited_once_with(p1.id)
@@ -125,9 +121,7 @@ async def test_publish_queue_publisher_rejects() -> None:
     p1 = _mk_price()
     pricing.export = AsyncMock(return_value=p1)
     queue_mock = AsyncMock(return_value=False)
-    svc = BulkPublishService(
-        sess, pricing_service=pricing, queue_publisher=queue_mock
-    )
+    svc = BulkPublishService(sess, pricing_service=pricing, queue_publisher=queue_mock)
     res = await svc.publish([uuid4()], _mk_user())
     assert res.published == []
     assert len(res.queue_failed) == 1
@@ -140,9 +134,7 @@ async def test_publish_queue_publisher_raises() -> None:
     p1 = _mk_price()
     pricing.export = AsyncMock(return_value=p1)
     queue_mock = AsyncMock(side_effect=RuntimeError("boom"))
-    svc = BulkPublishService(
-        sess, pricing_service=pricing, queue_publisher=queue_mock
-    )
+    svc = BulkPublishService(sess, pricing_service=pricing, queue_publisher=queue_mock)
     res = await svc.publish([uuid4()], _mk_user())
     assert res.published == []
     assert len(res.queue_failed) == 1

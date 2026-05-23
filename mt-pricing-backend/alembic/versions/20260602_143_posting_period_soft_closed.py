@@ -8,6 +8,7 @@ Cambios en ``posting_periods``:
 - Ampliar el CHECK ``ck_posting_periods_status`` para incluir 'soft_closed'.
   Nuevo conjunto: open | soft_closed | closed | locked.
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -34,9 +35,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Primero normalizar cualquier valor 'soft_closed' existente a 'open'
     # para no violar el constraint anterior al revertir.
-    op.execute(
-        "UPDATE posting_periods SET status = 'open' WHERE status = 'soft_closed'"
-    )
+    op.execute("UPDATE posting_periods SET status = 'open' WHERE status = 'soft_closed'")
     op.drop_constraint("ck_posting_periods_status", "posting_periods", type_="check")
     op.create_check_constraint(
         "ck_posting_periods_status",

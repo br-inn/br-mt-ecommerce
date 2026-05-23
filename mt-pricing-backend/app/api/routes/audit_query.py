@@ -119,12 +119,8 @@ async def list_audit_events_multi(
     action: Annotated[
         str | None, Query(description="CSV de acciones (e.g. 'price.proposed').")
     ] = None,
-    from_: Annotated[
-        datetime | None, Query(alias="from", description="Lower bound ISO.")
-    ] = None,
-    to: Annotated[
-        datetime | None, Query(description="Upper bound ISO.")
-    ] = None,
+    from_: Annotated[datetime | None, Query(alias="from", description="Lower bound ISO.")] = None,
+    to: Annotated[datetime | None, Query(description="Upper bound ISO.")] = None,
     cursor: Annotated[
         str | None, Query(description="Cursor opaco devuelto en respuesta previa.")
     ] = None,

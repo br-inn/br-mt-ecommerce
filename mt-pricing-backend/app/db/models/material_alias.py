@@ -32,7 +32,8 @@ class MaterialAlias(UuidPkMixin, Base):
     alias: Mapped[str] = mapped_column(Text, nullable=False)
     alias_lower: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str | None] = mapped_column(
-        String(32), nullable=True,
+        String(32),
+        nullable=True,
         comment="industry_standard | amazon_pdp | erp | manual",
     )
 

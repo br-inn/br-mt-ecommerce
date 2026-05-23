@@ -1,4 +1,5 @@
 """ORM — product_marketplace_listings: per-marketplace listing content."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -35,9 +36,7 @@ class MarketplaceListing(Base):
         Text, ForeignKey("products.sku", ondelete="CASCADE"), nullable=False
     )
     marketplace: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'draft'")
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'draft'"))
     listing_title: Mapped[str | None] = mapped_column(Text)
     listing_description: Mapped[str | None] = mapped_column(Text)
     bullet_points: Mapped[list[str]] = mapped_column(
@@ -47,9 +46,7 @@ class MarketplaceListing(Base):
     extra: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    ai_generated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    ai_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ai_model: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
@@ -58,11 +55,12 @@ class MarketplaceListing(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    product: Mapped["Product"] = relationship(back_populates="marketplace_listings")
+    product: Mapped[Product] = relationship(back_populates="marketplace_listings")
 
     __table_args__ = (
         UniqueConstraint(
-            "product_sku", "marketplace",
+            "product_sku",
+            "marketplace",
             name="uq_marketplace_listings_sku_marketplace",
         ),
         CheckConstraint(
@@ -79,4 +77,4 @@ class MarketplaceListing(Base):
     )
 
 
-__all__ = ["MarketplaceListing", "MARKETPLACE_VALUES", "STATUS_VALUES"]
+__all__ = ["MARKETPLACE_VALUES", "STATUS_VALUES", "MarketplaceListing"]

@@ -34,7 +34,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -43,13 +42,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.db.enums import PriceState, Scheme, values_csv
 from app.db.mixins import AuditMixin, TimestampMixin, UuidPkMixin
-from app.db.types import UUID_PG
 
 # ---------------------------------------------------------------------------
 # Channel — moved to app.db.models.channels (US-1B-03-01). Re-export here
 # for backward-compat with any code that does `from app.db.models.pricing import Channel`.
 # ---------------------------------------------------------------------------
-from app.db.models.channels import Channel  # noqa: F401,E402
+from app.db.models.channels import Channel
+from app.db.types import UUID_PG
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +99,7 @@ class FXRate(UuidPkMixin, TimestampMixin, Base):
 # Cost — moved to `app.db.models.cost` (US-1A-04-02). Importer can `from
 # app.db.models.pricing import Cost` if needed.
 # ---------------------------------------------------------------------------
-from app.db.models.cost import Cost  # noqa: F401,E402  # back-compat re-export
+from app.db.models.cost import Cost  # back-compat re-export
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +164,7 @@ class Price(UuidPkMixin, TimestampMixin, AuditMixin, Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rejection_reason: Mapped[str | None] = mapped_column(Text)
 
-    escalated: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    escalated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     valid_from: Mapped[datetime] = mapped_column(
@@ -220,26 +217,19 @@ class ExceptionRule(UuidPkMixin, TimestampMixin, Base):
     margin_threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
     fx_swing_threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
     min_margin_pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
-    version: Mapped[int] = mapped_column(
-        nullable=False, server_default=text("1")
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    version: Mapped[int] = mapped_column(nullable=False, server_default=text("1"))
     effective_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
-    effective_to: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[UUID | None] = mapped_column(
         UUID_PG, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     __table_args__ = (
         CheckConstraint(
-            "scheme_code IS NULL OR scheme_code IN "
-            f"{values_csv(Scheme)}",
+            f"scheme_code IS NULL OR scheme_code IN {values_csv(Scheme)}",
             name="ck_exception_rules_scheme_code",
         ),
         Index("idx_exception_rules_active", "active", postgresql_where=text("active = true")),
@@ -285,9 +275,9 @@ class PriceApprovalEvent(UuidPkMixin, TimestampMixin, Base):
 
 __all__ = [
     "Channel",
-    "FXRate",
     "Cost",
-    "Price",
     "ExceptionRule",
+    "FXRate",
+    "Price",
     "PriceApprovalEvent",
 ]

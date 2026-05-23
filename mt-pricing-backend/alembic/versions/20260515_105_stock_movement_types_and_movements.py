@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260515_105"
@@ -36,10 +37,19 @@ def upgrade() -> None:
             sa.Text(),
             nullable=False,
         ),
-        sa.Column("requires_reference", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("posts_accounting", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "requires_reference", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+        sa.Column(
+            "posts_accounting", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.CheckConstraint("direction IN ('IN','OUT','TRANSFER')", name="ck_smt_direction"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("code", name="uq_smt_code"),
@@ -54,13 +64,15 @@ def upgrade() -> None:
         sa.Column("movement_type_id", sa.UUID(), nullable=False),
         sa.Column("product_sku", sa.Text(), nullable=False),
         sa.Column("qty", sa.Numeric(18, 4), nullable=False),
-        sa.Column("lot_id", sa.UUID(), nullable=True),        # FK real en mig 107
+        sa.Column("lot_id", sa.UUID(), nullable=True),  # FK real en mig 107
         sa.Column("warehouse_id", sa.UUID(), nullable=True),  # FK real en mig 108
         sa.Column("location_id", sa.UUID(), nullable=True),
         sa.Column("reference_id", sa.UUID(), nullable=True),
         sa.Column("reference_type", sa.Text(), nullable=True),
         sa.Column("reversal_of", sa.UUID(), nullable=True),
-        sa.Column("posted_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "posted_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")
+        ),
         sa.Column("posted_by", sa.UUID(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.CheckConstraint("qty <> 0", name="ck_sm_qty_nonzero"),
@@ -71,15 +83,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["movement_type_id"], ["stock_movement_types.id"], ondelete="RESTRICT"
         ),
-        sa.ForeignKeyConstraint(
-            ["product_sku"], ["products.sku"], ondelete="RESTRICT"
-        ),
-        sa.ForeignKeyConstraint(
-            ["reversal_of"], ["stock_movements.id"], ondelete="SET NULL"
-        ),
-        sa.ForeignKeyConstraint(
-            ["posted_by"], ["users.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["product_sku"], ["products.sku"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["reversal_of"], ["stock_movements.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["posted_by"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("idx_sm_product", "stock_movements", ["product_sku"])
@@ -98,11 +104,11 @@ def upgrade() -> None:
         sa.Column("credit_account", sa.Text(), nullable=False),
         sa.Column("amount", sa.Numeric(18, 4), nullable=False),
         sa.Column("currency", sa.CHAR(3), nullable=False, server_default=sa.text("'AED'")),
-        sa.Column("posted_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.CheckConstraint("amount > 0", name="ck_je_amount_pos"),
-        sa.ForeignKeyConstraint(
-            ["source_movement_id"], ["stock_movements.id"], ondelete="CASCADE"
+        sa.Column(
+            "posted_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")
         ),
+        sa.CheckConstraint("amount > 0", name="ck_je_amount_pos"),
+        sa.ForeignKeyConstraint(["source_movement_id"], ["stock_movements.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("idx_je_movement", "journal_entries", ["source_movement_id"])

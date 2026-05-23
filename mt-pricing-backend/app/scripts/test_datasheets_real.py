@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, text
 
@@ -29,18 +29,24 @@ from app.services.importer_datasheets.spec_parser import (
 )
 from app.services.storage import upload_bytes
 
-
 FIXTURES_DIR = "/fixtures"
 PDF_FILES = [
-    "MTFT_87.pdf", "MTFT_647.pdf", "MTFT_4091.pdf", "MTFT_4295.pdf",
-    "MTFT_5114.pdf", "MTFT_0912.pdf",
-    "MTCE_87.pdf", "MTCE_647.pdf", "MTCE_5114.pdf",
-    "MTMAN_4151.pdf", "MTMAN_5114.pdf",
+    "MTFT_87.pdf",
+    "MTFT_647.pdf",
+    "MTFT_4091.pdf",
+    "MTFT_4295.pdf",
+    "MTFT_5114.pdf",
+    "MTFT_0912.pdf",
+    "MTCE_87.pdf",
+    "MTCE_647.pdf",
+    "MTCE_5114.pdf",
+    "MTMAN_4151.pdf",
+    "MTMAN_5114.pdf",
 ]
 
 
 async def main() -> None:
-    started = datetime.now(tz=timezone.utc)
+    started = datetime.now(tz=UTC)
     bucket = settings.SUPABASE_STORAGE_BUCKET_DATASHEETS
     Session = get_sessionmaker()
 
@@ -55,9 +61,9 @@ async def main() -> None:
     print(f"[load] {len(files)} PDFs cargados, total {sum(len(p) for _, p in files):,} bytes")
 
     async with Session() as session:
-        actor = (await session.execute(
-            select(User).where(User.is_active.is_(True)).limit(1)
-        )).scalar_one_or_none()
+        actor = (
+            await session.execute(select(User).where(User.is_active.is_(True)).limit(1))
+        ).scalar_one_or_none()
         if actor is None:
             raise RuntimeError("No hay usuario activo")
         actor_id = actor.id
@@ -77,14 +83,16 @@ async def main() -> None:
             orphan_files.append({"filename": fname, "reason": exc.code})
             continue
         specs = parse_specs_from_text(text_content)
-        per_file.append({
-            "filename": fname,
-            "payload": payload,
-            "kind": parsed.kind,
-            "suffixes": parsed.sku_suffixes,
-            "specs": specs,
-            "size": len(payload),
-        })
+        per_file.append(
+            {
+                "filename": fname,
+                "payload": payload,
+                "kind": parsed.kind,
+                "suffixes": parsed.sku_suffixes,
+                "specs": specs,
+                "size": len(payload),
+            }
+        )
 
     async with Session() as session:
         for entry in per_file:
@@ -121,13 +129,15 @@ async def main() -> None:
     upload_results = []
     for e in matchable:
         object_path = e["filename"]
+
         def _do(p=object_path, body=e["payload"]) -> None:
             upload_bytes(p, body, content_type="application/pdf", bucket=bucket, upsert=True)
+
         try:
             await asyncio.to_thread(_do)
             upload_results.append({"filename": e["filename"], "ok": True})
             print(f"  OK {object_path}")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             upload_results.append({"filename": e["filename"], "ok": False, "err": str(exc)})
             print(f"  FAIL {object_path}: {exc}")
 
@@ -183,31 +193,40 @@ async def main() -> None:
     async with Session() as session:
         r = await session.execute(text("SELECT COUNT(*) FROM public.product_datasheets"))
         print(f"product_datasheets rows: {r.scalar()}")
-        r = await session.execute(text("""
+        r = await session.execute(
+            text("""
             SELECT kind, COUNT(*) AS files,
                    SUM(jsonb_array_length(sku_list)) AS total_assoc,
                    SUM(file_size_bytes) AS total_bytes
             FROM public.product_datasheets GROUP BY kind ORDER BY 1
-        """))
+        """)
+        )
         for row in r.fetchall():
             print(f"  kind={row[0]:14s} files={row[1]} sku_associations={row[2]} bytes={row[3]:,}")
 
-        r = await session.execute(text("""
+        r = await session.execute(
+            text("""
             SELECT original_filename, kind, jsonb_array_length(sku_list) AS skus,
                    file_size_bytes, specs_extracted
             FROM public.product_datasheets ORDER BY original_filename
-        """))
+        """)
+        )
         print()
         print("Per-file detail:")
         for row in r.fetchall():
             specs = {k: v for k, v in row[4].items() if v} if isinstance(row[4], dict) else {}
-            print(f"  {row[0]:24s} kind={row[1]:14s} skus={row[2]:>4d}  size={row[3]:>8,}B  specs={specs}")
+            print(
+                f"  {row[0]:24s} kind={row[1]:14s} skus={row[2]:>4d}  size={row[3]:>8,}B  specs={specs}"
+            )
 
-        r = await session.execute(text("""
+        r = await session.execute(
+            text("""
             SELECT action, COUNT(*) FROM public.audit_events
             WHERE action LIKE 'product.datasheet%' AND event_at >= :since
             GROUP BY action ORDER BY 1
-        """), {"since": started})
+        """),
+            {"since": started},
+        )
         print("\nAudit events (this run):")
         for row in r.fetchall():
             print(f"  {row[0]:40s} {row[1]}")
@@ -220,16 +239,21 @@ async def main() -> None:
         print(f"  {name}  size={size}")
 
     if objs:
-        first_name = objs[0].get("name") if isinstance(objs[0], dict) else getattr(objs[0], "name", None)
+        first_name = (
+            objs[0].get("name") if isinstance(objs[0], dict) else getattr(objs[0], "name", None)
+        )
         if first_name:
             from app.services.storage import create_signed_url
+
             try:
                 url_info = create_signed_url(first_name, ttl_seconds=300, bucket=bucket)
-                print(f"\nSigned URL test ({first_name}): {url_info['signed_url'][:80]}... TTL={url_info['expires_in']}s")
+                print(
+                    f"\nSigned URL test ({first_name}): {url_info['signed_url'][:80]}... TTL={url_info['expires_in']}s"
+                )
             except Exception as exc:
                 print(f"\nSigned URL test: FAIL - {exc}")
 
-    elapsed = (datetime.now(tz=timezone.utc) - started).total_seconds()
+    elapsed = (datetime.now(tz=UTC) - started).total_seconds()
     print(f"\n[done] elapsed={elapsed:.1f}s")
 
 

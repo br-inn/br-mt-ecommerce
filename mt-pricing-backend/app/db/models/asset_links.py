@@ -34,7 +34,6 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
-
 OWNER_TYPES = ("product", "variant", "series", "family", "spare_part")
 
 ROLES = (
@@ -66,15 +65,13 @@ class AssetLink(UuidPkMixin, Base):
     owner_type: Mapped[str] = mapped_column(Text, nullable=False)
     owner_id: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
-    order_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
     # Relationship hacia ProductAsset (no back_populates — viewonly desde aquí).
-    asset: Mapped["ProductAsset"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    asset: Mapped[ProductAsset] = relationship(  # type: ignore[name-defined]
         "ProductAsset",
         foreign_keys=[asset_id],
         lazy="joined",

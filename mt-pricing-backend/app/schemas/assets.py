@@ -56,23 +56,29 @@ _MIME_RULES: dict[str, frozenset[str]] = {
     "banner": frozenset({"image/jpeg", "image/png", "image/webp", "image/avif"}),
     "datasheet_pdf": frozenset({"application/pdf"}),
     "certificate_pdf": frozenset({"application/pdf"}),
-    "exploded_3d": frozenset({"image/jpeg", "image/png", "image/webp", "image/svg+xml", "application/pdf"}),
-    "section_drawing": frozenset({"image/jpeg", "image/png", "image/webp", "image/svg+xml", "application/pdf"}),
-    "dimension_drawing": frozenset({"image/jpeg", "image/png", "image/webp", "image/svg+xml", "application/pdf"}),
+    "exploded_3d": frozenset(
+        {"image/jpeg", "image/png", "image/webp", "image/svg+xml", "application/pdf"}
+    ),
+    "section_drawing": frozenset(
+        {"image/jpeg", "image/png", "image/webp", "image/svg+xml", "application/pdf"}
+    ),
+    "dimension_drawing": frozenset(
+        {"image/jpeg", "image/png", "image/webp", "image/svg+xml", "application/pdf"}
+    ),
     "video_link": frozenset({"text/uri-list"}),  # URL-only kind, no binary upload
     "external_url": frozenset({"text/uri-list"}),
     "mirror_url": frozenset({"image/jpeg", "image/png", "image/webp", "image/avif"}),
 }
 
 _MAX_BYTES_RULES: dict[str, int] = {
-    "photo": 10 * 1024 * 1024,        # 10 MB
+    "photo": 10 * 1024 * 1024,  # 10 MB
     "banner": 10 * 1024 * 1024,
-    "datasheet_pdf": 50 * 1024 * 1024, # 50 MB
+    "datasheet_pdf": 50 * 1024 * 1024,  # 50 MB
     "certificate_pdf": 50 * 1024 * 1024,
     "exploded_3d": 30 * 1024 * 1024,
     "section_drawing": 30 * 1024 * 1024,
     "dimension_drawing": 30 * 1024 * 1024,
-    "video_link": 0,   # no binary
+    "video_link": 0,  # no binary
     "external_url": 0,
     "mirror_url": 10 * 1024 * 1024,
 }

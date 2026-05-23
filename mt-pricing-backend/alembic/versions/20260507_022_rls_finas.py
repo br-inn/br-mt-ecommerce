@@ -298,9 +298,7 @@ def upgrade() -> None:
         $fn$ LANGUAGE plpgsql;
         """
     )
-    op.execute(
-        "DROP TRIGGER IF EXISTS audit_events_immutable_trg ON audit_events"
-    )
+    op.execute("DROP TRIGGER IF EXISTS audit_events_immutable_trg ON audit_events")
     op.execute(
         """
         CREATE TRIGGER audit_events_immutable_trg

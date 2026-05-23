@@ -20,8 +20,8 @@ import logging
 import os
 from enum import Enum
 
-import httpx
 import anthropic
+import httpx
 from tenacity import (
     AsyncRetrying,
     RetryError,
@@ -57,7 +57,7 @@ _SYSTEM_PROMPT = (
     "- Conexión: flanged vs threaded vs wafer → puede indicar tipo diferente\n"
     "- Accesorios vs válvulas → DIFERENTES\n\n"
     "Si no puedes determinar claramente → UNCERTAIN.\n"
-    "Responde SOLO con un JSON: {\"verdict\": \"same_type\"|\"different_type\"|\"uncertain\", \"reason\": \"<max 200 chars>\"}"
+    'Responde SOLO con un JSON: {"verdict": "same_type"|"different_type"|"uncertain", "reason": "<max 200 chars>"}'
 )
 
 
@@ -69,11 +69,15 @@ async def _download_image_as_base64(
     Retorna None si falla la descarga o la imagen supera el tamaño máximo.
     """
     try:
-        response = await http_client.get(url, timeout=_IMAGE_DOWNLOAD_TIMEOUT, follow_redirects=True)
+        response = await http_client.get(
+            url, timeout=_IMAGE_DOWNLOAD_TIMEOUT, follow_redirects=True
+        )
         response.raise_for_status()
         content = response.content
         if len(content) > _MAX_IMAGE_BYTES:
-            logger.warning("vision_matcher: imagen demasiado grande (%d bytes): %s", len(content), url)
+            logger.warning(
+                "vision_matcher: imagen demasiado grande (%d bytes): %s", len(content), url
+            )
             return None
         content_type = response.headers.get("content-type", "image/jpeg").split(";")[0].strip()
         # Normalizar a tipos soportados por Anthropic
@@ -85,7 +89,9 @@ async def _download_image_as_base64(
         logger.warning("vision_matcher: timeout descargando imagen: %s", url)
         return None
     except httpx.HTTPStatusError as exc:
-        logger.warning("vision_matcher: HTTP %d descargando imagen: %s", exc.response.status_code, url)
+        logger.warning(
+            "vision_matcher: HTTP %d descargando imagen: %s", exc.response.status_code, url
+        )
         return None
     except httpx.HTTPError as exc:
         logger.warning("vision_matcher: error HTTP descargando imagen: %s — %s", url, exc)
@@ -123,7 +129,10 @@ async def compare_product_images(
 
         amz_img = await _download_image_as_base64(amazon_image_url, http_client)
         if amz_img is None:
-            return VisualVerdict.UNCERTAIN, f"No se pudo descargar imagen Amazon: {amazon_image_url}"
+            return (
+                VisualVerdict.UNCERTAIN,
+                f"No se pudo descargar imagen Amazon: {amazon_image_url}",
+            )
 
     mt_b64, mt_mime = mt_img
     amz_b64, amz_mime = amz_img
@@ -197,7 +206,7 @@ async def compare_product_images(
     except (RetryError, anthropic.APIError) as exc:
         logger.exception("vision_matcher: API error: %s", exc)
         return VisualVerdict.UNCERTAIN, f"Error API: {exc.__class__.__name__}"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("vision_matcher: error inesperado: %s", exc)
         return VisualVerdict.UNCERTAIN, f"Error inesperado: {exc.__class__.__name__}"
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC
 from decimal import Decimal
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -64,7 +65,6 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
 
     async def _run() -> dict:
         from decimal import Decimal
-        from uuid import UUID
 
         from sqlalchemy import select, text
         from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -75,7 +75,10 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
         from app.db.models.price_history import PriceHistoryRaw
         from app.services.matching.adapter_registry import get_fetcher
         from app.services.matching.ports import Query
-        from app.services.scraper.circuit_breaker import ScraperCircuitOpenError, get_circuit_breaker
+        from app.services.scraper.circuit_breaker import (
+            ScraperCircuitOpenError,
+            get_circuit_breaker,
+        )
         from app.services.scraper.rate_limiter import get_rate_limiter
 
         engine = create_async_engine(
@@ -107,7 +110,12 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
                         "price_monitor.circuit_open",
                         extra={"sku": sku, "marketplace": marketplace},
                     )
-                    return {"sku": sku, "marketplace": marketplace, "status": "circuit_open", "alert": False}
+                    return {
+                        "sku": sku,
+                        "marketplace": marketplace,
+                        "status": "circuit_open",
+                        "alert": False,
+                    }
 
                 # ── Brand Extractor mapping (US-SCR-05-02 / AC-4) ─────────
                 from app.db.models.comparator import CompetitorBrand
@@ -310,11 +318,16 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
     except Exception as exc:
         logger.exception(
             "price_monitor.failed",
-            extra={"sku": sku, "marketplace": marketplace, "error": str(exc), "retries": self.request.retries},
+            extra={
+                "sku": sku,
+                "marketplace": marketplace,
+                "error": str(exc),
+                "retries": self.request.retries,
+            },
         )
         raise self.retry(
             exc=exc,
-            countdown=60 * (2 ** self.request.retries),
+            countdown=60 * (2**self.request.retries),
         )
 
 
@@ -322,14 +335,15 @@ def price_monitor_task(self, sku: str, marketplace: str) -> dict:  # type: ignor
 # _evaluate_extractor_alerts — US-SCR-05-04
 # ---------------------------------------------------------------------------
 
+
 async def _evaluate_extractor_alerts() -> int:
     """Detecta degradación de hit_rate > 20pp y crea/actualiza ExtractorAlerts.
 
     Umbral: hit_rate < 0.60 (>20pp por debajo de la baseline asumida de 0.80).
     Retorna el número de alertas creadas o actualizadas.
     """
+    from datetime import datetime
     from decimal import Decimal
-    from datetime import datetime, timezone
 
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -352,7 +366,7 @@ async def _evaluate_extractor_alerts() -> int:
     alerts_modified = 0
     try:
         async with session_factory() as session:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             result = await session.execute(select(BrandExtractor))
             extractors = result.scalars().all()
 
@@ -361,8 +375,7 @@ async def _evaluate_extractor_alerts() -> int:
                 select(ExtractorAlert).where(ExtractorAlert.resolved_at.is_(None))
             )
             alerts_by_key: dict[tuple, ExtractorAlert] = {
-                (a.brand_id, a.marketplace): a
-                for a in alerts_result.scalars().all()
+                (a.brand_id, a.marketplace): a for a in alerts_result.scalars().all()
             }
 
             for ext in extractors:
@@ -372,14 +385,16 @@ async def _evaluate_extractor_alerts() -> int:
                 if current_rate < _MIN_RATE:
                     if existing_alert is None:
                         delta = (_BASELINE - current_rate) * 100
-                        session.add(ExtractorAlert(
-                            brand_id=ext.brand_id,
-                            marketplace=ext.marketplace,
-                            triggered_at=now,
-                            hit_rate_now=current_rate,
-                            hit_rate_baseline=_BASELINE,
-                            delta_pp=delta,
-                        ))
+                        session.add(
+                            ExtractorAlert(
+                                brand_id=ext.brand_id,
+                                marketplace=ext.marketplace,
+                                triggered_at=now,
+                                hit_rate_now=current_rate,
+                                hit_rate_baseline=_BASELINE,
+                                delta_pp=delta,
+                            )
+                        )
                     else:
                         existing_alert.hit_rate_now = current_rate
                         existing_alert.delta_pp = (
@@ -409,6 +424,7 @@ def bootstrap_price_monitoring_task() -> dict:
 
     Disparado por Beat via job_definitions o manualmente desde la API.
     """
+
     async def _load_active_brands() -> list[str]:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -489,9 +505,10 @@ def refresh_price_daily_stats_task() -> dict:
     Disparado cada hora por Beat via job_definitions (código: refresh_price_daily_stats).
     CONCURRENTLY permite reads mientras se refresca (requiere índice único).
     """
+
     async def _refresh() -> dict:
         from sqlalchemy import text
-        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy.pool import NullPool
 
         from app.core.config import settings
@@ -503,9 +520,7 @@ def refresh_price_daily_stats_task() -> dict:
         )
         async with engine.connect() as conn:
             try:
-                await conn.execute(
-                    text("REFRESH MATERIALIZED VIEW CONCURRENTLY price_daily_stats")
-                )
+                await conn.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY price_daily_stats"))
                 await conn.commit()
                 logger.info("price_monitor.stats_refreshed")
                 return {"status": "ok"}
@@ -546,16 +561,17 @@ def send_price_alert_emails_task() -> dict:
     import os
 
     async def _send() -> dict:
-        from datetime import timezone
 
-        from sqlalchemy import select, update
+        from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
         from sqlalchemy.pool import NullPool
 
         from app.core.config import settings
         from app.db.models.price_alerts import PriceAlert
 
-        sendgrid_key = os.environ.get("SENDGRID_API_KEY") or getattr(settings, "SENDGRID_API_KEY", None)
+        sendgrid_key = os.environ.get("SENDGRID_API_KEY") or getattr(
+            settings, "SENDGRID_API_KEY", None
+        )
         if not sendgrid_key:
             logger.warning(
                 "send_price_alert_emails.no_sendgrid_key",
@@ -568,7 +584,9 @@ def send_price_alert_emails_task() -> dict:
             poolclass=NullPool,
             connect_args={"statement_cache_size": 0},
         )
-        session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+        session_factory = async_sessionmaker(
+            bind=engine, class_=AsyncSession, expire_on_commit=False
+        )
         try:
             async with session_factory() as session:
                 # Cargar alertas pendientes de notificación
@@ -618,13 +636,16 @@ def send_price_alert_emails_task() -> dict:
                         )
                         response = sg.send(message)
                         if response.status_code in (200, 202):
-                            alert.notified_at = __import__("datetime").datetime.now(tz=timezone.utc)
+                            alert.notified_at = __import__("datetime").datetime.now(tz=UTC)
                             sent += 1
                         else:
                             failed_ids.append(str(alert.id))
                             logger.warning(
                                 "send_price_alert_emails.sendgrid_error",
-                                extra={"alert_id": str(alert.id), "status_code": response.status_code},
+                                extra={
+                                    "alert_id": str(alert.id),
+                                    "status_code": response.status_code,
+                                },
                             )
 
                 except ImportError:
@@ -666,16 +687,17 @@ def scraper_heartbeat_task() -> dict:
     Corre cada 26h. Si falla → log CRITICAL (no propagar excepción para evitar
     retry loops que consuman workers).
     """
+
     async def _heartbeat() -> dict:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from sqlalchemy import text
-        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+        from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy.pool import NullPool
 
         from app.core.config import settings
 
-        now_utc = datetime.now(tz=timezone.utc)
+        now_utc = datetime.now(tz=UTC)
         engine = create_async_engine(
             str(settings.DATABASE_URL),
             poolclass=NullPool,

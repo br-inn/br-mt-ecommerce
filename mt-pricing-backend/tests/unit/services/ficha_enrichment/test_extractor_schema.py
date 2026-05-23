@@ -1,4 +1,5 @@
 """Verify _TOOL_SCHEMA contains required new fields (no API call)."""
+
 from app.services.ficha_enrichment.extractor import _TOOL_SCHEMA
 
 

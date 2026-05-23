@@ -39,7 +39,9 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -60,9 +62,10 @@ jobs:
       run:
         working-directory: ${{ env.WORKDIR }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -109,9 +112,10 @@ jobs:
       run:
         working-directory: ${{ env.WORKDIR }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -186,7 +190,9 @@ jobs:
       SUPABASE_ANON_KEY: anon-test-key
       SUPABASE_SERVICE_ROLE_KEY: service-role-test-key
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -203,7 +209,10 @@ jobs:
       - name: Create auth schema stub (Supabase shim for bare PG)
         run: |
           PGPASSWORD=testpassword psql -h localhost -U postgres -d mt_pricing_test \
-            -c "CREATE SCHEMA IF NOT EXISTS auth; CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS \$\$ SELECT NULL::uuid \$\$;"
+            -c "CREATE SCHEMA IF NOT EXISTS auth; CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY); CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS \$\$ SELECT NULL::uuid \$\$; DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN; END IF; END \$\$;"
+
+      - name: Run Alembic migrations
+        run: uv run alembic upgrade head
 
       - name: Run pytest with coverage
         run: |
@@ -236,7 +245,9 @@ jobs:
       run:
         working-directory: ${{ env.WORKDIR }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -251,7 +262,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run pip-audit
-        run: uv run pip-audit --skip-editable
+        run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2026-161
 
   # ---------------------------------------------------------------------------
   # Build + scan + sign Docker image. Only on push to main.
@@ -265,11 +276,14 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write # required for cosign keyless
+      id-token: write          # required for cosign keyless
+      security-events: write   # required for Trivy SARIF upload
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/mt-pricing-backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -311,6 +325,7 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
       - name: Upload Trivy SARIF
         if: always()

@@ -14,7 +14,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ---------------------------------------------------------------------------
 # US-ERP-02-05: Expiry alerts
 # ---------------------------------------------------------------------------

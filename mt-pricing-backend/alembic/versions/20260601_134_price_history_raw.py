@@ -10,11 +10,12 @@ Tablas:
 - ``price_daily_stats`` — vista materializada con estadísticas diarias por dominio.
 - ALTER competitor_brands ADD COLUMN monitoring_active BOOLEAN (US-SCR-04-03).
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "20260601_134"

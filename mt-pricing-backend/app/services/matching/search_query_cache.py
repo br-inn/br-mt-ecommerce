@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select, text
@@ -74,10 +74,7 @@ async def get_or_generate_query(
         if row.manual_override or row.product_hash == current_hash:
             # Hit de caché — actualizar last_used_at sin flush caro
             await session.execute(
-                text(
-                    "UPDATE product_search_queries SET last_used_at = now() "
-                    "WHERE id = :id"
-                ),
+                text("UPDATE product_search_queries SET last_used_at = now() WHERE id = :id"),
                 {"id": row.id},
             )
             logger.debug(
@@ -87,9 +84,7 @@ async def get_or_generate_query(
                 row.query_text,
             )
             return row.query_text
-        logger.info(
-            "search_query_cache: hash changed sku=%s — regenerating query", sku
-        )
+        logger.info("search_query_cache: hash changed sku=%s — regenerating query", sku)
 
     # Cache miss o producto cambió → llamar al LLM
     query_text = await generate_amazon_query(product_data)
@@ -99,7 +94,7 @@ async def get_or_generate_query(
             return row.query_text
         return None
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     if row is None:
         row = ProductSearchQuery(
@@ -149,7 +144,7 @@ async def set_manual_query(
     )
     row: ProductSearchQuery | None = (await session.execute(stmt)).scalar_one_or_none()
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     current_hash = _compute_product_hash(product_data)
 
     if row is None:
