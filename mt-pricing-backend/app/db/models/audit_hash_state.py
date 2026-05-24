@@ -20,13 +20,9 @@ class AuditHashState(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     last_event_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    last_hash: Mapped[str] = mapped_column(
-        String(64), nullable=False, server_default=text("''")
-    )
+    last_hash: Mapped[str] = mapped_column(String(64), nullable=False, server_default=text("''"))
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, server_default=text("now()")
     )
 
-    __table_args__ = (
-        CheckConstraint("id = 1", name="audit_hash_state_singleton"),
-    )
+    __table_args__ = (CheckConstraint("id = 1", name="audit_hash_state_singleton"),)
