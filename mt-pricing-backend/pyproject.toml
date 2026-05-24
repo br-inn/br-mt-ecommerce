@@ -190,6 +190,7 @@ markers = [
     "e2e: full ASGI client end-to-end",
     "neo4j_real: marks tests requiring real Neo4j instance (deselect with -m 'not neo4j_real')",
     "api: API-level integration tests against ASGI app",
+    "acceptance: prueba de proceso anclada a un FR de spec (correr con pytest -m acceptance)",
 ]
 
 [tool.coverage.run]
