@@ -222,6 +222,7 @@ async def test_apply_respects_manual_locked_fields(
     sku = "TST-LOCK-0000"
     pre_payload = {
         "sku": sku,
+        "name_en": "Ball valve",
         "family": "valves_ball",
         "dn": "DN15",
         "pn": "PN16",

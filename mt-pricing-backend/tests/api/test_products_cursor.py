@@ -111,6 +111,7 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 def _payload(sku: str) -> dict[str, Any]:
     return {
         "sku": sku,
+        "name_en": "Ball valve",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
