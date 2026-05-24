@@ -69,6 +69,7 @@ from app.db.models.finance import (
     TaxProvision,
     VendorOpenItem,
 )
+from app.db.models.force_logout_event import ForceLogoutEvent
 from app.db.models.golden_label import CalibratorVersion, GoldenLabel
 from app.db.models.graphrag import KgIntegrityResult
 from app.db.models.hitl_queue import HitlQueue
@@ -104,12 +105,15 @@ from app.db.models.norm_equivalence import NormEquivalence
 from app.db.models.notification import Notification
 from app.db.models.price_alerts import PriceAlert
 from app.db.models.price_history import PriceHistoryRaw
+from app.db.models.price_reference_excel import PriceReferenceExcel
+from app.db.models.price_state_transitions import PriceStateTransition
 from app.db.models.pricing import (
     ExceptionRule,
     FXRate,
     Price,
     PriceApprovalEvent,
 )
+from app.db.models.pricing_golden_tiers import PricingGoldenTier
 from app.db.models.procurement import (
     ApprovalDecision,
     ApprovalRule,
@@ -216,6 +220,8 @@ __all__ = [
     "AuditEvent",
     # audit hash chain singleton (mig. 076)
     "AuditHashState",
+    # force-logout Realtime queue (ADR-032 — mig. 013)
+    "ForceLogoutEvent",
     # jobs / scheduler
     "JobDefinition",
     "JobRun",
@@ -390,6 +396,12 @@ __all__ = [
     "ModelTechTable",
     "Certificate",
     "CertificateScope",
+    # pricing state machine transition table (mig. 021)
+    "PriceStateTransition",
+    # pricing golden tiers v5.1 (mig. 021)
+    "PricingGoldenTier",
+    # parallel-run Excel reference prices (US-1B-05-01 — mig. 073)
+    "PriceReferenceExcel",
     # EP-SCR-04 — price history raw scraping (US-SCR-04-01)
     "PriceHistoryRaw",
     # EP-SCR-04-05 — price alerts + pg_notify + heartbeat (US-SCR-04-05)
