@@ -191,6 +191,40 @@ Todos los commits en el PR deben seguir `@commitlint/config-conventional`:
 
 Mismo set de tipos que el título. El scope es opcional pero recomendado.
 
+**Límite de longitud de línea — obligatorio:** el encabezado, y cada línea del
+body y footer, debe tener ≤ 100 caracteres. Líneas más largas rompen el check
+`footer-max-line-length` de commitlint aunque la regla sea nivel "warning" en
+la config — commitlint sale con código 1 de todas formas.
+
+```
+# ❌ Línea de body/footer > 100 chars (CI falla)
+- añade type (uri) y status a _raise_domain, _raise_compat, _raise_components, _raise_parent
+
+# ✅ Abreviar o partir en dos líneas
+- añade type+status a _raise_domain/compat/components/parent (#68)
+```
+
+Para verificar antes de hacer push:
+```bash
+npx commitlint --from HEAD~1 --to HEAD --verbose
+```
+
+### 4. OpenAPI spec — sincronización obligatoria
+
+Cuando un PR modifica **cualquier archivo** en `app/api/routes/` o
+`app/schemas/`, el spec versionado debe regenerarse y commitearse junto con
+los cambios de código. CI falla con "OpenAPI drift" si hay discrepancia.
+
+```bash
+# Desde la raíz del repo — no necesita DB real
+cd mt-pricing-backend && uv run python -m app.scripts.export_openapi
+# Salida: _bmad-output/planning-artifacts/mt-api-contract-openapi.json
+git add _bmad-output/planning-artifacts/mt-api-contract-openapi.json
+```
+
+Incluir el spec actualizado en el mismo commit que el cambio de API/schema.
+No es un commit separado.
+
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
