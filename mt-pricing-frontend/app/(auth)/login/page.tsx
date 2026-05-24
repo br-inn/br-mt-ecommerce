@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
@@ -45,7 +45,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof passwordSchema>>({
-    resolver: zodResolver(mode === "magic-link" ? magicLinkSchema : passwordSchema),
+    resolver: zodResolver(mode === "magic-link" ? magicLinkSchema : passwordSchema) as unknown as Resolver<z.infer<typeof passwordSchema>>,
     defaultValues: { email: "", password: "" },
     mode: "onTouched",
   });

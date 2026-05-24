@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { useForm, type Path } from "react-hook-form";
+import { useForm, type Path, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -87,7 +87,7 @@ export function ProductEditForm({ product, onCancel, onSaved }: Props) {
   );
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
       family: (product.family as (typeof PRODUCT_FAMILIES)[number]) ?? PRODUCT_FAMILIES[0],
       type: product.type ?? "",

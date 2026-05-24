@@ -51,8 +51,8 @@ export default function VentasPedidosPage() {
 
   const filters = React.useMemo(
     () => ({
-      status: (statusFilter || undefined) as SOStatus | undefined,
-      customer_id: customerFilter || undefined,
+      ...(statusFilter ? { status: statusFilter as SOStatus } : {}),
+      ...(customerFilter ? { customer_id: customerFilter } : {}),
       limit: LIMIT,
       offset,
     }),

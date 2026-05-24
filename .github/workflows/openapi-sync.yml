@@ -81,22 +81,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: drift-check
-    defaults:
-      run:
-        working-directory: mt-pricing-frontend
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: mt-pricing-frontend/package-lock.json
+          cache: "pnpm"
 
       - name: Install deps
-        run: npm ci --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
 
       - name: Regenerate types from JSON spec
+        working-directory: mt-pricing-frontend
         run: |
           npx --yes openapi-typescript ../_bmad-output/planning-artifacts/mt-api-contract-openapi.json -o lib/api/types.generated.ts
           if ! diff -u lib/api/types.ts lib/api/types.generated.ts > /tmp/types.diff; then

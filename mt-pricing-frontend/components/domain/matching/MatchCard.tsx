@@ -10,8 +10,8 @@ import type { HumanQueueItem } from "@/lib/api/endpoints/human-queue";
 // ---------------------------------------------------------------------------
 // Confidence badge helpers
 // ---------------------------------------------------------------------------
-function confidenceVariant(value: number | null): "destructive" | "secondary" | "default" {
-  if (value === null) return "outline" as unknown as "default";
+function confidenceVariant(value: number | null): "destructive" | "secondary" | "default" | "outline" {
+  if (value === null) return "outline";
   if (value < 0.5) return "destructive";
   if (value < 0.75) return "secondary";
   return "default";
@@ -110,15 +110,15 @@ export function MatchCard({
       <_SideCard
         label={item.channel.replace("_", " ")}
         title={item.title}
-        imageUrl={candidateImageUrl}
-        subtitle={item.brand ?? undefined}
+        imageUrl={candidateImageUrl ?? null}
+        subtitle={item.brand ?? null}
       />
 
       {/* Centro: flecha + confidence */}
       <div className="flex flex-col items-center gap-1 shrink-0">
         <span className="text-muted-foreground text-lg">⇔</span>
         <Badge
-          variant={variant === "outline" ? "outline" : variant}
+          variant={variant}
           className={cn(
             "text-xs",
             variant === "destructive" && "bg-red-500 text-white border-transparent",
@@ -140,7 +140,7 @@ export function MatchCard({
       <_SideCard
         label="Producto MT"
         title={item.product_sku}
-        imageUrl={productImageUrl}
+        imageUrl={productImageUrl ?? null}
       />
     </div>
   );

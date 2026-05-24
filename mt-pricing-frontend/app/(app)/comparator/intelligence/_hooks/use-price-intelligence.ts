@@ -32,10 +32,10 @@ export function usePriceIntelligenceDashboard(params: UsePriceIntelligenceDashbo
     key,
     () =>
       fetchPriceIntelligenceDashboard({
-        brandId: params.brandId,
-        marketplace: params.marketplace,
-        dateFrom: params.dateFrom,
-        dateTo: params.dateTo,
+        ...(params.brandId !== undefined && { brandId: params.brandId }),
+        ...(params.marketplace !== undefined && { marketplace: params.marketplace }),
+        ...(params.dateFrom !== undefined && { dateFrom: params.dateFrom }),
+        ...(params.dateTo !== undefined && { dateTo: params.dateTo }),
       }),
     {
       revalidateOnFocus: false,

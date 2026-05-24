@@ -117,8 +117,7 @@ export function ExtractorBadge({
       {alertActive && (
         <AlertTriangle
           className="h-3.5 w-3.5 text-yellow-500"
-          title={alertTooltip ?? ""}
-          aria-label={t("alertActive")}
+          aria-label={alertTooltip ?? t("alertActive")}
         />
       )}
     </div>

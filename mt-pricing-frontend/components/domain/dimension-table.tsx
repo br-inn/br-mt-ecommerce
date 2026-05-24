@@ -130,10 +130,6 @@ export function DimensionTable({ sku }: DimensionTableProps) {
     [sortedRows],
   );
 
-  if (!dimsQuery.isLoading && (sortedColumns.length === 0 || sortedRows.length === 0)) {
-    return null;
-  }
-
   return (
     <Card>
       <CardHeader>
