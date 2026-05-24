@@ -140,7 +140,16 @@
 
 ---
 
-## Área 13 — Transversales
+## Área 13 — Exportación y esquemas
+
+| FR | Estado | Evidencia | Brecha / Notas | BMAD |
+|----|--------|-----------|----------------|------|
+| FR-CAT-036 | ✅ Verificado | `products.py:317-446` | `GET /products/export` existe. 13 campos definidos en `_EXPORT_FIELDS` (líneas 402-416): `sku`, `name_en`, `family`, `subfamily`, `type`, `brand`, `material`, `dn`, `pn`, `lifecycle_status`, `data_quality`, `created_at`, `updated_at`. Límite aplicado: `limit=10_000` (línea 394). `Cache-Control: no-store` incluido en la respuesta (línea 444). | — |
+| FR-CAT-037 | ✅ Verificado | `products.py:296-311`; `services/specs/specs_registry.py:84-104` | `GET /products/specs/schema` existe con `response_model=dict`. Cadena de fallback implementada en `SpecsRegistry.get_schema`: `{family}_{subfamily}` → `{family}` → `_default` (código `specs_registry.py:95-104`). | — |
+
+---
+
+## Área 14 — Transversales
 
 ### NFR — No funcionales
 
@@ -170,12 +179,12 @@
 
 | Categoría | Total | ✅ Verificado | ⚠️ Parcial | ❌ No cumple | ⬜ No implementado |
 |-----------|-------|--------------|-----------|-------------|-------------------|
-| FR (funcionales) | 37 | 32 | 3 | 0 | 0 |
+| FR (funcionales) | 37 | 34 | 3 | 0 | 0 |
 | NFR (no funcionales) | 5 | 3 | 2 | 0 | 0 |
 | BR (reglas negocio) | 5 | 4 | 0 | 1 | 0 |
-| **Total** | **47** | **39** | **5** | **1** | **0** |
+| **Total** | **47** | **41** | **5** | **1** | **0** |
 
-**Cobertura**: 83 % Verificado + 10 % Parcial + 2 % No cumple = 95 % con código existente.
+**Cobertura**: 87 % Verificado + 11 % Parcial + 2 % No cumple = 100 % con código existente.
 
 ---
 
