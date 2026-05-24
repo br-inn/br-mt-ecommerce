@@ -149,7 +149,7 @@ export default function GoodsReceiptsPage() {
     staleTime: 10_000,
   });
 
-  const { mutate: retryGR, isPending: retrying } = useMutation({
+  const { mutate: retryGR, isPending: _retrying } = useMutation({
     mutationFn: (id: string) => goodsReceiptsApi.retry(id),
     onSuccess: (gr) => {
       toast.success(`GR ${truncateId(gr.id)} re-encolado`);

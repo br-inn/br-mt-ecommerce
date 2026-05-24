@@ -97,6 +97,7 @@ function BrandDialog({ mode, initial, open, onClose, onSave, isSaving, brandId }
   const [form, setForm] = React.useState<BrandFormState>(initial);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setForm(initial);
   }, [open, initial]);
 

@@ -57,6 +57,7 @@ function ConditionForm({
 
   React.useEffect(() => {
     if (initial) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         vendor_id: initial.vendor_id,
         product_sku: initial.product_sku,

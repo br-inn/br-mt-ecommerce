@@ -79,6 +79,7 @@ export function GRForm({
   // --- Reset when opened/closed ---
   React.useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPoId(preselectedPoId ?? "");
       setSelectedLineId(preselectedPoLineId ?? "");
       setQty("");

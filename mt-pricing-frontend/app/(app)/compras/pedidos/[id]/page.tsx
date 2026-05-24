@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, PackageCheck } from "lucide-react";
@@ -35,7 +35,6 @@ const STATUS_META: Record<POStatus, { label: string; variant: string }> = {
 
 export default function PurchaseOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   // GR form state

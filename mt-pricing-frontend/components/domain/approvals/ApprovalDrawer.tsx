@@ -21,7 +21,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useApprovalDetail, useApproveOne, useRejectOne, useReviseOne } from "@/lib/hooks/approvals/use-approval-queue";
-import type { PriceRow, PriceStatus } from "@/lib/api/endpoints/approvals";
+import type { PriceStatus } from "@/lib/api/endpoints/approvals";
 
 // ---- Status labels/tones ---------------------------------------------------
 

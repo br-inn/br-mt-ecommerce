@@ -67,6 +67,7 @@ export function CommandPalette() {
 
   // Reset query al cerrar.
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open) setQuery("");
   }, [open]);
 

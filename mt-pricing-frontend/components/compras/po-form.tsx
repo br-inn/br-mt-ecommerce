@@ -241,7 +241,7 @@ export function POForm({ open, onOpenChange, onCreated }: POFormProps) {
               </Button>
             </div>
 
-            {lines.map((line, idx) => (
+            {lines.map((line, _idx) => (
               <div key={line._key} className="rounded-md border p-3 space-y-3">
                 <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-end">
                   <div className="space-y-1">

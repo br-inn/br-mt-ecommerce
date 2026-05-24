@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,6 +55,7 @@ function RuleForm({
 
   React.useEffect(() => {
     if (initial) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         min_amount: initial.min_amount ?? "0",
         max_amount: initial.max_amount ?? null,

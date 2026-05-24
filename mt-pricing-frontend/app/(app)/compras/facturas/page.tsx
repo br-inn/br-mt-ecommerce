@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, Clock, Ban, Play } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { vendorInvoicesApi, type VendorInvoiceStatus, type VendorInvoiceRead } from "@/lib/api/endpoints/procurement";
+import { vendorInvoicesApi, type VendorInvoiceStatus } from "@/lib/api/endpoints/procurement";
 
 // ---------------------------------------------------------------------------
 // Status metadata

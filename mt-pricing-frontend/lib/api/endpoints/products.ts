@@ -353,7 +353,7 @@ export interface ProductReleaseCreate {
   tax_class?: string | null;
 }
 
-export interface ProductReleasePatch extends Partial<Omit<ProductReleaseCreate, "market_code">> {}
+export type ProductReleasePatch = Partial<Omit<ProductReleaseCreate, "market_code">>;
 
 // M1-04 — Product UoM Conversion
 export interface ProductUomConversion {
@@ -511,9 +511,8 @@ export interface ProductCompatibilityCreate {
   dn_max?: number | null;
 }
 
-export interface ProductCompatibilityReplaceItem extends ProductCompatibilityCreate {
-  // Same shape — usado dentro de PUT /products/{sku}/compatibility (bulk replace).
-}
+// Same shape — usado dentro de PUT /products/{sku}/compatibility (bulk replace).
+export type ProductCompatibilityReplaceItem = ProductCompatibilityCreate;
 
 export interface ProductCompatibilityPatchPayload {
   notes?: string | null;
