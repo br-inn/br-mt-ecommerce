@@ -122,6 +122,9 @@ def _fake_product_orm(
     p.series_id = series_id
     p.material_id = material_id
     p.display_pair_sku = display_pair_sku
+    p.series_rel = None
+    p.material_rel = None
+    p.display_pair_rel = None
     p.product_divisions = []
     p.translations = []
     p.assets = []

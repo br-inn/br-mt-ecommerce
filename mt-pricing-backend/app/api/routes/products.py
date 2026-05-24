@@ -238,24 +238,14 @@ def _raise_specs_error(err: SpecsValidationError) -> None:
 # --------------------------------------------------------------------------
 # Stage 3 (Wave 11) — detail enrichment helper
 # --------------------------------------------------------------------------
-async def _build_product_detail(prod: Any, session: AsyncSession) -> ProductDetail:
-    """Construye ``ProductDetail`` enriquecido con series/material/display_pair
-    (Stage 3) y ``division_codes`` derivado de ``product_divisions``.
+async def _build_product_detail(prod: Any) -> ProductDetail:
+    """Construye ``ProductDetail`` a partir de un producto ya eager-loaded.
 
-    Notas:
-    - ``Product.series`` y ``Product.material`` son columnas TEXT (Wave 2/1).
-      No se solapan con relaciones SQLAlchemy en el modelo, así que cargamos
-      los vocabularios de Stage 3 con queries directas usando ``series_id`` y
-      ``material_id``.
-    - ``display_pair`` se resuelve por ``display_pair_sku`` self-FK.
+    Requiere que ``prod`` haya sido cargado vía
+    ``ProductRepository.get_with_translations_and_images`` (incluye
+    ``series_rel``, ``material_rel`` y ``display_pair_rel`` via joinedload).
     """
-    from sqlalchemy import select as _select
-
-    from app.db.models.product import Product as _ProdModel
-    from app.db.models.vocabularies import Material, Series
-
     base = ProductResponse.model_validate(prod).model_dump()
-    # division_codes desde product_divisions eager-loaded.
     base["division_codes"] = [
         pd.division.code for pd in (prod.product_divisions or []) if pd.division is not None
     ]
@@ -271,44 +261,17 @@ async def _build_product_detail(prod: Any, session: AsyncSession) -> ProductDeta
         "translations": [ProductTranslationResponse.model_validate(t) for t in prod.translations],
         "images": [ProductImageResponse.model_validate(i) for i in photo_assets],
         "primary_image_url": primary_image_url,
-        "series_detail": None,
-        "material_detail": None,
-        "display_pair": None,
-        "model_detail": None,
+        "series_detail": (
+            SeriesResponse.model_validate(prod.series_rel) if prod.series_rel else None
+        ),
+        "material_detail": (
+            MaterialResponse.model_validate(prod.material_rel) if prod.material_rel else None
+        ),
+        "display_pair": (
+            ProductMini.model_validate(prod.display_pair_rel) if prod.display_pair_rel else None
+        ),
+        "model_detail": (ProductModelResponse.model_validate(prod.model) if prod.model else None),
     }
-
-    # Cargar Series si tenemos series_id.
-    if getattr(prod, "series_id", None):
-        srow = (
-            await session.execute(_select(Series).where(Series.id == prod.series_id))
-        ).scalar_one_or_none()
-        if srow is not None:
-            detail_data["series_detail"] = SeriesResponse.model_validate(srow)
-
-    if getattr(prod, "material_id", None):
-        mrow = (
-            await session.execute(_select(Material).where(Material.id == prod.material_id))
-        ).scalar_one_or_none()
-        if mrow is not None:
-            detail_data["material_detail"] = MaterialResponse.model_validate(mrow)
-
-    if getattr(prod, "display_pair_sku", None):
-        prow = (
-            await session.execute(
-                _select(_ProdModel).where(_ProdModel.sku == prod.display_pair_sku)
-            )
-        ).scalar_one_or_none()
-        if prow is not None:
-            detail_data["display_pair"] = ProductMini(
-                sku=prow.sku,
-                name_en=prow.name_en,
-                # `image_url` dropeado en mig 053; primary image se resuelve vía
-                # ProductAsset (kind='photo', is_primary=true) en el listado.
-                primary_image_url=None,
-            )
-
-    if prod.model is not None:
-        detail_data["model_detail"] = ProductModelResponse.model_validate(prod.model)
 
     return ProductDetail.model_validate(detail_data)
 
@@ -678,7 +641,7 @@ async def create_product(
         _raise_domain(e)
     # Reload con eager translations/images (vacíos al crear).
     full = await service.get_product_by_id(prod.sku)  # type: ignore[possibly-undefined]
-    return await _build_product_detail(full, service.session)
+    return await _build_product_detail(full)
 
 
 @router.get(
@@ -753,7 +716,7 @@ async def get_product(
         prod = await service.get_product_by_id(sku)
     except ProductDomainError as e:
         _raise_domain(e)
-    return await _build_product_detail(prod, service.session)
+    return await _build_product_detail(prod)
 
 
 @router.get(
@@ -839,7 +802,7 @@ async def update_product(
         _raise_specs_error(e)
     except ProductDomainError as e:
         _raise_domain(e)
-    return await _build_product_detail(prod, service.session)  # type: ignore[possibly-undefined]
+    return await _build_product_detail(prod)  # type: ignore[possibly-undefined]
 
 
 @router.put(
@@ -879,7 +842,7 @@ async def replace_product(
     except ProductDomainError as e:
         _raise_domain(e)
     response.headers["ETag"] = service.etag_for(prod)
-    return await _build_product_detail(full, service.session)
+    return await _build_product_detail(full)
 
 
 @router.patch(
@@ -906,7 +869,7 @@ async def patch_product_data_quality(
     except ProductDomainError as e:
         _raise_domain(e)
     response.headers["ETag"] = service.etag_for(prod)
-    return await _build_product_detail(full, service.session)
+    return await _build_product_detail(full)
 
 
 @router.post(
