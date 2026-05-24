@@ -20011,6 +20011,28 @@ export interface components {
             uploaded_by?: string | null;
         };
         /**
+         * _LegacyImageUploadRequest
+         * @description Request schema for the DEPRECATED /images/upload-url endpoint.
+         *
+         *     Accepts legacy fields ``role`` (ignored) and ``content_type`` (mapped to
+         *     ``mime_type``) that the new ``ProductAssetUploadRequest`` no longer allows,
+         *     preserving backwards-compatibility for existing callers.
+         */
+        _LegacyImageUploadRequest: {
+            /**
+             * Content Type
+             * @default image/jpeg
+             */
+            content_type: string;
+            /**
+             * Filename
+             * @default image.jpg
+             */
+            filename: string;
+            /** Role */
+            role?: string | null;
+        };
+        /**
          * FXRateCreate
          * @description POST /api/v1/fx-rates — payload de creación.
          */
@@ -34897,7 +34919,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProductAssetUploadRequest"];
+                "application/json": components["schemas"]["_LegacyImageUploadRequest"];
             };
         };
         responses: {

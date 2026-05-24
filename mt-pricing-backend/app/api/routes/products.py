@@ -27,7 +27,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
@@ -183,6 +183,21 @@ def _raise_parent(err: ParentResolverError) -> None:
         status_code=err.status_code,
         detail={"code": err.code, "title": err.message},
     )
+
+
+class _LegacyImageUploadRequest(BaseModel):
+    """Request schema for the DEPRECATED /images/upload-url endpoint.
+
+    Accepts legacy fields ``role`` (ignored) and ``content_type`` (mapped to
+    ``mime_type``) that the new ``ProductAssetUploadRequest`` no longer allows,
+    preserving backwards-compatibility for existing callers.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    filename: str = "image.jpg"
+    content_type: str = "image/jpeg"
+    role: str | None = None  # legacy field — ignored
 
 
 def _raise_specs_error(err: SpecsValidationError) -> None:
@@ -1046,7 +1061,7 @@ async def list_images(
 )
 async def get_image_upload_url(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
-    request: ProductImageUploadRequest,
+    request: _LegacyImageUploadRequest,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     product_service: Annotated[ProductService, Depends(get_product_service)],
     asset_service: Annotated[AssetService, Depends(get_asset_service)],
@@ -1059,13 +1074,11 @@ async def get_image_upload_url(
         await product_service.get_product_by_id(sku)
     except ProductDomainError as e:
         _raise_domain(e)
-    filename = getattr(request, "filename", "image.jpg")
-    mime_type = getattr(request, "content_type", "image/jpeg")
     return asset_service.generate_signed_upload_url(
         sku=sku,
         kind="photo",
-        filename=filename,
-        mime_type=mime_type,
+        filename=request.filename,
+        mime_type=request.content_type,
     )
 
 
