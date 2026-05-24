@@ -151,12 +151,12 @@ from app.db.models.sales import (
     SalesOrderLine,
     StockReservation,
 )
-from app.db.models.search_query import ProductSearchQuery
 from app.db.models.scraper_sources import (
     ScraperSource,
     ScraperSourceRecipe,
     ScraperSourceTestRun,
 )
+from app.db.models.search_query import ProductSearchQuery
 from app.db.models.supplier import Supplier
 from app.db.models.taxonomy_profile import TaxonomyProfile
 from app.db.models.taxonomy_registry import (
