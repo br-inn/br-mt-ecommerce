@@ -6,13 +6,13 @@
  * FR-CAT-029: requiere products:delete.
  */
 
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { loginAsRole } from "./fixtures/auth";
 import { FAKE_PRODUCTS, commonProductFields, installProductsMocks } from "./fixtures/seed";
 
 const SKU_TO_DELETE = FAKE_PRODUCTS[0]!.sku;
 
-function installDeleteMocks(page: Parameters<Parameters<typeof test>[1]>[0]["page"]): void {
+function installDeleteMocks(page: Page): void {
   installProductsMocks(page);
 
   void page.route(`**/api/v1/products/${SKU_TO_DELETE}`, async (route, request) => {
