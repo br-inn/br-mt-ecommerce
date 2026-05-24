@@ -1,0 +1,48 @@
+FR_ID,Descripción,Origen,Endpoint/Componente,Estado,Evidencia,Brecha/Notas,Hallazgo_BMAD_relacionado
+FR-CAT-001,Alta de producto con SKU PK + name_en + family/brand + specs validadas,PRD FR-1a-01; contrato API,POST /products,Parcial,product_service.py:299-346; schemas.py:121-128,name_en opcional en schema ProductCreate — no se exige como NOT NULL (ver BRECHA-CAT-01),—
+FR-CAT-002,data_quality='partial' por defecto al crear,PRD FR-1a-01 BDD; código,POST /products,Verificado,product.py:101-103 server_default='partial',,—
+FR-CAT-003,Evento de auditoría en creación,PRD OKR O1a.4,POST /products,Verificado,product_service.py:338-345 audit.record(action='product.created'),,—
+FR-CAT-004,HTTP 409 en SKU duplicado,contrato API,POST /products,Verificado,product_service.py:301-303 ProductAlreadyExistsError→409 code=product_duplicate_sku,,—
+FR-CAT-005,HTTP 422 en specs que no cumplen JSON Schema,contrato API,POST /products,Verificado,product_service.py:304-312; products.py:651-653 SpecsValidationError→422,,—
+FR-CAT-006,GET ficha completa con translations + assets,PRD FR-1a-01; contrato API,GET /products/{sku},Verificado,products.py:718-733 _build_product_detail,,—
+FR-CAT-007,HTTP 404 para SKU inexistente o eliminado,contrato API,GET /products/{sku},Verificado,product_service.py:43-48 ProductNotFoundError→404,,—
+FR-CAT-008,series_detail + material_detail + display_pair + model_detail en respuesta,as-built,GET /products/{sku},Parcial,products.py:218-290 _build_product_detail,Datos correctos pero 3 queries secuenciales (N+1) — violación Art.3 diferida,E-2
+FR-CAT-009,GET ficha resuelta con fallback al padre,as-built,GET /products/{sku}/resolved,Verificado,products.py:1782-1808; parent_resolver.py,Sin response_model (ver BRECHA-CAT-05),A-6
+FR-CAT-010,Ficha resuelta sin variante = ficha directa,as-built,GET /products/{sku}/resolved,Verificado,parent_resolver.py:63-82,,—
+FR-CAT-011,Listado cursor-based SKU ASC default=50 max=200,CLAUDE.md; contrato API,GET /products,Verificado,products.py:491; 525; 611-613,,—
+FR-CAT-012,16 filtros compuestos AND en listado,contrato API,GET /products,Verificado,products.py:457-495,,—
+FR-CAT-013,include_total=False por defecto,CLAUDE.md,GET /products,Verificado,products.py:491,,—
+FR-CAT-014,translation_status + primary_image_url + division_codes por batch,as-built,GET /products,Verificado,products.py:555-610 batch fetch 2 queries sin N+1,,—
+FR-CAT-015,Búsqueda rápida trigram name_en + prefijo SKU min=2 max=50,contrato API,GET /products/search,Verificado,products.py:619-632; repository.py:408-421,,—
+FR-CAT-016,Facetas con refinement no destructivo,contrato API,GET /products/facets,Verificado,products.py:661-715; facets_service.py,,—
+FR-CAT-017,Mismos filtros en facetas que en listado,as-built,GET /products/facets,Verificado,products.py:666-715,,—
+FR-CAT-018,PATCH parcial exclude_unset=True,contrato API,PATCH /products/{sku},Verificado,products.py:811,,—
+FR-CAT-019,HTTP 409 en campo bloqueado (manual_locked_fields),as-built,PATCH /products/{sku},Verificado,product_service.py:60-66 ProductLockedFieldError→409,,—
+FR-CAT-020,PATCH re-valida specs completas contra JSON Schema,as-built,PATCH /products/{sku},Verificado,products.py:815-816,,—
+FR-CAT-021,PUT reemplazo completo de ficha,contrato API,PUT /products/{sku},Verificado,products.py:822-859,,—
+FR-CAT-022,If-Match ETag → HTTP 412 si no coincide,PRD BR-1a-OPT-LOCK-01,PUT /products/{sku},Verificado,products.py:843; product_service.py:69-80 ProductPreconditionFailedError→412,,—
+FR-CAT-023,Nuevo ETag en header de respuesta tras PUT,as-built,PUT /products/{sku},Verificado,products.py:858 response.headers['ETag']=service.etag_for(prod),,—
+FR-CAT-024,PATCH data_quality entre 4 valores permitidos,contrato API,PATCH /products/{sku}/data-quality,Verificado,product_service.py:549-551 _DATA_QUALITY_VALID,,—
+FR-CAT-025,Require 4 campos físicos para promover a complete,PRD BR-1a-DQ-01,PATCH /products/{sku}/data-quality,Verificado,product_service.py:540-544; 579-588 _DATA_QUALITY_REQUIRED_FIELDS,,—
+FR-CAT-026,Auditoría en cambio de data_quality,PRD OKR O1a.4,PATCH /products/{sku}/data-quality,Verificado,product_service.py:600-608 audit.record(action='product.data_quality_changed'),,—
+FR-CAT-027,Soft-delete: deleted_at=now() + lifecycle_status='discontinued',contrato API,DELETE /products/{sku},Verificado,product_service.py:611-619,,—
+FR-CAT-028,Productos con soft-delete excluidos de listados activos,as-built,GET /products,Verificado,repository.py:225-226 deleted_at.is_(None) por defecto,,—
+FR-CAT-029,products:delete requerido para baja lógica,contrato API,DELETE /products/{sku},Verificado,products.py:943 require_permissions('products:delete'),,—
+FR-CAT-030,POST /classify encola tarea Celery asíncrona,as-built,POST /products/classify,Verificado,products.py:889-931 classify_pim_batch_task.apply_async,,—
+FR-CAT-031,PVF extrae 4 campos físicos respetando manual_locked_fields,as-built,POST /products/classify,Parcial,product_service.py:540-544,Verificación de manual_locked_fields en worker task pendiente (ver BRECHA-CAT-04),—
+FR-CAT-032,HTTP 503 si Celery no disponible al clasificar,as-built,POST /products/classify,Verificado,products.py:909-922 except Exception→503,,—
+FR-CAT-033,POST /parent valida ciclo + existencia + profundidad máx. 1,as-built,POST /products/{sku}/parent,Verificado,parent_resolver.py:63-82; 34-52,,—
+FR-CAT-034,Recomputa is_parent/is_variant tras asignar padre,as-built,POST /products/{sku}/parent,Verificado,products.py:1835 resolver.recompute_parent_flags(sku),,—
+FR-CAT-035,parent_sku=null desasocia y recalcula flags,as-built,POST /products/{sku}/parent,Verificado,products.py:1816; 1831,,—
+FR-CAT-036,Export CSV 13 campos max 10000 filas Cache-Control no-store,as-built,GET /products/export,Verificado,products.py:402-446,,—
+FR-CAT-037,JSON Schema con fallback family_subfamily→family→_default,as-built,GET /products/specs/schema,Verificado,products.py:296-311 _specs_registry.get_schema,,—
+NFR-CAT-001,RBAC en todos los endpoints (read/write/delete),CLAUDE.md; constitución Art.1,Todos los endpoints CAT,Verificado,products.py todos los handlers con Depends(require_permissions(...)),,—
+NFR-CAT-002,Errores RFC 7807 ProblemDetails,CLAUDE.md,Todos los endpoints CAT,Parcial,products.py:147-157 _problem() OK; products.py:160-165 _raise_domain() parcial,_raise_domain() no incluye campos type/instance de RFC 7807 (ver BRECHA-CAT-02),A-6
+NFR-CAT-003,Auditoría desde capa de servicio no desde handlers,CLAUDE.md header products.py,ProductService,Verificado,product_service.py:338-345; 600-608; 616-629,,—
+NFR-CAT-004,Cache-Control por middleware; export override no-store,CLAUDE.md directriz 3,GET endpoints + GET /export,Verificado,products.py:439-446 Cache-Control no-store en export; middleware aplica el resto,,E-6*
+NFR-CAT-005,No queries secuenciales donde quepa batch/JOIN,CLAUDE.md directives 1-2; constitución Art.3,ProductService + handlers,Parcial,products.py:555-610 OK; products.py:218-290 VIOLACIÓN,_build_product_detail ejecuta hasta 3 queries secuenciales por request (ver BRECHA-CAT-03),E-2
+BR-CAT-001,name_en NOT NULL obligatorio en alta y reemplazo,PRD §5.3,POST /products + PUT /products/{sku},No cumple,schemas.py:121-128; product_service.py:272-297,name_en opcional en ProductCreate schema — producto puede crearse sin EN translation (ver BRECHA-CAT-01),—
+BR-CAT-002,SKU inmutable una vez creado,PRD §8.4,Todos los endpoints de mutación,Verificado,product_service.py:83-91 ProductImmutableFieldError→422; product.py:55 PK,,—
+BR-CAT-003,Solo soft-delete; sin hard-delete expuesto,as-built,DELETE /products/{sku},Verificado,products.py:934-950 único endpoint DELETE en alcance llama soft_delete_product,,—
+BR-CAT-004,manual_locked_fields respetado en PATCH y PVF,as-built,PATCH /products/{sku}; POST /classify,Verificado,product_service.py:60-66; FR-CAT-031 pendiente para PVF worker,,—
+BR-CAT-005,Jerarquía variantes profundidad máxima 1,as-built,POST /products/{sku}/parent,Verificado,parent_resolver.py:41-47 DepthExceededError si padre es_variant,,—
