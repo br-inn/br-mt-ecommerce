@@ -263,6 +263,13 @@ _TRANSLATIONS = {
 
 
 def upgrade() -> None:
+    # Seed data removed — data seeding does not belong in Alembic schema migrations
+    # and breaks integration tests (test_list_products_empty expects an empty table).
+    # Use a separate fixture or management command for development seed data.
+    pass
+
+
+def _upgrade_original() -> None:  # kept for reference, not executed
     bind = op.get_bind()
 
     # ── 1) TRUNCATE datos de negocio (respeta FK order) ──────────────────────

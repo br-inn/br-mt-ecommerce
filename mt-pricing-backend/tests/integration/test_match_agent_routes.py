@@ -78,7 +78,7 @@ def _fake_user() -> _FakeUser:
 async def _mini_app(db_session: AsyncSession) -> FastAPI:
     """Mini FastAPI con el router de matches y deps sobrescritas."""
     mini = FastAPI()
-    mini.include_router(matches_router, prefix="/api/v1/matches")
+    mini.include_router(matches_router, prefix="/api/v1")
 
     # Inyectar db_session real (del testcontainer)
     async def _get_session():
