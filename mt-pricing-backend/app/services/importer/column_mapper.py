@@ -262,6 +262,7 @@ ROW_DEFAULTS: dict[str, Any] = {
     "brand": "MT",
     "family": "unclassified",
     "data_quality": "partial",
+    "active": True,
     "manual_locked_fields": [],
     "weight_unit": "kg",
 }
@@ -319,6 +320,16 @@ def map_row(
     for k, v in jsonb_buckets.items():
         if v:
             payload[k] = v
+
+    # name_en es obligatorio en ProductCreate (BRECHA-CAT-01).
+    # Si no viene explícito, se rellena desde erp_name; si erp_name también está
+    # vacío, se emite un error para que la fila se rechace.
+    if not payload.get("name_en"):
+        erp = payload.get("erp_name") or ""
+        if erp:
+            payload["name_en"] = erp
+        else:
+            errors.append("name_en: requerido y no se pudo inferir desde erp_name.")
 
     return payload, errors
 

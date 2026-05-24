@@ -249,7 +249,9 @@ async def test_create_product_minimal(client: AsyncClient, admin_user: tuple[UUI
     assert body["family"] == "valves_ball"
     assert body["data_quality"] == "partial"
     assert body["active"] is True
-    assert body["translations"] == []
+    # El 'en' se auto-crea desde name_en al momento de POST; no debe haber otras.
+    non_en = [t for t in body["translations"] if t["lang"] != "en"]
+    assert non_en == []
     assert body["images"] == []
 
 
