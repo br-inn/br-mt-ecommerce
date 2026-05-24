@@ -9,9 +9,9 @@ The pr-checks workflow will fail if "## Summary" or "## Test plan" is missing.
 
 -
 
-## Linked issues / ADRs
+## Closes
 
-<!-- Closes #123 / Refs ADR-049 / etc. -->
+Closes #<!-- número del issue -->
 
 ## Type of change
 
