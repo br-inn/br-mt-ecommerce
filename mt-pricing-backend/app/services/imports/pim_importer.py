@@ -278,6 +278,9 @@ class PimImporter:
         # name_en es hybrid_property read-only en Product; hay que persistirlo
         # como ProductTranslation(lang='en'), no como campo escalar.
         name_en: str | None = payload.pop("name_en", None)
+        # active es hybrid_property read-only (lifecycle_status == 'active').
+        # INSERT usa server_default 'active'; UPDATE no cambia lifecycle desde PIM.
+        payload.pop("active", None)
 
         sku = payload["sku"]
         existing = await self._repo.get_by_sku(sku)
