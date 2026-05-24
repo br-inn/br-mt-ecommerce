@@ -140,3 +140,8 @@ system=[{
 }]
 ```
 El bloque dinámico (datos del producto, pregunta) va DESPUÉS del breakpoint, sin `cache_control`.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
