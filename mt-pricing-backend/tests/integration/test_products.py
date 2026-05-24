@@ -37,7 +37,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from jose import jwt
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Force JWT secret BEFORE app config import.
@@ -48,6 +48,27 @@ os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "service-test")
 
 JWT_SECRET = "test-jwt-secret-deterministic-32chars!"
 JWT_ALG = "HS256"
+
+
+# ---------------------------------------------------------------------------
+# Cleanup fixture — removes demo-seed products committed by migration 100 so
+# that each test starts with an empty products table.  Runs inside the test's
+# own db_session transaction, so the cleanup is rolled back at the end like
+# any other test data — the seed is restored for the next session.
+# ---------------------------------------------------------------------------
+@pytest_asyncio.fixture(autouse=True)
+async def _clean_products(db_session: AsyncSession) -> None:
+    """Remove demo-seed products committed by migration 100 so each test starts
+    with an empty products table.
+
+    TRUNCATE ... CASCADE handles all FK-dependent tables (costs, prices,
+    match_candidates, product_translations, product_assets, etc.) in a single
+    statement and bypasses row-level triggers (including trg_products_no_hard_delete).
+    The entire operation is inside the test's transaction so it rolls back at
+    end-of-test together with all other test data.
+    """
+    await db_session.execute(text("TRUNCATE TABLE products CASCADE"))
+    await db_session.flush()
 
 
 # ---------------------------------------------------------------------------
@@ -168,12 +189,16 @@ async def admin_user(db_session: AsyncSession) -> tuple[UUID, str]:
 
 @pytest_asyncio.fixture
 async def reader_user(db_session: AsyncSession) -> tuple[UUID, str]:
-    """Usuario con sólo products:read."""
+    """Usuario con sólo products:read (rol custom sin products:write)."""
     email = f"reader-{uuid4().hex[:8]}@mt.ae"
     uid = await _seed_user_with_permissions(
         db_session,
         email=email,
-        role_code="comercial",
+        # Use a custom role code that does NOT exist in migration seeds,
+        # so _seed_user_with_permissions creates it fresh with only
+        # products:read — avoiding the products:write that the migrated
+        # 'comercial' role carries from migration 001.
+        role_code="readonly_test_role",
         permissions=["products:read"],
     )
     return uid, email
@@ -419,10 +444,10 @@ async def test_audit_event_recorded_on_create_update_delete(
 
     # Create
     await client.post("/api/v1/products", json=_valid_payload("MT-V-AUDIT"), headers=headers)
-    # Update
+    # Update (use erp_name — description_en was removed from ProductPatch in mig 065)
     await client.patch(
         "/api/v1/products/MT-V-AUDIT",
-        json={"description_en": "Updated description"},
+        json={"erp_name": "Updated ERP name"},
         headers=headers,
     )
     # Delete

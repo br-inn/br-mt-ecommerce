@@ -91,6 +91,22 @@ async def _mini_app(db_session: AsyncSession) -> FastAPI:
     # dependency_overrides al no coincidir por identidad de objeto).
     mini.dependency_overrides[get_current_user] = _fake_user
 
+    # Seed the fake user so the match_agent_config.updated_by FK is satisfied.
+    from app.db.models.user import User
+
+    existing = await db_session.get(User, _FAKE_USER_ID)
+    if existing is None:
+        fake_user_row = User(
+            id=_FAKE_USER_ID,
+            email="test@example.com",
+            full_name="Test User",
+            locale="es",
+            is_active=True,
+            role_id=None,
+        )
+        db_session.add(fake_user_row)
+        await db_session.flush()
+
     return mini
 
 

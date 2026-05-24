@@ -828,6 +828,9 @@ class ProductService:
         existing.reviewed_by = actor.id
         existing.reviewed_at = datetime.now(tz=UTC)
         await self.session.flush()
+        # Refresh to avoid MissingGreenlet on columns with server-side onupdate
+        # (e.g. updated_at) when Pydantic model_validate accesses them synchronously.
+        await self.session.refresh(existing)
         await self.audit.record(
             entity_type="product_translation",
             entity_id=f"{product_sku}:{lang}",

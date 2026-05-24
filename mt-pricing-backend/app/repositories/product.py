@@ -511,7 +511,10 @@ class ProductTranslationRepository(BaseRepository[ProductTranslation]):
             )
             .returning(ProductTranslation)
         )
-        result = await self.session.execute(stmt)
+        # populate_existing=True forces SQLAlchemy to update the identity-map entry
+        # from the RETURNING result even when the object already exists in cache
+        # (prevents stale values on second upsert within the same session).
+        result = await self.session.execute(stmt, execution_options={"populate_existing": True})
         row = result.scalars().one()
         # Heurística: si created_at == updated_at la fila es nueva.
         created = row.created_at >= row.updated_at
