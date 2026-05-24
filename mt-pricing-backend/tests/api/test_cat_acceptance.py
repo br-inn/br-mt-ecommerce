@@ -38,6 +38,7 @@ pytestmark = [pytest.mark.acceptance, pytest.mark.api]
 # Helpers
 # ===========================================================================
 
+
 def _emit_jwt(*, sub: str, email: str) -> str:
     now = int(time.time())
     return jwt.encode(
@@ -78,9 +79,7 @@ async def _seed_user(
         else:
             perm_ids.append(existing.id)
 
-    role = (
-        await session.execute(select(Role).where(Role.code == role_code))
-    ).scalar_one_or_none()
+    role = (await session.execute(select(Role).where(Role.code == role_code))).scalar_one_or_none()
     if role is None:
         role = Role(
             code=role_code,
@@ -152,6 +151,7 @@ def _put_payload() -> dict[str, Any]:
 # Fixtures
 # ===========================================================================
 
+
 @pytest_asyncio.fixture
 async def app_with_db(db_session: AsyncSession) -> AsyncIterator[Any]:
     """App ASGI con get_db_session sobreescrito por la sesion de test."""
@@ -212,6 +212,7 @@ async def _clean_products(db_session: AsyncSession) -> None:
 # ===========================================================================
 # Area 1 — Alta de producto  POST /api/v1/products
 # ===========================================================================
+
 
 async def test_create_product_returns_201_fr_cat_001(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -310,6 +311,7 @@ async def test_create_product_without_name_en_returns_422_br_cat_001(
 # Area 2 — Consulta de ficha  GET /api/v1/products/{sku}
 # ===========================================================================
 
+
 async def test_get_product_returns_full_detail_fr_cat_006(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
@@ -354,6 +356,7 @@ async def test_get_product_includes_vocabulary_fields_fr_cat_008(
 # ===========================================================================
 # Area 3 — Ficha resuelta  GET /api/v1/products/{sku}/resolved
 # ===========================================================================
+
 
 async def test_resolved_non_variant_equals_direct_fr_cat_010(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -404,6 +407,7 @@ async def test_resolved_variant_inherits_parent_specs_fr_cat_009(
 # ===========================================================================
 # Area 4 — Listado del catalogo  GET /api/v1/products
 # ===========================================================================
+
 
 async def test_list_products_cursor_pagination_fr_cat_011(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -478,6 +482,7 @@ async def test_list_products_batch_translation_fields_fr_cat_014(
 # Area 5 — Busqueda rapida  GET /api/v1/products/search
 # ===========================================================================
 
+
 async def test_search_products_happy_and_min_length_fr_cat_015(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
@@ -503,6 +508,7 @@ async def test_search_products_happy_and_min_length_fr_cat_015(
 # ===========================================================================
 # Area 6 — Facetas  GET /api/v1/products/facets
 # ===========================================================================
+
 
 async def test_facets_non_destructive_refinement_fr_cat_016(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -540,6 +546,7 @@ async def test_facets_accepts_same_filters_as_list_fr_cat_017(
 # Area 7 — Edicion parcial  PATCH /api/v1/products/{sku}
 # ===========================================================================
 
+
 async def test_patch_product_partial_update_fr_cat_018(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
@@ -569,9 +576,7 @@ async def test_patch_product_locked_field_returns_409_fr_cat_019(
     headers = _auth(uid, email)
     await client.post("/api/v1/products", json=_minimal_create("LOCK-019"), headers=headers)
 
-    prod = (
-        await db_session.execute(select(Product).where(Product.sku == "LOCK-019"))
-    ).scalar_one()
+    prod = (await db_session.execute(select(Product).where(Product.sku == "LOCK-019"))).scalar_one()
     prod.manual_locked_fields = ["dn"]
     await db_session.flush()
 
@@ -605,6 +610,7 @@ async def test_patch_product_valid_specs_revalidated_fr_cat_020(
 # ===========================================================================
 # Area 8 — Reemplazo de ficha  PUT /api/v1/products/{sku}
 # ===========================================================================
+
 
 async def test_put_product_full_replace_fr_cat_021(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -660,6 +666,7 @@ async def test_put_product_returns_new_etag_fr_cat_023(
 # ===========================================================================
 # Area 9 — Calidad de dato  PATCH /api/v1/products/{sku}/data-quality
 # ===========================================================================
+
 
 async def test_patch_data_quality_changes_flag_fr_cat_024(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -732,6 +739,7 @@ async def test_patch_data_quality_emits_audit_fr_cat_026(
 # Area 10 — Baja logica  DELETE /api/v1/products/{sku}
 # ===========================================================================
 
+
 async def test_soft_delete_sets_discontinued_and_deleted_at_fr_cat_027(
     client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
 ) -> None:
@@ -745,9 +753,7 @@ async def test_soft_delete_sets_discontinued_and_deleted_at_fr_cat_027(
     r = await client.delete("/api/v1/products/DEL-027", headers=headers)
     assert r.status_code == 204, r.text
 
-    prod = (
-        await db_session.execute(select(Product).where(Product.sku == "DEL-027"))
-    ).scalar_one()
+    prod = (await db_session.execute(select(Product).where(Product.sku == "DEL-027"))).scalar_one()
     assert prod.deleted_at is not None
     assert prod.lifecycle_status == "discontinued"
 
@@ -794,12 +800,15 @@ async def test_soft_delete_requires_delete_permission_fr_cat_029(
 # Area 11 — Clasificacion PVF  POST /api/v1/products/classify
 # ===========================================================================
 
+
 async def test_classify_enqueues_celery_task_fr_cat_030(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
     """FR-CAT-030: POST /classify encola tarea Celery con only_partial y promote_to_complete."""
     uid, email = admin_creds
-    await client.post("/api/v1/products", json=_minimal_create("CLF-030"), headers=_auth(uid, email))
+    await client.post(
+        "/api/v1/products", json=_minimal_create("CLF-030"), headers=_auth(uid, email)
+    )
 
     r = await client.post(
         "/api/v1/products/classify",
@@ -829,9 +838,7 @@ async def test_classify_respects_manual_locked_fields_fr_cat_031(
     payload = {**_minimal_create("LOCK-031"), "name_en": "DN15 Brass Ball Valve"}
     await client.post("/api/v1/products", json=payload, headers=headers)
 
-    prod = (
-        await db_session.execute(select(Product).where(Product.sku == "LOCK-031"))
-    ).scalar_one()
+    prod = (await db_session.execute(select(Product).where(Product.sku == "LOCK-031"))).scalar_one()
     prod.dn = "DN15"
     prod.manual_locked_fields = ["dn"]
     prod.data_quality = "partial"
@@ -878,6 +885,7 @@ async def test_classify_returns_503_when_celery_unavailable_fr_cat_032(
 # ===========================================================================
 # Area 12 — Jerarquia de variantes  POST /api/v1/products/{sku}/parent
 # ===========================================================================
+
 
 async def test_assign_parent_validates_existence_fr_cat_033a(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -934,9 +942,7 @@ async def test_assign_parent_recomputes_flags_fr_cat_034(
     parent = (
         await db_session.execute(select(Product).where(Product.sku == "PAR-034"))
     ).scalar_one()
-    child = (
-        await db_session.execute(select(Product).where(Product.sku == "CHD-034"))
-    ).scalar_one()
+    child = (await db_session.execute(select(Product).where(Product.sku == "CHD-034"))).scalar_one()
     assert parent.is_parent is True
     assert child.is_variant is True
 
@@ -966,15 +972,14 @@ async def test_unassign_parent_clears_and_recomputes_fr_cat_035(
         pytest.skip(f"Desasignacion fallo: {r_unassign.text}")
 
     db_session.expire_all()
-    child = (
-        await db_session.execute(select(Product).where(Product.sku == "CHD-035"))
-    ).scalar_one()
+    child = (await db_session.execute(select(Product).where(Product.sku == "CHD-035"))).scalar_one()
     assert child.parent_sku is None
 
 
 # ===========================================================================
 # Area 13 — Exportacion y JSON Schema
 # ===========================================================================
+
 
 async def test_export_csv_fields_and_no_cache_header_fr_cat_036(
     client: AsyncClient, admin_creds: tuple[UUID, str]
@@ -1020,6 +1025,7 @@ async def test_specs_schema_fallback_chain_fr_cat_037(
 # ===========================================================================
 # NFRs — Transversales
 # ===========================================================================
+
 
 async def test_rbac_unauthenticated_returns_401_nfr_cat_001a(
     client: AsyncClient,
