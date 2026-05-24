@@ -240,6 +240,11 @@ class ProductCreate(ProductBase):
     """Request para POST /products."""
 
     sku: SkuStr = Field(description="SKU canónico (PK). Mayúsculas + dígitos + guiones.")
+    name_en: str = Field(
+        min_length=1,
+        max_length=512,
+        description="Nombre en inglés (EN canónico obligatorio)",
+    )
 
     # ---- Stage 3 (Wave 11): catalog hierarchy refinement (CREATE) ---------
     series_id: UUID | None = None

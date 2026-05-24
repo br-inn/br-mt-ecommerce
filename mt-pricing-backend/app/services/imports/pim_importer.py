@@ -25,10 +25,13 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models.import_run import ImportRun
+from app.db.models.product import ProductTranslation
 from app.repositories.audit import AuditRepository
 from app.repositories.product import ProductRepository
 from app.services.importer.column_mapper import EXPECTED_HEADERS
@@ -249,12 +252,35 @@ class PimImporter:
             await self.session.rollback()
 
     # --------------------------------------------------------- row process
+    async def _upsert_en_translation(self, sku: str, name_en: str) -> None:
+        """Inserta o actualiza la traducción en='en' para el SKU dado."""
+        stmt = (
+            pg_insert(ProductTranslation)
+            .values(sku=sku, lang="en", name=name_en, status="draft")
+            .on_conflict_do_update(
+                index_elements=["sku", "lang"],
+                set_={
+                    "name": name_en,
+                    "status": "draft",
+                    "updated_at": text("now()"),
+                },
+            )
+        )
+        await self.session.execute(stmt)
+
     async def _process_row(self, row: tuple[Any, ...], row_idx: int) -> str:
         """Procesa una fila: cast → upsert. Devuelve 'inserted'|'updated'|'skipped'."""
         payload = map_pim_row_to_product(row)
         cast_errors = payload.pop("_row_errors", None)
         # Limpia keys que no son columnas reales del modelo Product.
         payload.pop("_row_errors", None)
+
+        # name_en es hybrid_property read-only en Product; hay que persistirlo
+        # como ProductTranslation(lang='en'), no como campo escalar.
+        name_en: str | None = payload.pop("name_en", None)
+        # active es hybrid_property read-only (lifecycle_status == 'active').
+        # INSERT usa server_default 'active'; UPDATE no cambia lifecycle desde PIM.
+        payload.pop("active", None)
 
         sku = payload["sku"]
         existing = await self._repo.get_by_sku(sku)
@@ -265,6 +291,8 @@ class PimImporter:
                 payload["created_by"] = self.actor_id
                 payload["updated_by"] = self.actor_id
             await self._repo.create(**payload)
+            if name_en:
+                await self._upsert_en_translation(sku, name_en)
             await self._audit_event(
                 action="product.imported.created",
                 sku=sku,
@@ -290,6 +318,9 @@ class PimImporter:
             if current != new_value:
                 setattr(existing, field, new_value)
                 changed[field] = {"from": _safe_repr(current), "to": _safe_repr(new_value)}
+
+        if name_en and "translations.en" not in locked:
+            await self._upsert_en_translation(sku, name_en)
 
         if not changed:
             # Aún sin cambios en el producto, las divisiones pueden faltar

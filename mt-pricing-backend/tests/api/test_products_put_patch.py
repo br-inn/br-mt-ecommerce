@@ -109,6 +109,7 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 def _create_payload(sku: str) -> dict[str, Any]:
     return {
         "sku": sku,
+        "name_en": "Ball valve",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
@@ -266,7 +267,7 @@ async def test_patch_data_quality_complete_requires_fields(
 
     sku = "MT-V-DQ-02"
     # Crear producto sin material/dn/pn — incompleto para `complete`.
-    minimal = {"sku": sku, "family": "x"}
+    minimal = {"sku": sku, "name_en": "X valve", "family": "x"}
     await client.post("/api/v1/products", json=minimal, headers=headers)
 
     r = await client.patch(

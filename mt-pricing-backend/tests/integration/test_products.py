@@ -208,6 +208,7 @@ async def reader_user(db_session: AsyncSession) -> tuple[UUID, str]:
 def _valid_payload(sku: str = "MT-V-038") -> dict[str, Any]:
     return {
         "sku": sku,
+        "name_en": "Ball valve",
         "family": "valves_ball",
         "material": "brass",
         "dn": "DN15",
@@ -244,12 +245,27 @@ async def test_create_product_minimal(client: AsyncClient, admin_user: tuple[UUI
     assert res.status_code == 201, res.text
     body = res.json()
     assert body["sku"] == "MT-V-038"
-    assert body["name_en"] is None  # name_en now in product_translations (mig 065)
+    assert body["name_en"] == "Ball valve"  # populated via product_translations(lang='en')
     assert body["family"] == "valves_ball"
     assert body["data_quality"] == "partial"
     assert body["active"] is True
-    assert body["translations"] == []
+    # El 'en' se auto-crea desde name_en al momento de POST; no debe haber otras.
+    non_en = [t for t in body["translations"] if t["lang"] != "en"]
+    assert non_en == []
     assert body["images"] == []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_create_product_missing_name_en(
+    client: AsyncClient, admin_user: tuple[UUID, str]
+) -> None:
+    """name_en es obligatorio — BRECHA-CAT-01 / FR-CAT-001 / BR-CAT-001."""
+    uid, email = admin_user
+    payload = _valid_payload("MT-V-NONAME")
+    del payload["name_en"]
+    res = await client.post("/api/v1/products", json=payload, headers=_auth_headers(uid, email))
+    assert res.status_code == 422, res.text
 
 
 @pytest.mark.integration
@@ -315,8 +331,7 @@ async def test_update_product_partial(client: AsyncClient, admin_user: tuple[UUI
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["erp_name"] == "Premium DN15 brass ball valve"
-    # name_en now comes from product_translations (mig 065)
-    assert body["name_en"] is None
+    assert body["name_en"] == "Ball valve"  # populated via product_translations(lang='en')
 
 
 @pytest.mark.integration
@@ -391,7 +406,9 @@ async def test_translation_upsert_idempotent(
     # Verifica via GET /translations
     res3 = await client.get("/api/v1/products/MT-V-200/translations", headers=headers)
     assert res3.status_code == 200
-    assert len(res3.json()) == 1
+    ar_translations = [t for t in res3.json() if t["lang"] == "ar"]
+    assert len(ar_translations) == 1
+    assert ar_translations[0]["name"] == body2["name"]
 
 
 @pytest.mark.integration
