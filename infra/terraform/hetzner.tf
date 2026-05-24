@@ -174,8 +174,8 @@ resource "hcloud_floating_ip_assignment" "app" {
 # Outputs locales (ver outputs.tf para los expuestos al consumidor)
 # -----------------------------------------------------------------------------
 locals {
-  app_public_ipv4    = hcloud_floating_ip.app.ip_address
-  app_private_ipv4   = "10.0.1.10"
-  worker_private_ipv4 = "10.0.1.20"
+  app_public_ipv4      = hcloud_floating_ip.app.ip_address
+  app_private_ipv4     = "10.0.1.10"
+  worker_private_ipv4  = "10.0.1.20"
   bouncer_private_ipv4 = "10.0.1.30"
 }

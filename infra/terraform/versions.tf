@@ -17,16 +17,12 @@ terraform {
       source  = "cloudflare/cloudflare"
       version = "~> 4.40"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
     sentry = {
       source  = "jianyuan/sentry"
       version = "~> 0.13"
     }
     better-stack = {
-      source  = "BetterStackHQ/better-stack"
+      source  = "BetterStackHQ/betterstack"
       version = "~> 0.4"
     }
     doppler = {

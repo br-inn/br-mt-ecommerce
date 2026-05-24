@@ -115,23 +115,3 @@ resource "better-stack_source" "worker_production" {
   retention_days = 30
 }
 
-# -----------------------------------------------------------------------------
-# Outputs — DSNs y source tokens (sensitive) para inyectar en Doppler
-# -----------------------------------------------------------------------------
-output "sentry_backend_dsn" {
-  description = "Sentry DSN backend project."
-  value       = var.sentry_auth_token != "" ? sentry_project.backend[0].dsn_public : ""
-  sensitive   = true
-}
-
-output "sentry_worker_dsn" {
-  description = "Sentry DSN worker project."
-  value       = var.sentry_auth_token != "" ? sentry_project.worker[0].dsn_public : ""
-  sensitive   = true
-}
-
-output "sentry_frontend_dsn" {
-  description = "Sentry DSN frontend project."
-  value       = var.sentry_auth_token != "" ? sentry_project.frontend[0].dsn_public : ""
-  sensitive   = true
-}
