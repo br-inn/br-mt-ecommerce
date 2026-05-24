@@ -141,6 +141,56 @@ system=[{
 ```
 El bloque dinámico (datos del producto, pregunta) va DESPUÉS del breakpoint, sin `cache_control`.
 
+## PR Hygiene — Reglas obligatorias de CI
+
+Todo PR debe pasar tres checks automáticos (`.github/workflows/pr-checks.yml`):
+
+### 1. Título semántico (`Semantic PR title`)
+
+El título del PR **debe** seguir el formato `<type>(<scope>): <descripción>`.
+
+Tipos permitidos: `feat` `fix` `docs` `style` `refactor` `perf` `test` `build` `ci` `chore` `revert`
+
+```
+# ✅ Correcto
+docs(specs): F1 piloto — verificación proceso CAT
+feat(productos): agregar endpoint de export CSV
+fix(auth): corregir token refresh en sesión expirada
+
+# ❌ Incorrecto (falta prefijo)
+F1 piloto — verificación proceso CAT
+Agregar export CSV
+```
+
+### 2. Secciones obligatorias en el body (`PR template completeness`)
+
+El body del PR **debe** contener exactamente estas dos cadenas (case-sensitive, match literal):
+
+- `## Summary`
+- `## Test plan`
+
+Usar el template en `.github/pull_request_template.md` siempre. Nunca renombrar estas secciones (p.ej. `## Resumen` falla el check).
+
+```markdown
+## Summary
+
+- Bullet describiendo QUÉ cambió y POR QUÉ.
+
+## Test plan
+
+- [ ] Paso concreto de verificación.
+```
+
+### 3. Mensajes de commit (`Conventional commits`)
+
+Todos los commits en el PR deben seguir `@commitlint/config-conventional`:
+
+```
+<type>(<scope>): <descripción en minúsculas>
+```
+
+Mismo set de tipos que el título. El scope es opcional pero recomendado.
+
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
