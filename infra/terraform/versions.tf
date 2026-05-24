@@ -17,9 +17,13 @@ terraform {
       source  = "cloudflare/cloudflare"
       version = "~> 4.40"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
+    sentry = {
+      source  = "jianyuan/sentry"
+      version = "~> 0.13"
+    }
+    doppler = {
+      source  = "DopplerHQ/doppler"
+      version = "~> 1.7"
     }
   }
 

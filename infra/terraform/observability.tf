@@ -2,22 +2,10 @@
 # Sentry + Better Stack — providers + recursos (US-1A-OBS-01)
 # =============================================================================
 # Provider Sentry: jianyuan/sentry — gestiona team/project/keys/alert rules.
-# Provider Better Stack: BetterStackHQ/better-stack — gestiona sources/dashboards.
+# Provider Better Stack: BetterStackHQ/logtail — gestiona log sources.
 # Tokens API se inyectan vía Doppler (`SENTRY_AUTH_TOKEN`, `BETTER_STACK_API_TOKEN`).
+# NOTE: Better Stack (logtail) resources are commented out pending provider verification.
 # =============================================================================
-
-terraform {
-  required_providers {
-    sentry = {
-      source  = "jianyuan/sentry"
-      version = "~> 0.13"
-    }
-    better-stack = {
-      source  = "BetterStackHQ/better-stack"
-      version = "~> 0.4"
-    }
-  }
-}
 
 variable "sentry_auth_token" {
   description = "Sentry auth token con scope `project:write,team:read` (Doppler)."
@@ -43,9 +31,10 @@ provider "sentry" {
   token = var.sentry_auth_token != "" ? var.sentry_auth_token : null
 }
 
-provider "better-stack" {
-  api_token = var.better_stack_api_token != "" ? var.better_stack_api_token : null
-}
+# Better Stack (logtail) provider — uncomment once source name is verified:
+# provider "logtail" {
+#   api_token = var.better_stack_api_token != "" ? var.better_stack_api_token : null
+# }
 
 # -----------------------------------------------------------------------------
 # Sentry team — `mt-pricing`
@@ -98,53 +87,37 @@ resource "sentry_project" "frontend" {
 }
 
 # -----------------------------------------------------------------------------
-# Better Stack sources — uno por servicio + ambiente
+# Better Stack log sources — uno por servicio + ambiente
+# NOTE: Commented out pending confirmation of correct provider source name.
+# Replace "logtail_source" with the correct resource type once verified.
+# Requires adding to required_providers in versions.tf:
+#   logtail = { source = "BetterStackHQ/logtail", version = ">= 0.1" }
 # -----------------------------------------------------------------------------
-resource "better-stack_source" "backend_staging" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-backend-staging"
-  platform     = "docker"
-  retention_days = 14
-}
+# resource "logtail_source" "backend_staging" {
+#   count          = var.better_stack_api_token != "" ? 1 : 0
+#   name           = "mt-backend-staging"
+#   platform       = "docker"
+#   retention_days = 14
+# }
+#
+# resource "logtail_source" "backend_production" {
+#   count          = var.better_stack_api_token != "" ? 1 : 0
+#   name           = "mt-backend-production"
+#   platform       = "docker"
+#   retention_days = 30
+# }
+#
+# resource "logtail_source" "worker_staging" {
+#   count          = var.better_stack_api_token != "" ? 1 : 0
+#   name           = "mt-worker-staging"
+#   platform       = "docker"
+#   retention_days = 14
+# }
+#
+# resource "logtail_source" "worker_production" {
+#   count          = var.better_stack_api_token != "" ? 1 : 0
+#   name           = "mt-worker-production"
+#   platform       = "docker"
+#   retention_days = 30
+# }
 
-resource "better-stack_source" "backend_production" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-backend-production"
-  platform     = "docker"
-  retention_days = 30
-}
-
-resource "better-stack_source" "worker_staging" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-worker-staging"
-  platform     = "docker"
-  retention_days = 14
-}
-
-resource "better-stack_source" "worker_production" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-worker-production"
-  platform     = "docker"
-  retention_days = 30
-}
-
-# -----------------------------------------------------------------------------
-# Outputs — DSNs y source tokens (sensitive) para inyectar en Doppler
-# -----------------------------------------------------------------------------
-output "sentry_backend_dsn" {
-  description = "Sentry DSN backend project."
-  value       = var.sentry_auth_token != "" ? sentry_project.backend[0].dsn_public : ""
-  sensitive   = true
-}
-
-output "sentry_worker_dsn" {
-  description = "Sentry DSN worker project."
-  value       = var.sentry_auth_token != "" ? sentry_project.worker[0].dsn_public : ""
-  sensitive   = true
-}
-
-output "sentry_frontend_dsn" {
-  description = "Sentry DSN frontend project."
-  value       = var.sentry_auth_token != "" ? sentry_project.frontend[0].dsn_public : ""
-  sensitive   = true
-}
