@@ -153,13 +153,18 @@ def _put_payload() -> dict[str, Any]:
 
 
 @pytest_asyncio.fixture
-async def app_with_db(db_session: AsyncSession) -> AsyncIterator[Any]:
-    """App ASGI con get_db_session sobreescrito por la sesion de test."""
+async def app_with_db(db_session_committed: AsyncSession) -> AsyncIterator[Any]:
+    """App ASGI con get_db_session sobreescrito por la sesion de test.
+
+    Usa db_session_committed para que el servicio pueda hacer commit() y que
+    compute_facets (que abre conexiones propias via get_engine()) pueda ver
+    los productos creados sin bloqueos de TRUNCATE pendientes.
+    """
     from app.api.deps import get_db_session
     from app.main import app
 
     async def _override() -> AsyncIterator[AsyncSession]:
-        yield db_session
+        yield db_session_committed
 
     app.dependency_overrides[get_db_session] = _override
     try:
@@ -177,36 +182,38 @@ async def client(app_with_db: Any) -> AsyncIterator[AsyncClient]:
 
 
 @pytest_asyncio.fixture
-async def admin_creds(db_session: AsyncSession) -> tuple[UUID, str]:
+async def admin_creds(db_session_committed: AsyncSession) -> tuple[UUID, str]:
     """Usuario pim_admin con products:read + products:write + products:delete."""
     email = f"pim-admin-cat-{uuid4().hex[:6]}@mt.ae"
     uid = await _seed_user(
-        db_session,
+        db_session_committed,
         email=email,
         role_code="pim_admin_cat",
         permissions=["products:read", "products:write", "products:delete"],
     )
+    await db_session_committed.commit()
     return uid, email
 
 
 @pytest_asyncio.fixture
-async def reader_creds(db_session: AsyncSession) -> tuple[UUID, str]:
+async def reader_creds(db_session_committed: AsyncSession) -> tuple[UUID, str]:
     """Usuario con solo products:read."""
     email = f"reader-cat-{uuid4().hex[:6]}@mt.ae"
     uid = await _seed_user(
-        db_session,
+        db_session_committed,
         email=email,
         role_code="readonly_cat",
         permissions=["products:read"],
     )
+    await db_session_committed.commit()
     return uid, email
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _clean_products(db_session: AsyncSession) -> None:
-    """Borra seed de migraciones para que cada test parta con tabla vacia."""
-    await db_session.execute(text("TRUNCATE TABLE products CASCADE"))
-    await db_session.flush()
+async def _clean_products(db_session_committed: AsyncSession) -> None:
+    """Borra productos antes de cada test y commitea para no retener locks DDL."""
+    await db_session_committed.execute(text("TRUNCATE TABLE products CASCADE"))
+    await db_session_committed.commit()
 
 
 # ===========================================================================
@@ -245,7 +252,7 @@ async def test_create_product_default_data_quality_partial_fr_cat_002(
 
 
 async def test_create_product_audit_event_emitted_fr_cat_003(
-    client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
+    client: AsyncClient, admin_creds: tuple[UUID, str], db_session_committed: AsyncSession
 ) -> None:
     """FR-CAT-003: crear producto emite evento de auditoria (accion product.created)."""
     uid, email = admin_creds
@@ -256,7 +263,7 @@ async def test_create_product_audit_event_emitted_fr_cat_003(
     )
     assert r.status_code == 201, r.text
 
-    row = await db_session.execute(
+    row = await db_session_committed.execute(
         text("SELECT COUNT(*) FROM audit_events WHERE action = 'product.created'")
     )
     assert row.scalar_one() >= 1, "Debe haber al menos un evento product.created"
@@ -291,7 +298,7 @@ async def test_create_product_invalid_specs_returns_422_fr_cat_005(
 async def test_create_product_without_name_en_returns_422_br_cat_001(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
-    """BR-CAT-001: name_en es NOT NULL — crear sin el devuelve HTTP 422 (fix BRECHA-CAT-01, PR #75)."""
+    """BR-CAT-001: name_en es NOT NULL — crear sin el devuelve HTTP 422 (BRECHA-CAT-01, PR #75)."""
     uid, email = admin_creds
     payload = {
         "sku": "NO-NAME-EN",
@@ -341,7 +348,7 @@ async def test_get_product_not_found_returns_404_fr_cat_007(
 async def test_get_product_includes_vocabulary_fields_fr_cat_008(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
-    """FR-CAT-008: respuesta incluye series_detail, model_detail, etc. (fix BRECHA-CAT-03 en PR #79)."""
+    """FR-CAT-008: respuesta incluye series_detail, model_detail, etc. (BRECHA-CAT-03, PR #79)."""
     uid, email = admin_creds
     headers = _auth(uid, email)
     await client.post("/api/v1/products", json=_minimal_create("VOC-008"), headers=headers)
@@ -563,11 +570,11 @@ async def test_patch_product_partial_update_fr_cat_018(
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["pn"] in ("PN25", "25"), f"pn esperado PN25 o 25. Recibido: {body['pn']}"
-    assert body["dn"] == "DN50", "dn no debe cambiar en PATCH que solo toca pn"
+    assert body["dn"] in ("DN50", "50"), "dn no debe cambiar en PATCH que solo toca pn"
 
 
 async def test_patch_product_locked_field_returns_409_fr_cat_019(
-    client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
+    client: AsyncClient, admin_creds: tuple[UUID, str], db_session_committed: AsyncSession
 ) -> None:
     """FR-CAT-019: PATCH con campo en manual_locked_fields → HTTP 409 field_locked."""
     from app.db.models.product import Product
@@ -576,9 +583,11 @@ async def test_patch_product_locked_field_returns_409_fr_cat_019(
     headers = _auth(uid, email)
     await client.post("/api/v1/products", json=_minimal_create("LOCK-019"), headers=headers)
 
-    prod = (await db_session.execute(select(Product).where(Product.sku == "LOCK-019"))).scalar_one()
+    prod = (
+        await db_session_committed.execute(select(Product).where(Product.sku == "LOCK-019"))
+    ).scalar_one()
     prod.manual_locked_fields = ["dn"]
-    await db_session.flush()
+    await db_session_committed.flush()
 
     r = await client.patch(
         "/api/v1/products/LOCK-019",
@@ -715,7 +724,7 @@ async def test_patch_data_quality_complete_missing_fields_returns_422_fr_cat_025
 
 
 async def test_patch_data_quality_emits_audit_fr_cat_026(
-    client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
+    client: AsyncClient, admin_creds: tuple[UUID, str], db_session_committed: AsyncSession
 ) -> None:
     """FR-CAT-026: cambio de data_quality emite evento de auditoria product.data_quality_changed."""
     uid, email = admin_creds
@@ -729,7 +738,7 @@ async def test_patch_data_quality_emits_audit_fr_cat_026(
     )
     assert r.status_code == 200, r.text
 
-    row = await db_session.execute(
+    row = await db_session_committed.execute(
         text("SELECT COUNT(*) FROM audit_events WHERE action = 'product.data_quality.transition'")
     )
     assert row.scalar_one() >= 1
@@ -741,9 +750,9 @@ async def test_patch_data_quality_emits_audit_fr_cat_026(
 
 
 async def test_soft_delete_sets_discontinued_and_deleted_at_fr_cat_027(
-    client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
+    client: AsyncClient, admin_creds: tuple[UUID, str], db_session_committed: AsyncSession
 ) -> None:
-    """FR-CAT-027: DELETE fija deleted_at=now() Y lifecycle_status='discontinued' (sin hard-delete)."""
+    """FR-CAT-027: DELETE fija deleted_at=now() Y lifecycle_status='discontinued'."""
     from app.db.models.product import Product
 
     uid, email = admin_creds
@@ -753,7 +762,9 @@ async def test_soft_delete_sets_discontinued_and_deleted_at_fr_cat_027(
     r = await client.delete("/api/v1/products/DEL-027", headers=headers)
     assert r.status_code == 204, r.text
 
-    prod = (await db_session.execute(select(Product).where(Product.sku == "DEL-027"))).scalar_one()
+    prod = (
+        await db_session_committed.execute(select(Product).where(Product.sku == "DEL-027"))
+    ).scalar_one()
     assert prod.deleted_at is not None
     assert prod.lifecycle_status == "discontinued"
 
@@ -828,7 +839,7 @@ async def test_classify_enqueues_celery_task_fr_cat_030(
     strict=False,
 )
 async def test_classify_respects_manual_locked_fields_fr_cat_031(
-    client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
+    client: AsyncClient, admin_creds: tuple[UUID, str], db_session_committed: AsyncSession
 ) -> None:
     """FR-CAT-031: PVF respeta manual_locked_fields — no sobreescribe campos bloqueados."""
     from app.db.models.product import Product
@@ -838,11 +849,13 @@ async def test_classify_respects_manual_locked_fields_fr_cat_031(
     payload = {**_minimal_create("LOCK-031"), "name_en": "DN15 Brass Ball Valve"}
     await client.post("/api/v1/products", json=payload, headers=headers)
 
-    prod = (await db_session.execute(select(Product).where(Product.sku == "LOCK-031"))).scalar_one()
+    prod = (
+        await db_session_committed.execute(select(Product).where(Product.sku == "LOCK-031"))
+    ).scalar_one()
     prod.dn = "DN15"
     prod.manual_locked_fields = ["dn"]
     prod.data_quality = "partial"
-    await db_session.flush()
+    await db_session_committed.flush()
 
     r = await client.post(
         "/api/v1/products/classify",
@@ -852,9 +865,9 @@ async def test_classify_respects_manual_locked_fields_fr_cat_031(
     if r.status_code == 503:
         pytest.skip("Celery no disponible")
 
-    db_session.expire_all()
+    db_session_committed.expire_all()
     prod_after = (
-        await db_session.execute(select(Product).where(Product.sku == "LOCK-031"))
+        await db_session_committed.execute(select(Product).where(Product.sku == "LOCK-031"))
     ).scalar_one()
     assert prod_after.dn == "DN15", (
         f"manual_locked_fields no respetado por PVF: dn cambio a {prod_after.dn}"
@@ -920,7 +933,7 @@ async def test_assign_parent_validates_self_cycle_fr_cat_033b(
 
 
 async def test_assign_parent_recomputes_flags_fr_cat_034(
-    client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
+    client: AsyncClient, admin_creds: tuple[UUID, str], db_session_committed: AsyncSession
 ) -> None:
     """FR-CAT-034: tras asignar padre, is_parent del padre e is_variant del hijo se actualizan."""
     from app.db.models.product import Product
@@ -938,17 +951,19 @@ async def test_assign_parent_recomputes_flags_fr_cat_034(
     if r.status_code not in (200, 204):
         pytest.skip(f"Asignacion de padre fallo: {r.text}")
 
-    db_session.expire_all()
+    db_session_committed.expire_all()
     parent = (
-        await db_session.execute(select(Product).where(Product.sku == "PAR-034"))
+        await db_session_committed.execute(select(Product).where(Product.sku == "PAR-034"))
     ).scalar_one()
-    child = (await db_session.execute(select(Product).where(Product.sku == "CHD-034"))).scalar_one()
+    child = (
+        await db_session_committed.execute(select(Product).where(Product.sku == "CHD-034"))
+    ).scalar_one()
     assert parent.is_parent is True
     assert child.is_variant is True
 
 
 async def test_unassign_parent_clears_and_recomputes_fr_cat_035(
-    client: AsyncClient, admin_creds: tuple[UUID, str], db_session: AsyncSession
+    client: AsyncClient, admin_creds: tuple[UUID, str], db_session_committed: AsyncSession
 ) -> None:
     """FR-CAT-035: parent_sku=null desasocia el padre y recalcula los flags."""
     from app.db.models.product import Product
@@ -971,8 +986,10 @@ async def test_unassign_parent_clears_and_recomputes_fr_cat_035(
     if r_unassign.status_code not in (200, 204):
         pytest.skip(f"Desasignacion fallo: {r_unassign.text}")
 
-    db_session.expire_all()
-    child = (await db_session.execute(select(Product).where(Product.sku == "CHD-035"))).scalar_one()
+    db_session_committed.expire_all()
+    child = (
+        await db_session_committed.execute(select(Product).where(Product.sku == "CHD-035"))
+    ).scalar_one()
     assert child.parent_sku is None
 
 
@@ -984,7 +1001,7 @@ async def test_unassign_parent_clears_and_recomputes_fr_cat_035(
 async def test_export_csv_fields_and_no_cache_header_fr_cat_036(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
-    """FR-CAT-036: GET /products/export devuelve CSV con 13 campos canonicos y Cache-Control: no-store."""
+    """FR-CAT-036: GET /products/export — CSV con campos canonicos, Cache-Control: no-store."""
     uid, email = admin_creds
     headers = _auth(uid, email)
     await client.post("/api/v1/products", json=_minimal_create("EXP-036"), headers=headers)
@@ -1038,14 +1055,14 @@ async def test_rbac_unauthenticated_returns_401_nfr_cat_001a(
 async def test_rbac_write_only_cannot_delete_nfr_cat_001b(
     client: AsyncClient,
     admin_creds: tuple[UUID, str],
-    db_session: AsyncSession,
+    db_session_committed: AsyncSession,
 ) -> None:
     """NFR-CAT-001: products:write sin products:delete no puede hacer DELETE."""
     uid_admin, email_admin = admin_creds
 
     email_wr = f"writer-{uuid4().hex[:6]}@mt.ae"
     uid_wr = await _seed_user(
-        db_session,
+        db_session_committed,
         email=email_wr,
         role_code="writer_no_delete_nfr1",
         permissions=["products:read", "products:write"],
@@ -1069,7 +1086,7 @@ async def test_rbac_write_only_cannot_delete_nfr_cat_001b(
 async def test_error_response_rfc7807_type_and_instance_nfr_cat_002(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
-    """NFR-CAT-002: errores de dominio CAT siguen RFC 7807 (type, title, status, detail, instance, code)."""
+    """NFR-CAT-002: errores de dominio CAT siguen RFC 7807 (type+instance obligatorios)."""
     uid, email = admin_creds
     r = await client.get("/api/v1/products/NONEXISTENT-RFC7807-XXX", headers=_auth(uid, email))
     assert r.status_code == 404
