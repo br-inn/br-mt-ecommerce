@@ -2284,7 +2284,6 @@
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "xlsx PIM (\u2264 50 MB)",
-            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2300,7 +2299,6 @@
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "xlsx costos batch (\u2264 50 MB)",
-            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2317,7 +2315,6 @@
             "description": "PDFs datasheet (\u2264 10 MB c/u)",
             "items": {
               "contentMediaType": "application/octet-stream",
-              "format": "binary",
               "type": "string"
             },
             "title": "Files",
@@ -2335,7 +2332,6 @@
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "xlsx materiales (\u2264 50 MB)",
-            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2350,7 +2346,6 @@
         "properties": {
           "file": {
             "contentMediaType": "application/octet-stream",
-            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2366,7 +2361,6 @@
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "PDF de ficha t\u00e9cnica (\u2264 50 MB)",
-            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2382,7 +2376,6 @@
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "PDF ficha t\u00e9cnica (\u2264 50 MB)",
-            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2398,7 +2391,6 @@
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "xlsx PIM (\u2264 50 MB)",
-            "format": "binary",
             "title": "File",
             "type": "string"
           },
@@ -2439,7 +2431,6 @@
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "xlsx PIM (\u2264 50 MB)",
-            "format": "binary",
             "title": "File",
             "type": "string"
           }
