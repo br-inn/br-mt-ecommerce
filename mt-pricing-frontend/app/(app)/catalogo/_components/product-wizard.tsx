@@ -228,7 +228,7 @@ function productToFormValues(product: Product): WizardForm {
     active: product.active,
     dn: product.dn ?? "",
     pn: product.pn ?? "",
-    material: product.material ?? "",
+    material: product.material?.code ?? "",
     type: product.type ?? "",
     connection: product.connection ?? "",
     ean_unit: product.packaging?.ean_unit ?? "",
@@ -268,10 +268,12 @@ export function ProductWizard(props: Props) {
   const tCommon = useTranslations("common");
 
   const isEdit = props.mode === "edit";
+  const editProduct = isEdit ? props.product : null;
+  const createDefaults = isEdit ? null : props.defaultValues;
   const initialValues = React.useMemo<Partial<WizardForm>>(() => {
-    if (isEdit) return productToFormValues(props.product);
-    return props.defaultValues ?? {};
-  }, [isEdit, props]);
+    if (editProduct) return productToFormValues(editProduct);
+    return createDefaults ?? {};
+  }, [editProduct, createDefaults]);
 
   const schema = React.useMemo(
     () =>
@@ -302,12 +304,13 @@ export function ProductWizard(props: Props) {
   });
 
   // Edit-mode: inyectar valores cuando el product cambie (carga async).
+  // `initialValues` ya está memoizado por SKU del producto, por lo que el
+  // reset solo dispara cuando cambia la identidad del producto cargado.
   React.useEffect(() => {
     if (isEdit) {
-      form.reset({ ...initialValues } as WizardForm);
+      form.reset(initialValues as WizardForm);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit && (props as EditProps).product?.sku]);
+  }, [isEdit, initialValues, form]);
 
   // Specs JSONB state (Stage 4): family/subfamily-specific structured attributes.
   // Validation happens server-side; we only collect the value here.

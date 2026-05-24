@@ -15,7 +15,6 @@ export default function ProductDetailError({
   const tCommon = useTranslations("common");
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error("[catalog/[sku]] error", error);
   }, [error]);
 

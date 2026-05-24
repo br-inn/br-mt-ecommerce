@@ -15,7 +15,6 @@ export default function CatalogError({
   const tCommon = useTranslations("common");
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error("[catalog] error", error);
   }, [error]);
 

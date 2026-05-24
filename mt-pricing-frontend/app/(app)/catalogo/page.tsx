@@ -51,39 +51,6 @@ import { TopFilterBar } from "./_components/top-filter-bar";
 const QUALITY_VALUES = ["complete", "partial", "blocked"] as const;
 const TRANSLATION_VALUES = ["draft", "pending", "approved"] as const;
 
-// US-1A-02-09-FE — filtros avanzados (dn/pn/material)
-const DN_VALUES = [
-  "DN8",
-  "DN10",
-  "DN15",
-  "DN20",
-  "DN25",
-  "DN32",
-  "DN40",
-  "DN50",
-  "DN65",
-  "DN80",
-  "DN100",
-  "DN125",
-  "DN150",
-  "DN200",
-  "DN250",
-  "DN300",
-] as const;
-const PN_VALUES = ["PN6", "PN10", "PN16", "PN25", "PN40", "PN63", "PN100"] as const;
-// Whitelist conservadora — el backend valida y devolverá [] si pasa otro valor.
-const MATERIAL_VALUES = [
-  "brass",
-  "bronze",
-  "stainless_steel",
-  "carbon_steel",
-  "cast_iron",
-  "ductile_iron",
-  "ppr",
-  "pvc",
-  "copper",
-] as const;
-
 function statusToVal(s: TranslationStatus | null): TStatusVal {
   if (s === "approved") return "a";
   if (s === "draft" || s === "pending") return "d";

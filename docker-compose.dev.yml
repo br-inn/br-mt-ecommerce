@@ -78,7 +78,7 @@ services:
       # `docker cp tests/. mt-backend:/app/tests/` previo.
       - ./mt-pricing-backend/tests:/app/tests:ro
       # Fixtures dev-only — montaje read-only para `/imports/pim/run-from-fixture`.
-      - "./Documentos referencia de articulos:/fixtures:ro"
+      - "C:/BR-Github/br-mt/br-mt-ecommerce/Documentos referencia de articulos:/fixtures:ro"
     command:
       [
         "uvicorn",
@@ -127,7 +127,7 @@ services:
     volumes:
       - ./mt-pricing-backend/app:/app/app
       # Fixtures dev-only — el worker accede al PIM completo.xlsx para batch import.
-      - "./Documentos referencia de articulos:/fixtures:ro"
+      - "C:/BR-Github/br-mt/br-mt-ecommerce/Documentos referencia de articulos:/fixtures:ro"
     command:
       [
         "celery",

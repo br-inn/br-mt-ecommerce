@@ -29,14 +29,21 @@ from app.schemas.vocabularies import (
     CertificationCreate,
     CertificationPatch,
     CertificationResponse,
+    FamilyResponse,
+    FamilyTreeNode,
     ProductApplicationLink,
     ProductApplicationResponse,
     ProductCertificationLink,
     ProductCertificationResponse,
+    ProductTypeResponse,
+    SubfamilyResponse,
+    SubfamilyTreeNode,
+    TaxonomyTreeResponse,
 )
 from app.services.vocabularies.vocabulary_service import (
     ApplicationService,
     CertificationService,
+    FamilyService,
     ProductVocabularyService,
     VocabularyDomainError,
 )
@@ -54,6 +61,9 @@ admin_vocab_router = APIRouter(
 
 # Product vocabulary sub-router (prefix /products/{sku} added by products.py)
 products_vocab_router = APIRouter(tags=["products:vocabularies"])
+
+# Taxonomy router — public catalog reads (Stage 1c, Opción C)
+taxonomy_router = APIRouter(prefix="/taxonomy", tags=["taxonomy"])
 
 
 # ---------------------------------------------------------------------------
@@ -75,6 +85,12 @@ def get_product_vocab_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ProductVocabularyService:
     return ProductVocabularyService(session)
+
+
+def get_family_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> FamilyService:
+    return FamilyService(session)
 
 
 # ---------------------------------------------------------------------------
@@ -477,3 +493,35 @@ async def remove_product_application(
         await service.remove_application(sku, app_id)
     except VocabularyDomainError as e:
         _raise_domain(e)
+
+
+
+# ===========================================================================
+# Stage 1c — Taxonomy: public tree endpoint (consumido por catalog filters)
+# ===========================================================================
+@taxonomy_router.get(
+    "/tree",
+    response_model=TaxonomyTreeResponse,
+    summary="Árbol completo de taxonomía: families → subfamilies → product_types",
+)
+async def get_taxonomy_tree(
+    _user: User = Depends(require_permissions("products:read")),
+    service: FamilyService = Depends(get_family_service),
+) -> TaxonomyTreeResponse:
+    families = await service.list_tree()
+    nodes: list[FamilyTreeNode] = []
+    for fam in families:
+        sub_nodes = [
+            SubfamilyTreeNode(
+                **SubfamilyResponse.model_validate(sf).model_dump(),
+                types=[ProductTypeResponse.model_validate(t) for t in sf.product_types],
+            )
+            for sf in fam.subfamilies
+        ]
+        nodes.append(
+            FamilyTreeNode(
+                **FamilyResponse.model_validate(fam).model_dump(),
+                subfamilies=sub_nodes,
+            )
+        )
+    return TaxonomyTreeResponse(families=nodes)

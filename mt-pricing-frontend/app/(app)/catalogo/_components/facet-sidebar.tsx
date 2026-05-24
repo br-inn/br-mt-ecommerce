@@ -7,8 +7,6 @@ import { MT } from "@/components/mt/tokens";
 import { useFacets, type FacetsFilters } from "@/lib/hooks/products/use-facets";
 import type { FacetBucket, FacetsResponse } from "@/lib/api/endpoints/facets";
 
-type Selection = Record<string, string | boolean | null | undefined>;
-
 interface FacetSidebarProps {
   filters: FacetsFilters;
   setFilter: (key: keyof FacetsFilters, value: string | boolean | null) => void;

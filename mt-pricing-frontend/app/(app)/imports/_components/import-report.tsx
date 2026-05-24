@@ -46,7 +46,7 @@ export function ImportReportPanel({ run, onReset }: Props) {
             {t("newImport")}
           </Button>
           <Button asChild>
-            <Link href="/products">{t("goProducts")}</Link>
+            <Link href="/catalogo">{t("goProducts")}</Link>
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">

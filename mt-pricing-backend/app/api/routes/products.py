@@ -62,6 +62,7 @@ from app.schemas.products import (
     ProductTranslationPatch,
     ProductTranslationResponse,
 )
+from app.schemas.facets import FacetsResponse
 from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 from app.services.assets import AssetService
 from app.services.assets.asset_service import AssetNotFoundError, AssetValidationError
@@ -71,6 +72,10 @@ from app.services.compatibility import (
 )
 from app.services.components import ComponentsDomainError, ComponentsService
 from app.services.products import ImageService, ProductService
+from app.services.products.facets_service import (
+    ProductFilters,
+    compute_facets,
+)
 from app.services.products.parent_resolver import ParentResolver, ParentResolverError
 from app.services.products.product_service import ProductDomainError
 from app.services.specs.specs_registry import SpecsRegistry
@@ -503,6 +508,73 @@ async def create_product(
     # Reload con eager translations/images (vacíos al crear).
     full = await service.get_product_by_id(prod.sku)  # type: ignore[possibly-undefined]
     return await _build_product_detail(full, service.session)
+
+# ==========================================================================
+# Wave 10 — Facets endpoint (non-destructive refinements + parallel compute)
+# IMPORTANTE: debe declararse ANTES de `/{sku}` para que FastAPI lo matchee
+# en lugar de interpretar "facets" como un SKU dinámico.
+# ==========================================================================
+@router.get(
+    "/facets",
+    response_model=FacetsResponse,
+    summary="Counts por dimensión con refinements non-destructivos (Algolia-style)",
+)
+async def get_facets(
+    family: Annotated[str | None, Query()] = None,
+    subfamily: Annotated[str | None, Query(max_length=64)] = None,
+    type: Annotated[  # noqa: A002
+        str | None, Query(max_length=64, alias="type")
+    ] = None,
+    brand: Annotated[str | None, Query()] = None,
+    material: Annotated[str | None, Query()] = None,
+    dn: Annotated[str | None, Query(max_length=8)] = None,
+    pn: Annotated[str | None, Query(max_length=8)] = None,
+    data_quality: Annotated[str | None, Query()] = None,
+    active: Annotated[bool | None, Query()] = None,
+    image_status: Annotated[str | None, Query()] = None,
+    has_image: Annotated[bool | None, Query()] = None,
+    lifecycle_status: Annotated[str | None, Query()] = None,
+    translation_status: Annotated[
+        str | None, Query(pattern=r"^(pending|draft|approved)$")
+    ] = None,
+    translation_lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    # Stage 3 (Wave 11) — series_id/material_id aceptan UUID o slug del registry.
+    division: Annotated[str | None, Query(max_length=64)] = None,
+    series_id: Annotated[str | None, Query(max_length=64)] = None,
+    material_id: Annotated[str | None, Query(max_length=64)] = None,
+    tier_code: Annotated[str | None, Query(max_length=32)] = None,
+    _user: User = Depends(require_permissions("products:read")),
+    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
+) -> FacetsResponse:
+    """Devuelve counts por dimensión aplicando todos los filtros activos
+    EXCEPTO el de la propia dimensión (refinement no destructivo).
+
+    Performance objetivo: p95 <200ms con índices migration 041 y 5K-50K rows.
+    """
+    filters = ProductFilters(
+        family=family,
+        subfamily=subfamily,
+        type_=type,
+        brand=brand,
+        material=material,
+        dn=dn,
+        pn=pn,
+        data_quality=data_quality,
+        active=active,
+        image_status=image_status,
+        has_image=has_image,
+        lifecycle_status=lifecycle_status,
+        translation_status=translation_status,
+        translation_lang=translation_lang,
+        search=q,
+        # Stage 3 (Wave 11)
+        division_code=division,
+        series_id=series_id,
+        material_id=material_id,
+        tier_code=tier_code,
+    )
+    return await compute_facets(session, filters)
 
 
 @router.get(
@@ -1661,75 +1733,3 @@ async def delete_tech_table(
     await session.delete(existing)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-
-# ==========================================================================
-# Wave 10 — Facets endpoint (non-destructive refinements + parallel compute)
-# ==========================================================================
-from app.schemas.facets import FacetsResponse  # noqa: E402
-from app.services.products.facets_service import (  # noqa: E402
-    ProductFilters,
-    compute_facets,
-)
-
-
-@router.get(
-    "/facets",
-    response_model=FacetsResponse,
-    summary="Counts por dimensión con refinements non-destructivos (Algolia-style)",
-)
-async def get_facets(
-    family: Annotated[str | None, Query()] = None,
-    subfamily: Annotated[str | None, Query(max_length=64)] = None,
-    type: Annotated[  # noqa: A002
-        str | None, Query(max_length=64, alias="type")
-    ] = None,
-    brand: Annotated[str | None, Query()] = None,
-    material: Annotated[str | None, Query()] = None,
-    dn: Annotated[str | None, Query(max_length=8)] = None,
-    pn: Annotated[str | None, Query(max_length=8)] = None,
-    data_quality: Annotated[str | None, Query()] = None,
-    active: Annotated[bool | None, Query()] = None,
-    image_status: Annotated[str | None, Query()] = None,
-    has_image: Annotated[bool | None, Query()] = None,
-    lifecycle_status: Annotated[str | None, Query()] = None,
-    translation_status: Annotated[
-        str | None, Query(pattern=r"^(pending|draft|approved)$")
-    ] = None,
-    translation_lang: Annotated[str | None, Query(pattern=r"^(es|ar)$")] = None,
-    q: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
-    # Stage 3 (Wave 11) — series_id/material_id aceptan UUID o slug del registry.
-    division: Annotated[str | None, Query(max_length=64)] = None,
-    series_id: Annotated[str | None, Query(max_length=64)] = None,
-    material_id: Annotated[str | None, Query(max_length=64)] = None,
-    tier_code: Annotated[str | None, Query(max_length=32)] = None,
-    _user: User = Depends(require_permissions("products:read")),
-    session: Annotated[AsyncSession, Depends(get_db_session)] = None,  # type: ignore[assignment]
-) -> FacetsResponse:
-    """Devuelve counts por dimensión aplicando todos los filtros activos
-    EXCEPTO el de la propia dimensión (refinement no destructivo).
-
-    Performance objetivo: p95 <200ms con índices migration 041 y 5K-50K rows.
-    """
-    filters = ProductFilters(
-        family=family,
-        subfamily=subfamily,
-        type_=type,
-        brand=brand,
-        material=material,
-        dn=dn,
-        pn=pn,
-        data_quality=data_quality,
-        active=active,
-        image_status=image_status,
-        has_image=has_image,
-        lifecycle_status=lifecycle_status,
-        translation_status=translation_status,
-        translation_lang=translation_lang,
-        search=q,
-        # Stage 3 (Wave 11)
-        division_code=division,
-        series_id=series_id,
-        material_id=material_id,
-        tier_code=tier_code,
-    )
-    return await compute_facets(session, filters)

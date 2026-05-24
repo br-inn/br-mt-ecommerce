@@ -22,7 +22,6 @@ export function useCreateProduct() {
     mutationFn: (payload) => productsApi.create(payload),
     onSuccess: (created) => {
       // Sembrar caché del detalle para evitar refetch inmediato.
-      qc.setQueryData(productKeys.detail(created.id), created);
       qc.setQueryData(productKeys.detail(created.sku), created);
       void qc.invalidateQueries({ queryKey: productKeys.lists() });
     },
@@ -56,7 +55,6 @@ export function useUpdateProduct(idOrSku: string) {
       }
     },
     onSuccess: (updated) => {
-      qc.setQueryData(productKeys.detail(updated.id), updated);
       qc.setQueryData(productKeys.detail(updated.sku), updated);
     },
     onSettled: () => {
@@ -78,7 +76,7 @@ export function useDeleteProduct() {
 
 /**
  * Toggle optimista del flag `active` en lista + detalle.
- * Comparte invariantes con `useUpdateProduct` pero parchea cache de listas.
+ * Comparte invariantes con `useUpdateProduct` pero también parchea cache de listas.
  */
 export function useToggleProductActive() {
   const qc = useQueryClient();
@@ -86,11 +84,16 @@ export function useToggleProductActive() {
     Product,
     Error,
     { id: string; active: boolean },
-    { previousLists: [readonly unknown[], ListPagesData | undefined][] }
+    {
+      previousLists: [readonly unknown[], ListPagesData | undefined][];
+      previousDetail: Product | undefined;
+    }
   >({
     mutationFn: ({ id, active }) => productsApi.update(id, { active }),
     onMutate: async ({ id, active }) => {
       await qc.cancelQueries({ queryKey: productKeys.lists() });
+      await qc.cancelQueries({ queryKey: productKeys.detail(id) });
+
       const previousLists = qc.getQueriesData<ListPagesData>({ queryKey: productKeys.lists() });
       previousLists.forEach(([key, data]) => {
         if (!data) return;
@@ -99,20 +102,36 @@ export function useToggleProductActive() {
           pages: data.pages.map((page) => ({
             ...page,
             items: page.items.map((it: ProductListItem) =>
-              it.id === id ? { ...it, active } : it,
+              it.sku === id ? { ...it, active } : it,
             ),
           })),
         });
       });
-      return { previousLists };
+
+      const previousDetail = qc.getQueryData<Product>(productKeys.detail(id));
+      if (previousDetail) {
+        qc.setQueryData<Product>(productKeys.detail(id), {
+          ...previousDetail,
+          active,
+        });
+      }
+
+      return { previousLists, previousDetail };
     },
-    onError: (_err, _payload, ctx) => {
+    onError: (_err, { id }, ctx) => {
       ctx?.previousLists.forEach(([key, data]) => {
         if (data) qc.setQueryData(key, data);
       });
+      if (ctx?.previousDetail) {
+        qc.setQueryData(productKeys.detail(id), ctx.previousDetail);
+      }
     },
-    onSettled: () => {
+    onSuccess: (updated) => {
+      qc.setQueryData(productKeys.detail(updated.sku), updated);
+    },
+    onSettled: (_data, _err, { id }) => {
       void qc.invalidateQueries({ queryKey: productKeys.lists() });
+      void qc.invalidateQueries({ queryKey: productKeys.detail(id) });
     },
   });
 }

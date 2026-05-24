@@ -20,22 +20,25 @@ export function CatalogSearch() {
   const t = useTranslations("catalog");
   const { search, setSearch } = useCatalogSearch();
   const [local, setLocal] = React.useState(search);
+  const [prevSearch, setPrevSearch] = React.useState(search);
 
-  // Debounce: el input mantiene su propio estado y propaga a URL tras 300ms.
+  // Sync inverso (URL → local) en render cuando la URL cambia desde otro
+  // origen (clear filters, navegación). Patrón documentado de React:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (search !== prevSearch) {
+    setPrevSearch(search);
+    setLocal(search);
+  }
+
+  // Debounce local → URL: el input mantiene su propio estado y propaga a URL
+  // tras 300ms cuando difiere.
   React.useEffect(() => {
+    if (local === search) return;
     const handle = window.setTimeout(() => {
-      if (local !== search) void setSearch(local || null);
+      void setSearch(local || null);
     }, DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
   }, [local, search, setSearch]);
-
-  // Sync inverso si la URL cambia desde otro origen.
-  // TODO(s2): refactor a `useSyncExternalStore` o `key` reset para evitar
-  // setState dentro del effect (regla react-hooks/set-state-in-effect).
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-    if (search !== local) setLocal(search);
-  }, [search]);
 
   return (
     <div className="relative w-full max-w-md">
