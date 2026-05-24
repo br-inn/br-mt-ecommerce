@@ -19,20 +19,6 @@ output "domain" {
 # TODO(infra-sprint-1): expose floating_ip, server_ipv4, server_ipv6,
 # database_dsn (sensitive), object_storage_endpoint, etc.
 
-output "sentry_backend_dsn" {
-  description = "Sentry DSN backend project."
-  value       = var.sentry_auth_token != "" ? sentry_project.backend[0].dsn_public : ""
-  sensitive   = true
-}
-
-output "sentry_worker_dsn" {
-  description = "Sentry DSN worker project."
-  value       = var.sentry_auth_token != "" ? sentry_project.worker[0].dsn_public : ""
-  sensitive   = true
-}
-
-output "sentry_frontend_dsn" {
-  description = "Sentry DSN frontend project."
-  value       = var.sentry_auth_token != "" ? sentry_project.frontend[0].dsn_public : ""
-  sensitive   = true
-}
+# Sentry DSN outputs require sentry_key data sources (sentry_project has no dsn attribute).
+# Retrieve DSNs from the Sentry UI or via `terraform output` after apply with SENTRY_AUTH_TOKEN.
+# See: https://registry.terraform.io/providers/jianyuan/sentry/latest/docs/resources/key
