@@ -75,6 +75,7 @@ export function useRefreshMatches() {
   React.useEffect(() => {
     if (!pollData) return;
     if (pollData.task_status === "done") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPollingTask(null);
       void qc.invalidateQueries({ queryKey: matchKeys.all });
       toast.success(`Scraper encontró ${pollData.refreshed_count} candidatos para ${pollData.sku}`);

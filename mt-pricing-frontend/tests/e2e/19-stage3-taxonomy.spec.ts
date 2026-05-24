@@ -14,7 +14,7 @@
 
 import { expect, test, type Page } from "@playwright/test";
 import { loginAsGerente } from "./helpers/auth-as-role";
-import { commonProductFields, FAKE_PRODUCTS, installProductsMocks } from "./fixtures/seed";
+import { installProductsMocks } from "./fixtures/seed";
 
 const FAKE_DIVISIONS = [
   {

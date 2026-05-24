@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { financeApi, type PlLine } from "@/lib/api/endpoints/finance";
 
 const CURRENT_YEAR = new Date().getFullYear();

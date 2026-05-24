@@ -13,6 +13,7 @@ export function DiscardReasonDialog({ open, onOpenChange, onConfirm }: DiscardRe
   const [reason, setReason] = React.useState("");
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setReason("");
   }, [open]);
 

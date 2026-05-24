@@ -37,7 +37,7 @@ export function ImportWizard() {
   const [step, setStep] = React.useState<Step>(0);
   const [analysis, setAnalysis] = React.useState<AnalyzeImportResponse | null>(null);
   const [file, setFile] = React.useState<File | null>(null);
-  const [confirmedMapping, setConfirmedMapping] = React.useState<ColumnMappingItem[] | null>(null);
+  const [_confirmedMapping, setConfirmedMapping] = React.useState<ColumnMappingItem[] | null>(null);
   const [preview, setPreview] = React.useState<ImportPreview | null>(null);
   const [applyTriggered, setApplyTriggered] = React.useState(false);
   // Stage 3 (Wave 11) — override de divisiones a asignar por SKU del run.

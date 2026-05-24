@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart2, ChevronRight, Clock } from "lucide-react";
+import { BarChart2, Clock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { rfqApi, type RfqStatus, type RfqRead, type RfqComparisonOut } from "@/lib/api/endpoints/procurement";
+import { rfqApi, type RfqStatus } from "@/lib/api/endpoints/procurement";
 
 // ---------------------------------------------------------------------------
 // Status metadata
@@ -125,7 +125,7 @@ export default function RfqPage() {
   const [selectedRfqId, setSelectedRfqId] = React.useState<string | null>(null);
   const [comparisonOpen, setComparisonOpen] = React.useState(false);
 
-  const { data: rfqs, isLoading, isError } = useQuery({
+  const { data: rfqs, isLoading } = useQuery({
     queryKey: ["rfqs"],
     queryFn: () => rfqApi.list(),
   });

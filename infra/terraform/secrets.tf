@@ -15,15 +15,6 @@
 
 # Provider Doppler para leer secrets como data sources si fuera necesario.
 # (Mayoritariamente usamos var.* injectadas por `doppler run` en CLI.)
-terraform {
-  required_providers {
-    doppler = {
-      source  = "DopplerHQ/doppler"
-      version = "~> 1.7"
-    }
-  }
-}
-
 variable "doppler_token" {
   description = "Doppler service token (read-only) para data sources. Sourced via env DOPPLER_TOKEN."
   type        = string

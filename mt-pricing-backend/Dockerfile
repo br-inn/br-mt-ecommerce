@@ -112,10 +112,22 @@ COPY --from=builder --chown=appuser:appuser /build/app /app/app
 COPY --from=builder --chown=appuser:appuser /build/alembic /app/alembic
 COPY --from=builder --chown=appuser:appuser /build/alembic.ini /app/alembic.ini
 
-# La imagen base python:3.11-slim trae wheel/setuptools vulnerables en site-packages.
-# COPY desde builder superpone versiones nuevas pero no elimina los dist-info antiguos.
-# pip install --upgrade los elimina correctamente (CVE-2026-24049, CVE-2025-47273).
-RUN pip install --no-cache-dir "wheel>=0.46.2" "setuptools>=78.1.1"
+# pip/wheel/setuptools are only needed at build time. Remove them from the runtime
+# image to eliminate their CVE attack surface entirely. The app never calls pip at
+# runtime — gunicorn/uvicorn start directly from installed site-packages.
+# CVEs addressed: CVE-2026-24049, CVE-2026-23949 (setuptools vendored),
+#                 CVE-2025-8869, CVE-2026-3219, CVE-2026-6357 (pip wheel-install).
+RUN pip install --no-cache-dir "wheel>=0.46.2" "setuptools>=78.1.1" \
+    && rm -rf \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel-*.dist-info \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco.context-*.dist-info \
+        /usr/local/lib/python3.11/site-packages/pip \
+        /usr/local/lib/python3.11/site-packages/pip-*.dist-info \
+        /usr/local/bin/pip \
+        /usr/local/bin/pip3 \
+        /usr/local/bin/pip3.11
 
 USER appuser
 

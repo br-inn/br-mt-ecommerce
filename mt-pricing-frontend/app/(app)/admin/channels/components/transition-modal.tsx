@@ -78,20 +78,15 @@ export function TransitionModal({
   // Reset state cuando cambia el canal o se cierra el modal
   React.useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTargetState("");
       setComment("");
       setOverrideWarnings(false);
     }
   }, [open]);
 
-  if (!channel) return null;
-
-  const validTargets = VALID_TRANSITIONS[channel.state] ?? [];
-  const showPilotPrereq = targetState === "pilot";
-  const showOverrideCheck =
-    channel.pilot_with_warnings && targetState !== "";
-
   // Parse missing_skus from lastError detail si viene de 400
+  // Must be before early return to satisfy rules-of-hooks
   const missingSkus: string[] = React.useMemo(() => {
     if (!lastError) return [];
     const msg = lastError.message;
@@ -111,6 +106,13 @@ export function TransitionModal({
     }
     return [];
   }, [lastError]);
+
+  if (!channel) return null;
+
+  const validTargets = VALID_TRANSITIONS[channel.state] ?? [];
+  const showPilotPrereq = targetState === "pilot";
+  const showOverrideCheck =
+    channel.pilot_with_warnings && targetState !== "";
 
   const handleConfirm = async () => {
     if (!targetState) return;
