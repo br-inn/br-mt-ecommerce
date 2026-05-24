@@ -32,7 +32,7 @@ resource "cloudflare_record" "app" {
   name    = var.dns_subdomain
   type    = "A"
   value   = hcloud_floating_ip.app.ip_address
-  ttl     = var.cloudflare_proxy_enabled ? 1 : 300  # TTL=1 cuando proxy on
+  ttl     = var.cloudflare_proxy_enabled ? 1 : 300 # TTL=1 cuando proxy on
   proxied = var.cloudflare_proxy_enabled
   comment = "MT Pricing — managed by Terraform"
 }
