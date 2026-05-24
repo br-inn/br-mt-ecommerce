@@ -256,12 +256,12 @@ class PimImporter:
         """Inserta o actualiza la traducción en='en' para el SKU dado."""
         stmt = (
             pg_insert(ProductTranslation)
-            .values(sku=sku, lang="en", name=name_en, status="imported")
+            .values(sku=sku, lang="en", name=name_en, status="draft")
             .on_conflict_do_update(
                 index_elements=["sku", "lang"],
                 set_={
                     "name": name_en,
-                    "status": "imported",
+                    "status": "draft",
                     "updated_at": text("now()"),
                 },
             )
