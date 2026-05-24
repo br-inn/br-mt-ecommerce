@@ -164,7 +164,13 @@ async def app_with_db(db_session_committed: AsyncSession) -> AsyncIterator[Any]:
     from app.main import app
 
     async def _override() -> AsyncIterator[AsyncSession]:
-        yield db_session_committed
+        try:
+            yield db_session_committed
+        except Exception:
+            await db_session_committed.rollback()
+            raise
+        else:
+            await db_session_committed.commit()
 
     app.dependency_overrides[get_db_session] = _override
     try:
