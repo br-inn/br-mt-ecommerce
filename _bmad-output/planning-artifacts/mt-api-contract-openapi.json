@@ -25938,6 +25938,68 @@
         "title": "ReplenishmentParamRead",
         "type": "object"
       },
+      "ResolvedProductResponse": {
+        "properties": {
+          "assets_count": {
+            "title": "Assets Count",
+            "type": "integer"
+          },
+          "assets_inherited_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assets Inherited From"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          },
+          "specs": {
+            "additionalProperties": true,
+            "title": "Specs",
+            "type": "object"
+          },
+          "specs_inherited_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specs Inherited From"
+          },
+          "translations_count": {
+            "title": "Translations Count",
+            "type": "integer"
+          },
+          "translations_inherited_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translations Inherited From"
+          }
+        },
+        "required": [
+          "sku",
+          "specs",
+          "assets_count",
+          "translations_count"
+        ],
+        "title": "ResolvedProductResponse",
+        "type": "object"
+      },
       "ReturnDeliveryCreate": {
         "properties": {
           "notes": {
@@ -59281,9 +59343,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Resolved View Api V1 Products  Sku  Resolved Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ResolvedProductResponse"
                 }
               }
             },

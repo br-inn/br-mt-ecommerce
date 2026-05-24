@@ -74,6 +74,7 @@ from app.schemas.products import (
     ProductTranslationResponse,
     ProductUomConversionCreate,
     ProductUomConversionResponse,
+    ResolvedProductResponse,
 )
 from app.schemas.vocabularies import MaterialResponse, SeriesResponse
 from app.services.assets import AssetService
@@ -160,28 +161,48 @@ def _problem(
 def _raise_domain(err: ProductDomainError) -> None:
     raise HTTPException(
         status_code=err.status_code,
-        detail={"code": err.code, "title": err.message},
+        detail={
+            "type": f"https://mtme-api/errors/{err.code}",
+            "title": err.message,
+            "status": err.status_code,
+            "code": err.code,
+        },
     )
 
 
 def _raise_compat(err: CompatibilityDomainError) -> None:
     raise HTTPException(
         status_code=err.status_code,
-        detail={"code": err.code, "title": err.message},
+        detail={
+            "type": f"https://mtme-api/errors/{err.code}",
+            "title": err.message,
+            "status": err.status_code,
+            "code": err.code,
+        },
     )
 
 
 def _raise_components(err: ComponentsDomainError) -> None:
     raise HTTPException(
         status_code=err.status_code,
-        detail={"code": err.code, "title": err.message},
+        detail={
+            "type": f"https://mtme-api/errors/{err.code}",
+            "title": err.message,
+            "status": err.status_code,
+            "code": err.code,
+        },
     )
 
 
 def _raise_parent(err: ParentResolverError) -> None:
     raise HTTPException(
         status_code=err.status_code,
-        detail={"code": err.code, "title": err.message},
+        detail={
+            "type": f"https://mtme-api/errors/{err.code}",
+            "title": err.message,
+            "status": err.status_code,
+            "code": err.code,
+        },
     )
 
 
@@ -205,8 +226,10 @@ def _raise_specs_error(err: SpecsValidationError) -> None:
     raise HTTPException(
         status_code=422,
         detail={
-            "code": err.code,
+            "type": "https://mtme-api/errors/specs_validation_failed",
             "title": "specs validation failed",
+            "status": 422,
+            "code": err.code,
             "errors": [e.model_dump() for e in err.errors],
         },
     )
@@ -1782,12 +1805,13 @@ async def replace_connections(
 @router.get(
     "/{sku}/resolved",
     summary="Devuelve specs+assets+translations resueltos con fallback al padre",
+    response_model=ResolvedProductResponse,
 )
 async def get_resolved_view(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     _user: User = Depends(require_permissions("products:read")),
     resolver: ParentResolver = Depends(get_parent_resolver),
-) -> dict[str, Any]:
+) -> ResolvedProductResponse:
     """Para variantes, devuelve campos heredados del padre cuando faltan localmente.
 
     Útil para vistas de detalle: el frontend pinta una badge "heredado de PARENT_SKU"
@@ -1796,15 +1820,15 @@ async def get_resolved_view(
     specs, specs_inherited = await resolver.resolve_specs(sku)
     assets, assets_inherited = await resolver.resolve_assets(sku)
     translations, tr_inherited = await resolver.resolve_translations(sku)
-    return {
-        "sku": sku,
-        "specs": specs,
-        "specs_inherited_from": specs_inherited,
-        "assets_count": len(list(assets)),
-        "assets_inherited_from": assets_inherited,
-        "translations_count": len(list(translations)),
-        "translations_inherited_from": tr_inherited,
-    }
+    return ResolvedProductResponse(
+        sku=sku,
+        specs=specs,
+        specs_inherited_from=specs_inherited,
+        assets_count=len(list(assets)),
+        assets_inherited_from=assets_inherited,
+        translations_count=len(list(translations)),
+        translations_inherited_from=tr_inherited,
+    )
 
 
 @router.post(

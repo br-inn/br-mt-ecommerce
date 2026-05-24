@@ -728,6 +728,19 @@ class BoreDimensionRead(BaseModel):
     created_at: datetime
 
 
+# ---------------------------------------------------------------------------
+# Wave 5 — Parent / variant resolution response
+# ---------------------------------------------------------------------------
+class ResolvedProductResponse(BaseModel):
+    sku: str
+    specs: dict[str, Any]
+    specs_inherited_from: str | None = None
+    assets_count: int
+    assets_inherited_from: str | None = None
+    translations_count: int
+    translations_inherited_from: str | None = None
+
+
 # Re-bind forward references — ProductDetail referencia translations/images
 # Import vocabularios al final (al pie) para evitar ciclo de import al cargar
 # `app.schemas.vocabularies`. Sólo se necesitan a la hora de model_rebuild.
