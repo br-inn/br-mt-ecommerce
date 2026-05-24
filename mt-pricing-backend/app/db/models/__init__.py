@@ -14,6 +14,7 @@ from app.db.models.attributes import (
     FamilyAttribute,
 )
 from app.db.models.audit import AuditEvent
+from app.db.models.audit_hash_state import AuditHashState
 from app.db.models.billing import (
     DunningHistory,
     DunningLevel,
@@ -97,6 +98,7 @@ from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.match_agent import MatchAgentConfig, MatchAgentDecision
 from app.db.models.match_candidate import MatchCandidate
 from app.db.models.match_rule_stat import MatchRuleStat
+from app.db.models.material_alias import MaterialAlias
 from app.db.models.material_compatibility import MaterialCompatibility
 from app.db.models.norm_equivalence import NormEquivalence
 from app.db.models.notification import Notification
@@ -154,6 +156,7 @@ from app.db.models.scraper_sources import (
     ScraperSourceRecipe,
     ScraperSourceTestRun,
 )
+from app.db.models.search_query import ProductSearchQuery
 from app.db.models.supplier import Supplier
 from app.db.models.taxonomy_profile import TaxonomyProfile
 from app.db.models.taxonomy_registry import (
@@ -211,6 +214,8 @@ __all__ = [
     "CostScheme",
     # audit
     "AuditEvent",
+    # audit hash chain singleton (mig. 076)
+    "AuditHashState",
     # jobs / scheduler
     "JobDefinition",
     "JobRun",
@@ -233,6 +238,10 @@ __all__ = [
     "ChannelSyncEvent",
     # importer materials (Sprint 3 — US-1A-06-03)
     "MaterialCompatibility",
+    # matching pipeline — material alias homologation (mig. 107)
+    "MaterialAlias",
+    # matching pipeline — LLM search query cache (mig. 123)
+    "ProductSearchQuery",
     # importer datasheets PDF (Sprint 4 — US-1A-06-04)
     "ProductDatasheet",
     # graphrag CDC outbox (Sprint 4 — US-RND-01-11)
