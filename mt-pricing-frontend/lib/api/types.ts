@@ -17457,6 +17457,25 @@ export interface components {
              */
             warehouse_id: string;
         };
+        /** ResolvedProductResponse */
+        ResolvedProductResponse: {
+            /** Assets Count */
+            assets_count: number;
+            /** Assets Inherited From */
+            assets_inherited_from?: string | null;
+            /** Sku */
+            sku: string;
+            /** Specs */
+            specs: {
+                [key: string]: unknown;
+            };
+            /** Specs Inherited From */
+            specs_inherited_from?: string | null;
+            /** Translations Count */
+            translations_count: number;
+            /** Translations Inherited From */
+            translations_inherited_from?: string | null;
+        };
         /** ReturnDeliveryCreate */
         ReturnDeliveryCreate: {
             /** Notes */
@@ -35417,9 +35436,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ResolvedProductResponse"];
                 };
             };
             /** @description Validation Error */
