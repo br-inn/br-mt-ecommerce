@@ -10,6 +10,7 @@ ADR-049: migration discipline.
 
 from __future__ import annotations
 
+import re
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -31,6 +32,17 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# Patrón que detecta particiones PG (ej: audit_events_2026_05, price_history_raw_2026).
+# Alembic las reporta como "tablas eliminadas" porque no tienen modelo ORM.
+_PARTITION_RE = re.compile(r".+_\d{4}(_\d{2})?$")
+
+
+def _include_object(obj, name, type_, reflected, compare_to):
+    """Excluir tablas hijo de particiones de PostgreSQL del autogenerate."""
+    if type_ == "table" and reflected and _PARTITION_RE.match(name):
+        return False
+    return True
+
 
 def run_migrations_offline() -> None:
     """Genera SQL sin conectarse."""
@@ -41,6 +53,7 @@ def run_migrations_offline() -> None:
         compare_type=True,
         compare_server_default=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=_include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -61,6 +74,7 @@ def run_migrations_online() -> None:
             compare_type=True,
             compare_server_default=True,
             include_schemas=False,
+            include_object=_include_object,
         )
         with context.begin_transaction():
             context.run_migrations()
