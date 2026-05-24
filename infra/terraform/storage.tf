@@ -56,8 +56,8 @@ output "storage_box_endpoint" {
 # -----------------------------------------------------------------------------
 locals {
   backup_retention_policy = {
-    daily_keep_days    = 30
-    weekly_keep_weeks  = 12
+    daily_keep_days     = 30
+    weekly_keep_weeks   = 12
     monthly_keep_months = 24
   }
 }

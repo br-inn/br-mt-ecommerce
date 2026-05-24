@@ -6,19 +6,6 @@
 # Tokens API se inyectan vía Doppler (`SENTRY_AUTH_TOKEN`, `BETTER_STACK_API_TOKEN`).
 # =============================================================================
 
-terraform {
-  required_providers {
-    sentry = {
-      source  = "jianyuan/sentry"
-      version = "~> 0.13"
-    }
-    better-stack = {
-      source  = "BetterStackHQ/better-stack"
-      version = "~> 0.4"
-    }
-  }
-}
-
 variable "sentry_auth_token" {
   description = "Sentry auth token con scope `project:write,team:read` (Doppler)."
   type        = string
@@ -101,30 +88,30 @@ resource "sentry_project" "frontend" {
 # Better Stack sources — uno por servicio + ambiente
 # -----------------------------------------------------------------------------
 resource "better-stack_source" "backend_staging" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-backend-staging"
-  platform     = "docker"
+  count          = var.better_stack_api_token != "" ? 1 : 0
+  name           = "mt-backend-staging"
+  platform       = "docker"
   retention_days = 14
 }
 
 resource "better-stack_source" "backend_production" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-backend-production"
-  platform     = "docker"
+  count          = var.better_stack_api_token != "" ? 1 : 0
+  name           = "mt-backend-production"
+  platform       = "docker"
   retention_days = 30
 }
 
 resource "better-stack_source" "worker_staging" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-worker-staging"
-  platform     = "docker"
+  count          = var.better_stack_api_token != "" ? 1 : 0
+  name           = "mt-worker-staging"
+  platform       = "docker"
   retention_days = 14
 }
 
 resource "better-stack_source" "worker_production" {
-  count        = var.better_stack_api_token != "" ? 1 : 0
-  name         = "mt-worker-production"
-  platform     = "docker"
+  count          = var.better_stack_api_token != "" ? 1 : 0
+  name           = "mt-worker-production"
+  platform       = "docker"
   retention_days = 30
 }
 

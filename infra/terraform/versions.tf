@@ -21,6 +21,18 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    sentry = {
+      source  = "jianyuan/sentry"
+      version = "~> 0.13"
+    }
+    better-stack = {
+      source  = "BetterStackHQ/better-stack"
+      version = "~> 0.4"
+    }
+    doppler = {
+      source  = "DopplerHQ/doppler"
+      version = "~> 1.7"
+    }
   }
 
   # Remote state — uncomment once Terraform Cloud / S3-compatible backend is ready.

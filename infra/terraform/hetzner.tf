@@ -43,9 +43,9 @@ resource "hcloud_firewall" "main" {
 
   # SSH — restringido a CIDRs admin (whitelist en var.admin_cidrs si presente).
   rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "22"
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "22"
     source_ips = length(var.admin_cidrs) > 0 ? var.admin_cidrs : ["0.0.0.0/0", "::/0"]
   }
 
@@ -87,11 +87,11 @@ resource "hcloud_ssh_key" "admins" {
 # App server — FastAPI + Caddy + frontend SSR
 # -----------------------------------------------------------------------------
 resource "hcloud_server" "app" {
-  name        = "mt-app-${var.environment}"
-  server_type = var.server_type
-  location    = var.server_location
-  image       = "ubuntu-22.04"
-  ssh_keys    = [for k in hcloud_ssh_key.admins : k.id]
+  name         = "mt-app-${var.environment}"
+  server_type  = var.server_type
+  location     = var.server_location
+  image        = "ubuntu-22.04"
+  ssh_keys     = [for k in hcloud_ssh_key.admins : k.id]
   firewall_ids = [hcloud_firewall.main.id]
   labels = merge(local.common_labels, {
     role = "app"
@@ -111,11 +111,11 @@ resource "hcloud_server" "app" {
 # Worker server — Celery
 # -----------------------------------------------------------------------------
 resource "hcloud_server" "worker" {
-  name        = "mt-worker-${var.environment}"
-  server_type = var.worker_server_type
-  location    = var.server_location
-  image       = "ubuntu-22.04"
-  ssh_keys    = [for k in hcloud_ssh_key.admins : k.id]
+  name         = "mt-worker-${var.environment}"
+  server_type  = var.worker_server_type
+  location     = var.server_location
+  image        = "ubuntu-22.04"
+  ssh_keys     = [for k in hcloud_ssh_key.admins : k.id]
   firewall_ids = [hcloud_firewall.main.id]
   labels = merge(local.common_labels, {
     role = "worker"
@@ -135,11 +135,11 @@ resource "hcloud_server" "worker" {
 # pgbouncer server — connection pooling cerca de apps
 # -----------------------------------------------------------------------------
 resource "hcloud_server" "db_bouncer" {
-  name        = "mt-bouncer-${var.environment}"
-  server_type = var.bouncer_server_type
-  location    = var.server_location
-  image       = "ubuntu-22.04"
-  ssh_keys    = [for k in hcloud_ssh_key.admins : k.id]
+  name         = "mt-bouncer-${var.environment}"
+  server_type  = var.bouncer_server_type
+  location     = var.server_location
+  image        = "ubuntu-22.04"
+  ssh_keys     = [for k in hcloud_ssh_key.admins : k.id]
   firewall_ids = [hcloud_firewall.main.id]
   labels = merge(local.common_labels, {
     role = "db-bouncer"
