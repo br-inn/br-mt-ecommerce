@@ -103,15 +103,7 @@ async def _cleanup_data(db_session: AsyncSession) -> AsyncIterator[None]:
     """Limpia productos + audit_events antes de cada test para evitar contaminación."""
     from sqlalchemy import text
 
-    await db_session.execute(text("DELETE FROM product_translations;"))
-    await db_session.execute(text("DELETE FROM product_assets;"))
-    await db_session.execute(
-        text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete;")
-    )
-    await db_session.execute(text("DELETE FROM products;"))
-    await db_session.execute(
-        text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete;")
-    )
+    await db_session.execute(text("TRUNCATE TABLE products CASCADE;"))
     await db_session.execute(
         text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_trg;")
     )
