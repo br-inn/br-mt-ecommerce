@@ -15899,6 +15899,11 @@ export interface components {
             material?: string | null;
             /** Material Id */
             material_id?: string | null;
+            /**
+             * Name En
+             * @description Nombre en inglés (EN canónico obligatorio)
+             */
+            name_en: string;
             /** Packaging */
             packaging?: {
                 [key: string]: unknown;
