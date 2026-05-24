@@ -1,0 +1,146 @@
+# =============================================================================
+# CI failure → @claude autofix
+# =============================================================================
+# Cuando un workflow bloqueante falla en un PR, publica un comentario con
+# @claude en el PR para que el bot detecte el problema y lo corrija
+# automáticamente.
+#
+# Flujo:
+#   1. Workflow de CI completa con `failure` en un PR.
+#   2. Este workflow encuentra el PR abierto para esa rama.
+#   3. Verifica que no exista ya un comentario de autofix para este run (dedup).
+#   4. Lista los jobs fallidos y publica un comentario @claude con contexto.
+#   5. El bot Claude (claude.yml) lo lee y hace push del fix a la misma rama.
+#
+# Workflows monitoreados (bloqueantes para merge):
+#   - pr-checks    → commitlint, PR title, template
+#   - ci-backend   → lint, mypy, pytest
+#   - openapi-sync → drift del spec versionado
+#   - commitlint   → validación standalone de mensajes de commit
+# =============================================================================
+---
+name: CI failure → @claude autofix
+
+on:
+  workflow_run:
+    workflows:
+      - "pr-checks"
+      - "ci-backend"
+      - "openapi-sync"
+      - "commitlint"
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  autofix:
+    name: Post @claude fix comment
+    # Solo actuar en fallos de PRs (no de pushes a main).
+    if: |
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Encontrar el PR abierto para la rama del run fallido.
+      # -----------------------------------------------------------------------
+      - name: Find open PR for this branch
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.workflow_run.head_branch;
+            const headOwner = context.payload.workflow_run.head_repository.owner.login;
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${headOwner}:${branch}`,
+              state: 'open',
+            });
+            if (!prs.length) {
+              core.setOutput('skip', 'true');
+              return;
+            }
+            core.setOutput('skip', 'false');
+            core.setOutput('number', String(prs[0].number));
+
+      # -----------------------------------------------------------------------
+      # 2. Deduplicar — no comentar dos veces por el mismo run.
+      # -----------------------------------------------------------------------
+      - name: Check for duplicate comment
+        id: dedup
+        if: steps.pr.outputs.skip == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = '${{ github.event.workflow_run.id }}';
+            const marker = `<!-- ci-autofix-run:${runId} -->`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ steps.pr.outputs.number }}'),
+            });
+            core.setOutput(
+              'already_posted',
+              String(comments.some(c => c.body.includes(marker)))
+            );
+
+      # -----------------------------------------------------------------------
+      # 3. Listar los jobs fallidos con sus URLs para dar contexto al bot.
+      # -----------------------------------------------------------------------
+      - name: Get failed jobs
+        id: failed_jobs
+        if: |
+          steps.pr.outputs.skip == 'false' &&
+          steps.dedup.outputs.already_posted == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }},
+            });
+            const failed = data.jobs
+              .filter(j => j.conclusion === 'failure')
+              .map(j => `- **${j.name}**: [ver log](${j.html_url})`)
+              .join('\n');
+            core.setOutput('list', failed || '_(no se pudieron listar)_');
+
+      # -----------------------------------------------------------------------
+      # 4. Publicar comentario @claude con contexto del fallo.
+      # -----------------------------------------------------------------------
+      - name: Post @claude fix comment
+        if: |
+          steps.pr.outputs.skip == 'false' &&
+          steps.dedup.outputs.already_posted == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId    = '${{ github.event.workflow_run.id }}';
+            const marker   = `<!-- ci-autofix-run:${runId} -->`;
+            const workflow = '${{ github.event.workflow_run.name }}';
+            const runUrl   = '${{ github.event.workflow_run.html_url }}';
+            const failed   = `${{ steps.failed_jobs.outputs.list }}`;
+            const prNum    = parseInt('${{ steps.pr.outputs.number }}');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNum,
+              body: [
+                marker,
+                `@claude El workflow **${workflow}** ha fallado en este PR.`,
+                '',
+                '**Jobs fallidos:**',
+                failed,
+                '',
+                `[Ver run completo](${runUrl})`,
+                '',
+                'Analiza cada error en los logs, corrígelo y haz push a esta misma rama.',
+                'Reglas: no abras un PR nuevo, no cambies nada fuera del scope del fallo.',
+              ].join('\n'),
+            });
