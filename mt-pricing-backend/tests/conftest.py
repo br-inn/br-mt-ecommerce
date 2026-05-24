@@ -286,15 +286,7 @@ async def db_session_committed(db_engine: AsyncEngine) -> AsyncIterator[AsyncSes
     async with async_session_maker() as session:
         yield session
         # Limpieza post-test — orden inverso a FK constraints.
-        await session.execute(text("DELETE FROM product_translations"))
-        await session.execute(text("DELETE FROM product_assets"))
-        await session.execute(
-            text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete")
-        )
-        await session.execute(text("DELETE FROM products"))
-        await session.execute(
-            text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete")
-        )
+        await session.execute(text("TRUNCATE TABLE products CASCADE"))
         await session.execute(text("DELETE FROM import_runs"))
         await session.execute(
             text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_trg")

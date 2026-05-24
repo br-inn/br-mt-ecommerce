@@ -54,16 +54,7 @@ async def _cleanup_products_and_runs(db_session: AsyncSession):
     """
     from sqlalchemy import text
 
-    await db_session.execute(text("DELETE FROM product_translations;"))
-    await db_session.execute(text("DELETE FROM product_assets;"))
-    # products tiene trigger anti-DELETE — desactivamos para tests.
-    await db_session.execute(
-        text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete;")
-    )
-    await db_session.execute(text("DELETE FROM products;"))
-    await db_session.execute(
-        text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete;")
-    )
+    await db_session.execute(text("TRUNCATE TABLE products CASCADE;"))
     await db_session.execute(text("DELETE FROM import_runs;"))
     await db_session.commit()
     yield

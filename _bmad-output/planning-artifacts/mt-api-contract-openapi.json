@@ -32998,6 +32998,34 @@
         "title": "_DatasheetSummary",
         "type": "object"
       },
+      "_LegacyImageUploadRequest": {
+        "description": "Request schema for the DEPRECATED /images/upload-url endpoint.\n\nAccepts legacy fields ``role`` (ignored) and ``content_type`` (mapped to\n``mime_type``) that the new ``ProductAssetUploadRequest`` no longer allows,\npreserving backwards-compatibility for existing callers.",
+        "properties": {
+          "content_type": {
+            "default": "image/jpeg",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "filename": {
+            "default": "image.jpg",
+            "title": "Filename",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "title": "_LegacyImageUploadRequest",
+        "type": "object"
+      },
       "app__schemas__fx_rates__FXRateCreate": {
         "additionalProperties": false,
         "description": "POST /api/v1/fx-rates \u2014 payload de creaci\u00f3n.",
@@ -58375,7 +58403,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProductAssetUploadRequest"
+                "$ref": "#/components/schemas/_LegacyImageUploadRequest"
               }
             }
           },
