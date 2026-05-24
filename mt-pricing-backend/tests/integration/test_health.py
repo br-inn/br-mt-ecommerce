@@ -159,10 +159,13 @@ async def test_deep_db_with_token_header_works(
     """X-Healthcheck-Token alternativo al basic-auth."""
     from pydantic import SecretStr
 
-    from app.core.config import settings
+    import app.api.health as health_module
 
+    # Patch the settings reference held by the health module directly.
+    # Patching app.core.config.settings would miss if redis_container fixture
+    # already reassigned that module attribute to a new Settings instance.
     monkeypatch.setattr(
-        settings,
+        health_module.settings,
         "HEALTH_TOKEN",
         SecretStr("super-secret-token"),
     )
