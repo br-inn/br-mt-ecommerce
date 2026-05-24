@@ -112,10 +112,16 @@ COPY --from=builder --chown=appuser:appuser /build/app /app/app
 COPY --from=builder --chown=appuser:appuser /build/alembic /app/alembic
 COPY --from=builder --chown=appuser:appuser /build/alembic.ini /app/alembic.ini
 
-# La imagen base python:3.11-slim trae wheel/setuptools vulnerables en site-packages.
-# COPY desde builder superpone versiones nuevas pero no elimina los dist-info antiguos.
-# pip install --upgrade los elimina correctamente (CVE-2026-24049, CVE-2025-47273).
-RUN pip install --no-cache-dir "wheel>=0.46.2" "setuptools>=78.1.1"
+# setuptools/_vendor/ contains private copies of wheel and jaraco.context with known
+# CVEs (CVE-2026-24049, CVE-2026-23949). These are only used by setuptools when
+# building/installing packages — never called in production (no pip install at runtime).
+# Removing the vendored code eliminates the attack surface from the runtime image.
+RUN pip install --no-cache-dir "wheel>=0.46.2" "setuptools>=78.1.1" \
+    && rm -rf \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel-*.dist-info \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco \
+        /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco.context-*.dist-info
 
 USER appuser
 
