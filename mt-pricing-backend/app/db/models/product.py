@@ -305,6 +305,29 @@ class Product(Base):
         lazy="selectin",
     )
 
+    # Stage 3 — viewonly relationships para eager-load en GET /products/{sku}.
+    # Nombres _rel evitan colisión con TEXT escalares legacy series/material.
+    # lazy="raise" previene lazy-SQL accidental en contexto async.
+    series_rel: Mapped[Any] = relationship(
+        "Series",
+        foreign_keys="[Product.series_id]",
+        lazy="raise",
+        viewonly=True,
+    )
+    material_rel: Mapped[Any] = relationship(
+        "Material",
+        foreign_keys="[Product.material_id]",
+        lazy="raise",
+        viewonly=True,
+    )
+    display_pair_rel: Mapped[Any] = relationship(
+        "Product",
+        foreign_keys="[Product.display_pair_sku]",
+        primaryjoin="Product.display_pair_sku == Product.sku",
+        lazy="raise",
+        viewonly=True,
+    )
+
     # ---- Fase B hybrid properties (read-only compat layer) ------------------
     # Permiten que código legacy siga leyendo prod.active / prod.name_en /
     # prod.description_en / prod.marketing_copy_en sin reescribir.

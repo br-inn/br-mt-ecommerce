@@ -123,6 +123,9 @@ class ProductRepository(BaseRepository[Product]):
                 selectinload(Product.assets),
                 selectinload(Product.product_divisions).selectinload(ProductDivision.division),
                 joinedload(Product.model),
+                joinedload(Product.series_rel),
+                joinedload(Product.material_rel),
+                joinedload(Product.display_pair_rel).selectinload(Product.translations),
             )
         )
         result = await self.session.execute(stmt, execution_options={"populate_existing": True})
