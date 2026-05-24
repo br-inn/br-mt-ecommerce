@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, CheckCircle2, Circle, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Circle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,20 +12,10 @@ import { financeApi, type PeriodCloseChecklist } from "@/lib/api/endpoints/finan
 const CURRENT_YEAR = new Date().getFullYear();
 const CURRENT_PERIOD = new Date().getMonth() + 1;
 
-type ChecklistItem = string | { name: string; completed: boolean };
-
-function getItemName(item: ChecklistItem): string {
-  return typeof item === "string" ? item : item.name;
-}
-
-function isItemDone(item: ChecklistItem): boolean {
-  return typeof item === "string" ? false : item.completed;
-}
-
 export default function CierrePage() {
   const qc = useQueryClient();
 
-  const { data: checklists, isLoading } = useQuery({
+  const { isLoading } = useQuery({
     queryKey: ["finance", "period-close"],
     queryFn: () => financeApi.listAccounts().then(() => [] as PeriodCloseChecklist[]), // placeholder
   });

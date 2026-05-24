@@ -184,7 +184,6 @@ export function HumanQueueClient() {
   }
 
   const items = data?.items ?? [];
-  const total = data?.total ?? 0;
   const hasMore = items.length === PAGE_SIZE;
   const hasPrev = offset > 0;
 

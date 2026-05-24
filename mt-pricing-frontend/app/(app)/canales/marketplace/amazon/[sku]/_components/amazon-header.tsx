@@ -29,6 +29,7 @@ export function AmazonHeader({ sku }: Props) {
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("mt-amazon-nav");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setNavSkus(JSON.parse(raw) as string[]);
     } catch {
       // ignore

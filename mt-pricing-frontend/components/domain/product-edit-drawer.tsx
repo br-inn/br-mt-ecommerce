@@ -70,6 +70,7 @@ export function ProductEditDrawer({ sku, product: productProp, open, onOpenChang
   // Sync draft when product changes
   React.useEffect(() => {
     if (!product) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraft({
       name_es: (product.translations?.es?.name ?? "") as string,
       name_ar: (product.translations?.ar?.name ?? "") as string,

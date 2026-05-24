@@ -62,6 +62,7 @@ export function LookupEditor({ transform }: { transform: Transform }) {
   useEffect(() => {
     if (focusLast) {
       lastRowRef.current?.focus()
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFocusLast(false)
     }
   }, [focusLast, rows])

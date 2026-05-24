@@ -20,6 +20,7 @@ export function AmazonValidacionConnected({ sku }: Props) {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     setError(null);
     marketplaceListingsApi

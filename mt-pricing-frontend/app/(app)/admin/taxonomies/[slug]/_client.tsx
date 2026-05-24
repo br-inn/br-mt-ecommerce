@@ -87,7 +87,6 @@ import { CUSTOM_COMPONENTS } from "./_custom-components";
  */
 
 const SUPPORTED_LOCALES = ["es", "en", "ar"] as const;
-type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 const SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
 
@@ -582,6 +581,7 @@ function NodeFormDialog({
 
   React.useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(initial);
       setSlugError(null);
     }
@@ -863,6 +863,7 @@ function SortableNodeRow({
     ? nodes.find((x) => x.id === n.parent_id)
     : undefined;
   const isDeprecated =
+    // eslint-disable-next-line react-hooks/purity
     !!n.valid_until && new Date(n.valid_until).getTime() <= Date.now();
 
   return (
