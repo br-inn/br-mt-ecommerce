@@ -261,10 +261,16 @@ async def _build_product_detail(prod: Any) -> ProductDetail:
         "translations": [ProductTranslationResponse.model_validate(t) for t in prod.translations],
         "images": [ProductImageResponse.model_validate(i) for i in photo_assets],
         "primary_image_url": primary_image_url,
-        "series_detail": SeriesResponse.model_validate(prod.series_rel) if prod.series_rel else None,
-        "material_detail": MaterialResponse.model_validate(prod.material_rel) if prod.material_rel else None,
-        "display_pair": ProductMini.model_validate(prod.display_pair_rel) if prod.display_pair_rel else None,
-        "model_detail": ProductModelResponse.model_validate(prod.model) if prod.model else None,
+        "series_detail": (
+            SeriesResponse.model_validate(prod.series_rel) if prod.series_rel else None
+        ),
+        "material_detail": (
+            MaterialResponse.model_validate(prod.material_rel) if prod.material_rel else None
+        ),
+        "display_pair": (
+            ProductMini.model_validate(prod.display_pair_rel) if prod.display_pair_rel else None
+        ),
+        "model_detail": (ProductModelResponse.model_validate(prod.model) if prod.model else None),
     }
 
     return ProductDetail.model_validate(detail_data)
