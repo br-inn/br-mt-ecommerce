@@ -404,7 +404,9 @@ async def test_translation_upsert_idempotent(
     # Verifica via GET /translations
     res3 = await client.get("/api/v1/products/MT-V-200/translations", headers=headers)
     assert res3.status_code == 200
-    assert len(res3.json()) == 1
+    ar_translations = [t for t in res3.json() if t["lang"] == "ar"]
+    assert len(ar_translations) == 1
+    assert ar_translations[0]["name"] == body2["name"]
 
 
 @pytest.mark.integration

@@ -125,7 +125,7 @@ class ProductRepository(BaseRepository[Product]):
                 joinedload(Product.model),
             )
         )
-        result = await self.session.execute(stmt)
+        result = await self.session.execute(stmt, execution_options={"populate_existing": True})
         return result.scalar_one_or_none()
 
     async def list_paginated_with_filters(
