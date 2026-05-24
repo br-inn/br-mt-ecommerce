@@ -18,3 +18,7 @@ output "domain" {
 
 # TODO(infra-sprint-1): expose floating_ip, server_ipv4, server_ipv6,
 # database_dsn (sensitive), object_storage_endpoint, etc.
+
+# Sentry DSN outputs require sentry_key data sources (sentry_project has no dsn attribute).
+# Retrieve DSNs from the Sentry UI or via `terraform output` after apply with SENTRY_AUTH_TOKEN.
+# See: https://registry.terraform.io/providers/jianyuan/sentry/latest/docs/resources/key
