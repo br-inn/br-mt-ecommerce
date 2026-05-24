@@ -10,7 +10,7 @@ Los documentos de conocimiento de negocio (Manual Operativo, legales) siguen en 
 
 ## Documentos
 
-### [[Estrategia_Requisitos_Funcionales_SpecKit_ES]] `.docx`
+### [[estrategia-requisitos]]
 
 **Para quién:** todo el equipo (PM, tech lead, desarrolladores).
 
@@ -20,16 +20,17 @@ cómo se redactan los escenarios Given/When/Then y cuándo un proceso está "hec
 
 ---
 
-### [[Estrategia_Desarrollo_Guia_Equipo_ES]] `.docx`
+### [[guia-desarrollo-equipo]]
 
 **Para quién:** desarrolladores y tech lead.
 
 Guía práctica del equipo: convenciones de código, flujo git/PR, stack técnico, reglas de
-CI y cómo encajan el backend, frontend, worker y base de datos en el día a día.
+CI y cómo encajan el backend, frontend, worker y base de datos en el día a día. Incluye
+la descripción de cómo se conectan lógicamente el repositorio y la carpeta del proyecto.
 
 ---
 
-### [[Estrategia_Pruebas_Validacion_SpecKit_ES]]
+### [[estrategia-pruebas]]
 
 **Para quién:** todo el equipo; especialmente QA y tech lead.
 
@@ -39,7 +40,7 @@ requisito a la prueba, la Definición de Hecho de pruebas y los gates de CI.
 
 ---
 
-### [[F1-CAT_Plan_de_Pruebas]]
+### [[f1-cat-plan-de-pruebas]]
 
 **Para quién:** equipo técnico + responsable de F1.
 
@@ -49,7 +50,7 @@ de cobertura y proporciona ejemplos de casos de prueba para la Capa 3.
 
 ---
 
-### [[F1-CAT_Control_Piloto]]
+### [[f1-cat-control-piloto]]
 
 **Para quién:** responsable de F1 y PM.
 
@@ -62,6 +63,6 @@ Se mantiene actualizado desde Cowork tras cada ejecución de Claude Code.
 ## Nota — Matriz maestra de trazabilidad
 
 `Matriz_Trazabilidad_Verificacion_SpecKit.xlsx` aún no tiene hogar estable. Decisión
-pendiente (ver [[F1-CAT_Control_Piloto]] §5 NOTA 2): versionar en `specs/_matriz/` del
+pendiente (ver [[f1-cat-control-piloto]] §5 NOTA 2): versionar en `specs/_matriz/` del
 repo o mantener en `MT-ME\F1-Control\`. Hasta resolverlo, la fuente de verdad por proceso
 es el `traceability-<dom>.csv` en `specs/NNN-<dom>-<slug>/`.

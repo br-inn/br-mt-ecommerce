@@ -15,6 +15,7 @@ onboarding, deployment).
 |---|---|
 | [`architecture/`](./architecture/) | Arquitectura v1.4, diagrama C4 nivel 1 y links a documentos vivos |
 | [`adr/`](./adr/) | Índice de los **54 ADRs** con status (proposed / accepted / superseded) |
+| [`estrategia/`](./estrategia/) | Documentación de estrategia: guía de desarrollo del equipo, estrategia de requisitos y de pruebas |
 | [`runbooks/`](./runbooks/) | RB-01 a RB-15 (placeholders, se completan en Sprint X+) |
 | [`onboarding/`](./onboarding/) | Guía paso-a-paso para que un dev nuevo arranque local en < 15 min y mergee su primer PR en < 1 día |
 | [`deployment/`](./deployment/) | CI/CD, releases, rollbacks (placeholder, link a `mt-cicd-pipeline.md`) |
