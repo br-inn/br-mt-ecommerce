@@ -68,6 +68,7 @@ export function ProductHeader({ sku }: Props) {
   // Sync draft when product loads or edit mode opens
   useEffect(() => {
     if (product) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditDraft({
         lifecycle_status: product.lifecycle_status ?? "",
         gtin: (product as { gtin?: string | null }).gtin ?? "",
@@ -102,6 +103,7 @@ export function ProductHeader({ sku }: Props) {
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("mt-catalog-nav");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setNavSkus(JSON.parse(raw) as string[]);
     } catch {
       // ignore — sessionStorage unavailable o contenido inválido

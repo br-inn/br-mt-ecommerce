@@ -227,7 +227,6 @@ export function PricingDashboardClient() {
   }
 
   const pending = data?.pending_review_count ?? 0;
-  const autoApproved = data?.auto_approved_count ?? 0;
   const approvedToday = data?.approved_today_count ?? 0;
   const escalated = data?.escalated_count ?? 0;
   const lagHours = data?.avg_approval_lag_hours ?? 0;

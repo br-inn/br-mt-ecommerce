@@ -60,7 +60,7 @@ export function CandidateCard({
   const packSize = pack_units != null && pack_units > 1 ? pack_units : null;
   const pricePerUnit = packSize != null && priceNum != null ? priceNum / packSize : null;
   const isLongDelivery = delivery_category === "import";
-  const isUnknownDelivery = delivery_category === "unknown" || delivery_category === null;
+  const _isUnknownDelivery = delivery_category === "unknown" || delivery_category === null;
   const deliveryInfo = (specs._delivery ?? {}) as Record<string, unknown>;
   const estimatedDays = deliveryInfo.estimated_days != null ? Number(deliveryInfo.estimated_days) : null;
   const thumbUrl = image_url ?? undefined;

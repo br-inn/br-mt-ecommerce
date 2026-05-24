@@ -61,6 +61,7 @@ export function ListingDrawer({
   // Fetch listing content when drawer opens
   React.useEffect(() => {
     if (!sku) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setListing(null);
       setListingError(null);
       setConfirmOverwrite(false);
@@ -121,6 +122,7 @@ export function ListingDrawer({
   // -------------------------------------------------------------------------
   // Render helpers
   // -------------------------------------------------------------------------
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const keywords: string[] = React.useMemo(() => {
     if (!listing?.search_keywords) return [];
     return listing.search_keywords

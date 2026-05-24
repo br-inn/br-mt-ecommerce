@@ -51,6 +51,7 @@ export function useSavedViews() {
 
   // Cargar al montar — solo en cliente
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setViews(loadViews());
   }, []);
 

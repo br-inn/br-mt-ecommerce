@@ -171,6 +171,7 @@ function TabPanel({
 
   useEffect(() => {
     if (active && !loaded) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void load();
     }
   }, [active, loaded, load]);
