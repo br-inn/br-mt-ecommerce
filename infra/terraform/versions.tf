@@ -21,10 +21,6 @@ terraform {
       source  = "jianyuan/sentry"
       version = "~> 0.13"
     }
-    better-stack = {
-      source  = "BetterStackHQ/betterstack"
-      version = "~> 0.4"
-    }
     doppler = {
       source  = "DopplerHQ/doppler"
       version = "~> 1.7"
