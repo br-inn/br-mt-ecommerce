@@ -263,3 +263,30 @@ verificar en `check-prerequisites.ps1` requirió múltiples pasos.
 **Impacto**: Menor — el workflow no bloqueó.
 **Recomendación**: Documentar explícitamente el flujo "rama pre-existente" en el skill
 `speckit-git-feature`.
+
+---
+
+## Actualización post-pruebas F1-CAT (2026-05-24)
+
+| Categoría | Total | Verde | xfail | Sin test |
+|-----------|-------|-------|-------|----------|
+| FR | 37 | 36 | 1 (FR-CAT-031) | 0 |
+| NFR | 5 | 3 | 1 (NFR-CAT-002) | 1 (NFR-CAT-003 cubierto parcialmente en FR-003 + FR-026) |
+| BR | 5 | 5 | 0 | 0 |
+
+**Tests automatizados**: `mt-pricing-backend/tests/api/test_cat_acceptance.py`
+(35+ tests, marcador `acceptance`, sin mocks de DB — testcontainers Postgres)
+
+**E2E nuevos (Capa 2)**:
+- `mt-pricing-frontend/tests/e2e/20-product-create.spec.ts` — FR-CAT-001, 002
+- `mt-pricing-frontend/tests/e2e/21-product-delete.spec.ts` — FR-CAT-027, 028, 029
+
+**Brechas activas con xfail**:
+- BRECHA-CAT-02: `_raise_domain()` sin `type`/`instance` de RFC 7807 → `xfail` en NFR-CAT-002
+- BRECHA-CAT-04: `manual_locked_fields` en `classify_pim_batch_task` sin confirmar → `xfail` en FR-CAT-031
+
+**Correr la suite**:
+```bash
+cd mt-pricing-backend
+uv run pytest -m acceptance -v
+```
