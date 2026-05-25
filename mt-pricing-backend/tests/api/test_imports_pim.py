@@ -370,7 +370,7 @@ async def test_preview_invalid_header_returns_422(
     files = {"file": ("bad.xlsx", bio.getvalue(), "application/octet-stream")}
     r = await client.post("/api/v1/imports/preview", files=files, headers=headers)
     assert r.status_code == 422
-    assert r.json()["detail"]["code"] == "import_header_mismatch"
+    assert r.json()["code"] == "import_header_mismatch"
 
 
 @pytest.mark.integration

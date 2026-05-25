@@ -157,7 +157,7 @@ async def test_create_supplier_duplicate_returns_409(
     assert r1.status_code == 201
     r2 = await client.post("/api/v1/suppliers", json=_payload(code), headers=headers)
     assert r2.status_code == 409
-    assert r2.json()["detail"]["code"] == "supplier_duplicate_code"
+    assert r2.json()["code"] == "supplier_duplicate_code"
 
 
 @pytest.mark.integration
@@ -254,7 +254,7 @@ async def test_delete_supplier_returns_405(client: AsyncClient, db_session: Asyn
 
     r = await client.delete(f"/api/v1/suppliers/{code}", headers=headers)
     assert r.status_code == 405
-    assert r.json()["detail"]["code"] == "vat_compliance_block"
+    assert r.json()["code"] == "vat_compliance_block"
 
 
 @pytest.mark.integration

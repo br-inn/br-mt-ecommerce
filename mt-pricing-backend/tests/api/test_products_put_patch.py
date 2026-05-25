@@ -209,7 +209,7 @@ async def test_put_with_if_match_stale_returns_412(
         headers={**headers, "If-Match": stale},
     )
     assert r.status_code == 412
-    assert r.json()["detail"]["code"] == "product_precondition_failed"
+    assert r.json()["code"] == "product_precondition_failed"
 
 
 @pytest.mark.integration
@@ -236,7 +236,7 @@ async def test_put_respects_manual_locked_fields(
     body["dn"] = "DN100"  # cambio sobre lock
     r = await client.put(f"/api/v1/products/{sku}", json=body, headers=headers)
     assert r.status_code == 409, r.text
-    assert r.json()["detail"]["code"] == "product_locked_field"
+    assert r.json()["code"] == "product_locked_field"
 
 
 @pytest.mark.integration
@@ -276,7 +276,7 @@ async def test_patch_data_quality_complete_requires_fields(
         headers=headers,
     )
     assert r.status_code == 422
-    assert r.json()["detail"]["code"] == "product_data_quality_invalid_transition"
+    assert r.json()["code"] == "product_data_quality_invalid_transition"
 
 
 @pytest.mark.integration
