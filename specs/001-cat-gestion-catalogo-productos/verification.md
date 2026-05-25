@@ -23,7 +23,7 @@
 
 | FR | Estado | Evidencia | Brecha / Notas | BMAD |
 |----|--------|-----------|----------------|------|
-| FR-CAT-001 | ⚠️ Parcial | `product_service.py:299-346` | La creación extrae `name_en` y crea traducción EN si se provee, pero el schema `ProductCreate` (Fase B) no exige `name_en` como campo obligatorio; un producto puede crearse sin él (`schemas.py:121-128`). Ver BR-CAT-001. | — |
+| FR-CAT-001 | ✅ Verificado | `product_service.py:316-322` | Guardia en `create_product`: si `name_en` no se provee o está vacío, lanza `ProductMissingNameEnError` (HTTP 422). Cubre callers HTTP (Pydantic) y callers internos (PIM, workers). | — |
 | FR-CAT-002 | ✅ Verificado | `product.py:101-103` | `server_default=text("'partial'")` — correctamente asignado por defecto en BD. | — |
 | FR-CAT-003 | ✅ Verificado | `product_service.py:338-345` | `audit.record(action="product.created")` con actor_id, actor_email, timestamp, after=snapshot. | — |
 | FR-CAT-004 | ✅ Verificado | `product_service.py:301-303`; `products.py:640` | `ProductAlreadyExistsError` → HTTP 409 con código `product_duplicate_sku`. | — |
@@ -167,7 +167,7 @@
 
 | BR | Estado | Evidencia | Brecha / Notas | BMAD |
 |----|--------|-----------|----------------|------|
-| BR-CAT-001 (name_en NOT NULL) | ❌ No cumple | `schemas.py:121-128`; `product_service.py:272-297` | `ProductBase` (Fase B) eliminó `name_en` como campo del schema. `ProductCreate` hereda `ProductBase` → `name_en` es **opcional en el schema**. El servicio crea la traducción EN si se provee, pero no la exige. Un producto puede persistirse sin ninguna traducción EN, contradiciendo el PRD §5.3 ("EN canónico NOT NULL"). **Brecha de conformidad** — impacto: OKR O1a.5 (EN canónico 100% NOT NULL) no está enforced por código. | — |
+| BR-CAT-001 (name_en NOT NULL) | ✅ Verificado | `product_service.py:316-322`; `test_cat_acceptance.py` | Guardia añadida en `create_product` (BRECHA-CAT-01 cerrada, PR #67): `ProductMissingNameEnError` (HTTP 422, code `product_missing_name_en`) si `name_en` no se provee. Aplica a rutas HTTP y a callers internos. Tests: `test_create_product_without_name_en_returns_422_br_cat_001` y `test_service_layer_rejects_missing_name_en_br_cat_001`. | — |
 | BR-CAT-002 (SKU inmutable) | ✅ Verificado | `product_service.py:83-91` (`ProductImmutableFieldError`); `product.py:55` (TEXT PK) | SKU es la PK de la tabla; el servicio rechaza con 422 cualquier intento de cambiar campos inmutables. | — |
 | BR-CAT-003 (Solo soft-delete) | ✅ Verificado | `products.py:934-950` | El único endpoint DELETE del dominio CAT llama `service.soft_delete_product`. No hay endpoint de hard-delete expuesto. | — |
 | BR-CAT-004 (manual_locked_fields) | ✅ Verificado | `product_service.py:60-66` | `ProductLockedFieldError` previene sobreescritura de campos en `manual_locked_fields`. Validado en PATCH. El comportamiento del PVF sobre `manual_locked_fields` requiere confirmación en `classify_pim_batch_task` (ver FR-CAT-031). | — |
@@ -179,25 +179,29 @@
 
 | Categoría | Total | ✅ Verificado | ⚠️ Parcial | ❌ No cumple | ⬜ No implementado |
 |-----------|-------|--------------|-----------|-------------|-------------------|
-| FR (funcionales) | 37 | 34 | 3 | 0 | 0 |
+| FR (funcionales) | 37 | 35 | 2 | 0 | 0 |
 | NFR (no funcionales) | 5 | 3 | 2 | 0 | 0 |
-| BR (reglas negocio) | 5 | 4 | 0 | 1 | 0 |
-| **Total** | **47** | **41** | **5** | **1** | **0** |
+| BR (reglas negocio) | 5 | 5 | 0 | 0 | 0 |
+| **Total** | **47** | **43** | **4** | **0** | **0** |
 
-**Cobertura**: 87 % Verificado + 11 % Parcial + 2 % No cumple = 100 % con código existente.
+**Cobertura**: 91 % Verificado + 9 % Parcial + 0 % No cumple = 100 % con código existente.
 
 ---
 
 ## Brechas identificadas (candidatas a issues post-F1)
 
-### BRECHA-CAT-01 — name_en NO enforced como obligatorio (BR-CAT-001) — issue #67
+### BRECHA-CAT-01 — name_en enforced en capa de servicio (BR-CAT-001) — issue #67 ✅ CERRADA
 **Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/67
 **Severidad**: Alta
 **FR/BR afectados**: FR-CAT-001, BR-CAT-001
-**Descripción**: `ProductCreate` schema no exige `name_en`. Un producto puede crearse sin
-traducción EN, contradiciendo el PRD §5.3 y el OKR O1a.5.
-**Acción sugerida**: Añadir validación en `ProductCreate` (o en `create_product` del servicio)
-que rechace con HTTP 422 si `name_en` no está presente en el body.
+**Descripción (original)**: `ProductCreate` schema no exigía `name_en`. Un producto podía
+crearse sin traducción EN, contradiciendo el PRD §5.3 y el OKR O1a.5.
+**Corrección aplicada**: Guardia en `ProductService.create_product` — si `_extract_en_translation_payload`
+devuelve `None` o un payload sin `name`, se lanza `ProductMissingNameEnError` (HTTP 422,
+code `product_missing_name_en`). Cubre callers HTTP (Pydantic schema ya exigía el campo) y
+callers internos (PIM importers, workers) que llaman a `create_product` directamente con un dict.
+**Tests**: `test_create_product_without_name_en_returns_422_br_cat_001` (HTTP 422) y
+`test_service_layer_rejects_missing_name_en_br_cat_001` (service directo sin HTTP).
 **Hallazgo BMAD relacionado**: no catalogado en auditoría BMAD (nuevo hallazgo F1).
 
 ### BRECHA-CAT-02 — RFC 7807 inconsistente en responses de error (NFR-CAT-002) — issue #68
@@ -271,11 +275,11 @@ verificar en `check-prerequisites.ps1` requirió múltiples pasos.
 
 ---
 
-## Actualización post-pruebas F1-CAT (2026-05-24)
+## Actualización post-pruebas F1-CAT (2026-05-24) — revisado 2026-05-25 (BRECHA-CAT-01)
 
 | Categoría | Total | Verde | xfail | Sin test |
 |-----------|-------|-------|-------|----------|
-| FR | 37 | 36 | 1 (FR-CAT-031) | 0 |
+| FR | 37 | 37 | 1 (FR-CAT-031) | 0 |
 | NFR | 5 | 3 | 1 (NFR-CAT-002) | 1 (NFR-CAT-003 cubierto parcialmente en FR-003 + FR-026) |
 | BR | 5 | 5 | 0 | 0 |
 
@@ -287,6 +291,7 @@ verificar en `check-prerequisites.ps1` requirió múltiples pasos.
 - `mt-pricing-frontend/tests/e2e/21-product-delete.spec.ts` — FR-CAT-027, 028, 029
 
 **Brechas activas con xfail**:
+- BRECHA-CAT-01: CERRADA — guardia en `create_product` (PR fix/cat-01-name-en-service, issue #67)
 - BRECHA-CAT-02: `_raise_domain()` sin `type`/`instance` de RFC 7807 → `xfail` en NFR-CAT-002
 - BRECHA-CAT-04: `manual_locked_fields` en `classify_pim_batch_task` sin confirmar → `xfail` en FR-CAT-031
 
