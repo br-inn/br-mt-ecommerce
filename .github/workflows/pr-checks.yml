@@ -28,6 +28,7 @@ jobs:
   # ---------------------------------------------------------------------------
   commitlint:
     name: Conventional commits
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -83,6 +84,7 @@ jobs:
   # ---------------------------------------------------------------------------
   pr-template:
     name: PR template completeness
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

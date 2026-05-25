@@ -1,5 +1,5 @@
 generated: "2026-05-12T00:00:00.000Z"
-last_updated: "2026-05-20T21:00:00.000Z"  # S18: US-SCR-05-04 done — EP-SCR-05 cerrado — todos epics ERP/SCR cerrados
+last_updated: "2026-05-25T12:00:00.000Z"  # revisión github: Dependabot PRs #81/#82 desbloqueados; issue #84 (BRECHA-CAT-02) deuda técnica abierta
 project: "MT Middle East MDM + Pricing Fase 1"
 project_key: "mt-pricing-mdm-phase1"
 tracking_system: "BMAD sprint-status"
