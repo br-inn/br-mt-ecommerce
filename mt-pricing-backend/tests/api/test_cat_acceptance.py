@@ -337,9 +337,7 @@ async def test_service_layer_rejects_missing_name_en_br_cat_001(
 
     uid, email = admin_creds
     user = (
-        await db_session_committed.execute(
-            select(User).where(User.email == email)
-        )
+        await db_session_committed.execute(select(User).where(User.email == email))
     ).scalar_one()
 
     service = ProductService(db_session_committed)
