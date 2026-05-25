@@ -94,6 +94,21 @@ def upgrade() -> None:
         type_=sa.String(32),
         existing_nullable=True,
     )
+    # is_active and created_at: DB created nullable, model requires NOT NULL.
+    op.alter_column(
+        "approval_rules",
+        "is_active",
+        existing_type=sa.Boolean(),
+        nullable=False,
+        existing_server_default=sa.text("true"),
+    )
+    op.alter_column(
+        "approval_rules",
+        "created_at",
+        existing_type=sa.DateTime(timezone=True),
+        nullable=False,
+        existing_server_default=sa.text("now()"),
+    )
     # FK: auth.users → public.users (SET NULL)
     op.drop_constraint(
         "approval_rules_approver_user_id_fkey",
@@ -125,6 +140,20 @@ def downgrade() -> None:
         ["approver_user_id"],
         ["id"],
         referent_schema="auth",
+    )
+    op.alter_column(
+        "approval_rules",
+        "created_at",
+        existing_type=sa.DateTime(timezone=True),
+        nullable=True,
+        existing_server_default=sa.text("now()"),
+    )
+    op.alter_column(
+        "approval_rules",
+        "is_active",
+        existing_type=sa.Boolean(),
+        nullable=True,
+        existing_server_default=sa.text("true"),
     )
     op.alter_column(
         "approval_rules",
