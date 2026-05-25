@@ -124,27 +124,40 @@ async def _apply_one(
         payload = dict(diff.payload)
         payload["created_by"] = actor.id
         payload["updated_by"] = actor.id
-        # Fase B (mig 065): name_en/description_en/marketing_copy_en are no
-        # longer columns on Product — strip them and upsert as translations
-        # after INSERT so repo.create(**payload) never receives unknown kwargs.
-        name_en = payload.pop("name_en", None)
+        # Fase B (mig 065): name_*/description_en/marketing_copy_en are not
+        # columns on Product — strip them and upsert to product_translations.
+        # name_es/name_ar can arrive from custom_mapping (translations.* fields).
+        _TR_LANGS = ("en", "es", "ar")
+        trans_names: dict[str, str] = {}
+        for _lang in _TR_LANGS:
+            _v = payload.pop(f"name_{_lang}", None)
+            if _v is not None:
+                trans_names[_lang] = _v
         description_en = payload.pop("description_en", None)
         marketing_copy_en = payload.pop("marketing_copy_en", None)
         payload.pop("tags", None)
         payload.pop("active", None)
         prod = await repo.create(**payload)
-        if name_en or description_en or marketing_copy_en:
+        if trans_names or description_en or marketing_copy_en:
             from app.repositories.product import ProductTranslationRepository
 
             tr_repo = ProductTranslationRepository(session)
-            tr_kwargs: dict[str, Any] = {"status": "approved"}
-            if name_en is not None:
-                tr_kwargs["name"] = name_en
+            # English — may carry description + marketing_copy too
+            en_kwargs: dict[str, Any] = {"status": "approved"}
+            if trans_names.get("en") is not None:
+                en_kwargs["name"] = trans_names["en"]
             if description_en is not None:
-                tr_kwargs["description"] = description_en
+                en_kwargs["description"] = description_en
             if marketing_copy_en is not None:
-                tr_kwargs["marketing_copy"] = marketing_copy_en
-            await tr_repo.upsert(sku=prod.sku, lang="en", **tr_kwargs)
+                en_kwargs["marketing_copy"] = marketing_copy_en
+            if len(en_kwargs) > 1:  # has fields beyond status
+                await tr_repo.upsert(sku=prod.sku, lang="en", **en_kwargs)
+            # Other supported languages (name only)
+            for _lang in ("es", "ar"):
+                if _lang in trans_names:
+                    await tr_repo.upsert(
+                        sku=prod.sku, lang=_lang, name=trans_names[_lang], status="approved"
+                    )
         await audit.record(
             entity_type="product",
             entity_id=diff.sku or "",

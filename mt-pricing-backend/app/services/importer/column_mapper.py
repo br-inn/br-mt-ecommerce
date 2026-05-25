@@ -413,6 +413,10 @@ def map_row_with_mapping(
             if prefix in jsonb_buckets:
                 stored: Any = str(casted) if isinstance(casted, Decimal) else casted
                 jsonb_buckets[prefix][key] = stored
+            elif prefix == "translations":
+                # translations.en → name_en, translations.es → name_es, etc.
+                # Applier strips these from payload and upserts to product_translations.
+                payload[f"name_{key}"] = casted
         else:
             payload[field] = casted
 

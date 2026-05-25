@@ -168,13 +168,18 @@ async def test_suggest_mapping_strips_markdown_fence():
 
 
 @pytest.mark.asyncio
-async def test_suggest_mapping_returns_skip_when_no_api_key():
-    """Sin api_key configurada retorna fallback _skip sin llamar al LLM."""
+async def test_suggest_mapping_uses_heuristic_when_no_api_key():
+    """Sin api_key configurada usa el mapeador heurístico en vez de llamar al LLM."""
     result = await suggest_mapping(
         headers=["SKU", "Familia"],
         sample_rows=[["1010", "Valvulas"]],
         api_key="",
     )
     assert len(result) == 2
-    assert all(r.target_field == "_skip" for r in result)
-    assert all(r.confidence == 0.0 for r in result)
+    # Heuristic correctly identifies known Spanish headers
+    assert result[0].excel_col == "SKU"
+    assert result[0].target_field == "sku"
+    assert result[1].excel_col == "Familia"
+    assert result[1].target_field == "family"
+    # Confidence > 0 (heuristic match, not blind _skip)
+    assert all(r.confidence > 0 for r in result)
