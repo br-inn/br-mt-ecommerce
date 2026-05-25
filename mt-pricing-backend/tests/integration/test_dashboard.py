@@ -133,7 +133,7 @@ async def test_dashboard_unauthenticated_returns_401(client: AsyncClient) -> Non
     res = await client.get("/api/v1/dashboard/stats")
     assert res.status_code == 401
     body = res.json()
-    assert body["detail"]["title"] == "Missing bearer token"
+    assert body["title"] == "Missing bearer token"
 
 
 @pytest.mark.integration

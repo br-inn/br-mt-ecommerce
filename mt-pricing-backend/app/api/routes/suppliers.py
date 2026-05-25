@@ -42,7 +42,12 @@ def get_supplier_service(
 def _raise_domain(err: SupplierDomainError) -> None:
     raise HTTPException(
         status_code=err.status_code,
-        detail={"code": err.code, "title": err.message},
+        detail={
+            "type": f"https://mtme-api/errors/{err.code}",
+            "title": err.message,
+            "status": err.status_code,
+            "code": err.code,
+        },
     )
 
 
@@ -208,8 +213,10 @@ async def delete_supplier_blocked(
     raise HTTPException(
         status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
         detail={
-            "code": "vat_compliance_block",
+            "type": "https://mtme-api/errors/vat_compliance_block",
             "title": "DELETE no permitido sobre suppliers (BR VAT-compliance UAE).",
+            "status": status.HTTP_405_METHOD_NOT_ALLOWED,
+            "code": "vat_compliance_block",
             "detail": "Usa PATCH /suppliers/{code} con `active=false` para desactivar.",
         },
     )
