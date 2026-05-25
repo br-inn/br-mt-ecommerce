@@ -320,6 +320,58 @@ async def test_create_product_without_name_en_returns_422_br_cat_001(
     )
 
 
+async def test_service_layer_rejects_missing_name_en_br_cat_001(
+    db_session_committed: AsyncSession, admin_creds: tuple[UUID, str]
+) -> None:
+    """BR-CAT-001 (service layer): create_product directo sin name_en lanza 422.
+
+    Verifica la guardia en la capa de servicio independientemente del schema
+    Pydantic — cubre callers internos (PIM importers, workers) que invocan
+    ProductService.create_product() con un dict sin pasar por la ruta HTTP.
+    """
+    from app.db.models.user import User
+    from app.services.products.product_service import (
+        ProductMissingNameEnError,
+        ProductService,
+    )
+
+    uid, email = admin_creds
+    user = (
+        await db_session_committed.execute(select(User).where(User.email == email))
+    ).scalar_one()
+
+    service = ProductService(db_session_committed)
+    data_without_name_en = {
+        "sku": "SVC-NO-NAME-EN",
+        "family": "valves_ball",
+        "brand": "MT",
+        "material": "brass",
+        "dn": "DN50",
+        "pn": "PN16",
+    }
+    with pytest.raises(ProductMissingNameEnError) as exc_info:
+        await service.create_product(data_without_name_en, user)
+
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.code == "product_missing_name_en"
+
+
+async def test_create_product_with_name_en_returns_201_fr_cat_001_service(
+    client: AsyncClient, admin_creds: tuple[UUID, str]
+) -> None:
+    """FR-CAT-001 (regresion): crear con name_en valido sigue devolviendo 201."""
+    uid, email = admin_creds
+    r = await client.post(
+        "/api/v1/products",
+        json=_minimal_create("WITH-NAME-EN"),
+        headers=_auth(uid, email),
+    )
+    assert r.status_code == 201, (
+        f"Crear con name_en debe retornar 201. Recibido {r.status_code}: {r.text}"
+    )
+    assert r.json()["sku"] == "WITH-NAME-EN"
+
+
 # ===========================================================================
 # Area 2 — Consulta de ficha  GET /api/v1/products/{sku}
 # ===========================================================================

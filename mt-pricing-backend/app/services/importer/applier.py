@@ -124,7 +124,27 @@ async def _apply_one(
         payload = dict(diff.payload)
         payload["created_by"] = actor.id
         payload["updated_by"] = actor.id
-        await repo.create(**payload)
+        # Fase B (mig 065): name_en/description_en/marketing_copy_en are no
+        # longer columns on Product — strip them and upsert as translations
+        # after INSERT so repo.create(**payload) never receives unknown kwargs.
+        name_en = payload.pop("name_en", None)
+        description_en = payload.pop("description_en", None)
+        marketing_copy_en = payload.pop("marketing_copy_en", None)
+        payload.pop("tags", None)
+        payload.pop("active", None)
+        prod = await repo.create(**payload)
+        if name_en or description_en or marketing_copy_en:
+            from app.repositories.product import ProductTranslationRepository
+
+            tr_repo = ProductTranslationRepository(session)
+            tr_kwargs: dict[str, Any] = {"status": "approved"}
+            if name_en is not None:
+                tr_kwargs["name"] = name_en
+            if description_en is not None:
+                tr_kwargs["description"] = description_en
+            if marketing_copy_en is not None:
+                tr_kwargs["marketing_copy"] = marketing_copy_en
+            await tr_repo.upsert(sku=prod.sku, lang="en", **tr_kwargs)
         await audit.record(
             entity_type="product",
             entity_id=diff.sku or "",

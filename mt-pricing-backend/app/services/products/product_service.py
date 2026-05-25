@@ -91,6 +91,20 @@ class ProductImmutableFieldError(ProductDomainError):
         )
 
 
+class ProductMissingNameEnError(ProductDomainError):
+    """name_en es obligatorio en la creación (BR-CAT-001 / BRECHA-CAT-01)."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            code="product_missing_name_en",
+            message=(
+                "El campo 'name_en' es obligatorio para crear un producto "
+                "(BR-CAT-001). Proporciona una traducción EN con name_en."
+            ),
+            status_code=422,
+        )
+
+
 class ProductDataQualityTransitionError(ProductDomainError):
     """Transición de `data_quality` inválida o sin completitud requerida."""
 
@@ -314,6 +328,11 @@ class ProductService:
         division_codes = data.pop("division_codes", None) or []
         # Fase B (mig 065): extrae textos EN para crear translation en lang='en'.
         en_translation = self._extract_en_translation_payload(data)
+        # BR-CAT-001 / BRECHA-CAT-01: name_en es obligatorio en creación.
+        # Aplica a todos los callers (PIM importers, workers) que no pasan
+        # por la validación Pydantic del schema ProductCreate.
+        if en_translation is None or not en_translation.get("name"):
+            raise ProductMissingNameEnError()
         # Resolve NOT NULL FKs brand_id + family_id from text slugs (mig 048).
         if "brand_id" not in data:
             data["brand_id"] = await self._resolve_or_create_brand_id(data.get("brand"))
