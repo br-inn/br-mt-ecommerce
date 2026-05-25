@@ -6,6 +6,7 @@ import io
 import json
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -145,6 +146,159 @@ def detect_header_row(
     return header_idx, headers, samples
 
 
+def _normalize_header(s: str) -> str:
+    """Lowercase + strip accents + collapse non-alphanumeric runs to single space."""
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
+
+
+# Rules evaluated in order; first match wins.
+# (compiled_pattern_on_normalized_header, target_field, transform, confidence)
+_P = re.compile  # short alias for the list below
+_HEURISTIC_RULES: list[tuple[re.Pattern[str], str, str, float]] = [
+    # SKU / variant reference
+    (
+        _P(r"^sku$|^referencia\s+de\s+variante|^referencia\s+variante|^item\s+code"),
+        "sku",
+        "text",
+        0.95,
+    ),
+    # Family hierarchy (subfamily before family to avoid early-exit)
+    (_P(r"^subfamilia|^subfamily"), "subfamily", "text", 0.90),
+    (_P(r"^familia$|^family$"), "family", "text", 0.90),
+    # Trade classification codes
+    (_P(r"^hs\s+code|^codigo\s+hs|^hs$"), "hs_code", "text", 0.85),
+    (_P(r"^cod\s*intrastat|^intrastat\s+code|^codigo\s+intrastat"), "intrastat_code", "text", 0.85),
+    # ERP name — must precede translations.en to avoid "nombre erp" matching "nombre en"
+    (_P(r"^nombre\s+erp|^erp\s+name|^nombre\s+ax"), "erp_name", "text", 0.90),
+    # Translations (only langs supported by the DB check constraint: en, es, ar)
+    (_P(r"^nombre\s+es\b|^name\s+es\b|^descripcion\s+es\b"), "translations.es", "text", 0.95),
+    (_P(r"^nombre\s+en\b|^name\s+en\b|^descripcion\s+en\b"), "translations.en", "text", 0.95),
+    (_P(r"^nombre\s+ar\b|^name\s+ar\b"), "translations.ar", "text", 0.90),
+    # EAN / GTIN — inner > box > individual > generic
+    (_P(r"ean.*(inner|interna)|inner.*ean|ean\s+code\s+inner"), "specs.ean_inner_box", "ean", 0.95),
+    (_P(r"ean.*(caja|box)|caja.*ean|ean\s+code\s+box"), "specs.ean_box", "ean", 0.90),
+    (
+        _P(r"ean.*(unidad|individual|unit)|individual.*ean|^individual\s+ean\s+code"),
+        "specs.ean_individual",
+        "ean",
+        0.90,
+    ),
+    (_P(r"^ean\s+code$|^ean$"), "specs.ean_individual", "ean", 0.75),
+    (_P(r"^gtin$"), "gtin", "ean", 0.90),
+    # Weight — net first (canonical "net weight unit" and Spanish "peso neto")
+    (_P(r"^net\s+weight|^peso\s+neto"), "weight", "decimal", 0.90),
+    (_P(r"^weight\s+unit$"), "specs.weight_gross_kg", "decimal", 0.85),
+    (_P(r"^weight$|^peso$"), "weight", "decimal", 0.75),
+    # Piece dimensions with cm (Spanish file → cm_to_mm)
+    (_P(r"^alto\s+pieza|^high\s+piece|^altura\s+pieza"), "dimensions.high_mm", "cm_to_mm", 0.90),
+    (
+        _P(r"^ancho\s+pieza|^wide\s+piece|^width\s+piece|^anchura\s+pieza"),
+        "dimensions.wide_mm",
+        "cm_to_mm",
+        0.90,
+    ),
+    (
+        _P(r"^largo\s+pieza|^deep\s+piece|^depth\s+piece|^longitud\s+pieza"),
+        "dimensions.deep_mm",
+        "cm_to_mm",
+        0.90,
+    ),
+    # Piece dimensions already in mm (canonical file)
+    (_P(r"^high\s+mm$"), "dimensions.high_mm", "decimal", 0.95),
+    (_P(r"^wide\s+mm$"), "dimensions.wide_mm", "decimal", 0.95),
+    (_P(r"^deep\s+mm$"), "dimensions.deep_mm", "decimal", 0.95),
+    # Box dimensions (cm_to_mm)
+    (_P(r"^alto\s+caja|^box\s+high|^altura\s+caja"), "packaging.box_high_mm", "cm_to_mm", 0.90),
+    (
+        _P(r"^ancho\s+caja|^box\s+wide|^box\s+width|^anchura\s+caja"),
+        "packaging.box_wide_mm",
+        "cm_to_mm",
+        0.90,
+    ),
+    (
+        _P(r"^largo\s+caja|^box\s+deep|^box\s+depth|^longitud\s+caja"),
+        "packaging.box_deep_mm",
+        "cm_to_mm",
+        0.90,
+    ),
+    # Packaging counts
+    (
+        _P(r"^qty.{0,3}caja|^qty\s*x\s*box|^cantidad\s+caja|^uds\s+caja"),
+        "packaging.qty_per_box",
+        "int",
+        0.90,
+    ),
+    (_P(r"^moq\s+inner|^inner\s+moq|^moq\s+inner\s+box"), "packaging.moq_inner_box", "int", 0.90),
+    (_P(r"^x\s+pallet$|^pallet\s+qty$|^qty\s+pallet$"), "packaging.x_pallet", "int", 0.85),
+    # Optional product attributes
+    (_P(r"^marca$|^brand$"), "brand", "text", 0.85),
+    (_P(r"^serie$|^series$"), "series", "text", 0.85),
+    (_P(r"^material$"), "material", "text", 0.85),
+    (_P(r"^connection$|^conexion$"), "connection", "text", 0.80),
+    (_P(r"^tipo$|^type$"), "type", "text", 0.80),
+    (_P(r"^dn$|^diametro\s+nominal|^nominal\s+diameter"), "dn", "text", 0.85),
+    (_P(r"^pn$|^presion\s+nominal|^nominal\s+pressure"), "pn", "text", 0.85),
+    (
+        _P(r"^pais\s+origen|^country\s+of\s+origin|^country$|^origen$"),
+        "country_of_origin",
+        "text",
+        0.80,
+    ),
+    (_P(r"^external\s+url|^url$"), "external_url", "text", 0.80),
+    (_P(r"^revision$|^rev$"), "revision", "text", 0.75),
+    (_P(r"^certif|^normas\b|^homolog"), "certifications", "text", 0.75),
+]
+
+
+def _suggest_mapping_heuristic(
+    headers: list[str],
+    sample_rows: list[list[Any]],
+) -> list[ColumnMappingItem]:
+    """Rule-based fallback mapping for common Spanish/English PIM column names."""
+    results: list[ColumnMappingItem] = []
+    for h in headers:
+        if not h:
+            results.append(
+                ColumnMappingItem(
+                    excel_col=h, target_field="_skip", transform="text", confidence=0.0
+                )
+            )
+            continue
+        norm = _normalize_header(h)
+        matched_target: str | None = None
+        matched_transform = "text"
+        matched_confidence = 0.0
+        for pattern, target, transform, confidence in _HEURISTIC_RULES:
+            if pattern.search(norm):
+                matched_target = target
+                matched_transform = transform
+                matched_confidence = confidence
+                break
+        if matched_target:
+            results.append(
+                ColumnMappingItem(
+                    excel_col=h,
+                    target_field=matched_target,
+                    transform=matched_transform,
+                    confidence=matched_confidence,
+                    notes="Mapeo automático por reglas — verificar antes de importar",
+                )
+            )
+        else:
+            results.append(
+                ColumnMappingItem(
+                    excel_col=h,
+                    target_field="_skip",
+                    transform="text",
+                    confidence=0.3,
+                    notes="Sin mapeo automático — configurar manualmente",
+                )
+            )
+    return results
+
+
 _LLM_MODEL = "claude-sonnet-4-6"
 
 _AVAILABLE_FIELDS_DOC = """
@@ -194,17 +348,8 @@ async def suggest_mapping(
     import anthropic
 
     if not api_key:
-        logger.warning("suggest_mapping: ANTHROPIC_API_KEY no configurada — fallback manual")
-        return [
-            ColumnMappingItem(
-                excel_col=h,
-                target_field="_skip",
-                transform="text",
-                confidence=0.0,
-                notes="ANTHROPIC_API_KEY no configurada — mapeo manual requerido",
-            )
-            for h in headers
-        ]
+        logger.info("suggest_mapping: ANTHROPIC_API_KEY no configurada — usando mapeo heurístico")
+        return _suggest_mapping_heuristic(headers, sample_rows)
 
     # Tabla columna → valores de muestra (todas las columnas, no truncadas).
     col_samples: list[str] = []
