@@ -114,7 +114,7 @@ async def test_suggest_mapping_parses_llm_response():
 
 @pytest.mark.asyncio
 async def test_suggest_mapping_falls_back_on_invalid_json():
-    """Si el LLM devuelve JSON inválido, retorna _skip fallback por cada columna."""
+    """Si el LLM devuelve JSON inválido, usa el heurístico como fallback."""
     mock_message = MagicMock()
     mock_message.content = [MagicMock(text="esto no es json")]
 
@@ -127,13 +127,13 @@ async def test_suggest_mapping_falls_back_on_invalid_json():
             api_key="test-key",
         )
 
-    # Fallback returns one _skip entry per header (confidence 0) so the UI
-    # always has a mapping list to display and can request manual review.
+    # Heuristic fallback: recognized headers get non-zero confidence
     assert len(result) == 2
-    assert all(r.target_field == "_skip" for r in result)
-    assert all(r.confidence == 0.0 for r in result)
     assert result[0].excel_col == "SKU"
+    assert result[0].target_field == "sku"
     assert result[1].excel_col == "Familia"
+    assert result[1].target_field == "family"
+    assert all(r.confidence > 0 for r in result)
 
 
 @pytest.mark.asyncio
