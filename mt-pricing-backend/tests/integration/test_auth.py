@@ -80,7 +80,7 @@ async def test_get_me_unauthenticated_returns_401(client: AsyncClient) -> None:
     response = await client.get("/api/v1/me")
     assert response.status_code == 401
     body = response.json()
-    assert body["detail"]["title"] == "Missing bearer token"
+    assert body["title"] == "Missing bearer token"
 
 
 @pytest.mark.integration
@@ -141,8 +141,8 @@ async def test_require_permissions_denies_without_role(
     )
     assert response.status_code == 403
     body = response.json()
-    assert "missing_permissions" in body["detail"]
-    assert "users:read" in body["detail"]["missing_permissions"]
+    assert "missing_permissions" in body
+    assert "users:read" in body["missing_permissions"]
 
 
 @pytest.mark.integration

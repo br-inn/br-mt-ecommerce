@@ -284,8 +284,8 @@ async def test_create_product_duplicate_sku_returns_409_fr_cat_004(
     await client.post("/api/v1/products", json=_minimal_create("DUP-001"), headers=headers)
     r2 = await client.post("/api/v1/products", json=_minimal_create("DUP-001"), headers=headers)
     assert r2.status_code == 409, r2.text
-    detail = r2.json().get("detail", {})
-    code = detail.get("code", "") if isinstance(detail, dict) else str(detail)
+    body = r2.json()
+    code = body.get("code", "") if isinstance(body, dict) else str(body)
     assert "sku" in code.lower() or "duplicate" in code.lower(), f"Codigo inesperado: {code}"
 
 
@@ -601,8 +601,8 @@ async def test_patch_product_locked_field_returns_409_fr_cat_019(
         headers=headers,
     )
     assert r.status_code == 409, r.text
-    detail = r.json().get("detail", {})
-    code = detail.get("code", "") if isinstance(detail, dict) else str(detail)
+    body = r.json()
+    code = body.get("code", "") if isinstance(body, dict) else str(body)
     assert "locked" in code.lower() or "field" in code.lower(), f"Codigo inesperado: {code}"
 
 
@@ -1082,13 +1082,6 @@ async def test_rbac_write_only_cannot_delete_nfr_cat_001b(
     assert r.status_code in (403, 401)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "NFR-CAT-002 Parcial — _raise_domain() no incluye campos 'type' e 'instance' de RFC 7807 "
-        "(BRECHA-CAT-02). Resolver en sprint de deuda tecnica post-F1."
-    ),
-    strict=False,
-)
 async def test_error_response_rfc7807_type_and_instance_nfr_cat_002(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
