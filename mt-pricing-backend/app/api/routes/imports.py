@@ -70,7 +70,12 @@ def get_importer_service(
 
 
 def _raise_domain(err: ImporterDomainError) -> None:
-    extra: dict[str, Any] = {"code": err.code, "title": err.message}
+    extra: dict[str, Any] = {
+        "type": f"https://mtme-api/errors/{err.code}",
+        "title": err.message,
+        "status": err.status_code,
+        "code": err.code,
+    }
     if isinstance(err, ImportHeaderMismatchError):
         extra["header_errors"] = err.header_errors
     raise HTTPException(status_code=err.status_code, detail=extra)

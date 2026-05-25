@@ -88,6 +88,7 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.ENABLE_DOCS else None,
 )
 
+
 # --- Exception handlers -----------------------------------------------------
 @app.exception_handler(HTTPException)
 async def rfc7807_http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:

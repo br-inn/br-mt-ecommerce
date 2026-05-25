@@ -304,7 +304,7 @@ async def test_create_product_duplicate_sku(
     assert res2.status_code == 409, res2.text
     body = res2.json()
     # Body shape: detail.code = product_duplicate_sku
-    assert body["detail"]["code"] == "product_duplicate_sku"
+    assert body["code"] == "product_duplicate_sku"
 
 
 @pytest.mark.integration
@@ -443,7 +443,7 @@ async def test_permissions_unauthorized_user_403(
     )
     assert res.status_code == 403
     body = res.json()
-    assert "products:write" in body["detail"]["missing_permissions"]
+    assert "products:write" in body["missing_permissions"]
 
 
 @pytest.mark.integration

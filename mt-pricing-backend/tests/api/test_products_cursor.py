@@ -166,7 +166,7 @@ async def test_invalid_cursor_returns_400(client: AsyncClient, db_session: Async
     r = await client.get("/api/v1/products?cursor=!!not-base64!!", headers=headers)
     assert r.status_code == 400
     body = r.json()
-    assert body["detail"]["code"] == "invalid_cursor"
+    assert body["code"] == "invalid_cursor"
 
 
 @pytest.mark.integration
