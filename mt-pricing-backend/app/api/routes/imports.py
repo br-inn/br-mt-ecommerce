@@ -33,6 +33,7 @@ from fastapi import (
     HTTPException,
     Path,
     Query,
+    Request,
     Response,
     UploadFile,
     status,
@@ -375,6 +376,7 @@ def _serialize_import_run(run: ImportRun) -> dict[str, Any]:
     },
 )
 async def upload_and_run_pim(
+    fastapi_request: Request,
     file: Annotated[UploadFile, File(description="xlsx PIM (≤ 50 MB)")],
     user: Annotated[User, Depends(require_permissions("imports:write"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
@@ -390,8 +392,12 @@ async def upload_and_run_pim(
         raise HTTPException(
             status_code=422,
             detail={
-                "code": "import_missing_filename",
+                "type": "https://mtme-api/errors/import_missing_filename",
                 "title": "filename requerido",
+                "status": 422,
+                "detail": "El campo filename es obligatorio en el upload.",
+                "instance": str(fastapi_request.url.path),
+                "code": "import_missing_filename",
             },
         )
     file_bytes = await file.read()
@@ -399,8 +405,12 @@ async def upload_and_run_pim(
         raise HTTPException(
             status_code=413,
             detail={
+                "type": "https://mtme-api/errors/import_file_too_large",
+                "title": "Archivo excede el límite de 50 MB",
+                "status": 413,
+                "detail": f"Recibido {len(file_bytes)} bytes; máximo permitido 52 428 800 bytes.",
+                "instance": str(fastapi_request.url.path),
                 "code": "import_file_too_large",
-                "title": f"Archivo {len(file_bytes)} bytes excede 50 MB",
             },
         )
 
@@ -420,8 +430,12 @@ async def upload_and_run_pim(
         raise HTTPException(
             status_code=503,
             detail={
+                "type": "https://mtme-api/errors/import_storage_failed",
+                "title": "Error subiendo archivo a Storage",
+                "status": 503,
+                "detail": str(exc),
+                "instance": str(fastapi_request.url.path),
                 "code": "import_storage_failed",
-                "title": f"No se pudo subir a Storage: {exc}",
             },
         ) from exc
 
@@ -438,14 +452,14 @@ async def upload_and_run_pim(
     await session.commit()
     run_id = run.id
 
-    # 3) Encolar Celery task. NOTE: el worker descarga el blob de Storage a /tmp.
-    # En esta primera versión sólo soportamos disparo desde filesystem (fixture);
-    # para upload via Storage habría que agregar un step de descarga. TODO Sprint 2.
+    # 3) Encolar Celery task. El worker descarga el blob desde Supabase Storage
+    # usando storage_path (path relativo al bucket) y source_bucket.
     try:
         from app.workers.tasks.imports import run_pim_import_task
 
         async_result = run_pim_import_task.apply_async(
-            args=[str(run_id), _PIM_FIXTURE_PATH, str(user.id)],
+            args=[str(run_id), storage_path, str(user.id)],
+            kwargs={"source_bucket": settings.SUPABASE_STORAGE_BUCKET_IMPORTS},
         )
         run.celery_task_id = async_result.id
         await session.commit()
@@ -456,8 +470,12 @@ async def upload_and_run_pim(
         raise HTTPException(
             status_code=503,
             detail={
+                "type": "https://mtme-api/errors/import_celery_unavailable",
+                "title": "Celery no disponible",
+                "status": 503,
+                "detail": "Celery no respondió; el run ha sido marcado como failed.",
+                "instance": str(fastapi_request.url.path),
                 "code": "import_celery_unavailable",
-                "title": "Celery no respondió, run marcado como failed.",
             },
         ) from exc
 

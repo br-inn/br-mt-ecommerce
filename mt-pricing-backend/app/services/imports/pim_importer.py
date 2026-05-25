@@ -19,7 +19,10 @@ Idempotencia:
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -65,6 +68,7 @@ class PimImporter:
         source_path: str | Path,
         run_id: UUID | str,
         actor_id: UUID | None = None,
+        storage_bucket: str | None = None,
     ) -> None:
         self.session = session
         self.source_path = Path(source_path)
@@ -73,6 +77,9 @@ class PimImporter:
         self._run: ImportRun | None = None
         self._repo = ProductRepository(session)
         self._audit = AuditRepository(session)
+        # If set, download the xlsx from Supabase Storage when source_path is absent locally.
+        self._storage_bucket: str | None = storage_bucket
+        self._tmp_path: str | None = None
         # Stage 3 Wave 11 — division mapping. Resuelto lazy en run().
         self._division_codes: list[str] = []
         self._division_code_cache: dict[str, UUID | None] = {}
@@ -104,8 +111,11 @@ class PimImporter:
             )
 
         if not self.source_path.exists():
-            await self._mark_failed(f"Archivo no encontrado: {self.source_path}")
-            raise FileNotFoundError(self.source_path)
+            if self._storage_bucket:
+                await self._download_from_storage()
+            else:
+                await self._mark_failed(f"Archivo no encontrado: {self.source_path}")
+                raise FileNotFoundError(self.source_path)
 
         # Load workbook streaming. data_only=True para evaluar formulas pre-cache.
         from openpyxl import load_workbook
@@ -219,7 +229,55 @@ class PimImporter:
             updated,
             error_rows,
         )
+        self._cleanup_tmp()
         return self._run
+
+    async def _download_from_storage(self) -> None:
+        """Download xlsx from Supabase Storage to a local temp file.
+
+        Updates ``self.source_path`` to the temp file path on success.
+        Stores path in ``self._tmp_path`` for cleanup.
+        """
+        from app.core.supabase import get_supabase_admin
+
+        bucket_path = str(self.source_path)
+        logger.info(
+            "PimImporter: descargando %s/%s desde Supabase Storage…",
+            self._storage_bucket,
+            bucket_path,
+        )
+        try:
+            loop = asyncio.get_running_loop()
+            sb = get_supabase_admin()
+            data: bytes = await loop.run_in_executor(
+                None,
+                lambda: sb.storage.from_(self._storage_bucket).download(bucket_path),
+            )
+        except Exception as exc:
+            await self._mark_failed(f"Error descargando de Storage {self._storage_bucket}/{bucket_path}: {exc}")
+            raise FileNotFoundError(
+                f"Storage:{self._storage_bucket}/{bucket_path}"
+            ) from exc
+
+        fd, tmp = tempfile.mkstemp(suffix=".xlsx", prefix="pim_import_")
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        self._tmp_path = tmp
+        self.source_path = Path(tmp)
+        logger.info(
+            "PimImporter: descargados %d bytes → %s",
+            len(data),
+            tmp,
+        )
+
+    def _cleanup_tmp(self) -> None:
+        """Remove temp file created by _download_from_storage, if any."""
+        if self._tmp_path:
+            try:
+                os.unlink(self._tmp_path)
+            except OSError:
+                pass
+            self._tmp_path = None
 
     # --------------------------------------------------------- header check
     @staticmethod
@@ -238,6 +296,7 @@ class PimImporter:
 
     async def _mark_failed(self, reason: str) -> None:
         """Marca el run como failed + persiste la razón en errors."""
+        self._cleanup_tmp()
         if self._run is None:
             return
         self._run.status = "failed"
