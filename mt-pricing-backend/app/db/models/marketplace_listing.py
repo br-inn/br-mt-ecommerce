@@ -30,7 +30,7 @@ class MarketplaceListing(Base):
     __tablename__ = "product_marketplace_listings"
 
     id: Mapped[str] = mapped_column(
-        Text, primary_key=True, server_default=text("gen_random_uuid()::text")
+        Text, primary_key=True, server_default=text("(gen_random_uuid())::text")
     )
     product_sku: Mapped[str] = mapped_column(
         Text, ForeignKey("products.sku", ondelete="CASCADE"), nullable=False

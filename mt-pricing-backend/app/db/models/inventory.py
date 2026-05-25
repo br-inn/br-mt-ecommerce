@@ -221,7 +221,7 @@ class GoodsReceipt(UuidPkMixin, TimestampMixin, Base):
             "status",
             postgresql_where=text("status = 'pending'"),
         ),
-        Index("idx_gr_received_at", "received_at", postgresql_ops={"received_at": "DESC"}),
+        Index("idx_gr_received_at", text("received_at DESC")),
     )
 
 
