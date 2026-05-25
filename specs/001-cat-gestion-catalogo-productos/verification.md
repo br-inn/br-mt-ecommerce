@@ -156,7 +156,7 @@
 | NFR | Estado | Evidencia | Brecha / Notas | BMAD |
 |-----|--------|-----------|----------------|------|
 | NFR-CAT-001 (RBAC) | ✅ Verificado | `products.py` (todos los endpoints) | 100 % de los 14 endpoints en alcance tienen `Depends(require_permissions(...))` con el permiso correcto (read/write/delete). | — |
-| NFR-CAT-002 (RFC 7807) | ⚠️ Parcial | `products.py:147-157` (`_problem`); `products.py:160-165` (`_raise_domain`) | `_problem()` genera `ProblemDetails` completo (type, title, status, detail, instance, code). **Pero** la mayoría de endpoints usa `_raise_domain()` que genera un `HTTPException` con dict `{"code": ..., "title": ...}` sin los campos `type` e `instance` de RFC 7807. Solo `_problem()` es RFC 7807 estricto. | A-6* |
+| NFR-CAT-002 (RFC 7807) | ✅ Verificado | `products.py:161-218` | `_raise_domain`, `_raise_compat`, `_raise_components` y `_raise_parent` incluyen ahora los 6 campos RFC 7807: `type`, `title`, `status`, `detail`, `instance` y `code`. Corregido en BRECHA-CAT-02 (PR #89). | — |
 | NFR-CAT-003 (Audit) | ✅ Verificado | `product_service.py:338-345`; `:603-608`; `:616-629` | Auditoría emitida en create, data_quality_change y soft_delete desde la capa de servicio; no desde handlers. | — |
 | NFR-CAT-004 (Cache) | ✅ Verificado | `products.py:439-446`; `CacheControlMiddleware` | Export CSV sobreescribe con `Cache-Control: no-store`; el middleware global aplica `private, max-age=60` al resto de GETs 200. | E-6* |
 | NFR-CAT-005 (No N+1) | ⚠️ Parcial | `products.py:555-610` (OK); `products.py:218-290` (VIOLACIÓN) | Listado: 3 queries batch para la página, sin N+1 ✅. Detalle (`_build_product_detail`): hasta 3 queries secuenciales por request para series, material y display_pair — violación directa de Art. 3 de la constitución. | E-2 |
@@ -180,11 +180,11 @@
 | Categoría | Total | ✅ Verificado | ⚠️ Parcial | ❌ No cumple | ⬜ No implementado |
 |-----------|-------|--------------|-----------|-------------|-------------------|
 | FR (funcionales) | 37 | 35 | 2 | 0 | 0 |
-| NFR (no funcionales) | 5 | 3 | 2 | 0 | 0 |
+| NFR (no funcionales) | 5 | 5 | 0 | 0 | 0 |
 | BR (reglas negocio) | 5 | 5 | 0 | 0 | 0 |
-| **Total** | **47** | **43** | **4** | **0** | **0** |
+| **Total** | **47** | **45** | **2** | **0** | **0** |
 
-**Cobertura**: 91 % Verificado + 9 % Parcial + 0 % No cumple = 100 % con código existente.
+**Cobertura**: 96 % Verificado + 4 % Parcial + 0 % No cumple = 100 % con código existente.
 
 ---
 
@@ -204,16 +204,17 @@ callers internos (PIM importers, workers) que llaman a `create_product` directam
 `test_service_layer_rejects_missing_name_en_br_cat_001` (service directo sin HTTP).
 **Hallazgo BMAD relacionado**: no catalogado en auditoría BMAD (nuevo hallazgo F1).
 
-### BRECHA-CAT-02 — RFC 7807 inconsistente en responses de error (NFR-CAT-002) — issue #68
+### ~~BRECHA-CAT-02~~ — RFC 7807 inconsistente en responses de error (NFR-CAT-002) — **CORREGIDA** en PR #89
 **Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/68
-**Severidad**: Media
+**Severidad**: Media (resuelta)
 **FR/BR afectados**: NFR-CAT-002
-**Descripción**: `_raise_domain()` genera HTTPException con dict parcial `{"code", "title"}`;
-no incluye los campos `type` e `instance` requeridos por RFC 7807. Solo `_problem()` es
-estrictamente conforme. El frontend puede esperar distintos formatos de error según el endpoint.
-**Acción sugerida**: Unificar todos los errores del dominio CAT para usar `_problem()` o
-estandarizar el HTTPException detail a un objeto con todos los campos RFC 7807.
-**Hallazgo BMAD relacionado**: A-6 (parcialmente relacionado — endpoints sin response_model).
+**Descripción original**: `_raise_domain()` generaba HTTPException con dict parcial sin
+los campos `instance` y `detail` requeridos por RFC 7807.
+**Corrección (2026-05-25)**: Se añadió `request: Request` a los 4 helpers
+(`_raise_domain`, `_raise_compat`, `_raise_components`, `_raise_parent`) y se populan
+`instance = str(request.url.path)` y `detail = err.message` en todos los errores de dominio.
+Todos los call sites actualizados. Test NFR-CAT-002 actualizado para verificar ambos campos.
+**Evidencia**: `products.py:161-218`; `tests/api/test_cat_acceptance.py:1085-1101`.
 
 ### BRECHA-CAT-03 — N+1 en _build_product_detail (NFR-CAT-005, Art. 3) — issue #69
 **Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/69
@@ -291,8 +292,8 @@ verificar en `check-prerequisites.ps1` requirió múltiples pasos.
 - `mt-pricing-frontend/tests/e2e/21-product-delete.spec.ts` — FR-CAT-027, 028, 029
 
 **Brechas activas con xfail**:
-- BRECHA-CAT-01: CERRADA — guardia en `create_product` (PR fix/cat-01-name-en-service, issue #67)
-- BRECHA-CAT-02: `_raise_domain()` sin `type`/`instance` de RFC 7807 → `xfail` en NFR-CAT-002
+- ~~BRECHA-CAT-01~~: CERRADA — guardia en `create_product` (PR fix/cat-01-name-en-service, issue #67)
+- ~~BRECHA-CAT-02~~: CERRADA — `instance`/`detail` en helpers RFC 7807 (PR fix/cat-02-rfc7807-helpers, issue #68)
 - BRECHA-CAT-04: `manual_locked_fields` en `classify_pim_batch_task` sin confirmar → `xfail` en FR-CAT-031
 
 **Correr la suite**:
@@ -300,3 +301,16 @@ verificar en `check-prerequisites.ps1` requirió múltiples pasos.
 cd mt-pricing-backend
 uv run pytest -m acceptance -v
 ```
+
+## Actualización post-fix BRECHA-CAT-02 (2026-05-25)
+
+| Categoría | Total | Verde | xfail | Sin test |
+|-----------|-------|-------|-------|----------|
+| FR | 37 | 36 | 1 (FR-CAT-031) | 0 |
+| NFR | 5 | 4 | 0 | 1 (NFR-CAT-003 cubierto parcialmente en FR-003 + FR-026) |
+| BR | 5 | 5 | 0 | 0 |
+
+**Cambio**: NFR-CAT-002 pasa de xfail a verde. Los 4 helpers `_raise_domain`,
+`_raise_compat`, `_raise_components` y `_raise_parent` ahora incluyen `instance`
+y `detail` completos per RFC 7807. Test actualizado para verificar ambos campos
+y el valor exacto de `instance`.
