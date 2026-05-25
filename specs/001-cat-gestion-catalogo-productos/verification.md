@@ -190,7 +190,8 @@
 
 ## Brechas identificadas (candidatas a issues post-F1)
 
-### BRECHA-CAT-01 — name_en NO enforced como obligatorio (BR-CAT-001)
+### BRECHA-CAT-01 — name_en NO enforced como obligatorio (BR-CAT-001) — issue #67
+**Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/67
 **Severidad**: Alta
 **FR/BR afectados**: FR-CAT-001, BR-CAT-001
 **Descripción**: `ProductCreate` schema no exige `name_en`. Un producto puede crearse sin
@@ -199,7 +200,8 @@ traducción EN, contradiciendo el PRD §5.3 y el OKR O1a.5.
 que rechace con HTTP 422 si `name_en` no está presente en el body.
 **Hallazgo BMAD relacionado**: no catalogado en auditoría BMAD (nuevo hallazgo F1).
 
-### BRECHA-CAT-02 — RFC 7807 inconsistente en responses de error (NFR-CAT-002)
+### BRECHA-CAT-02 — RFC 7807 inconsistente en responses de error (NFR-CAT-002) — issue #68
+**Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/68
 **Severidad**: Media
 **FR/BR afectados**: NFR-CAT-002
 **Descripción**: `_raise_domain()` genera HTTPException con dict parcial `{"code", "title"}`;
@@ -209,7 +211,8 @@ estrictamente conforme. El frontend puede esperar distintos formatos de error se
 estandarizar el HTTPException detail a un objeto con todos los campos RFC 7807.
 **Hallazgo BMAD relacionado**: A-6 (parcialmente relacionado — endpoints sin response_model).
 
-### BRECHA-CAT-03 — N+1 en _build_product_detail (NFR-CAT-005, Art. 3)
+### BRECHA-CAT-03 — N+1 en _build_product_detail (NFR-CAT-005, Art. 3) — issue #69
+**Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/69
 **Severidad**: Alta (violación constitución Art. 3)
 **FR/BR afectados**: NFR-CAT-005, FR-CAT-008
 **Descripción**: `_build_product_detail` ejecuta hasta 3 queries secuenciales por request GET /products/{sku}
@@ -218,7 +221,8 @@ para series, material y display_pair. Añade hasta 60 ms de latencia con servido
 queries secuenciales con `joinedload` (series, material) y subquery (display_pair).
 **Hallazgo BMAD relacionado**: E-2 (ya catalogado, estimado 4h).
 
-### BRECHA-CAT-04 — Verificación de manual_locked_fields en PVF no confirmada (FR-CAT-031)
+### BRECHA-CAT-04 — Verificación de manual_locked_fields en PVF no confirmada (FR-CAT-031) — issue #70
+**Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/70
 **Severidad**: Media
 **FR/BR afectados**: FR-CAT-031, BR-CAT-004
 **Descripción**: El clasificador PVF dice respetar `manual_locked_fields` pero el código del
@@ -227,7 +231,8 @@ El spec lo documenta como requisito verificado parcialmente.
 **Acción sugerida**: Leer `classify_pim_batch_task` en el próximo ciclo de verificación
 y confirmar/desconfirmar la comprobación de `manual_locked_fields`.
 
-### BRECHA-CAT-05 — get_resolved_view sin response_model (NFR-CAT-002 adyacente)
+### BRECHA-CAT-05 — get_resolved_view sin response_model (NFR-CAT-002 adyacente) — issue #71
+**Issue**: https://github.com/br-inn/br-mt-ecommerce/issues/71
 **Severidad**: Media
 **FR/BR afectados**: FR-CAT-009, NFR-CAT-002
 **Descripción**: `get_resolved_view` retorna `dict[str, Any]` sin `response_model` declarado
