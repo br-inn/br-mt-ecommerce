@@ -32,13 +32,16 @@ def run_pim_import_task(
     run_id: str,
     source_path: str,
     actor_id: str | None = None,
+    source_bucket: str | None = None,
 ) -> dict[str, Any]:
     """Wrapper sincrono para ejecutar PimImporter (async) desde Celery.
 
     Args:
         run_id: UUID del ImportRun pre-creado en estado ``queued``.
-        source_path: path filesystem del xlsx (volumen montado en el worker).
+        source_path: Filesystem path OR Supabase Storage path (bucket-relative).
         actor_id: UUID-string del usuario que disparó el run; None para fixture.
+        source_bucket: Supabase Storage bucket name. When set and source_path does
+            not exist locally, PimImporter downloads the file from Storage first.
 
     Returns:
         dict con counters finales del run.
@@ -58,6 +61,7 @@ def run_pim_import_task(
                 source_path=source_path,
                 run_id=run_id,
                 actor_id=actor_uuid,
+                storage_bucket=source_bucket,
             )
             try:
                 run = await importer.run()
