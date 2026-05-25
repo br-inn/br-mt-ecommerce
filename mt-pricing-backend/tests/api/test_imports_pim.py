@@ -417,8 +417,18 @@ async def test_upload_pim_returns_202_and_run_id(
     mock_result.id = "celery-task-abc123"
 
     with (
-        patch("app.services.storage.upload_bytes", return_value={"storage_path": "pim/x/batch.xlsx", "bucket": "imports-raw", "bytes": len(file_bytes), "content_type": "..."}),
-        patch("app.workers.tasks.imports.run_pim_import_task.apply_async", return_value=mock_result),
+        patch(
+            "app.services.storage.upload_bytes",
+            return_value={
+                "storage_path": "pim/x/batch.xlsx",
+                "bucket": "imports-raw",
+                "bytes": len(file_bytes),
+                "content_type": "...",
+            },
+        ),
+        patch(
+            "app.workers.tasks.imports.run_pim_import_task.apply_async", return_value=mock_result
+        ),
     ):
         r = await client.post("/api/v1/imports/pim/upload", files=files, headers=headers)
 

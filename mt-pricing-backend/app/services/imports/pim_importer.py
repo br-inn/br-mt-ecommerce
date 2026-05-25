@@ -254,10 +254,10 @@ class PimImporter:
                 lambda: sb.storage.from_(self._storage_bucket).download(bucket_path),
             )
         except Exception as exc:
-            await self._mark_failed(f"Error descargando de Storage {self._storage_bucket}/{bucket_path}: {exc}")
-            raise FileNotFoundError(
-                f"Storage:{self._storage_bucket}/{bucket_path}"
-            ) from exc
+            await self._mark_failed(
+                f"Error descargando de Storage {self._storage_bucket}/{bucket_path}: {exc}"
+            )
+            raise FileNotFoundError(f"Storage:{self._storage_bucket}/{bucket_path}") from exc
 
         fd, tmp = tempfile.mkstemp(suffix=".xlsx", prefix="pim_import_")
         with os.fdopen(fd, "wb") as fh:
