@@ -158,49 +158,57 @@ def _problem(
     return JSONResponse(status_code=status_code, content=payload)
 
 
-def _raise_domain(err: ProductDomainError) -> None:
+def _raise_domain(err: ProductDomainError, request: Request) -> None:
     raise HTTPException(
         status_code=err.status_code,
         detail={
             "type": f"https://mtme-api/errors/{err.code}",
             "title": err.message,
             "status": err.status_code,
+            "detail": err.message,
+            "instance": str(request.url.path),
             "code": err.code,
         },
     )
 
 
-def _raise_compat(err: CompatibilityDomainError) -> None:
+def _raise_compat(err: CompatibilityDomainError, request: Request) -> None:
     raise HTTPException(
         status_code=err.status_code,
         detail={
             "type": f"https://mtme-api/errors/{err.code}",
             "title": err.message,
             "status": err.status_code,
+            "detail": err.message,
+            "instance": str(request.url.path),
             "code": err.code,
         },
     )
 
 
-def _raise_components(err: ComponentsDomainError) -> None:
+def _raise_components(err: ComponentsDomainError, request: Request) -> None:
     raise HTTPException(
         status_code=err.status_code,
         detail={
             "type": f"https://mtme-api/errors/{err.code}",
             "title": err.message,
             "status": err.status_code,
+            "detail": err.message,
+            "instance": str(request.url.path),
             "code": err.code,
         },
     )
 
 
-def _raise_parent(err: ParentResolverError) -> None:
+def _raise_parent(err: ParentResolverError, request: Request) -> None:
     raise HTTPException(
         status_code=err.status_code,
         detail={
             "type": f"https://mtme-api/errors/{err.code}",
             "title": err.message,
             "status": err.status_code,
+            "detail": err.message,
+            "instance": str(request.url.path),
             "code": err.code,
         },
     )
@@ -631,6 +639,7 @@ async def create_product(
     data: ProductCreate,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    request: Request,
 ) -> ProductDetail:
     """Crea producto canónico + emite audit event."""
     try:
@@ -638,7 +647,7 @@ async def create_product(
     except SpecsValidationError as e:
         _raise_specs_error(e)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     # Reload con eager translations/images (vacíos al crear).
     full = await service.get_product_by_id(prod.sku)  # type: ignore[possibly-undefined]
     return await _build_product_detail(full)
@@ -709,13 +718,14 @@ async def get_facets(
 )
 async def get_product(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     _user: User = Depends(require_permissions("products:read")),
     service: ProductService = Depends(get_product_service),
 ) -> ProductDetail:
     try:
         prod = await service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return await _build_product_detail(prod)
 
 
@@ -793,6 +803,7 @@ async def update_product(
     data: ProductPatch,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    request: Request,
 ) -> ProductDetail:
     payload = data.model_dump(exclude_unset=True)
     try:
@@ -801,7 +812,7 @@ async def update_product(
     except SpecsValidationError as e:
         _raise_specs_error(e)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return await _build_product_detail(prod)  # type: ignore[possibly-undefined]
 
 
@@ -825,6 +836,7 @@ async def replace_product(
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
     response: Response,
+    request: Request,
     if_match: Annotated[str | None, Header(alias="If-Match")] = None,
 ) -> ProductDetail:
     """Full update — todos los campos editables deben venir en el body.
@@ -840,7 +852,7 @@ async def replace_product(
         prod = await service.replace_product(sku, payload, user, if_match=if_match)
         full = await service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     response.headers["ETag"] = service.etag_for(prod)
     return await _build_product_detail(full)
 
@@ -860,6 +872,7 @@ async def patch_product_data_quality(
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
     response: Response,
+    request: Request,
 ) -> ProductDetail:
     """Cambia el flag de calidad. Para promover a `complete`, el producto
     debe tener todos los campos obligatorios poblados (BR-1a-DQ-01)."""
@@ -867,7 +880,7 @@ async def patch_product_data_quality(
         prod = await service.patch_data_quality(sku, data.data_quality, user, reason=data.reason)
         full = await service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     response.headers["ETag"] = service.etag_for(prod)
     return await _build_product_detail(full)
 
@@ -928,11 +941,12 @@ async def delete_product(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     user: Annotated[User, Depends(require_permissions("products:delete"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    request: Request,
 ) -> Response:
     try:
         await service.soft_delete_product(sku, user)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -947,13 +961,14 @@ async def delete_product(
 )
 async def list_translations(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     _user: User = Depends(require_permissions("products:read")),
     service: ProductService = Depends(get_product_service),
 ) -> list[ProductTranslationResponse]:
     try:
         rows = await service.list_translations(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return [ProductTranslationResponse.model_validate(r) for r in rows]
 
 
@@ -969,13 +984,14 @@ async def upsert_translation(
     data: ProductTranslationCreate,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    request: Request,
 ) -> ProductTranslationResponse:
     try:
         row, _created = await service.upsert_translation(
             sku, lang, data.model_dump(exclude_unset=True), user
         )
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return ProductTranslationResponse.model_validate(row)
 
 
@@ -991,11 +1007,12 @@ async def patch_translation(
     data: ProductTranslationPatch,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    request: Request,
 ) -> ProductTranslationResponse:
     try:
         row = await service.update_translation(sku, lang, data.model_dump(exclude_unset=True), user)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return ProductTranslationResponse.model_validate(row)
 
 
@@ -1010,11 +1027,12 @@ async def approve_translation(
     lang: Annotated[str, Path(pattern=r"^(es|ar)$")],
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[ProductService, Depends(get_product_service)],
+    request: Request,
 ) -> ProductTranslationResponse:
     try:
         row = await service.approve_translation(sku, lang, user)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return ProductTranslationResponse.model_validate(row)
 
 
@@ -1029,13 +1047,14 @@ async def approve_translation(
 )
 async def list_images(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     _user: User = Depends(require_permissions("products:read")),
     service: ProductService = Depends(get_product_service),
 ) -> list[ProductImageResponse]:
     try:
         prod = await service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     return [ProductImageResponse.model_validate(i) for i in prod.images]
 
 
@@ -1052,6 +1071,7 @@ async def get_image_upload_url(
     product_service: Annotated[ProductService, Depends(get_product_service)],
     asset_service: Annotated[AssetService, Depends(get_asset_service)],
     response: Response,
+    fastapi_request: Request,
 ) -> dict[str, Any]:
     """DEPRECATED — proxy to /assets/upload-url with kind=photo."""
     response.headers["Deprecation"] = "true"
@@ -1059,7 +1079,7 @@ async def get_image_upload_url(
     try:
         await product_service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, fastapi_request)
     return asset_service.generate_signed_upload_url(
         sku=sku,
         kind="photo",
@@ -1083,13 +1103,14 @@ async def confirm_image_upload(
     service: Annotated[ProductService, Depends(get_product_service)],
     asset_service: Annotated[AssetService, Depends(get_asset_service)],
     response: Response,
+    request: Request,
 ) -> ProductImageResponse:
     """DEPRECATED — proxy to new asset confirm with kind=photo."""
     response.headers["Deprecation"] = "true"
     try:
         await service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     try:
         asset = await asset_service.confirm_upload(
             sku,
@@ -1168,6 +1189,7 @@ async def delete_image(
 )
 async def list_assets(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     kind: Annotated[AssetKind | None, Query()] = None,
     include_archived: Annotated[bool, Query()] = False,
     _user: User = Depends(require_permissions("products:read")),
@@ -1177,7 +1199,7 @@ async def list_assets(
     try:
         await service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     assets = await asset_service.list_for_product(
         sku, kind=kind.value if kind else None, include_archived=include_archived
     )
@@ -1195,12 +1217,13 @@ async def get_asset_upload_url(
     user: Annotated[User, Depends(require_permissions("products:write"))],
     product_service: Annotated[ProductService, Depends(get_product_service)],
     asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    fastapi_request: Request,
 ) -> dict[str, Any]:
     """Devuelve dict con storage_path, upload_url, token, headers, expires_in, bucket, kind."""
     try:
         await product_service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, fastapi_request)
     try:
         return asset_service.generate_signed_upload_url(
             sku=sku,
@@ -1226,6 +1249,7 @@ async def confirm_asset_upload(
     user: Annotated[User, Depends(require_permissions("products:write"))],
     product_service: Annotated[ProductService, Depends(get_product_service)],
     asset_service: Annotated[AssetService, Depends(get_asset_service)],
+    request: Request,
 ) -> ProductAssetResponse:
     """Frontend flow:
     1. POST /upload-url → { storage_path, upload_url, token }
@@ -1235,7 +1259,7 @@ async def confirm_asset_upload(
     try:
         await product_service.get_product_by_id(sku)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     try:
         asset = await asset_service.confirm_upload(
             sku,
@@ -1407,6 +1431,7 @@ def _build_compat_response(row: Any) -> ProductCompatibilityResponse:
 )
 async def list_compatibility(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     kind: Annotated[CompatibilityKind | None, Query()] = None,
     _user: User = Depends(require_permissions("products:read")),
     service: CompatibilityService = Depends(get_compatibility_service),
@@ -1419,7 +1444,7 @@ async def list_compatibility(
     try:
         rows = await service.list_for_product(sku, kind=kind.value if kind else None)
     except CompatibilityDomainError as e:
-        _raise_compat(e)
+        _raise_compat(e, request)
     return [_build_compat_response(r) for r in rows]
 
 
@@ -1431,6 +1456,7 @@ async def list_compatibility(
 )
 async def list_compatibility_inverse(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     kind: Annotated[CompatibilityKind | None, Query()] = None,
     _user: User = Depends(require_permissions("products:read")),
     service: CompatibilityService = Depends(get_compatibility_service),
@@ -1443,7 +1469,7 @@ async def list_compatibility_inverse(
     try:
         rows = await service.list_inverse(sku, kind=kind.value if kind else None)
     except CompatibilityDomainError as e:
-        _raise_compat(e)
+        _raise_compat(e, request)
     # Para inverse, product_sku es el origen; no desnormalizamos compatible_with
     # (es el SKU consultado). Devolvemos los datos tal cual.
     return [
@@ -1478,6 +1504,7 @@ async def add_compatibility(
     data: ProductCompatibilityCreate,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[CompatibilityService, Depends(get_compatibility_service)],
+    request: Request,
 ) -> ProductCompatibilityResponse:
     """Crea un enlace ``sku`` → ``kind`` → ``compatible_with_sku``.
 
@@ -1498,7 +1525,7 @@ async def add_compatibility(
             dn_max=data.dn_max,
         )
     except CompatibilityDomainError as e:
-        _raise_compat(e)
+        _raise_compat(e, request)
     return _build_compat_response(link)
 
 
@@ -1516,6 +1543,7 @@ async def remove_compatibility(
     kind: CompatibilityKind,
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[CompatibilityService, Depends(get_compatibility_service)],
+    request: Request,
 ) -> Response:
     """Elimina el enlace ``sku`` → ``kind`` → ``compatible_with_sku``.
 
@@ -1530,7 +1558,7 @@ async def remove_compatibility(
             actor_email=getattr(user, "email", None),
         )
     except CompatibilityDomainError as e:
-        _raise_compat(e)
+        _raise_compat(e, request)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -1549,6 +1577,7 @@ async def replace_compatibility(
     data: list[ProductCompatibilityReplaceItem],
     user: Annotated[User, Depends(require_permissions("products:write"))],
     service: Annotated[CompatibilityService, Depends(get_compatibility_service)],
+    request: Request,
 ) -> list[ProductCompatibilityResponse]:
     """Reemplaza TODOS los enlaces outgoing de ``sku`` con la lista del body.
 
@@ -1575,7 +1604,7 @@ async def replace_compatibility(
             actor_email=getattr(user, "email", None),
         )
     except CompatibilityDomainError as e:
-        _raise_compat(e)
+        _raise_compat(e, request)
     return [_build_compat_response(r) for r in created]
 
 
@@ -1600,13 +1629,14 @@ from app.schemas.components import (
 )
 async def list_materials(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     _user: User = Depends(require_permissions("products:read")),
     service: ComponentsService = Depends(get_components_service),
 ) -> list[ProductMaterialResponse]:
     try:
         rows = await service.list_materials(sku)
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return [ProductMaterialResponse.model_validate(r) for r in rows]
 
 
@@ -1619,6 +1649,7 @@ async def list_materials(
 async def upsert_material(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     data: ProductMaterialCreate,
+    request: Request,
     _user: User = Depends(require_permissions("products:write")),
     service: ComponentsService = Depends(get_components_service),
 ) -> ProductMaterialResponse:
@@ -1631,7 +1662,7 @@ async def upsert_material(
             observations=data.observations,
         )
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return ProductMaterialResponse.model_validate(row)
 
 
@@ -1645,13 +1676,14 @@ async def delete_material(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     component: Annotated[str, Path(min_length=1, max_length=32)],
     position: Annotated[int, Path(ge=0, le=99)],
+    request: Request,
     _user: User = Depends(require_permissions("products:write")),
     service: ComponentsService = Depends(get_components_service),
 ) -> Response:
     try:
         await service.delete_material(sku, component, position)
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -1663,6 +1695,7 @@ async def delete_material(
 async def replace_materials(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     data: ProductMaterialsReplaceRequest,
+    request: Request,
     _user: User = Depends(require_permissions("products:write")),
     service: ComponentsService = Depends(get_components_service),
 ) -> list[ProductMaterialResponse]:
@@ -1672,7 +1705,7 @@ async def replace_materials(
             [item.model_dump() for item in data.items],
         )
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return [ProductMaterialResponse.model_validate(r) for r in rows]
 
 
@@ -1684,13 +1717,14 @@ async def replace_materials(
 )
 async def list_connections(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     _user: User = Depends(require_permissions("products:read")),
     service: ComponentsService = Depends(get_components_service),
 ) -> list[ProductConnectionResponse]:
     try:
         rows = await service.list_connections(sku)
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return [ProductConnectionResponse.model_validate(r) for r in rows]
 
 
@@ -1703,6 +1737,7 @@ async def list_connections(
 async def upsert_connection(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     data: ProductConnectionCreate,
+    request: Request,
     _user: User = Depends(require_permissions("products:write")),
     service: ComponentsService = Depends(get_components_service),
 ) -> ProductConnectionResponse:
@@ -1718,7 +1753,7 @@ async def upsert_connection(
             notes=data.notes,
         )
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return ProductConnectionResponse.model_validate(row)
 
 
@@ -1731,13 +1766,14 @@ async def upsert_connection(
 async def delete_connection(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     position: Annotated[int, Path(ge=1, le=8)],
+    request: Request,
     _user: User = Depends(require_permissions("products:write")),
     service: ComponentsService = Depends(get_components_service),
 ) -> Response:
     try:
         await service.delete_connection(sku, position)
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -1749,6 +1785,7 @@ async def delete_connection(
 async def replace_connections(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
     data: ProductConnectionsReplaceRequest,
+    request: Request,
     _user: User = Depends(require_permissions("products:write")),
     service: ComponentsService = Depends(get_components_service),
 ) -> list[ProductConnectionResponse]:
@@ -1758,7 +1795,7 @@ async def replace_connections(
             [item.model_dump() for item in data.items],
         )
     except ComponentsDomainError as e:
-        _raise_components(e)
+        _raise_components(e, request)
     return [ProductConnectionResponse.model_validate(r) for r in rows]
 
 
@@ -1800,6 +1837,7 @@ async def get_resolved_view(
 )
 async def set_parent(
     sku: Annotated[str, Path(min_length=1, max_length=64)],
+    request: Request,
     parent_sku: Annotated[str | None, Query(max_length=64)] = None,
     user: User = Depends(require_permissions("products:write")),
     service: ProductService = Depends(get_product_service),
@@ -1812,12 +1850,12 @@ async def set_parent(
     try:
         await resolver.validate_parent_link(sku, parent_sku)
     except ParentResolverError as e:
-        _raise_parent(e)
+        _raise_parent(e, request)
     # Update product.
     try:
         await service.update_product(sku, {"parent_sku": parent_sku}, user)
     except ProductDomainError as e:
-        _raise_domain(e)
+        _raise_domain(e, request)
     # Sync flags after persistence.
     await resolver.recompute_parent_flags(sku)
     return {"sku": sku, "parent_sku": parent_sku}

@@ -2282,8 +2282,8 @@
       "Body_analyze_import_api_v1_imports_analyze_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
             "description": "xlsx PIM (\u2264 50 MB)",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2297,8 +2297,8 @@
       "Body_importCostsPreview": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
             "description": "xlsx costos batch (\u2264 50 MB)",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2314,7 +2314,7 @@
           "files": {
             "description": "PDFs datasheet (\u2264 10 MB c/u)",
             "items": {
-              "contentMediaType": "application/octet-stream",
+              "format": "binary",
               "type": "string"
             },
             "title": "Files",
@@ -2330,8 +2330,8 @@
       "Body_importMaterialsPreview": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
             "description": "xlsx materiales (\u2264 50 MB)",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2345,7 +2345,7 @@
       "Body_import_csv_api_v1_admin_price_calibration_import_csv_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2359,8 +2359,8 @@
       "Body_preview_ficha_enrich_api_v1_products__sku__ficha_enrich_preview_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
             "description": "PDF de ficha t\u00e9cnica (\u2264 50 MB)",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2374,8 +2374,8 @@
       "Body_preview_ficha_series_api_v1_ficha_enrich_series_preview_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
             "description": "PDF ficha t\u00e9cnica (\u2264 50 MB)",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -2389,8 +2389,8 @@
       "Body_preview_import_api_v1_imports_preview_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
             "description": "xlsx PIM (\u2264 50 MB)",
+            "format": "binary",
             "title": "File",
             "type": "string"
           },
@@ -2429,8 +2429,8 @@
       "Body_upload_and_run_pim_api_v1_imports_pim_upload_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
             "description": "xlsx PIM (\u2264 50 MB)",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -32256,13 +32256,6 @@
       },
       "ValidationError": {
         "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
           "loc": {
             "items": {
               "anyOf": [

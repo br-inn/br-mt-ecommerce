@@ -1137,13 +1137,21 @@ async def test_rbac_write_only_cannot_delete_nfr_cat_001b(
 async def test_error_response_rfc7807_type_and_instance_nfr_cat_002(
     client: AsyncClient, admin_creds: tuple[UUID, str]
 ) -> None:
-    """NFR-CAT-002: errores de dominio CAT siguen RFC 7807 (type+instance obligatorios)."""
+    """NFR-CAT-002: errores de dominio CAT siguen RFC 7807 completo (type+instance+detail).
+
+    BRECHA-CAT-02 corregida: _raise_domain/_raise_compat/_raise_components/_raise_parent
+    ahora incluyen 'instance' y 'detail' ademas de 'type', 'title', 'status' y 'code'.
+    """
     uid, email = admin_creds
     r = await client.get("/api/v1/products/NONEXISTENT-RFC7807-XXX", headers=_auth(uid, email))
     assert r.status_code == 404
     body = r.json()
     assert "type" in body, f"RFC 7807 exige 'type'. Body: {body}"
     assert "instance" in body, f"RFC 7807 exige 'instance'. Body: {body}"
+    assert "detail" in body, f"RFC 7807 exige 'detail'. Body: {body}"
+    assert body["instance"] == "/api/v1/products/NONEXISTENT-RFC7807-XXX", (
+        f"'instance' debe ser la ruta del request. Body: {body}"
+    )
 
 
 async def test_cache_control_on_get_detail_nfr_cat_004(
