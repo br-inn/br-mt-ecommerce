@@ -379,9 +379,7 @@ class ImporterService:
                 bucket.append(row_data)
 
         # Flatten buckets into a single list (ya capeada por sample_per_bucket).
-        rows: list[dict[str, Any]] = [
-            row for bucket in buckets.values() for row in bucket
-        ]
+        rows: list[dict[str, Any]] = [row for bucket in buckets.values() for row in bucket]
 
         return {
             "run_id": state.run_id,
