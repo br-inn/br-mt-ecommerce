@@ -50,11 +50,19 @@ G2_MULTIPLIERS: dict[str, Decimal] = {
 SCORING_WEIGHTS: dict[str, Decimal] = {
     "material": Decimal("0.18"),
     "pn": Decimal("0.14"),
-    "thread": Decimal("0.14"),  # connection / rosca
+    "thread_standard": Decimal("0.14"),  # key must match dim_scores key
     "norma": Decimal("0.14"),
     "brand_tier": Decimal("0.18"),
     "delivery": Decimal("0.14"),
     "data_completeness": Decimal("0.08"),
+    # New dimensions — zero weight in legacy default (overridden by taxonomy profiles):
+    "application_class": Decimal("0.00"),
+    "connection_gender": Decimal("0.00"),
+    "handle": Decimal("0.00"),
+    "dn": Decimal("0.00"),
+    "product_type": Decimal("0.00"),
+    "ways": Decimal("0.00"),
+    "actuator": Decimal("0.00"),
 }
 DEFAULT_WEIGHTS = SCORING_WEIGHTS  # alias público
 
@@ -484,6 +492,74 @@ _MINI_TOKENS: frozenset[str] = frozenset(
     {"mini", "miniball", "mini-ball", "compact ball", "minibola"}
 )
 
+# Palabras en el título de un candidato que indican uso residencial/doméstico.
+# El SKU siempre se asume "commercial" en familias de válvulas (productos MT).
+_RESIDENTIAL_TOKENS: frozenset[str] = frozenset(
+    {
+        "shower",
+        "bathtub",
+        "bath tap",
+        "faucet",
+        "washing machine",
+        "drinking water",
+        "potable water",
+        "garden hose",
+        "rv water",
+        "motorhome water",
+        "household",
+        "home plumbing",
+        "kitchen sink",
+        "irrigation valve",
+    }
+)
+
+# Familias de válvulas para las que el SKU MT se asume "commercial" por defecto.
+_VALVE_FAMILIES: frozenset[str] = frozenset(
+    {
+        "ball_valve",
+        "valves_ball",
+        "HIDROSANITARIO",
+        "gate_valve",
+        "globe_valve",
+        "check_valve",
+        "butterfly_valve",
+        "strainer",
+        "FILTROS",
+    }
+)
+
+
+def _detect_application_class(
+    title: str | None,
+    specs: dict[str, Any] | None = None,
+) -> str | None:
+    """Detecta clase de aplicación desde specs estructurados o palabras clave en título."""
+    s = specs or {}
+    explicit = str(s.get("application_class") or s.get("application") or "").lower()
+    if any(w in explicit for w in ("residential", "domestic", "household")):
+        return "residential"
+    if any(w in explicit for w in ("industrial", "commercial", "process")):
+        return "commercial"
+    if not title:
+        return None
+    t = title.lower()
+    if any(tok in t for tok in _RESIDENTIAL_TOKENS):
+        return "residential"
+    return None
+
+
+def _application_class_score(
+    sku_class: str | None,
+    cand_class: str | None,
+) -> tuple[Decimal, list[str]]:
+    """Score de clase de aplicación. Residencial vs comercial → mismatch."""
+    if sku_class is None or cand_class is None:
+        return Decimal("0.5"), []
+    if sku_class == cand_class:
+        return Decimal("1.0"), []
+    return Decimal("0.0"), ["application_class_mismatch"]
+
+
 # Familia → palabras clave en título del candidato
 _FAMILY_TO_KEYWORDS: dict[str, frozenset[str]] = {
     "ball_valve": frozenset({"ball valve", "ball-valve", "kugelhahn", "válvula bola", "bola"}),
@@ -657,14 +733,11 @@ def _handle_score(
     *,
     sku_text: str | None = None,
     cand_text: str | None = None,
-) -> list[str]:
-    """Detecta mismatch de color/tipo de maneta. Solo emite nota, no afecta score.
+) -> tuple[Decimal, list[str]]:
+    """Compara tipo/color de maneta. Retorna (score, notes).
 
-    Fuentes en orden de prioridad:
-    1. specs estructurados (handle_color / handle_material)
-    2. texto libre: erp_name + product_type del SKU; title + description del candidato
-
-    El impacto real se aplica en match_service con lógica pool-relativa.
+    Score: 0.5 neutral (sin datos), 1.0 match confirmado, 0.0 mismatch confirmado.
+    Impacto adicional: match_service aplica lógica pool-relativa sobre la nota.
     """
     sku_s = sku_specs or {}
 
@@ -683,28 +756,27 @@ def _handle_score(
     ).strip().lower() or _extract_handle_type(cand_text)
 
     if not sku_color and not sku_type:
-        return []  # SKU sin datos de maneta — no comparar
+        return Decimal("0.5"), []  # SKU sin datos de maneta — neutral
 
     if not cand_color and not cand_type:
-        # Cuando el SKU tiene color explícito de maneta (característica diferenciadora
-        # que afecta el segmento de precio), un candidato sin ningún dato de maneta
-        # probablemente es una válvula plain sin maneta decorativa → mismatch.
+        # Candidato sin datos de maneta cuando el SKU tiene color → probable mismatch.
         if sku_color:
-            return ["handle_mismatch"]
-        return []  # SKU solo tiene tipo, candidato sin datos → no determinar
+            return Decimal("0.0"), ["handle_mismatch"]
+        return Decimal("0.5"), []  # SKU solo tiene tipo, sin datos candidato → neutral
 
-    # Cuando ambos lados tienen COLOR: el color es suficiente para evaluar.
-    # - Mismos colores → PASS (mismo segmento de precio, independiente del tipo)
-    # - Colores distintos → NO es hard block (solo afecta confidence; el tipo
-    #   no aplica cuando hay datos de color en ambos lados)
+    # Cuando ambos lados tienen COLOR: el color determina el match.
     if sku_color and cand_color:
-        return []
+        if sku_color == cand_color:
+            return Decimal("1.0"), []
+        return Decimal("0.5"), []  # colores distintos — no es hard-block de precio
 
     # Sin color en alguno de los lados → el TIPO determina si es mismatch.
-    if sku_type and cand_type and sku_type != cand_type:
-        return ["handle_mismatch"]
+    if sku_type and cand_type:
+        if sku_type == cand_type:
+            return Decimal("1.0"), []
+        return Decimal("0.0"), ["handle_mismatch"]
 
-    return []
+    return Decimal("0.5"), []
 
 
 # ── Actuador ──────────────────────────────────────────────────────────────────
@@ -937,13 +1009,17 @@ def _normalize_gender(text: str | None) -> str | None:
     return _GENDER_ALIASES.get(text.lower().strip())
 
 
-def _connection_gender_score(sku_gender: str | None, cand_gender: str | None) -> list[str]:
-    """Emite connection_gender_mismatch cuando ambos tienen género y difieren."""
+def _connection_gender_score(
+    sku_gender: str | None, cand_gender: str | None
+) -> tuple[Decimal, list[str]]:
+    """Score de género de conexión (entrada/salida M-F). Retorna (score, notes)."""
     sku_g = _normalize_gender(sku_gender)
     cand_g = _normalize_gender(cand_gender)
-    if sku_g and cand_g and sku_g != cand_g:
-        return ["connection_gender_mismatch"]
-    return []
+    if sku_g is None or cand_g is None:
+        return Decimal("0.5"), []
+    if sku_g == cand_g:
+        return Decimal("1.0"), []
+    return Decimal("0.0"), ["connection_gender_mismatch"]
 
 
 # Campos clave cuya presencia mide qué tan bien se puede puntuar un candidato.
@@ -1080,7 +1156,7 @@ def compute_scoring(
         )
         or None
     )
-    handle_notes = _handle_score(
+    handle_score_val, handle_notes = _handle_score(
         sku.get("specs"),
         cand_specs,
         sku_text=_sku_handle_text,
@@ -1092,12 +1168,22 @@ def compute_scoring(
     cand_actuation = cand_specs.get("actuation_type")
     actuator_score, actuator_notes = _actuator_score(sku_actuation, cand_actuation)
 
-    # ── Género de conexión — nota pool-relativa, sin peso propio ──────────────
+    # ── Género de conexión (tipo entrada/salida M-F) ───────────────────────────
     sku_conn_gender = (sku.get("specs") or {}).get("end_connection_gender")
     cand_conn_gender = cand_specs.get("connection_gender") or cand_specs.get(
         "end_connection_gender"
     )
-    gender_notes = _connection_gender_score(sku_conn_gender, cand_conn_gender)
+    gender_score, gender_notes = _connection_gender_score(sku_conn_gender, cand_conn_gender)
+
+    # ── Clase de aplicación (residencial vs comercial) ────────────────────────
+    sku_specs_dict = sku.get("specs") or {}
+    _sku_app_title = sku.get("erp_name") or sku.get("product_type") or sku.get("name_en")
+    sku_app_class = _detect_application_class(_sku_app_title, sku_specs_dict)
+    # Todos los productos MT son industriales/comerciales — default "commercial" en válvulas
+    if sku_app_class is None and family in _VALVE_FAMILIES:
+        sku_app_class = "commercial"
+    cand_app_class = _detect_application_class(cand_title, cand_specs)
+    app_score, app_notes = _application_class_score(sku_app_class, cand_app_class)
 
     # ── Bore type (full bore / reduced bore) — nota pool-relativa ────────────
     sku_bore = (sku.get("specs") or {}).get("bore_type")
@@ -1140,6 +1226,9 @@ def compute_scoring(
         "delivery": delivery_s,
         "data_completeness": completeness_s,
         "actuator": actuator_score,
+        "application_class": app_score,
+        "connection_gender": gender_score,
+        "handle": handle_score_val,
     }
 
     weighted = Decimal("0")
@@ -1166,6 +1255,7 @@ def compute_scoring(
         + bore_notes
         + seat_notes
         + seal_notes
+        + app_notes
     )
     if mat_score == Decimal("0.0") and (sku_material or cand_material):
         notes.append("material_mismatch")
