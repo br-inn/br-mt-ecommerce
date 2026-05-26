@@ -1,0 +1,54 @@
+---
+name: fix-502-restart-caddy
+
+on:
+  push:
+    branches:
+      - admin/fix-502
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  restart:
+    name: Restart Caddy and verify import endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Restart Caddy and test
+        env:
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          ssh "${SSH_USER}@${SSH_HOST}" "
+            echo '=== Estado actual ==='
+            docker ps --format 'table {{.Names}}\t{{.Status}}'
+
+            echo ''
+            echo '=== Reiniciando Caddy ==='
+            docker restart mt-caddy-staging
+            sleep 8
+
+            echo ''
+            echo '=== Verificando import endpoint ==='
+            curl -sf --max-time 10 http://localhost/api/v1/imports/ \
+              -o /dev/null -w 'HTTP status: %{http_code}\n' || \
+              echo 'Caddy todavia iniciando, esperar 15s...'
+
+            sleep 15
+            curl -sf --max-time 10 http://localhost/health/live && \
+              echo 'Backend: OK' || echo 'Backend: aun iniciando'
+          "

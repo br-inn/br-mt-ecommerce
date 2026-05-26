@@ -8,6 +8,8 @@ on:
         description: "Email del usuario a promover a admin"
         required: true
         default: "psierra@br-innovation.com"
+  repository_dispatch:
+    types: [assign-admin-role]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -31,36 +33,46 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.STAGING_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Assign admin role
+      - name: Write Python script
         env:
-          TARGET_EMAIL: ${{ github.event.inputs.email }}
+          TARGET_EMAIL: ${{ github.event.inputs.email || github.event.client_payload.email }}
         run: |
-          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
-            "docker exec mt-backend python -c \"
-import asyncio, os, sys
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+          cat > /tmp/assign_role.py << 'PYEOF'
+          import asyncio, os, sys
+          from sqlalchemy import text
+          from sqlalchemy.ext.asyncio import create_async_engine
 
-DATABASE_URL = os.environ['DATABASE_URL']
-email = '$TARGET_EMAIL'
+          async def main():
+              engine = create_async_engine(os.environ["DATABASE_URL"])
+              email = os.environ["TARGET_EMAIL"]
+              async with engine.begin() as conn:
+                  result = await conn.execute(
+                      text(
+                          "UPDATE public.users u "
+                          "SET role_id = r.id "
+                          "FROM public.roles r "
+                          "WHERE r.code = 'admin' AND u.email = :email "
+                          "RETURNING u.email, r.code"
+                      ),
+                      {"email": email},
+                  )
+                  row = result.fetchone()
+                  if row:
+                      print(f"OK: {row[0]} → rol={row[1]}")
+                  else:
+                      print(f"ERROR: usuario no encontrado: {email}", file=sys.stderr)
+                      sys.exit(1)
 
-async def main():
-    engine = create_async_engine(DATABASE_URL)
-    async with engine.begin() as conn:
-        result = await conn.execute(text(
-            \\\"UPDATE public.users SET role_id = (
-                SELECT id FROM public.roles WHERE code = 'admin'
-            ) WHERE id = (
-                SELECT id FROM public.users WHERE email = :email
-            ) RETURNING email, role_id\\\"
-        ), {'email': email})
-        row = result.fetchone()
-        if row:
-            print(f'OK: {row[0]} → role_id={row[1]}')
-            print(f'Run: SELECT email, r.code FROM public.users u JOIN public.roles r ON r.id = u.role_id WHERE u.email = \\\"{email}\\\";')
-        else:
-            print(f'ERROR: usuario no encontrado: {email}', file=sys.stderr)
-            sys.exit(1)
+          asyncio.run(main())
+          PYEOF
 
-asyncio.run(main())
-\""
+      - name: Upload and execute script
+        env:
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          TARGET_EMAIL: ${{ github.event.inputs.email || github.event.client_payload.email }}
+        run: |
+          scp /tmp/assign_role.py "${SSH_USER}@${SSH_HOST}:/tmp/assign_role.py"
+          ssh "${SSH_USER}@${SSH_HOST}" \
+            "docker cp /tmp/assign_role.py mt-backend:/tmp/assign_role.py && \
+             docker exec -e TARGET_EMAIL='${TARGET_EMAIL}' mt-backend python /tmp/assign_role.py"

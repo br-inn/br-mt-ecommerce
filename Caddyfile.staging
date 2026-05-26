@@ -5,13 +5,13 @@
 # Caddy gestiona TLS automáticamente vía Let's Encrypt / ZeroSSL.
 #
 # Rutas:
-#   /api/*    → backend FastAPI (mt-backend-staging:8000)
+#   /api/*    → backend FastAPI (172.20.0.10:8000)
 #   /health/* → backend FastAPI (bypass auth, timeouts cortos)
 #   /metrics  → backend FastAPI (Prometheus)
 #   /docs*    → backend FastAPI (OpenAPI UI)
 #   /redoc*   → backend FastAPI
 #   /openapi.json → backend FastAPI
-#   /         → frontend Next.js (mt-frontend-staging:3000)
+#   /         → frontend Next.js (172.20.0.13:3000)
 #
 # Referencia: ADR-035 (Caddy reverse proxy).
 # =============================================================================
@@ -41,7 +41,7 @@
   # Usado por: Docker healthcheck, monitores externos, deploy script.
   # -------------------------------------------------------------------------
   handle /health/* {
-    reverse_proxy mt-backend-staging:8000 {
+    reverse_proxy 172.20.0.10:8000 {
       transport http {
         dial_timeout    2s
         response_header_timeout 5s
@@ -53,14 +53,21 @@
   # Métricas Prometheus — restringir a IPs internas en producción.
   # -------------------------------------------------------------------------
   handle /metrics {
-    reverse_proxy mt-backend-staging:8000
+    reverse_proxy 172.20.0.10:8000
+  }
+
+  # -------------------------------------------------------------------------
+  # Next.js API routes — deben ir al frontend, no al backend FastAPI.
+  # -------------------------------------------------------------------------
+  handle /api/web-vitals {
+    reverse_proxy 172.20.0.13:3000
   }
 
   # -------------------------------------------------------------------------
   # API — todo bajo /api/* a FastAPI
   # -------------------------------------------------------------------------
   handle /api/* {
-    reverse_proxy mt-backend-staging:8000 {
+    reverse_proxy 172.20.0.10:8000 {
       header_up X-Real-IP          {remote_host}
       header_up X-Forwarded-For    {remote_host}
       header_up X-Forwarded-Proto  {scheme}
@@ -78,27 +85,27 @@
   # Documentación OpenAPI
   # -------------------------------------------------------------------------
   handle /docs* {
-    reverse_proxy mt-backend-staging:8000
+    reverse_proxy 172.20.0.10:8000
   }
   handle /redoc* {
-    reverse_proxy mt-backend-staging:8000
+    reverse_proxy 172.20.0.10:8000
   }
   handle /openapi.json {
-    reverse_proxy mt-backend-staging:8000
+    reverse_proxy 172.20.0.10:8000
   }
 
   # -------------------------------------------------------------------------
   # Dozzle — visor de logs Docker en /logs
   # -------------------------------------------------------------------------
   handle /logs* {
-    reverse_proxy mt-dozzle-staging:8080
+    reverse_proxy 172.20.0.14:8080
   }
 
   # -------------------------------------------------------------------------
   # Frontend (Next.js) — catch-all SSR + assets estáticos
   # -------------------------------------------------------------------------
   handle {
-    reverse_proxy mt-frontend-staging:3000 {
+    reverse_proxy 172.20.0.13:3000 {
       header_up X-Real-IP {remote_host}
     }
   }
