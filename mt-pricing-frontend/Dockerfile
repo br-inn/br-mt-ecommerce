@@ -2,6 +2,14 @@
 # Build context: ./mt-pricing-frontend (Next.js compilado previamente en CI runner)
 # Docker solo empaqueta el standalone output — no hay build aquí.
 
+# ── Etapa dev: instala deps para `docker compose up` en modo desarrollo ──────
+FROM node:26-slim AS deps
+WORKDIR /app
+RUN npm install -g pnpm@9 --no-update-notifier
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# ── Etapa producción: empaqueta el standalone output ─────────────────────────
 FROM node:26-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production

@@ -140,6 +140,7 @@ class MatchCandidateRepository(BaseRepository[MatchCandidate]):
         obj.validated_at = datetime.now(tz=UTC)
         obj.discarded_reason = None
         await self.session.flush()
+        await self.session.refresh(obj)
         return obj
 
     async def mark_discarded(
@@ -154,4 +155,5 @@ class MatchCandidateRepository(BaseRepository[MatchCandidate]):
         obj.status = "discarded"
         obj.discarded_reason = reason
         await self.session.flush()
+        await self.session.refresh(obj)
         return obj
