@@ -752,6 +752,7 @@
         "preview_ready": "Preview ready",
         "applying": "Applying changes…",
         "completed": "Apply completed",
+        "completed_with_failures": "Apply completed with errors",
         "failed": "Apply failed",
         "cancelled": "Cancelled"
       }
