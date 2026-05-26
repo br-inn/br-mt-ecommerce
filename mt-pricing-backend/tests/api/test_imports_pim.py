@@ -164,9 +164,11 @@ async def test_preview_minimal_xlsx_returns_summary(
     body = r.json()
     assert body["status"] == "preview_ready"
     assert body["summary"]["total"] == 5
-    assert body["summary"]["create"] == 5
-    assert body["summary"]["update"] == 0
-    # Buckets están presentes en samples.
+    assert body["summary"]["creates"] == 5
+    assert body["summary"]["updates"] == 0
+    # rows plano presente + samples por bucket
+    assert len(body["rows"]) == 5
+    assert all(r["action"] == "create" for r in body["rows"])
     assert "create" in body["samples"]
 
 

@@ -12768,7 +12768,7 @@ export interface components {
         };
         /**
          * ImportPreviewResponse
-         * @description Respuesta del preview — incluye samples por bucket.
+         * @description Respuesta del preview — incluye samples por bucket y rows plano.
          */
         ImportPreviewResponse: {
             /**
@@ -12778,6 +12778,10 @@ export interface components {
             created_at: string;
             /** Filename */
             filename: string;
+            /** Rows */
+            rows?: {
+                [key: string]: unknown;
+            }[];
             /** Run Id */
             run_id: string;
             /** Samples */

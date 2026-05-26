@@ -133,19 +133,33 @@ def reset_run_store() -> None:  # pragma: no cover — sólo para tests
     _RUN_LOCKS.clear()
 
 
+_ACTION_TO_SUMMARY_KEY: dict[RowAction, str] = {
+    RowAction.CREATE: "creates",
+    RowAction.UPDATE: "updates",
+    RowAction.NO_CHANGE: "no_change",
+    RowAction.SKIP_LOCKED: "skipped_locked",
+    RowAction.ERROR: "errors",
+}
+
+
 def _summarize(diffs: Sequence[RowDiff]) -> dict[str, Any]:
-    """Resumen del preview por action + counts de errores y locks."""
-    summary = {
+    """Resumen del preview por action + counts de errores y locks.
+
+    Keys usan nombres plural para coincidir con el tipo ImportSummary del frontend.
+    """
+    summary: dict[str, Any] = {
         "total": len(diffs),
-        "create": 0,
-        "update": 0,
+        "creates": 0,
+        "updates": 0,
         "no_change": 0,
-        "skip_locked": 0,
-        "error": 0,
+        "skipped_locked": 0,
+        "errors": 0,
+        "orphans": 0,
         "locked_field_skips_total": 0,
     }
     for d in diffs:
-        summary[d.action.value] = summary.get(d.action.value, 0) + 1
+        key = _ACTION_TO_SUMMARY_KEY.get(d.action, d.action.value)
+        summary[key] = summary.get(key, 0) + 1
         summary["locked_field_skips_total"] += len(d.locked_fields_skipped)
     return summary
 
@@ -339,20 +353,34 @@ class ImporterService:
         state = _RUN_STORE.get(run_id)
         if state is None:
             raise ImportRunNotFoundError(run_id)
-        # Buckets de ejemplos para UI Pantalla 10 (Nuevos/Modificados/Errores/etc).
+
         buckets: dict[str, list[dict[str, Any]]] = {a.value: [] for a in RowAction}
+
         for d in state.diffs:
+            # Transform diff: {field: {from, to}} → [{field, before, after}]
+            diff_list: list[dict[str, Any]] | None = None
+            if d.diff:
+                diff_list = [
+                    {"field": k, "before": v.get("from"), "after": v.get("to")}
+                    for k, v in d.diff.items()
+                ]
+
+            row_data: dict[str, Any] = {
+                "row_index": d.row_index,
+                "sku": d.sku,
+                "action": d.action.value,
+                "diff": diff_list,
+                "error_code": d.errors[0] if d.errors else None,
+                "error_message": "; ".join(d.errors) if d.errors else None,
+                "locked_fields_skipped": d.locked_fields_skipped,
+            }
             bucket = buckets[d.action.value]
             if len(bucket) < sample_per_bucket:
-                bucket.append(
-                    {
-                        "row_index": d.row_index,
-                        "sku": d.sku,
-                        "diff": d.diff,
-                        "errors": d.errors,
-                        "locked_fields_skipped": d.locked_fields_skipped,
-                    }
-                )
+                bucket.append(row_data)
+
+        # Flatten buckets into a single list (ya capeada por sample_per_bucket).
+        rows: list[dict[str, Any]] = [row for bucket in buckets.values() for row in bucket]
+
         return {
             "run_id": state.run_id,
             "status": state.status,
@@ -360,6 +388,7 @@ class ImporterService:
             "created_at": state.created_at.isoformat(),
             "summary": state.summary,
             "samples": buckets,
+            "rows": rows,
             "apply": (
                 {
                     "created": state.apply_result.created,
