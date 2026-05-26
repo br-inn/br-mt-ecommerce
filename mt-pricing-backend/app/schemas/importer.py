@@ -35,7 +35,7 @@ class ImportRunSummary(BaseModel):
 
 
 class ImportPreviewResponse(BaseModel):
-    """Respuesta del preview — incluye samples por bucket."""
+    """Respuesta del preview — incluye samples por bucket y rows plano."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -46,6 +46,7 @@ class ImportPreviewResponse(BaseModel):
     created_at: datetime
     summary: dict[str, Any] = Field(default_factory=dict)
     samples: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
+    rows: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ImportRunStatusResponse(BaseModel):

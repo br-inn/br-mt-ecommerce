@@ -12412,7 +12412,7 @@
         "type": "object"
       },
       "ImportPreviewResponse": {
-        "description": "Respuesta del preview \u2014 incluye samples por bucket.",
+        "description": "Respuesta del preview \u2014 incluye samples por bucket y rows plano.",
         "properties": {
           "created_at": {
             "format": "date-time",
@@ -12422,6 +12422,14 @@
           "filename": {
             "title": "Filename",
             "type": "string"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
           },
           "run_id": {
             "title": "Run Id",

@@ -240,6 +240,7 @@ async def preview_import(
         created_at=state.created_at,
         summary=state.summary,
         samples=samples_payload["samples"],
+        rows=samples_payload["rows"],
     )
 
 
