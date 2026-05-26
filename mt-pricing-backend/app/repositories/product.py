@@ -60,9 +60,7 @@ class ProductRepository(BaseRepository[Product]):
                             func.lower(Brand.code) == brand_name.lower(),
                         )
                     )
-                    .order_by(
-                        (func.lower(Brand.name) == brand_name.lower()).desc()
-                    )
+                    .order_by((func.lower(Brand.name) == brand_name.lower()).desc())
                     .limit(1)
                 )
             ).scalar_one_or_none()
@@ -85,9 +83,7 @@ class ProductRepository(BaseRepository[Product]):
                             func.lower(Family.code) == family_name.lower(),
                         )
                     )
-                    .order_by(
-                        (func.lower(Family.name) == family_name.lower()).desc()
-                    )
+                    .order_by((func.lower(Family.name) == family_name.lower()).desc())
                     .limit(1)
                 )
             ).scalar_one_or_none()
