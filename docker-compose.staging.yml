@@ -36,7 +36,8 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.5
 
   # ---------------------------------------------------------------------------
   # Backend (FastAPI) — imagen pre-built, sin bind mounts
@@ -81,7 +82,8 @@ services:
       retries: 6
       start_period: 60s
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.10
 
   # ---------------------------------------------------------------------------
   # Celery Worker — imagen pre-built
@@ -126,7 +128,8 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.11
 
   # ---------------------------------------------------------------------------
   # Celery Beat — DatabaseScheduler en Supabase Postgres
@@ -168,7 +171,8 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.12
 
   # ---------------------------------------------------------------------------
   # Frontend (Next.js) — imagen pre-built, standalone output
@@ -202,7 +206,8 @@ services:
       retries: 5
       start_period: 90s
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.13
 
   # ---------------------------------------------------------------------------
   # Dozzle — visor web de logs de Docker (accesible en /logs via Caddy)
@@ -219,7 +224,8 @@ services:
     expose:
       - "8080"
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.14
 
   # ---------------------------------------------------------------------------
   # Caddy 2 — ÚNICO entry point HTTPS. Auto-TLS via Let's Encrypt.
@@ -253,7 +259,8 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.20
 
   # ---------------------------------------------------------------------------
   # Autoheal — reinicia automáticamente contenedores (unhealthy).
@@ -271,7 +278,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - mt-staging
+      mt-staging:
+        ipv4_address: 172.20.0.21
 
 # -----------------------------------------------------------------------------
 # Volumes — Redis AOF + Caddy TLS state
@@ -291,3 +299,6 @@ networks:
   mt-staging:
     name: mt-pricing-staging
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
