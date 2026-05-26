@@ -300,6 +300,8 @@ export interface Product extends ProductListItem {
   // product_models hierarchy (sprint 2026-05-15)
   model_id?: string | null;
   model_detail?: ProductModelDetail | null;
+  // Imágenes del producto (incluidas en el detalle, evita un round-trip extra)
+  images?: ProductAsset[];
 }
 
 // Mig 099 — Bore dimensions por norma

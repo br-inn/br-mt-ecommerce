@@ -4,10 +4,12 @@ import { useTranslations } from "next-intl";
 
 import { ImageGallery } from "@/components/domain/image-gallery";
 import { RbacGuard } from "@/components/auth/rbac-guard";
+import type { ProductAsset } from "@/lib/api/endpoints/products";
 import { ImagesUploader } from "./images-uploader";
 
 interface Props {
   productId: string;
+  images: ProductAsset[];
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * - Drop zone real (`ImagesUploader`) para usuarios con `products:write`.
  * - Galería (`ImageGallery` ya existente) con set-primary + delete.
  */
-export function ImagesTab({ productId }: Props) {
+export function ImagesTab({ productId, images }: Props) {
   const t = useTranslations("catalog.images");
 
   return (
@@ -29,7 +31,7 @@ export function ImagesTab({ productId }: Props) {
         <ImagesUploader productId={productId} />
       </RbacGuard>
 
-      <ImageGallery productId={productId} />
+      <ImageGallery productId={productId} images={images} />
     </div>
   );
 }

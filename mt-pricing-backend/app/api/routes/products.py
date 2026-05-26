@@ -39,6 +39,7 @@ from app.schemas.assets import (
     ProductAssetConfirmRequest,
     ProductAssetResponse,
     ProductAssetUploadRequest,
+    compute_asset_urls,
 )
 from app.schemas.common import Cursor, Pagination, ProblemDetails
 from app.schemas.compatibility import (
@@ -259,15 +260,21 @@ async def _build_product_detail(prod: Any) -> ProductDetail:
     ]
 
     photo_assets = [i for i in prod.assets if i.kind == "photo"]
+    photo_responses = [ProductImageResponse.model_validate(i) for i in photo_assets]
+
+    def _primary_url(resp: Any) -> str | None:
+        urls = resp.urls or {}
+        return urls.get("thumb_400") or urls.get("original")
+
     primary_image_url = next(
-        (i.original_url for i in photo_assets if i.is_primary),
-        next((i.original_url for i in photo_assets), None),
+        (_primary_url(r) for r in photo_responses if r.is_primary),
+        next((_primary_url(r) for r in photo_responses), None),
     )
 
     detail_data: dict[str, Any] = {
         **base,
         "translations": [ProductTranslationResponse.model_validate(t) for t in prod.translations],
-        "images": [ProductImageResponse.model_validate(i) for i in photo_assets],
+        "images": photo_responses,
         "primary_image_url": primary_image_url,
         "series_detail": (
             SeriesResponse.model_validate(prod.series_rel) if prod.series_rel else None
@@ -1399,10 +1406,18 @@ def _build_compat_response(row: Any) -> ProductCompatibilityResponse:
     if row.compatible_with is not None:
         prod = row.compatible_with
         # primary_image_url: primer image con is_primary=True, o None.
-        primary_img = next(
-            (img.storage_path for img in getattr(prod, "images", []) if img.is_primary),
+        primary_img_asset = next(
+            (img for img in getattr(prod, "images", []) if img.is_primary),
             None,
         )
+        primary_img: str | None = None
+        if primary_img_asset is not None:
+            urls = compute_asset_urls(
+                primary_img_asset.bucket,
+                primary_img_asset.storage_path,
+                primary_img_asset.variants or {},
+            )
+            primary_img = urls.get("thumb_400") or urls.get("original")
         compatible_product = CompatibleProductSummary(
             sku=prod.sku,
             name_en=prod.name_en,

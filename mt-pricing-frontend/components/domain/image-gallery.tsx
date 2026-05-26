@@ -7,7 +7,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -20,45 +19,22 @@ import { RbacGuard } from "@/components/auth/rbac-guard";
 import { cn } from "@/lib/utils/cn";
 import {
   useDeleteImage,
-  useProductImages,
   useSetPrimaryImage,
 } from "@/lib/hooks/products/use-product-images";
+import type { ProductAsset } from "@/lib/api/endpoints/products";
 
 interface Props {
   productId: string;
+  images: ProductAsset[];
   className?: string;
 }
 
-export function ImageGallery({ productId, className }: Props) {
+export function ImageGallery({ productId, images, className }: Props) {
   const t = useTranslations("catalog.images");
   const tCommon = useTranslations("common");
-  const { data, isLoading, isError, refetch } = useProductImages(productId);
   const setPrimary = useSetPrimaryImage(productId);
   const deleteImage = useDeleteImage(productId);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
-
-  if (isLoading) {
-    return (
-      <div className={cn("grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4", className)}>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="aspect-square w-full rounded-lg" />
-        ))}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-        <p>{tCommon("error")}</p>
-        <Button variant="link" onClick={() => refetch()}>
-          {tCommon("retry")}
-        </Button>
-      </div>
-    );
-  }
-
-  const images = data ?? [];
 
   if (images.length === 0) {
     return (

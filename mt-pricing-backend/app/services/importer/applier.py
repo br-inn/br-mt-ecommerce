@@ -126,8 +126,8 @@ async def _apply_one(
         payload["updated_by"] = actor.id
         # Fase B (mig 065): name_*/description_en/marketing_copy_en are not
         # columns on Product — strip them and upsert to product_translations.
-        # name_es/name_ar can arrive from custom_mapping (translations.* fields).
-        _TR_LANGS = ("en", "es", "ar")
+        # Supported: en, es, ar (canonical) + fr, de, it, pt (JcS PIM import).
+        _TR_LANGS = ("en", "es", "ar", "fr", "de", "it", "pt")
         trans_names: dict[str, str] = {}
         for _lang in _TR_LANGS:
             _v = payload.pop(f"name_{_lang}", None)
@@ -152,8 +152,8 @@ async def _apply_one(
                 en_kwargs["marketing_copy"] = marketing_copy_en
             if len(en_kwargs) > 1:  # has fields beyond status
                 await tr_repo.upsert(sku=prod.sku, lang="en", **en_kwargs)
-            # Other supported languages (name only)
-            for _lang in ("es", "ar"):
+            # All other supported languages (name only)
+            for _lang in ("es", "ar", "fr", "de", "it", "pt"):
                 if _lang in trans_names:
                     await tr_repo.upsert(
                         sku=prod.sku, lang=_lang, name=trans_names[_lang], status="approved"

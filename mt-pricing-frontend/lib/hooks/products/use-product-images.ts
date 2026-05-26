@@ -86,6 +86,7 @@ export function useDeleteImage(productId: string) {
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: productKeys.images(productId) });
+      void qc.invalidateQueries({ queryKey: productKeys.detail(productId) });
     },
   });
 }

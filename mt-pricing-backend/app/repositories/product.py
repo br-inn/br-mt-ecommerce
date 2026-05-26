@@ -48,14 +48,20 @@ class ProductRepository(BaseRepository[Product]):
         """
         if not kwargs.get("brand_id"):
             brand_name: str = kwargs.get("brand") or "MT"
+            # Use .limit(1) + first() to avoid MultipleResultsFound when code
+            # and name match different rows (e.g. code='MT' and code='mt' both
+            # match lower=='mt').  Name match is preferred so order name-first.
             brand_row = (
                 await self.session.execute(
-                    select(Brand).where(
+                    select(Brand)
+                    .where(
                         or_(
-                            func.lower(Brand.code) == brand_name.lower(),
                             func.lower(Brand.name) == brand_name.lower(),
+                            func.lower(Brand.code) == brand_name.lower(),
                         )
                     )
+                    .order_by((func.lower(Brand.name) == brand_name.lower()).desc())
+                    .limit(1)
                 )
             ).scalar_one_or_none()
             if brand_row is not None:
@@ -70,12 +76,15 @@ class ProductRepository(BaseRepository[Product]):
             family_name: str = kwargs.get("family") or "unclassified"
             family_row = (
                 await self.session.execute(
-                    select(Family).where(
+                    select(Family)
+                    .where(
                         or_(
-                            func.lower(Family.code) == family_name.lower(),
                             func.lower(Family.name) == family_name.lower(),
+                            func.lower(Family.code) == family_name.lower(),
                         )
                     )
+                    .order_by((func.lower(Family.name) == family_name.lower()).desc())
+                    .limit(1)
                 )
             ).scalar_one_or_none()
             if family_row is not None:
