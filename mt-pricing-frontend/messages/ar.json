@@ -752,6 +752,7 @@
         "preview_ready": "المعاينة جاهزة",
         "applying": "جارٍ تطبيق التغييرات…",
         "completed": "اكتمل التطبيق",
+        "completed_with_failures": "اكتمل التطبيق مع أخطاء",
         "failed": "فشل التطبيق",
         "cancelled": "أُلغيت"
       }

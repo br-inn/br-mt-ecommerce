@@ -752,6 +752,7 @@
         "preview_ready": "Vista previa lista",
         "applying": "Aplicando cambios…",
         "completed": "Aplicación completada",
+        "completed_with_failures": "Aplicación completada con errores",
         "failed": "La aplicación falló",
         "cancelled": "Cancelada"
       }
