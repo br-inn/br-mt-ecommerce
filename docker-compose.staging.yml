@@ -228,6 +228,8 @@ services:
     image: caddy:2.8-alpine
     container_name: mt-caddy-staging
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     ports:
       - "80:80"
       - "443:443"
@@ -250,6 +252,24 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - mt-staging
+
+  # ---------------------------------------------------------------------------
+  # Autoheal — reinicia automáticamente contenedores (unhealthy).
+  # Necesario porque Docker no reinicia por healthcheck con restart:unless-stopped.
+  # Monitorea solo contenedores con label autoheal=true.
+  # ---------------------------------------------------------------------------
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: mt-autoheal-staging
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 30
+      AUTOHEAL_START_PERIOD: 60
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - mt-staging
 
