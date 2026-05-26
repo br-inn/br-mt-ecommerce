@@ -602,21 +602,13 @@ async def revert_agent_decision(
 
 @router.delete(
     "",
-    summary="Limpiar todos los candidatos (solo ENV=development)",
+    summary="Limpiar todos los candidatos de prueba",
     operation_id="matchesClearAll",
-    responses={403: {"model": ProblemDetails}},
 )
 async def clear_all_matches(
     _user: User = Depends(require_permissions("matches:write")),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict[str, int]:
-    from app.core.config import settings
-
-    if not settings.is_dev:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "forbidden", "title": "Solo disponible en ENV=development"},
-        )
     result = await session.execute(sa_delete(MatchCandidate))
     await session.commit()
     return {"deleted": result.rowcount}
