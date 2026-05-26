@@ -25,9 +25,9 @@ export function ImagesTab({ sku }: { sku: string }) {
 
   return (
     <div className="space-y-8">
-      <ImageGallery productId={product.id} />
+      <ImageGallery productId={product.sku} images={product.images ?? []} />
       <RbacGuard permissions={["products:write"]}>
-        <ImageUploader productId={product.id} />
+        <ImageUploader productId={product.sku} />
       </RbacGuard>
 
       <section className="space-y-2">

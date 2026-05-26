@@ -147,7 +147,7 @@ export function ProductDetail({ sku }: { sku: string }) {
         </TabsContent>
 
         <TabsContent value="images">
-          <ImagesTab productId={product.sku} />
+          <ImagesTab productId={product.sku} images={product.images ?? []} />
         </TabsContent>
       </Tabs>
     </div>
