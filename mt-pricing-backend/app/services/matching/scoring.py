@@ -513,22 +513,6 @@ _RESIDENTIAL_TOKENS: frozenset[str] = frozenset(
     }
 )
 
-# Familias de válvulas para las que el SKU MT se asume "commercial" por defecto.
-_VALVE_FAMILIES: frozenset[str] = frozenset(
-    {
-        "ball_valve",
-        "valves_ball",
-        "HIDROSANITARIO",
-        "gate_valve",
-        "globe_valve",
-        "check_valve",
-        "butterfly_valve",
-        "strainer",
-        "FILTROS",
-    }
-)
-
-
 def _detect_application_class(
     title: str | None,
     specs: dict[str, Any] | None = None,
@@ -1179,8 +1163,8 @@ def compute_scoring(
     sku_specs_dict = sku.get("specs") or {}
     _sku_app_title = sku.get("erp_name") or sku.get("product_type") or sku.get("name_en")
     sku_app_class = _detect_application_class(_sku_app_title, sku_specs_dict)
-    # Todos los productos MT son industriales/comerciales — default "commercial" en válvulas
-    if sku_app_class is None and family in _VALVE_FAMILIES:
+    # MT solo vende productos industriales/comerciales — default "commercial" si no hay datos
+    if sku_app_class is None:
         sku_app_class = "commercial"
     cand_app_class = _detect_application_class(cand_title, cand_specs)
     app_score, app_notes = _application_class_score(sku_app_class, cand_app_class)
