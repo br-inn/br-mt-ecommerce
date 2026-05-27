@@ -102,12 +102,13 @@ class Progress:
 # ---------------------------------------------------------------------------
 
 def pdf_to_series_prefix(filename: str) -> str | None:
-    """MTFT_0910.pdf → '0910', MTFT_S09014.pdf → 'S09014'."""
-    # Numeric: MTFT_NNNN.pdf
-    m = re.search(r"MTFT[_\-]?(\d+)", filename, re.IGNORECASE)
+    """MTFT_0910.pdf → '0910', MTFT_01A.pdf → '01A', MTFT_S09014.pdf → 'S09014'."""
+    # Numeric with optional trailing alpha suffix: MTFT_NNNN.pdf, MTFT_NNNAx.pdf
+    # e.g. "MTFT_01A" → "01A" (not just "01") to avoid LIKE '01%' over-matching.
+    m = re.search(r"MTFT[_\-]?(\d+[A-Za-z]*)", filename, re.IGNORECASE)
     if m:
         return m.group(1)
-    # Alphanumeric: MTFT_S09014.pdf, MTFT_AGMA.pdf, etc.
+    # Pure alpha prefix: MTFT_S09014.pdf, MTFT_AGMA.pdf, etc.
     m2 = re.search(r"MTFT[_\-]?([A-Za-z]\w+)", filename, re.IGNORECASE)
     if m2:
         return m2.group(1)
