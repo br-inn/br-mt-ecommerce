@@ -513,6 +513,7 @@ _RESIDENTIAL_TOKENS: frozenset[str] = frozenset(
     }
 )
 
+
 def _detect_application_class(
     title: str | None,
     specs: dict[str, Any] | None = None,
