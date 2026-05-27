@@ -44,10 +44,22 @@ async def _resolve_brand_id(session: AsyncSession, brand_name: str) -> uuid.UUID
 
 
 async def _resolve_family_id(session: AsyncSession, family_value: str) -> uuid.UUID | None:
-    """Busca family_id por code o name (case-insensitive). Devuelve None si no existe."""
-    low = family_value.lower()
+    """Busca family_id por code o name (case-insensitive, con fallback singular/plural)."""
+    from sqlalchemy import or_
+
+    low = family_value.lower().strip()
+    # Try both the original form and the singular/plural alternative in one query.
+    # Handles "Fittings"→"Fitting", "Ball Valves"→"Ball Valve", etc.
+    alt = low[:-1] if low.endswith("s") else low + "s"
     result = await session.execute(
-        select(Family).where((func.lower(Family.code) == low) | (func.lower(Family.name) == low))
+        select(Family).where(
+            or_(
+                func.lower(Family.code) == low,
+                func.lower(Family.name) == low,
+                func.lower(Family.code) == alt,
+                func.lower(Family.name) == alt,
+            )
+        )
     )
     family = result.scalars().first()
     return family.id if family else None
