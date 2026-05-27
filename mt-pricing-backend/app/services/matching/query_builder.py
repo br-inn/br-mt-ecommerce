@@ -241,6 +241,20 @@ def _family_term_from_type(product_type: str) -> str:
     return ""
 
 
+def _family_term_from_specs(specs: dict[str, Any]) -> str:
+    """Derive a family search term from specs['description_en'] or bullet_points.
+
+    Fallback for SKUs with family='unclassified' and no type/erp_name.
+    e.g. description_en='Stainless steel 2 pieces ball valve PN63...' → 'ball valve industrial'
+    """
+    text = specs.get("description_en") or ""
+    if not text:
+        bullets = specs.get("bullet_points")
+        if isinstance(bullets, list) and bullets:
+            text = " ".join(str(b) for b in bullets[:2])
+    return _family_term_from_type(text)
+
+
 class QueryBuilder:
     """Construye queries multi-fuente para un SKU MT.
 
@@ -309,12 +323,14 @@ class QueryBuilder:
         product_type = (sku.get("product_type") or "").strip()
         name_en = erp_name or product_type or (sku.get("name_en") or "").strip()
 
-        # Resolve family search term: slug EN → Spanish DB name → type field.
+        # Resolve family search term: slug EN → Spanish DB name → type field → specs description.
+        specs_dict: dict[str, Any] = sku.get("specs") or sku.get("specs_jsonb") or {}
         family_term = (
             FAMILY_FUNCTIONAL_EN.get(family)
             or FAMILY_FUNCTIONAL_EN.get(family.lower())
             or FAMILY_ES_TO_EN.get(family.upper())
             or _family_term_from_type(product_type or erp_name)
+            or _family_term_from_specs(specs_dict)
         )
 
         # 1. ERP name query — highest priority: the full English product name from
