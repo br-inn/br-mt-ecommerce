@@ -142,6 +142,7 @@ async def create_source(
         created_by=user.id,
     )
     await session.commit()
+    await session.refresh(source)
     return ScraperSourceRead.model_validate(source)
 
 
@@ -222,6 +223,7 @@ async def add_recipe(
         source_id, body.recipe.model_dump(mode="json"), created_by=user.id
     )
     await session.commit()
+    await session.refresh(recipe_row)
     return RecipeRead.model_validate(recipe_row)
 
 
@@ -286,4 +288,5 @@ async def activate_source(
     await repo.set_recipe_live(body.recipe_id)
     source.status = "active"
     await session.commit()
+    await session.refresh(source)
     return ScraperSourceRead.model_validate(source)
