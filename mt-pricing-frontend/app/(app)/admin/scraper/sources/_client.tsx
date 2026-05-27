@@ -15,7 +15,7 @@ import {
   type ScraperSourceStatus,
 } from "@/lib/api/endpoints/scraper-sources";
 
-import { SourceDialog } from "./_source-dialog";
+import { SourceDialog } from "./_source-wizard";
 import { InfoTab } from "./_info-tab";
 import { RecipeTab } from "./_recipe-tab";
 import { ValidationTab } from "./_validation-tab";

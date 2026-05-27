@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   scraperSourcesApi,
   type ActivateRequest,
+  type AnalyzeRequest,
+  type AnalyzeResponse,
   type RecipeCreate,
   type RecipeRead,
   type ScraperSourceCreate,
@@ -76,3 +78,9 @@ export function useActivateSource(sourceId: string) {
 }
 
 export const scraperSourceKeys = KEYS;
+
+export function useAnalyzeUrl() {
+  return useMutation<AnalyzeResponse, Error, AnalyzeRequest>({
+    mutationFn: (req) => scraperSourcesApi.analyze(req),
+  });
+}
