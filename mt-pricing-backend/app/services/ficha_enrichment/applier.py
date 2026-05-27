@@ -170,8 +170,11 @@ class FichaEnrichmentApplier:
 
     async def _load_product(self, sku: str) -> Any:
         from app.db.models.product import Product
+        from sqlalchemy.orm import raiseload
 
-        result = await self._session.execute(select(Product).where(Product.sku == sku))
+        result = await self._session.execute(
+            select(Product).where(Product.sku == sku).options(raiseload("*"))
+        )
         return result.scalar_one_or_none()
 
     _VALID_COMPONENT_KINDS = frozenset(

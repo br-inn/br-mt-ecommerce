@@ -222,6 +222,7 @@ async def process_one_pdf(
             async with session_factory() as session:
                 async with session.begin():
                     await session.execute(text("SET LOCAL statement_timeout = 0"))
+                    await session.execute(text("SET LOCAL lock_timeout = '60s'"))
                     series_groups = await resolve_all_series(
                         session, pdf_text, extraction, filename_prefix=series_prefix
                     )
@@ -339,6 +340,7 @@ async def _apply_series(
             async with session_factory() as session:
                 async with session.begin():
                     await session.execute(text("SET LOCAL statement_timeout = 0"))
+                    await session.execute(text("SET LOCAL lock_timeout = '60s'"))
                     existing_result = await session.execute(
                         _select(Product.sku)
                         .where(Product.sku.like(f"{series_prefix}%"))
@@ -372,13 +374,18 @@ async def _apply_series(
     )
 
     # Fase 2: una transacción por SKU para aislar fallos
-    for target_sku in all_target_skus:
+    total_skus = len(all_target_skus)
+    logger.info("  series %s: %d SKUs to process", series_prefix, total_skus)
+    for sku_idx, target_sku in enumerate(all_target_skus):
+        if sku_idx % 10 == 0 or sku_idx == total_skus - 1:
+            logger.info("  [%d/%d] %s", sku_idx + 1, total_skus, target_sku)
         if target_sku in existing_sku_set:
             # Producto existente → actualizar
             try:
                 async with session_factory() as session:
                     async with session.begin():
                         await session.execute(text("SET LOCAL statement_timeout = 0"))
+                        await session.execute(text("SET LOCAL lock_timeout = '60s'"))
                         applier = FichaEnrichmentApplier(session)
                         result = await applier.apply(
                             target_sku, apply_request, actor, pdf_bytes=pdf_bytes
@@ -396,6 +403,7 @@ async def _apply_series(
                 async with session_factory() as session:
                     async with session.begin():
                         await session.execute(text("SET LOCAL statement_timeout = 0"))
+                        await session.execute(text("SET LOCAL lock_timeout = '60s'"))
                         result = await create_product_from_extraction(
                             session, target_sku, extraction, is_variant=False, actor=actor,
                         )
@@ -539,12 +547,18 @@ async def main() -> None:
 
 
 def _asyncio_exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
-    # Suppress noisy asyncpg "connection lost" errors in background tasks.
-    msg = context.get("message", "")
+    # Suppress all asyncpg background task errors (connection monitoring,
+    # cleanup, cancellation) — these are noisy but don't affect correctness
+    # since each SKU runs in its own isolated transaction with error handling.
     exc = context.get("exception")
-    if "ConnectionDoesNotExistError" in str(type(exc).__name__ if exc else ""):
+    msg = context.get("message", "")
+    exc_module = getattr(type(exc), "__module__", "") if exc else ""
+    exc_name = type(exc).__name__ if exc else ""
+    if "asyncpg" in exc_module or "asyncpg" in exc_name:
         return
-    if "connection" in msg.lower() and "lost" in msg.lower():
+    if "connection" in msg.lower():
+        return
+    if "Task was destroyed but it is pending" in msg:
         return
     loop.default_exception_handler(context)
 
