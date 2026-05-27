@@ -15,9 +15,11 @@ Convenciones:
 
 from __future__ import annotations
 
+import http.server
 import os
 import pathlib
 import subprocess
+import threading
 from collections.abc import AsyncIterator, Callable, Iterator
 from typing import TYPE_CHECKING, Any
 
@@ -519,6 +521,47 @@ def sample_equivalences_pdf() -> pathlib.Path:
     """Ruta al PDF de equivalencias de prueba."""
     _ensure_sample_pdf()
     return _SAMPLE_PDF
+
+
+# =============================================================================
+# Local HTTP server — serves tests/fixtures/html/ for scraper agent tests
+# =============================================================================
+_HTML_FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures" / "html"
+
+
+@pytest.fixture(scope="session")
+def html_fixture_server() -> Iterator[str]:
+    """Serves tests/fixtures/html/ at http://127.0.0.1:{port}/.
+
+    curl_cffi_fetch runs against this real HTTP server — no patching.
+    Requires ANTHROPIC_API_KEY to be set for agent tests.
+    """
+    fixtures_dir = _HTML_FIXTURES_DIR
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # type: ignore[override]
+            path = self.path.lstrip("/") or "index.html"
+            file_path = fixtures_dir / path
+            if not file_path.exists():
+                self.send_response(404)
+                self.end_headers()
+                return
+            content = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+
+        def log_message(self, *args: object) -> None:  # type: ignore[override]
+            pass  # silence test output
+
+    server = http.server.HTTPServer(("0.0.0.0", 0), _Handler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{port}"
+    server.shutdown()
 
 
 # =============================================================================
