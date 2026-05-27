@@ -214,11 +214,22 @@ async def process_one_pdf(
     all_warnings: list[str] = []
 
     # Paso 1: resolver grupos de series (lectura rápida, sin modificar nada)
+    # Retries por ConnectionDoesNotExist / QueryCanceledError de PgBouncer.
     logger.info("  resolving series groups...")
-    async with session_factory() as session:
-        series_groups = await resolve_all_series(
-            session, pdf_text, extraction, filename_prefix=series_prefix
-        )
+    series_groups = []
+    for _attempt in range(3):
+        try:
+            async with session_factory() as session:
+                async with session.begin():
+                    await session.execute(text("SET LOCAL statement_timeout = 0"))
+                    series_groups = await resolve_all_series(
+                        session, pdf_text, extraction, filename_prefix=series_prefix
+                    )
+            break
+        except Exception as exc:
+            logger.warning("  resolve_all_series failed (attempt %d): %s", _attempt + 1, exc)
+            if _attempt == 2:
+                logger.warning("  falling back to filename prefix only")
 
     if not series_groups and series_prefix:
         series_groups_list = [(series_prefix, None)]
@@ -321,13 +332,24 @@ async def _apply_series(
     candidate_skus = generate_candidate_skus(series_prefix, extraction)
 
     # Fase 1: consulta de solo lectura — qué SKUs existen ya en BD
-    async with session_factory() as session:
-        existing_result = await session.execute(
-            _select(Product.sku)
-            .where(Product.sku.like(f"{series_prefix}%"))
-            .order_by(Product.sku)
-        )
-        existing_sku_set = {row[0] for row in existing_result.all()}
+    # Retries por ConnectionDoesNotExist / statement_timeout de PgBouncer.
+    existing_sku_set: set[str] = set()
+    for _attempt in range(3):
+        try:
+            async with session_factory() as session:
+                async with session.begin():
+                    await session.execute(text("SET LOCAL statement_timeout = 0"))
+                    existing_result = await session.execute(
+                        _select(Product.sku)
+                        .where(Product.sku.like(f"{series_prefix}%"))
+                        .order_by(Product.sku)
+                    )
+                    existing_sku_set = {row[0] for row in existing_result.all()}
+            break
+        except Exception as exc:
+            logger.warning("  SKU query failed (attempt %d): %s", _attempt + 1, exc)
+            if _attempt == 2:
+                raise
 
     # SKUs a procesar = candidatos + existentes
     all_target_skus = sorted(set(candidate_skus) | existing_sku_set)
@@ -516,5 +538,22 @@ async def main() -> None:
     print("=" * 65)
 
 
+def _asyncio_exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    # Suppress noisy asyncpg "connection lost" errors in background tasks.
+    msg = context.get("message", "")
+    exc = context.get("exception")
+    if "ConnectionDoesNotExistError" in str(type(exc).__name__ if exc else ""):
+        return
+    if "connection" in msg.lower() and "lost" in msg.lower():
+        return
+    loop.default_exception_handler(context)
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.new_event_loop()
+    loop.set_exception_handler(_asyncio_exception_handler)
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(main())
+    finally:
+        loop.close()
