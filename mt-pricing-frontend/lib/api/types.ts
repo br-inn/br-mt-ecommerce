@@ -4149,7 +4149,7 @@ export interface paths {
         get: operations["matchesList"];
         put?: never;
         post?: never;
-        /** Limpiar todos los candidatos (solo ENV=development) */
+        /** Limpiar todos los candidatos de prueba */
         delete: operations["matchesClearAll"];
         options?: never;
         head?: never;
@@ -29805,15 +29805,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

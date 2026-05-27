@@ -834,6 +834,7 @@ class MatchService:
         assert updated is not None  # acabamos de leer el row
         updated.label = "accept"
         await self._record_human_feedback(updated, label=1, user_id=user_id)
+        await self.session.refresh(updated)
         return updated
 
     async def discard_candidate(
@@ -846,6 +847,7 @@ class MatchService:
         assert updated is not None
         updated.label = "reject"
         await self._record_human_feedback(updated, label=0, user_id=None)
+        await self.session.refresh(updated)
         return updated
 
     async def _record_human_feedback(

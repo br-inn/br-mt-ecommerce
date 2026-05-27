@@ -22,9 +22,9 @@ function ScoreDot({ score }: { score: number | null }) {
   const color =
     score === null
       ? MT.border
-      : score >= 0.7
+      : score >= 70
         ? MT.success
-        : score >= 0.4
+        : score >= 40
           ? MT.warning
           : MT.danger;
   return <span className="mt-0.5 size-2 shrink-0 rounded-full" style={{ background: color }} />;

@@ -34,6 +34,7 @@ _BASE_VALVE_BLOCKERS: frozenset[str] = frozenset(
         "ways_mismatch",
         "pn_below_sku_requirement",
         "pn_too_far_above",
+        "application_class_mismatch",  # residencial vs comercial — precios incomparables
     }
 )
 
@@ -48,45 +49,54 @@ _FULL_VALVE_BLOCKERS: frozenset[str] = _BASE_VALVE_BLOCKERS | frozenset(
 # Pesos por familia — suman 1.0
 # ---------------------------------------------------------------------------
 _VALVE_WEIGHTS: dict[str, Decimal] = {
-    "material": Decimal("0.17"),
-    "pn": Decimal("0.11"),
-    "dn": Decimal("0.17"),
-    "product_type": Decimal("0.11"),
-    "thread_standard": Decimal("0.14"),
-    "ways": Decimal("0.05"),
-    "norma": Decimal("0.04"),
-    "brand_tier": Decimal("0.07"),
-    "delivery": Decimal("0.06"),
-    "data_completeness": Decimal("0.08"),
+    "material": Decimal("0.15"),
+    "pn": Decimal("0.10"),
+    "dn": Decimal("0.15"),
+    "product_type": Decimal("0.10"),
+    "thread_standard": Decimal("0.12"),
+    "ways": Decimal("0.04"),
+    "norma": Decimal("0.03"),
+    "brand_tier": Decimal("0.06"),
+    "delivery": Decimal("0.05"),
+    "data_completeness": Decimal("0.05"),
     "actuator": Decimal("0.00"),
+    "application_class": Decimal("0.08"),
+    "connection_gender": Decimal("0.05"),
+    "handle": Decimal("0.02"),
 }
 
 _STRAINER_WEIGHTS: dict[str, Decimal] = {
-    "material": Decimal("0.18"),
-    "pn": Decimal("0.11"),
-    "dn": Decimal("0.18"),
-    "product_type": Decimal("0.14"),
-    "thread_standard": Decimal("0.14"),
+    "material": Decimal("0.16"),
+    "pn": Decimal("0.10"),
+    "dn": Decimal("0.16"),
+    "product_type": Decimal("0.12"),
+    "thread_standard": Decimal("0.12"),
     "ways": Decimal("0.00"),
-    "norma": Decimal("0.05"),
+    "norma": Decimal("0.04"),
     "brand_tier": Decimal("0.07"),
     "delivery": Decimal("0.05"),
-    "data_completeness": Decimal("0.08"),
+    "data_completeness": Decimal("0.07"),
     "actuator": Decimal("0.00"),
+    "application_class": Decimal("0.06"),
+    "connection_gender": Decimal("0.04"),
+    "handle": Decimal("0.01"),
 }
 
 _GAUGE_WEIGHTS: dict[str, Decimal] = {
     "material": Decimal("0.18"),
-    "pn": Decimal("0.19"),
+    "pn": Decimal("0.17"),
     "dn": Decimal("0.09"),
-    "product_type": Decimal("0.18"),
+    "product_type": Decimal("0.16"),
     "thread_standard": Decimal("0.09"),
     "ways": Decimal("0.00"),
     "norma": Decimal("0.05"),
     "brand_tier": Decimal("0.07"),
     "delivery": Decimal("0.07"),
-    "data_completeness": Decimal("0.08"),
+    "data_completeness": Decimal("0.07"),
     "actuator": Decimal("0.00"),
+    "application_class": Decimal("0.03"),
+    "connection_gender": Decimal("0.02"),
+    "handle": Decimal("0.00"),
 }
 
 _DEFAULT_WEIGHTS: dict[str, Decimal] = {
@@ -96,11 +106,14 @@ _DEFAULT_WEIGHTS: dict[str, Decimal] = {
     "product_type": Decimal("0.00"),
     "thread_standard": Decimal("0.14"),
     "ways": Decimal("0.00"),
-    "norma": Decimal("0.14"),
-    "brand_tier": Decimal("0.18"),
-    "delivery": Decimal("0.14"),
-    "data_completeness": Decimal("0.08"),
+    "norma": Decimal("0.12"),
+    "brand_tier": Decimal("0.15"),
+    "delivery": Decimal("0.12"),
+    "data_completeness": Decimal("0.07"),
     "actuator": Decimal("0.00"),
+    "application_class": Decimal("0.04"),
+    "connection_gender": Decimal("0.03"),
+    "handle": Decimal("0.01"),
 }
 
 # ---------------------------------------------------------------------------
