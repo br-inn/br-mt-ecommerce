@@ -16,6 +16,8 @@ from app.db.models.user import User
 from app.repositories.scraper_sources import ScraperSourceRepository
 from app.schemas.scraper_sources import (
     ActivateRequest,
+    AnalyzeRequest,
+    AnalyzeResponse,
     RecipeRead,
     RecipeSubmit,
     ScraperSourceCreate,
@@ -25,6 +27,7 @@ from app.schemas.scraper_sources import (
     ValidateResponse,
 )
 from app.services.matching.adapters.generic_configurable import curl_cffi_fetch
+from app.services.scraper.agent_service import ScraperAgentError, ScraperAgentService
 from app.services.scraper.source_validation_service import SourceValidationService
 
 router = APIRouter(prefix="/scraper-sources", tags=["scraper-sources"])
@@ -70,6 +73,38 @@ def _assert_public_url(url: str) -> None:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="test_url apunta a una dirección no permitida (red interna)",
             )
+
+
+@router.post(
+    "/analyze",
+    response_model=AnalyzeResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="analyzeScraperUrl",
+)
+async def analyze_url(
+    body: AnalyzeRequest,
+    _user: Annotated[User, Depends(require_permissions("products:read"))],
+) -> AnalyzeResponse:
+    """Fetches the URL, calls Claude to generate a scraping recipe, returns proposal.
+    No DB writes — pure analysis for the wizard Step 2 preview."""
+    _assert_public_url(body.url)
+    service = ScraperAgentService()
+    try:
+        result = await service.analyze(body.url, context=body.context, hint=body.hint)
+    except ScraperAgentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return AnalyzeResponse(
+        detected_mode=result.detected_mode,
+        proposed_source=result.proposed_source,
+        proposed_recipe=result.proposed_recipe,
+        field_confidence=result.field_confidence,
+        preview_records=result.preview_records,
+        missing_required=result.missing_required,
+        warnings=result.warnings,
+    )
 
 
 @router.post(
