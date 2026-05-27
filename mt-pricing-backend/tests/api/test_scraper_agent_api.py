@@ -191,6 +191,10 @@ async def agent_client(postgres_container: str) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="requires ANTHROPIC_API_KEY",
+)
 async def test_analyze_happy_path(agent_client: AsyncClient, html_fixture_server: str):
     url = f"{html_fixture_server}/generic_serp.html"
     resp = await agent_client.post("/api/v1/scraper-sources/analyze", json={"url": url})
@@ -206,6 +210,10 @@ async def test_analyze_happy_path(agent_client: AsyncClient, html_fixture_server
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="requires ANTHROPIC_API_KEY",
+)
 async def test_analyze_with_hint(agent_client: AsyncClient, html_fixture_server: str):
     url = f"{html_fixture_server}/generic_serp.html"
     resp = await agent_client.post(

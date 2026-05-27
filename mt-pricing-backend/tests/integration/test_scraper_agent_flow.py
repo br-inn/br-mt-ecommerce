@@ -35,7 +35,7 @@ pytestmark = [pytest.mark.integration]
 
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
-    import sqlalchemy as _sa
+    import sqlalchemy as _sa  # noqa: I001
     from alembic import command
     from alembic.config import Config
     from sqlalchemy import text

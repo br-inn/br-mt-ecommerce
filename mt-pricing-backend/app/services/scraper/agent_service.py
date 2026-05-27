@@ -85,7 +85,7 @@ class ScraperAgentError(Exception):
     pass
 
 
-def _detect_mode(html: str, url: str) -> Literal["static", "headless", "stealth"]:  # noqa: ARG001
+def _detect_mode(html: str, url: str) -> Literal["static", "headless", "stealth"]:
     """Heuristic: inspect HTML body size and anti-bot signals."""
     tree = HTMLParser(html)
     body = tree.body
