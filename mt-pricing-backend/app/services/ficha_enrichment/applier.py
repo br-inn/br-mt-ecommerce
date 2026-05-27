@@ -196,6 +196,16 @@ class FichaEnrichmentApplier:
         await self._session.execute(
             _sa_delete(ProductMaterial).where(ProductMaterial.product_sku == sku)
         )
+        # Product.materials uses lazy="selectin", so _load_product already populated
+        # the identity map with these rows. Core DELETE removes them from DB but not
+        # from the map — expunge them so subsequent session.add() doesn't conflict.
+        stale = [
+            obj for obj in self._session.identity_map.values()
+            if isinstance(obj, ProductMaterial) and obj.product_sku == sku
+        ]
+        for obj in stale:
+            self._session.expunge(obj)
+
         for m in materials:
             component = m.component if m.component in self._VALID_COMPONENT_KINDS else "other"
             row = ProductMaterial(
