@@ -188,6 +188,27 @@ async def process_one_pdf(
         extraction.confidence, len(extraction.model_gaps), elapsed_extract,
     )
 
+    # Skip apply when the extraction has near-zero confidence (image scans,
+    # non-datasheet PDFs, or API failures) to avoid overwriting good DB data.
+    MIN_CONFIDENCE = 0.05
+    if extraction.confidence < MIN_CONFIDENCE:
+        logger.warning(
+            "  skipping apply: confidence=%.2f below %.2f",
+            extraction.confidence, MIN_CONFIDENCE,
+        )
+        return {
+            "filename": filename,
+            "series": series_prefix,
+            "confidence": extraction.confidence,
+            "skus_created": [],
+            "skus_updated": [],
+            "warnings": [
+                f"confidence={extraction.confidence:.2f} below "
+                f"threshold={MIN_CONFIDENCE} — apply skipped"
+            ],
+            "model_gaps": [],
+        }
+
     skus_created: list[str] = []
     skus_updated: list[str] = []
     all_warnings: list[str] = []
