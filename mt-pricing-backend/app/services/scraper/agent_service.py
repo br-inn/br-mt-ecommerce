@@ -157,7 +157,16 @@ class ScraperAgentService:
             # Hint mode: wrap single field in a minimal recipe dict for consistency
             if "fields" not in recipe_dict:
                 recipe_dict = {"fields": [recipe_dict]}
-        records = extract_records(html, recipe_dict)
+
+        # Filter out fields with empty/missing selectors (Claude occasionally generates them)
+        valid_fields = [f for f in recipe_dict.get("fields", []) if f.get("selector")]
+        recipe_dict = {**recipe_dict, "fields": valid_fields}
+
+        try:
+            records = extract_records(html, recipe_dict)
+        except (ValueError, Exception) as exc:
+            logger.warning("extract_records failed after Claude recipe generation: %s", exc)
+            records = []
 
         field_conf: dict[str, float] = {}
         for f in recipe_dict.get("fields", []):
