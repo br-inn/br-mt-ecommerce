@@ -142,15 +142,27 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "properties": {
                         "component": {
                             "type": "string",
+                            "description": (
+                                "Component kind. Use the most specific value available. "
+                                "body=main pressure-containing body; closure=end cap/bonnet flange; "
+                                "seat=valve seat ring; gasket=sealing gasket/O-ring flat; "
+                                "screen=filter/strainer mesh; actuator_housing=actuator body; "
+                                "stem=valve stem/spindle; handle=lever/handle; "
+                                "nut=union nut/gland nut/packing nut/lock nut; "
+                                "packing=stem packing/gland packing/PTFE packing; "
+                                "bonnet=bonnet/second body piece/yoke; "
+                                "insert=threaded insert/tube insert/sleeve; "
+                                "spring=spring/spring washer/compression spring; "
+                                "washer=flat washer/thrust washer/backing ring; "
+                                "o_ring=O-ring/stem O-ring/sealing ring; "
+                                "cap=end cap/plug/protection cap; "
+                                "other=anything else not covered above."
+                            ),
                             "enum": [
-                                "body",
-                                "closure",
-                                "seat",
-                                "gasket",
-                                "screen",
-                                "actuator_housing",
-                                "stem",
-                                "handle",
+                                "body", "closure", "seat", "gasket", "screen",
+                                "actuator_housing", "stem", "handle",
+                                "nut", "packing", "bonnet", "insert",
+                                "spring", "washer", "o_ring", "cap",
                                 "other",
                             ],
                         },

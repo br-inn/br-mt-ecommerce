@@ -20,6 +20,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    op.execute("SET LOCAL statement_timeout = 0")
     op.drop_column("products", "iso5211_interface")
     op.drop_column("products", "kv")
     op.drop_column("products", "dn_real")

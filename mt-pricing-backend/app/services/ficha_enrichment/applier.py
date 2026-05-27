@@ -184,6 +184,15 @@ class FichaEnrichmentApplier:
             "actuator_housing",
             "stem",
             "handle",
+            # Extended component kinds (migration 20260527_159)
+            "nut",
+            "packing",
+            "bonnet",
+            "insert",
+            "spring",
+            "washer",
+            "o_ring",
+            "cap",
             "other",
         }
     )
