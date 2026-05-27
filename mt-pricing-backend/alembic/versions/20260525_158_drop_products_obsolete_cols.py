@@ -21,13 +21,8 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("SET LOCAL statement_timeout = 0")
-    op.drop_column("products", "iso5211_interface")
-    op.drop_column("products", "kv")
-    op.drop_column("products", "dn_real")
-    op.drop_column("products", "kv2")
-    op.drop_column("products", "manufacturing_method")
-    op.drop_column("products", "actuator")
-    op.drop_column("products", "torque_nm")
+    for col in ("iso5211_interface", "kv", "dn_real", "kv2", "manufacturing_method", "actuator", "torque_nm"):
+        op.execute(f"ALTER TABLE products DROP COLUMN IF EXISTS {col}")
 
 
 def downgrade() -> None:

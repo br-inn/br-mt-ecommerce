@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 from typing import Annotated
 from urllib.parse import urlparse
@@ -39,7 +40,11 @@ def _assert_public_url(url: str) -> None:
     ``validate_recipe`` hace un fetch en vivo de una URL provista por el usuario;
     sin este guard un usuario con ``products:write`` podría sondear servicios
     internos (metadata de la nube, red privada).
+
+    SCRAPER_ALLOW_LOOPBACK=true skips the loopback rejection (127.0.0.1) for
+    test fixtures only; private/RFC1918 ranges are still blocked.
     """
+    _allow_loopback = os.environ.get("SCRAPER_ALLOW_LOOPBACK", "").lower() == "true"
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(
@@ -61,6 +66,8 @@ def _assert_public_url(url: str) -> None:
         ) from exc
     for info in addr_infos:
         ip = ipaddress.ip_address(info[4][0])
+        if _allow_loopback and ip.is_loopback:
+            continue
         if (
             ip.is_private
             or ip.is_loopback
