@@ -190,35 +190,43 @@ Adds `useAnalyzeUrl()` mutation hook (React Query `useMutation`).
 
 ---
 
-## 5. Tests
+## 5. Tests — No mocks, everything real
+
+All tests run against real services: real Claude API (`ANTHROPIC_API_KEY`), real PostgreSQL
+(local Supabase), real HTTP (local `pytest-httpserver` serving captured HTML fixtures — no
+`curl_cffi` mock, the function runs for real against `localhost`).
 
 ### 5.1 Unit tests — backend
 
-| File | Covers |
-|---|---|
-| `tests/unit/services/scraper/test_canonical_fields.py` | `validate_recipe`, missing required, field descriptions |
-| `tests/unit/services/scraper/test_agent_service.py` | `_detect_mode` heuristics, `_generate_recipe` (Claude mocked), `analyze` full flow, `refine_field` |
-| `tests/unit/services/scraper/test_recipe_extractor.py` | `extract_records` with HTML fixtures, `coerce_type` for all types, all transforms |
-| `tests/unit/services/scraper/test_source_validation_service.py` | validate with passing/failing HTML fixture, field_results structure |
-| `tests/api/test_scraper_agent_api.py` | `/analyze` endpoint: happy path, SSRF block, unreachable URL 422, HTML fixture response |
+| File | Covers | Real services used |
+|---|---|---|
+| `tests/unit/services/scraper/test_canonical_fields.py` | `validate_recipe`, missing required, field descriptions | None (pure logic) |
+| `tests/unit/services/scraper/test_recipe_extractor.py` | `extract_records` with real HTML strings, `coerce_type` for all types, all transforms | None (pure logic) |
+| `tests/unit/services/scraper/test_source_validation_service.py` | validate + field_results against `pytest-httpserver` serving real captured HTML | Real DB + local HTTP server |
+| `tests/unit/services/scraper/test_agent_service.py` | `_detect_mode` heuristics against real HTML strings; `_generate_recipe` calls real Claude Haiku 4.5; `analyze` full flow against `pytest-httpserver`; `refine_field` with real Claude | Real Claude API + local HTTP server |
+| `tests/api/test_scraper_agent_api.py` | `/analyze` endpoint: happy path against local HTTP server, SSRF block (private IP), 422 on unreachable URL | Real Claude API + real DB + local HTTP server |
+
+### HTML fixtures
+Captured HTML files saved under `tests/fixtures/html/` from real sites (Amazon UAE SERP,
+a generic industrial B2B site). `pytest-httpserver` serves them at `http://localhost:{port}/`.
+`curl_cffi_fetch` runs for real against that localhost URL — no patching.
 
 ### 5.2 Integration test — backend
 
 | File | Covers |
 |---|---|
-| `tests/integration/test_scraper_agent_flow.py` | Full flow with real DB: analyze → create source → create recipe → validate → activate → verify source is active and recipe is_live |
+| `tests/integration/test_scraper_agent_flow.py` | Full flow with real DB + real Claude + local HTTP: analyze → POST /scraper-sources → POST recipes → POST validate → POST activate → assert source status=active + recipe is_live=true |
 
 ### 5.3 E2E test — frontend
 
 | File | Covers |
 |---|---|
-| `tests/e2e/admin/scraper-wizard.spec.ts` | Full wizard: open dialog → enter URL → loading state → review fields → edit a field → add a field (manual) → create → toast → source appears in list |
+| `tests/e2e/admin/scraper-wizard.spec.ts` | Full wizard against running app + real backend: open dialog → enter URL (local HTTP fixture server) → wait for Claude analysis → review fields → edit a field → add field (manual) → click "Crear scraper" → assert toast + source in list |
 
 ---
 
 ## 6. Out of Scope (Future)
 
-- "Find with AI" for field refinement hitting the real Claude API in E2E tests (mocked in tests)
 - Headless/stealth fetch in `GenericConfigurableFetcher` (mode is detected and stored but execution falls back to static for now)
 - Multi-step pagination support in wizard
 - LLM snippets / sandbox execution (Phase 2 of ScraperSources)
