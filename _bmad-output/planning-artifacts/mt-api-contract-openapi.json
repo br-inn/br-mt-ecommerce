@@ -49220,16 +49220,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Forbidden"
           }
         },
         "security": [
@@ -49237,7 +49227,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Limpiar todos los candidatos (solo ENV=development)",
+        "summary": "Limpiar todos los candidatos de prueba",
         "tags": [
           "matches"
         ]
