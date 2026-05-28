@@ -16,6 +16,7 @@ export default function PricingDeskPage() {
   const [sellingModel, setSellingModel] = useState<SellingModel>("b2c");
   const [familyId, setFamilyId] = useState<string | undefined>();
   const [signal, setSignal] = useState<string | undefined>();
+  const [searchSku, setSearchSku] = useState("");
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [comparatorSku, setComparatorSku] = useState<string | null>(null);
 
@@ -52,6 +53,19 @@ export default function PricingDeskPage() {
     filters,
   );
 
+  // Client-side filtered rows: SKU search + defensive signal filter
+  // (backend also filters by signal, but this guards against encoding mismatches)
+  const filteredRows = (data?.rows ?? []).filter((r) => {
+    if (
+      searchSku.trim() !== "" &&
+      !r.sku.toLowerCase().includes(searchSku.trim().toLowerCase())
+    ) {
+      return false;
+    }
+    if (signal && r.signal !== signal) return false;
+    return true;
+  });
+
   return (
     <>
       <PricingHeader
@@ -60,6 +74,7 @@ export default function PricingDeskPage() {
           setChannelCode(c);
           setFamilyId(undefined);
           setSignal(undefined);
+          setSearchSku("");
           setSelectedSkus(new Set());
         }}
         sellingModel={sellingModel}
@@ -77,7 +92,9 @@ export default function PricingDeskPage() {
             onFamilyChange={setFamilyId}
             {...(signal !== undefined && { signal })}
             onSignalChange={setSignal}
-            totalShown={data?.rows.length ?? 0}
+            searchSku={searchSku}
+            onSearchSkuChange={setSearchSku}
+            totalShown={filteredRows.length}
             totalAll={data?.semaforo.total ?? 0}
           />
           <ProposeButton
@@ -100,7 +117,7 @@ export default function PricingDeskPage() {
               <CatalogTable
                 channelCode={channelCode}
                 sellingModel={sellingModel}
-                rows={data.rows}
+                rows={filteredRows}
                 selectedSkus={selectedSkus}
                 onToggleSku={toggleSku}
                 onToggleAll={toggleAll}
