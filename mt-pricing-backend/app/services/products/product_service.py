@@ -248,6 +248,7 @@ class ProductService:
         cursor: str | None = None,
         limit: int = 50,
         include_total: bool = False,
+        page: int | None = None,
         # Stage 3 (Wave 11) — series_id/material_id aceptan UUID o slug del registry.
         division_code: str | None = None,
         series_id: UUID | str | None = None,
@@ -272,6 +273,7 @@ class ProductService:
             cursor=cursor,
             limit=limit,
             include_total=include_total,
+            page=page,
             division_code=division_code,
             series_id=series_id,
             material_id=material_id,

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import ipaddress
+import logging
 import os
 import socket
 from typing import Annotated
+
+logger = logging.getLogger(__name__)
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -102,6 +105,12 @@ async def analyze_url(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.exception("analyze_url unexpected error url=%s", body.url)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Fetch or analysis failed: {type(exc).__name__}: {exc}",
         ) from exc
     return AnalyzeResponse(
         detected_mode=result.detected_mode,

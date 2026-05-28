@@ -130,6 +130,8 @@ const sampleResponse: ProductListResponse = {
   next_cursor: null,
   total: 2,
   page_size: 25,
+  page: 1,
+  pages: 1,
 };
 
 describe("ProductsTable (Pantalla 2)", () => {
@@ -165,14 +167,11 @@ describe("ProductsTable (Pantalla 2)", () => {
     );
   });
 
-  it("muestra el botón 'cargar más' cuando hay next_cursor", async () => {
-    vi.spyOn(productsApi, "list").mockResolvedValue({
-      ...sampleResponse,
-      next_cursor: "cursor-abc",
-    });
+  it("muestra el total de productos cargados", async () => {
+    vi.spyOn(productsApi, "list").mockResolvedValue(sampleResponse);
     renderTable();
     await waitFor(() =>
-      expect(screen.getByTestId("products-load-more")).toBeInTheDocument(),
+      expect(screen.getByTestId("products-total-count")).toBeInTheDocument(),
     );
   });
 
@@ -182,6 +181,8 @@ describe("ProductsTable (Pantalla 2)", () => {
       next_cursor: null,
       total: 0,
       page_size: 25,
+      page: 1,
+      pages: 0,
     });
     renderTable();
     await waitFor(() =>

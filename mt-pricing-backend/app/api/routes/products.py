@@ -491,6 +491,9 @@ async def list_products(
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     include_total: Annotated[bool, Query()] = False,
+    page: Annotated[
+        int | None, Query(ge=1, description="Offset page (activates include_total)")
+    ] = None,
     _user: User = Depends(require_permissions("products:read")),
     service: ProductService = Depends(get_product_service),
 ) -> Pagination[ProductResponse]:
@@ -545,6 +548,7 @@ async def list_products(
         cursor=sku_cursor,
         limit=limit,
         include_total=include_total,
+        page=page,
         # Stage 3 (Wave 11)
         division_code=division,
         series_id=series_id,
@@ -609,11 +613,18 @@ async def list_products(
         item.primary_image_url = primary_photo_map.get(r.sku)
         item.division_codes = division_codes_map.get(r.sku, [])
         items.append(item)
+    pages_count: int | None = None
+    if page is not None and total is not None:
+        import math as _math
+
+        pages_count = max(1, _math.ceil(total / limit))
     return Pagination[ProductResponse](
         items=items,
         cursor=Cursor(next=encode_sku_cursor(next_sku)),
         page_size=limit,
         total=total,
+        page=page,
+        pages=pages_count,
     )
 
 

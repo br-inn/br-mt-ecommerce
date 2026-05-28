@@ -21,6 +21,7 @@ import {
   parseAsString,
   parseAsStringEnum,
   parseAsBoolean,
+  parseAsInteger,
   useQueryState,
 } from "nuqs";
 import {
@@ -128,6 +129,7 @@ export default function CatalogPage() {
 
   // B4 — page size
   const [pageLimit, setPageLimit] = React.useState(25);
+  const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
 
   // A2 — modo de visualización
   const [viewMode, setViewMode] = React.useState<"table" | "grid">("table");
@@ -187,6 +189,20 @@ export default function CatalogPage() {
 
   const debouncedSearch = useDebouncedValue(searchInput, 300);
 
+  // Reset to page 1 when any filter changes (not page itself).
+  const _filterHash = JSON.stringify({
+    debouncedSearch, family, subfamily, typeFilter, quality,
+    translationStatus, active, dn, pn, material, division,
+    seriesId, materialId, tierCode, pageLimit,
+  });
+  const _prevFilterHash = React.useRef(_filterHash);
+  React.useEffect(() => {
+    if (_prevFilterHash.current !== _filterHash) {
+      _prevFilterHash.current = _filterHash;
+      void setPage(1);
+    }
+  }, [_filterHash, setPage]);
+
   const filters: ProductFilters = React.useMemo(
     () => ({
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
@@ -206,6 +222,8 @@ export default function CatalogPage() {
       ...(tierCode ? { tier_code: tierCode } : {}),
       // B4 — page size
       limit: pageLimit,
+      per_page: pageLimit,
+      page,
     }),
     [
       debouncedSearch,
@@ -223,6 +241,7 @@ export default function CatalogPage() {
       materialId,
       tierCode,
       pageLimit,
+      page,
     ],
   );
 
@@ -231,16 +250,11 @@ export default function CatalogPage() {
     isLoading,
     isError,
     refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    isFetching,
   } = useProducts(filters);
 
-  const items: ProductListItem[] = React.useMemo(
-    () => data?.pages.flatMap((p) => p.items) ?? [],
-    [data],
-  );
-  const total = data?.pages[0]?.total ?? null;
+  const items: ProductListItem[] = data?.items ?? [];
+  const total = data?.total ?? null;
 
   // B3 — keyboard shortcuts
   React.useEffect(() => {
@@ -1081,13 +1095,13 @@ export default function CatalogPage() {
 
       {/* Paginator (Wave 10) replaces the legacy "cargar más" footer */}
       <Paginator
-        loaded={items.length}
+        page={page}
+        pages={data?.pages ?? null}
         total={totalFiltered}
         pageSize={pageLimit}
-        onPageSize={setPageLimit}
-        hasNext={Boolean(hasNextPage)}
-        onNext={() => void fetchNextPage()}
-        isFetching={isFetchingNextPage}
+        onPageSize={(size) => { setPageLimit(size); void setPage(1); }}
+        onPage={(p) => void setPage(p)}
+        isFetching={isFetching}
       />
 
       <div

@@ -62,9 +62,6 @@ export function ProductsTable() {
     isLoading,
     isError,
     error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
     refetch,
   } = useProducts(filters);
 
@@ -74,10 +71,7 @@ export function ProductsTable() {
     }
   }, [isError, error, t]);
 
-  const items = React.useMemo<ProductListItem[]>(
-    () => data?.pages.flatMap((p) => p.items) ?? [],
-    [data],
-  );
+  const items: ProductListItem[] = data?.items ?? [];
 
   // Filtro client-side por brand (campo no nativo del API en S1; el backend
   // lo añade en S2). Mantiene la URL como source of truth.
@@ -215,17 +209,6 @@ export function ProductsTable() {
         <span data-testid="products-total-count">
           {t("totalCount", { count: totalLoaded })}
         </span>
-        {hasNextPage ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            data-testid="products-load-more"
-          >
-            {isFetchingNextPage ? tCommon("loading") : t("loadMore")}
-          </Button>
-        ) : null}
       </div>
     </div>
   );
