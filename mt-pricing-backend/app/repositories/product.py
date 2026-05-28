@@ -159,6 +159,7 @@ class ProductRepository(BaseRepository[Product]):
         limit: int = 50,
         include_deleted: bool = False,
         include_total: bool = False,
+        page: int | None = None,
         # Stage 3 filters (Wave 11) — divisions M:N + series rica + material vocab.
         #
         # series_id / material_id aceptan **UUID o SLUG** (taxonomy registry mig 050+).
@@ -350,6 +351,10 @@ class ProductRepository(BaseRepository[Product]):
         if clauses:
             stmt = stmt.where(and_(*clauses))
 
+        # Offset mode forces a total count so the UI can show page numbers.
+        if page is not None:
+            include_total = True
+
         # Total count opcional — sobre los mismos filtros (sin cursor).
         total: int | None = None
         if include_total:
@@ -359,18 +364,25 @@ class ProductRepository(BaseRepository[Product]):
             total_res = await self.session.execute(count_stmt)
             total = int(total_res.scalar_one() or 0)
 
-        # Cursor — append AL FINAL para que no participe del count(*).
-        if cursor:
-            stmt = stmt.where(Product.sku > cursor)
-
-        stmt = stmt.order_by(Product.sku.asc()).limit(limit + 1)
-        result = await self.session.execute(stmt)
-        rows = list(result.scalars().all())
-        next_cursor: str | None = None
-        if len(rows) > limit:
-            next_cursor = rows[limit - 1].sku
-            rows = rows[:limit]
-        return rows, next_cursor, total
+        # Cursor / offset — applied AFTER count(*) to avoid affecting it.
+        if page is not None:
+            # Offset mode: skip cursor, apply OFFSET.
+            offset = (page - 1) * limit
+            stmt = stmt.order_by(Product.sku.asc()).limit(limit).offset(offset)
+            result = await self.session.execute(stmt)
+            rows = list(result.scalars().all())
+            return rows, None, total
+        else:
+            if cursor:
+                stmt = stmt.where(Product.sku > cursor)
+            stmt = stmt.order_by(Product.sku.asc()).limit(limit + 1)
+            result = await self.session.execute(stmt)
+            rows = list(result.scalars().all())
+            next_cursor: str | None = None
+            if len(rows) > limit:
+                next_cursor = rows[limit - 1].sku
+                rows = rows[:limit]
+            return rows, next_cursor, total
 
     async def search_by_text(self, query: str, *, limit: int = 10) -> Sequence[Product]:
         """Full-text simple: pg_trgm sobre product_translations(lang='en').name + ILIKE sobre sku.
