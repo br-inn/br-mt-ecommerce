@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
 
 interface NumericStepperProps {
@@ -33,11 +33,18 @@ export function NumericStepper({
   disabled = false,
   "aria-label": ariaLabel,
 }: NumericStepperProps) {
+  // Track both draftText and the last committed prop value so we can reset
+  // draftText when the parent drives a new value (e.g. after optimize).
+  // This uses the "derived state from props" pattern (no useEffect needed).
   const [draftText, setDraftText] = useState(value.toFixed(decimals));
+  const [prevValue, setPrevValue] = useState(value);
+  const [prevDecimals, setPrevDecimals] = useState(decimals);
 
-  useEffect(() => {
+  if (prevValue !== value || prevDecimals !== decimals) {
+    setPrevValue(value);
+    setPrevDecimals(decimals);
     setDraftText(value.toFixed(decimals));
-  }, [value, decimals]);
+  }
 
   const commit = (raw: string) => {
     const clean = raw.replace(",", ".").replace(suffix, "").trim();
