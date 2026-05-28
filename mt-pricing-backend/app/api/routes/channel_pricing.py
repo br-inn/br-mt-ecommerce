@@ -84,7 +84,7 @@ async def _resolve_channel_id(
 )
 async def get_params(
     channel_code: str,
-    _user: Annotated[User, Depends(require_permissions("prices:propose"))],
+    _user: Annotated[User, Depends(require_permissions("prices:read"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> dict:
     """Return route + fee + scheme params for this channel."""
@@ -96,13 +96,19 @@ async def get_params(
         )
     ).scalars().first()
     if fee_row is None:
-        raise HTTPException(404, detail="Channel fee params not configured")
+        raise HTTPException(
+            404, detail=f"Channel '{channel_code}' has no fee params configured"
+        )
 
     route_row = (
         await session.execute(
             select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
         )
     ).scalars().first()
+    if route_row is None:
+        raise HTTPException(
+            500, detail="Trade route params missing — data integrity issue"
+        )
 
     scheme_rows = (
         await session.execute(
@@ -158,9 +164,11 @@ async def update_route_params(
         )
     ).scalars().first()
     if fee_row is None:
-        raise HTTPException(404, detail="Channel not configured")
+        raise HTTPException(
+            404, detail=f"Channel '{channel_code}' has no fee params configured"
+        )
 
-    values = {k: v for k, v in body.model_dump().items() if v is not None}
+    values = body.model_dump(exclude_unset=True)
     if values:
         await session.execute(
             update(TradeRouteParams)
@@ -197,7 +205,7 @@ async def update_fee_params(
     """Update channel-specific fee parameters (commission, VAT, advertising, returns…)."""
     channel_id = await _resolve_channel_id(channel_code, session)
 
-    values = {k: v for k, v in body.model_dump().items() if v is not None}
+    values = body.model_dump(exclude_unset=True)
     if values:
         await session.execute(
             update(ChannelFeeParams)
@@ -229,7 +237,7 @@ async def update_fee_params(
 )
 async def list_margin_targets(
     channel_code: str,
-    _user: Annotated[User, Depends(require_permissions("prices:propose"))],
+    _user: Annotated[User, Depends(require_permissions("prices:read"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[MarginTargetRead]:
     """List margin targets for this channel, with family name joined in."""
@@ -371,7 +379,7 @@ async def delete_margin_override(
     sku: str,
     _user: Annotated[User, Depends(require_permissions("prices:propose"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
-    selling_model: str = Query(default="b2c"),
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
 ) -> None:
     """Remove a SKU override — product reverts to family margin target."""
     channel_id = await _resolve_channel_id(channel_code, session)
@@ -380,7 +388,7 @@ async def delete_margin_override(
         delete(ChannelMarginOverride).where(
             ChannelMarginOverride.product_sku == sku,
             ChannelMarginOverride.channel_id == channel_id,
-            ChannelMarginOverride.selling_model == selling_model,
+            ChannelMarginOverride.selling_model == selling_model.value,
         )
     )
     await session.commit()

@@ -52834,9 +52834,8 @@
             "name": "selling_model",
             "required": false,
             "schema": {
-              "default": "b2c",
-              "title": "Selling Model",
-              "type": "string"
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
             }
           }
         ],
