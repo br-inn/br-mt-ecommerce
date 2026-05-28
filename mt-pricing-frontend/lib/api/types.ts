@@ -5157,6 +5157,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pricing/{channel_code}/prices/propose-selected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Propose Prices Selected
+         * @description Propose prices for selected SKUs into the approval flow.
+         *
+         *     Runs the pricing engine for each SKU and inserts rows into `prices`
+         *     with status='pending_review'. SKUs not found in channel logistics are
+         *     skipped; infeasible prices are reported as errors.
+         *
+         *     proposed_by is stored as NULL until get_current_user is threaded through.
+         *     # TODO: thread current user UUID once auth dependency is available here.
+         */
+        post: operations["proposePricesSelected"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pricing/{channel_code}/product/{sku}": {
         parameters: {
             query?: never;
@@ -5195,6 +5222,66 @@ export interface paths {
          * @description Update trade route parameters (FX, freight, arancel…) for this channel.
          */
         patch: operations["channelPricingPatchRouteParams"];
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/scenarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Scenarios
+         * @description List saved A/B scenarios for a channel and selling model.
+         */
+        get: operations["listScenarios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/scenarios/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Scenario
+         * @description Save current params + margins + overrides as scenario A or B.
+         */
+        put: operations["saveScenario"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/scenarios/{slot}/load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Load Scenario
+         * @description Restore saved scenario: applies its params + margins + overrides.
+         */
+        post: operations["loadScenario"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/procurement/approval-rules": {
@@ -17590,6 +17677,41 @@ export interface components {
             /** Responsible Id */
             responsible_id: string | null;
         };
+        /** ProposeSelectedItemResult */
+        ProposeSelectedItemResult: {
+            /** Price Id */
+            price_id?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Selling Price Aed */
+            selling_price_aed?: number | null;
+            /** Sku */
+            sku: string;
+            /** Status */
+            status: string;
+        };
+        /** ProposeSelectedRequest */
+        ProposeSelectedRequest: {
+            /** Notes */
+            notes?: string | null;
+            /** @default b2c */
+            selling_model: components["schemas"]["SellingModel"];
+            /** Skus */
+            skus: string[];
+        };
+        /** ProposeSelectedResult */
+        ProposeSelectedResult: {
+            /** Errors */
+            errors: number;
+            /** Items */
+            items: components["schemas"]["ProposeSelectedItemResult"][];
+            /** Proposed */
+            proposed: number;
+            /** Skipped */
+            skipped: number;
+            /** Total Requested */
+            total_requested: number;
+        };
         /** ProxyAddRequest */
         ProxyAddRequest: {
             /** Proxy */
@@ -18540,6 +18662,30 @@ export interface components {
             status?: string | null;
             /** Warehouse Id */
             warehouse_id?: string | null;
+        };
+        /** ScenarioSaveRequest */
+        ScenarioSaveRequest: {
+            /** Label */
+            label?: string | null;
+            /** @default b2c */
+            selling_model: components["schemas"]["SellingModel"];
+            /** Slot */
+            slot: string;
+        };
+        /** ScenarioSummary */
+        ScenarioSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string | null;
+            selling_model: components["schemas"]["SellingModel"];
+            /** Slot */
+            slot: string;
+            /** Snapshot At */
+            snapshot_at: string;
         };
         /**
          * SchemeResponse
@@ -32398,6 +32544,41 @@ export interface operations {
             };
         };
     };
+    proposePricesSelected: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposeSelectedRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposeSelectedResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getProductPrice: {
         parameters: {
             query?: {
@@ -32456,6 +32637,107 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TradeRouteParamsRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listScenarios: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScenarioSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saveScenario: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+                slot: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScenarioSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScenarioSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    loadScenario: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+                slot: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
