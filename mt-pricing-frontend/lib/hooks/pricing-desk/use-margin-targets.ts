@@ -32,10 +32,47 @@ export function useMarginTargets(channelCode: string) {
 
 export function useUpsertMarginTarget(channelCode: string) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: MarginTargetUpsert) =>
-      pricingDeskApi.upsertMarginTarget(channelCode, body),
-    onSuccess: () => {
+  return useMutation<
+    void,
+    Error,
+    MarginTargetUpsert,
+    { previous: Array<[readonly unknown[], unknown]> }
+  >({
+    mutationFn: (body) => pricingDeskApi.upsertMarginTarget(channelCode, body),
+    onMutate: async (body) => {
+      // Cancel in-flight queries that we are about to overwrite
+      await queryClient.cancelQueries({
+        queryKey: marginTargetKeys.targets(channelCode),
+      });
+      const previous = queryClient.getQueriesData<unknown>({
+        queryKey: marginTargetKeys.targets(channelCode),
+      }) as Array<[readonly unknown[], unknown]>;
+      // Optimistically update the matching family target so the stepper
+      // reflects the new value immediately. Without this, the NumericStepper's
+      // value prop stays at the old value during the network round-trip and
+      // successive clicks send the same +1 from the same base — UX is broken.
+      queryClient.setQueriesData<MarginTarget[] | undefined>(
+        { queryKey: marginTargetKeys.targets(channelCode) },
+        (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((t) =>
+            t.family_id === body.family_id &&
+            t.selling_model === body.selling_model
+              ? { ...t, margin_target_pct: String(body.margin_target_pct) }
+              : t,
+          );
+        },
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        for (const [key, data] of ctx.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({
         queryKey: marginTargetKeys.targets(channelCode),
       });
