@@ -40,6 +40,12 @@ export function CatalogTable({
 
   return (
     <div className="overflow-auto border border-mt-border bg-white">
+      {upsertOverride.isError && (
+        <div className="border-b border-mt-danger bg-mt-danger-soft px-4 py-2 text-[11px] text-mt-danger">
+          Error al guardar margen:{" "}
+          {upsertOverride.error?.message ?? "no se pudo guardar"}
+        </div>
+      )}
       <table className="mt-data-table w-full text-sm">
         <thead>
           <tr className="bg-mt-ink text-white">
