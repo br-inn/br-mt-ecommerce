@@ -609,9 +609,7 @@ async def test_propose_selected_inserts_pending_review_row(
 
     # 3. Verify counts add up — must NOT produce a 500 from FK/trigger violations
     assert data["total_requested"] == 1
-    assert data["proposed"] + data["skipped"] + data["errors"] == 1, (
-        f"counts mismatch: {data}"
-    )
+    assert data["proposed"] + data["skipped"] + data["errors"] == 1, f"counts mismatch: {data}"
 
     # 4. If proposed, verify DB row has status=pending_review via the shared session
     if data["proposed"] == 1:
@@ -665,9 +663,7 @@ async def test_save_and_list_scenarios(cp_client: AsyncClient) -> None:
     )
     assert save_resp.status_code == 200, save_resp.text
 
-    list_resp = await cp_client.get(
-        "/api/v1/pricing/amazon_uae/scenarios?selling_model=b2c"
-    )
+    list_resp = await cp_client.get("/api/v1/pricing/amazon_uae/scenarios?selling_model=b2c")
     assert list_resp.status_code == 200
     data = list_resp.json()
     assert any(s["slot"] == "A" for s in data)
