@@ -510,6 +510,24 @@ async def test_apply_optimization_persists_overrides(cp_client: AsyncClient) -> 
 
 
 @pytest.mark.asyncio
+async def test_propose_selected_returns_result_shape(cp_client: AsyncClient) -> None:
+    """POST /prices/propose-selected returns total/proposed/skipped/errors shape."""
+    resp = await cp_client.post(
+        "/api/v1/pricing/amazon_uae/prices/propose-selected",
+        json={"skus": ["NONEXISTENT_SKU_TEST_999"], "selling_model": "b2c"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["total_requested"] == 1
+    # NONEXISTENT_SKU_TEST_999 is not in products table → skipped
+    assert data["skipped"] == 1
+    assert data["proposed"] == 0
+    assert data["errors"] == 0
+    assert data["items"][0]["status"] == "skipped"
+    assert data["items"][0]["sku"] == "NONEXISTENT_SKU_TEST_999"
+
+
+@pytest.mark.asyncio
 async def test_upsert_margin_target_returns_204(cp_client: AsyncClient) -> None:
     """PUT /margin-targets returns 204 for a valid family_id + selling_model.
 

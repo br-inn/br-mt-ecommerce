@@ -52,6 +52,8 @@ from app.schemas.channel_pricing import (
     OptimizeResponse,
     PriceResultJSON,
     ProductPriceResponse,
+    ProposeSelectedRequest,
+    ProposeSelectedResult,
     TradeRouteParamsRead,
     TradeRouteParamsUpdate,
 )
@@ -648,6 +650,44 @@ async def apply_optimization(
             )
         )
     await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /prices/propose-selected — propose prices for selected SKUs
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/prices/propose-selected",
+    operation_id="proposePricesSelected",
+    response_model=ProposeSelectedResult,
+    dependencies=[Depends(require_permissions("prices:propose"))],
+)
+async def propose_prices_selected(
+    channel_code: str,
+    body: ProposeSelectedRequest,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ProposeSelectedResult:
+    """Propose prices for selected SKUs into the approval flow.
+
+    Runs the pricing engine for each SKU and inserts rows into `prices`
+    with status='pending_review'. SKUs not found in channel logistics are
+    skipped; infeasible prices are reported as errors.
+
+    proposed_by is stored as NULL until get_current_user is threaded through.
+    # TODO: thread current user UUID once auth dependency is available here.
+    """
+    from app.services.pricing.price_proposer import PriceProposer
+
+    channel_id = await _resolve_channel_id(channel_code, session)
+    proposer = PriceProposer(session)
+    return await proposer.propose(
+        channel_id=channel_id,
+        skus=body.skus,
+        selling_model=body.selling_model,
+        proposed_by=None,  # TODO: replace with current user UUID once threaded
+        notes=body.notes,
+    )
 
 
 # ── Excel import endpoints ───────────────────────────────────────────

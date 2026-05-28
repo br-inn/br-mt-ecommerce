@@ -25545,6 +25545,127 @@
         "title": "ProfitCenterOut",
         "type": "object"
       },
+      "ProposeSelectedItemResult": {
+        "properties": {
+          "price_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "selling_price_aed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selling Price Aed"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "status"
+        ],
+        "title": "ProposeSelectedItemResult",
+        "type": "object"
+      },
+      "ProposeSelectedRequest": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel",
+            "default": "b2c"
+          },
+          "skus": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Skus",
+            "type": "array"
+          }
+        },
+        "required": [
+          "skus"
+        ],
+        "title": "ProposeSelectedRequest",
+        "type": "object"
+      },
+      "ProposeSelectedResult": {
+        "properties": {
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposeSelectedItemResult"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "proposed": {
+            "title": "Proposed",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "total_requested": {
+            "title": "Total Requested",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_requested",
+          "proposed",
+          "skipped",
+          "errors",
+          "items"
+        ],
+        "title": "ProposeSelectedResult",
+        "type": "object"
+      },
       "ProxyAddRequest": {
         "properties": {
           "proxy": {
@@ -53680,6 +53801,64 @@
           }
         ],
         "summary": "Channel pricing config (route + fees + schemes)",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/prices/propose-selected": {
+      "post": {
+        "description": "Propose prices for selected SKUs into the approval flow.\n\nRuns the pricing engine for each SKU and inserts rows into `prices`\nwith status='pending_review'. SKUs not found in channel logistics are\nskipped; infeasible prices are reported as errors.\n\nproposed_by is stored as NULL until get_current_user is threaded through.\n# TODO: thread current user UUID once auth dependency is available here.",
+        "operationId": "proposePricesSelected",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeSelectedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposeSelectedResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Propose Prices Selected",
         "tags": [
           "channel-pricing"
         ]

@@ -232,6 +232,31 @@ class OptimizeResponse(BaseModel):
     results: list[PriceResultJSON]
 
 
+# ── Propose selected ──────────────────────────────────────────────────
+
+
+class ProposeSelectedRequest(BaseModel):
+    skus: list[str] = Field(min_length=1, max_length=500)
+    selling_model: SellingModel = SellingModel.B2C
+    notes: str | None = None
+
+
+class ProposeSelectedItemResult(BaseModel):
+    sku: str
+    status: str  # "proposed" | "skipped" | "error"
+    price_id: UUID | None = None
+    selling_price_aed: float | None = None
+    reason: str | None = None
+
+
+class ProposeSelectedResult(BaseModel):
+    total_requested: int
+    proposed: int
+    skipped: int
+    errors: int
+    items: list[ProposeSelectedItemResult]
+
+
 __all__ = [
     "CatalogImportResult",
     "CatalogImportRow",
@@ -250,6 +275,9 @@ __all__ = [
     "OptimizeResponse",
     "PriceResultJSON",
     "ProductPriceResponse",
+    "ProposeSelectedItemResult",
+    "ProposeSelectedRequest",
+    "ProposeSelectedResult",
     "ScenarioRead",
     "TradeRouteParamsRead",
     "TradeRouteParamsUpdate",
