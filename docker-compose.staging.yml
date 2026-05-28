@@ -214,6 +214,7 @@ services:
   # ---------------------------------------------------------------------------
   dozzle:
     image: amir20/dozzle:latest
+    pull_policy: if_not_present
     container_name: mt-dozzle-staging
     restart: unless-stopped
     volumes:
@@ -269,6 +270,7 @@ services:
   # ---------------------------------------------------------------------------
   autoheal:
     image: willfarrell/autoheal:latest
+    pull_policy: if_not_present
     container_name: mt-autoheal-staging
     restart: unless-stopped
     environment:
