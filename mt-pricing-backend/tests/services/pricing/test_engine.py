@@ -1,5 +1,6 @@
 # tests/services/pricing/test_engine.py
 """Unit tests for PricingEngine — pure function, no DB required."""
+
 from decimal import Decimal
 
 import pytest
@@ -125,15 +126,12 @@ def test_compute_b2c_cost_op_breakdown(brass_valve, route, fees, fba_scheme):
     fx_adj = Decimal("4.28") * Decimal("1.02")
     aed = net_eur * fx_adj
     landed = aed * (Decimal("1") + Decimal("0.0414") + Decimal("0.02") + Decimal("0.015"))
-    channel_logistics = (
-        Decimal("1.5") + Decimal("0.028") * Decimal("1.0") + Decimal("7.2")
-    )
+    channel_logistics = Decimal("1.5") + Decimal("0.028") * Decimal("1.0") + Decimal("7.2")
     expected_cost_op = landed + channel_logistics
     assert abs(result.cost_op_aed - expected_cost_op) < Decimal("0.01")
 
 
-def test_compute_b2c_easy_ship_higher_cost(brass_valve, route, fees,
-                                           fba_scheme, easy_ship_scheme):
+def test_compute_b2c_easy_ship_higher_cost(brass_valve, route, fees, fba_scheme, easy_ship_scheme):
     """Easy Ship cost > FBA cost for this small product."""
     r_fba = PricingEngine.compute_b2c(brass_valve, route, fees, fba_scheme, Decimal("12"))
     r_es = PricingEngine.compute_b2c(brass_valve, route, fees, easy_ship_scheme, Decimal("12"))
@@ -160,8 +158,9 @@ def test_compute_b2c_infeasible_when_fees_exceed_100(brass_valve, route, fba_sch
         returns_pct=Decimal("2"),
         storage_multiplier=Decimal("1.0"),
     )
-    result = PricingEngine.compute_b2c(brass_valve, route, very_high_fees,
-                                       fba_scheme, Decimal("80"))
+    result = PricingEngine.compute_b2c(
+        brass_valve, route, very_high_fees, fba_scheme, Decimal("80")
+    )
     assert result.is_publishable is False
     assert result.signal == "PÉRDIDA"
 
@@ -169,6 +168,7 @@ def test_compute_b2c_infeasible_when_fees_exceed_100(brass_valve, route, fba_sch
 def test_compute_b2b_uses_box_quantity(brass_valve, route, fees, fba_scheme):
     """B2B cost is N times B2C single-unit cost (minus labeling)."""
     from dataclasses import replace
+
     product_box = replace(brass_valve, units_per_box=10)
     result_b2b = PricingEngine.compute_b2b(product_box, route, fees, fba_scheme, Decimal("12"))
     result_b2c = PricingEngine.compute_b2c(brass_valve, route, fees, fba_scheme, Decimal("12"))
@@ -185,16 +185,22 @@ def test_fba_weight_limit_respected(route, fees):
         default_scheme=FulfillmentScheme.CANAL_FULL,
     )
     heavy_product = ProductPricingData(
-        sku="HEAVY001", family_id="dummy",
-        pe_eur=Decimal("200"), catalog_pvp_eur=Decimal("2000"),
-        units_per_box=1, weight_kg=Decimal("30"),
-        b2c_labeling_aed=Decimal("0"), ceiling_basis=CeilingBasis.CATALOG_PVP,
+        sku="HEAVY001",
+        family_id="dummy",
+        pe_eur=Decimal("200"),
+        catalog_pvp_eur=Decimal("2000"),
+        units_per_box=1,
+        weight_kg=Decimal("30"),
+        b2c_labeling_aed=Decimal("0"),
+        ceiling_basis=CeilingBasis.CATALOG_PVP,
         logistics=heavy_logistics,
     )
     fba_scheme = SchemeConfig(
         fulfillment_scheme=FulfillmentScheme.CANAL_FULL,
-        scheme_label="FBA", is_available=True,
-        flat_supplement_aed=Decimal("0"), pct_surcharge=Decimal("0"),
+        scheme_label="FBA",
+        is_available=True,
+        flat_supplement_aed=Decimal("0"),
+        pct_surcharge=Decimal("0"),
         max_weight_kg=Decimal("25"),
     )
     result = PricingEngine.compute_b2c(heavy_product, route, fees, fba_scheme, Decimal("15"))
@@ -210,6 +216,7 @@ def test_ceiling_catalog_pvp(brass_valve, route, fees, fba_scheme):
 def test_ceiling_basis_margin_floor_returns_infinity(brass_valve, route, fees, fba_scheme):
     """Products with MARGIN_FLOOR basis have an infinite ceiling (optimizer handles)."""
     from dataclasses import replace
+
     product = replace(brass_valve, ceiling_basis=CeilingBasis.MARGIN_FLOOR)
     result = PricingEngine.compute_b2c(product, route, fees, fba_scheme, Decimal("20"))
     assert result.ceiling_aed == Decimal("Infinity")
@@ -220,9 +227,13 @@ def test_product_pricing_data_rejects_zero_units_per_box(brass_valve_logistics):
     """units_per_box < 1 must raise at construction time."""
     with pytest.raises(ValueError, match="units_per_box must be >= 1"):
         ProductPricingData(
-            sku="ZERO001", family_id="dummy",
-            pe_eur=Decimal("1"), catalog_pvp_eur=Decimal("10"),
-            units_per_box=0, weight_kg=Decimal("0.1"),
-            b2c_labeling_aed=Decimal("0"), ceiling_basis=CeilingBasis.CATALOG_PVP,
+            sku="ZERO001",
+            family_id="dummy",
+            pe_eur=Decimal("1"),
+            catalog_pvp_eur=Decimal("10"),
+            units_per_box=0,
+            weight_kg=Decimal("0.1"),
+            b2c_labeling_aed=Decimal("0"),
+            ceiling_basis=CeilingBasis.CATALOG_PVP,
             logistics=brass_valve_logistics,
         )

@@ -166,8 +166,7 @@ async def test_channel_margin_overrides_cascade_on_product_delete(
     count_before = (
         await db_session.execute(
             text(
-                "SELECT count(*) FROM channel_margin_overrides"
-                " WHERE product_sku = :sku"
+                "SELECT count(*) FROM channel_margin_overrides WHERE product_sku = :sku"
             ).bindparams(sku=sku)
         )
     ).scalar_one()
@@ -177,9 +176,7 @@ async def test_channel_margin_overrides_cascade_on_product_delete(
     await db_session.execute(
         text("ALTER TABLE products DISABLE TRIGGER trg_products_no_hard_delete")
     )
-    await db_session.execute(
-        text("DELETE FROM products WHERE sku = :sku").bindparams(sku=sku)
-    )
+    await db_session.execute(text("DELETE FROM products WHERE sku = :sku").bindparams(sku=sku))
     await db_session.flush()
     await db_session.execute(
         text("ALTER TABLE products ENABLE TRIGGER trg_products_no_hard_delete")
@@ -189,8 +186,7 @@ async def test_channel_margin_overrides_cascade_on_product_delete(
     count_after = (
         await db_session.execute(
             text(
-                "SELECT count(*) FROM channel_margin_overrides"
-                " WHERE product_sku = :sku"
+                "SELECT count(*) FROM channel_margin_overrides WHERE product_sku = :sku"
             ).bindparams(sku=sku)
         )
     ).scalar_one()

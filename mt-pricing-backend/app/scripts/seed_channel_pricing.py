@@ -233,9 +233,7 @@ async def main() -> None:
         # Families in DB use English names/codes (e.g. 'ball_valve', 'gate_valve').
         # The Pricing Desk provides Spanish names — we do best-effort slug matching.
         family_rows = (
-            await session.execute(
-                text("SELECT id, code, name FROM families ORDER BY code")
-            )
+            await session.execute(text("SELECT id, code, name FROM families ORDER BY code"))
         ).fetchall()
         family_by_slug: dict[str, tuple] = {row[1]: row for row in family_rows}
 

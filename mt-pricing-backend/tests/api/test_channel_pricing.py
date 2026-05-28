@@ -179,9 +179,7 @@ async def _seed_admin_user(session: AsyncSession) -> tuple[UUID, str]:
 
     from app.db.models.user import Role, User
 
-    role = (
-        await session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one_or_none()
+    role = (await session.execute(select(Role).where(Role.code == "admin"))).scalar_one_or_none()
     if role is None:
         role = Role(code="admin", name="admin", permissions_snapshot=[])
         session.add(role)
@@ -291,10 +289,7 @@ async def _seed_channel_pricing_data(session: AsyncSession) -> None:
     await session.flush()
 
     route_id_row = await session.execute(
-        text(
-            "SELECT id FROM trade_route_params "
-            "WHERE route_code = 'es_to_uae_cp_test' LIMIT 1"
-        )
+        text("SELECT id FROM trade_route_params WHERE route_code = 'es_to_uae_cp_test' LIMIT 1")
     )
     route_id = route_id_row.scalar_one()
 
@@ -405,9 +400,7 @@ async def cp_client(postgres_container: str) -> AsyncIterator[AsyncClient]:
             try:
                 token = _emit_jwt(sub=str(uid), email=email, role="admin")
                 transport = ASGITransport(app=app)
-                async with AsyncClient(
-                    transport=transport, base_url="http://testserver"
-                ) as ac:
+                async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
                     ac.headers["Authorization"] = f"Bearer {token}"
                     yield ac
             finally:
@@ -480,9 +473,7 @@ async def test_margin_targets_list(cp_client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_get_product_price_missing_sku_returns_404(cp_client: AsyncClient) -> None:
     """GET /product/{nonexistent} → 404."""
-    resp = await cp_client.get(
-        "/api/v1/pricing/amazon_uae/product/NONEXISTENT_SKU_CPE_999"
-    )
+    resp = await cp_client.get("/api/v1/pricing/amazon_uae/product/NONEXISTENT_SKU_CPE_999")
     assert resp.status_code == 404
 
 
