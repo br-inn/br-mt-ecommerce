@@ -617,7 +617,7 @@ async def list_products(
     if page is not None and total is not None:
         import math as _math
 
-        pages_count = max(1, _math.ceil(total / limit))
+        pages_count = _math.ceil(total / limit) if total > 0 else 0
     return Pagination[ProductResponse](
         items=items,
         cursor=Cursor(next=encode_sku_cursor(next_sku)),

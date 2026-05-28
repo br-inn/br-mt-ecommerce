@@ -146,7 +146,7 @@ async def test_offset_page1_returns_correct_slice(
     token = _emit_jwt(sub=str(uid), email=email)
     skus = await _seed_products(db_session, 5)
     r = await client.get(
-        "/api/v1/products?page=1&limit=2",
+        "/api/v1/products?page=1&limit=2&family=valves_offset",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200, r.text
@@ -169,7 +169,7 @@ async def test_offset_page2_returns_middle_slice(
     token = _emit_jwt(sub=str(uid), email=email)
     skus = await _seed_products(db_session, 5)
     r = await client.get(
-        "/api/v1/products?page=2&limit=2",
+        "/api/v1/products?page=2&limit=2&family=valves_offset",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200, r.text
@@ -186,7 +186,7 @@ async def test_offset_last_page_partial(client: AsyncClient, db_session: AsyncSe
     token = _emit_jwt(sub=str(uid), email=email)
     skus = await _seed_products(db_session, 5)
     r = await client.get(
-        "/api/v1/products?page=3&limit=2",
+        "/api/v1/products?page=3&limit=2&family=valves_offset",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200, r.text
@@ -203,7 +203,7 @@ async def test_cursor_mode_unchanged(client: AsyncClient, db_session: AsyncSessi
     token = _emit_jwt(sub=str(uid), email=email)
     await _seed_products(db_session, 3)
     r = await client.get(
-        "/api/v1/products?limit=2",
+        "/api/v1/products?limit=2&family=valves_offset",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200, r.text
