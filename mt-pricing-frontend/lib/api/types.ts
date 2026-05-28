@@ -14538,10 +14538,20 @@ export interface components {
              */
             items: components["schemas"]["AuditEventResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14558,10 +14568,20 @@ export interface components {
              */
             items: components["schemas"]["ChannelListingResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14578,10 +14598,20 @@ export interface components {
              */
             items: components["schemas"]["CostResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14598,10 +14628,20 @@ export interface components {
              */
             items: components["schemas"]["GoodsReceiptRead"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14618,10 +14658,20 @@ export interface components {
              */
             items: components["schemas"]["MatchCandidateResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14638,10 +14688,20 @@ export interface components {
              */
             items: components["schemas"]["PriceResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14658,10 +14718,20 @@ export interface components {
              */
             items: components["schemas"]["ProductResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14678,10 +14748,20 @@ export interface components {
              */
             items: components["schemas"]["PurchaseOrderRead"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14698,10 +14778,20 @@ export interface components {
              */
             items: components["schemas"]["SupplierResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -14718,10 +14808,20 @@ export interface components {
              */
             items: components["schemas"]["UnmatchedOfferResponse"][];
             /**
+             * Page
+             * @description Página actual (offset mode).
+             */
+            page?: number | null;
+            /**
              * Page Size
              * @description Tamaño de página solicitado.
              */
             page_size: number;
+            /**
+             * Pages
+             * @description Total de páginas (offset mode).
+             */
+            pages?: number | null;
             /**
              * Total
              * @description Total absoluto si el endpoint lo expone (puede ser caro).
@@ -32639,6 +32739,8 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 include_total?: boolean;
+                /** @description Offset page (activates include_total) */
+                page?: number | null;
             };
             header?: never;
             path?: never;

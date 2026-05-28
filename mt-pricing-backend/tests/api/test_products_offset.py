@@ -1,4 +1,5 @@
 """Integration tests for offset (page-based) pagination of GET /products."""
+
 from __future__ import annotations
 
 import os
@@ -179,9 +180,7 @@ async def test_offset_page2_returns_middle_slice(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_offset_last_page_partial(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_offset_last_page_partial(client: AsyncClient, db_session: AsyncSession) -> None:
     """Last page (page=3, limit=2) returns only 1 item (5th SKU)."""
     uid, email = await _seed_admin(db_session)
     token = _emit_jwt(sub=str(uid), email=email)
@@ -198,9 +197,7 @@ async def test_offset_last_page_partial(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_cursor_mode_unchanged(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_cursor_mode_unchanged(client: AsyncClient, db_session: AsyncSession) -> None:
     """Without ?page=, cursor mode still works and total/page/pages are null."""
     uid, email = await _seed_admin(db_session)
     token = _emit_jwt(sub=str(uid), email=email)
