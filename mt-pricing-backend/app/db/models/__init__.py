@@ -155,6 +155,15 @@ from app.db.models.sales import (
     SalesOrderLine,
     StockReservation,
 )
+from app.db.models.channel_pricing import (
+    ChannelFeeParams,
+    ChannelMarginOverride,
+    ChannelMarginTarget,
+    ChannelProductLogistics,
+    ChannelSchemeParams,
+    PricingScenario,
+    TradeRouteParams,
+)
 from app.db.models.scraper_sources import (
     ScraperSource,
     ScraperSourceRecipe,
@@ -426,4 +435,12 @@ __all__ = [
     "ScraperSource",
     "ScraperSourceRecipe",
     "ScraperSourceTestRun",
+    # Channel Pricing Engine (mig. 20260603_147)
+    "TradeRouteParams",
+    "ChannelFeeParams",
+    "ChannelSchemeParams",
+    "ChannelProductLogistics",
+    "ChannelMarginTarget",
+    "ChannelMarginOverride",
+    "PricingScenario",
 ]
