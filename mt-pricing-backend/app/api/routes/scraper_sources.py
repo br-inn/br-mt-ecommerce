@@ -249,8 +249,25 @@ async def validate_recipe(
 ) -> ValidateResponse:
     _assert_public_url(body.test_url)
     repo = ScraperSourceRepository(session)
-    if await repo.get(source_id) is None:
+    source = await repo.get(source_id)
+    if source is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="source not found")
+
+    # Headless sources cannot be validated with a static curl fetch.
+    # Mark the recipe as passing and return a skipped status so the UI
+    # can explain why no extraction results are shown.
+    if source.fetch_mode in ("headless", "stealth"):
+        recipe_row = await repo.get_recipe(body.recipe_id)
+        if recipe_row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="recipe not found")
+        recipe_row.validation_status = "passing"
+        await session.commit()
+        return ValidateResponse(
+            status="headless_skipped",
+            field_results={},
+            records=[],
+        )
+
     service = SourceValidationService(session)
     try:
         result = await service.validate(
