@@ -1,10 +1,10 @@
 """Test parsing of the Pricing Desk standalone HTML."""
-from pathlib import Path
+
+from __future__ import annotations
 
 import pytest
 
 from app.scripts.seed_amazon_uae_from_html import extract_data_array
-
 
 HTML_SAMPLE = """<html><body><script>
 const DATA = [{"s":"4222015","n":"VALVE","f":"LATON","pe":3.07,"v":41.82,"peso":0.21,"fba_env":1.5,"fba_alm":0.028,"fba_fee":7.2,"rec":"fba"},
