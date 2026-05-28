@@ -20,7 +20,7 @@ from typing import Annotated, Optional
 
 import openpyxl
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,7 @@ from app.db.models.channel_pricing import (
     ChannelMarginTarget,
     ChannelProductLogistics,
     ChannelSchemeParams,
+    PricingScenario,
     TradeRouteParams,
 )
 from app.db.models.channels import Channel
@@ -54,6 +55,8 @@ from app.schemas.channel_pricing import (
     ProductPriceResponse,
     ProposeSelectedRequest,
     ProposeSelectedResult,
+    ScenarioSaveRequest,
+    ScenarioSummary,
     TradeRouteParamsRead,
     TradeRouteParamsUpdate,
 )
@@ -946,6 +949,246 @@ async def import_logistics(
         await session.commit()
 
     return {"total_rows": total, "upserted": upserted, "errors": errors}
+
+
+# ---------------------------------------------------------------------------
+# PUT /scenarios/{slot} — save current state as scenario A or B
+# ---------------------------------------------------------------------------
+
+
+@router.put(
+    "/scenarios/{slot}",
+    operation_id="saveScenario",
+    response_model=ScenarioSummary,
+    dependencies=[Depends(require_permissions("prices:propose"))],
+)
+async def save_scenario(
+    channel_code: str,
+    slot: str,
+    body: ScenarioSaveRequest,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ScenarioSummary:
+    """Save current params + margins + overrides as scenario A or B."""
+    if slot not in ("A", "B"):
+        raise HTTPException(400, "slot must be 'A' or 'B'")
+
+    channel_id = await _resolve_channel_id(channel_code, session)
+
+    # Snapshot of current state
+    fee_row = (
+        await session.execute(
+            select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+        )
+    ).scalars().first()
+    route_row = (
+        await session.execute(
+            select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
+        )
+    ).scalars().first() if fee_row else None
+    targets = (
+        await session.execute(
+            select(ChannelMarginTarget).where(
+                ChannelMarginTarget.channel_id == channel_id,
+                ChannelMarginTarget.selling_model == body.selling_model.value,
+            )
+        )
+    ).scalars().all()
+    overrides = (
+        await session.execute(
+            select(ChannelMarginOverride).where(
+                ChannelMarginOverride.channel_id == channel_id,
+                ChannelMarginOverride.selling_model == body.selling_model.value,
+            )
+        )
+    ).scalars().all()
+
+    snapshot = {
+        "route": {c: str(getattr(route_row, c)) for c in (
+            "fx_rate", "fx_buffer_pct", "freight_rate_per_kg", "freight_min_aed",
+            "import_tariff_pct", "local_warehouse_pct", "handling_pct",
+        )} if route_row else {},
+        "fees": {c: str(getattr(fee_row, c)) for c in (
+            "mt_discount_pct", "commission_pct", "vat_pct", "advertising_pct",
+            "returns_pct", "storage_multiplier",
+        )} if fee_row else {},
+        "targets": [
+            {"family_id": str(t.family_id), "margin": str(t.margin_target_pct)}
+            for t in targets
+        ],
+        "overrides": [
+            {"sku": o.product_sku, "margin": str(o.margin_override_pct)}
+            for o in overrides
+        ],
+    }
+
+    await session.execute(
+        pg_insert(PricingScenario)
+        .values(
+            channel_id=channel_id,
+            selling_model=body.selling_model.value,
+            slot=slot,
+            label=body.label,
+            config_jsonb=snapshot,
+        )
+        .on_conflict_do_update(
+            constraint="uq_pricing_scenarios_slot",
+            set_={
+                "label": body.label,
+                "config_jsonb": snapshot,
+                "snapshot_at": text("now()"),
+            },
+        )
+    )
+    await session.commit()
+
+    saved = (
+        await session.execute(
+            select(PricingScenario).where(
+                PricingScenario.channel_id == channel_id,
+                PricingScenario.selling_model == body.selling_model.value,
+                PricingScenario.slot == slot,
+            )
+        )
+    ).scalars().first()
+
+    return ScenarioSummary(
+        id=saved.id,
+        slot=saved.slot,
+        label=saved.label,
+        snapshot_at=saved.snapshot_at.isoformat(),
+        selling_model=SellingModel(saved.selling_model),
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /scenarios — list saved scenarios for a channel
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/scenarios",
+    operation_id="listScenarios",
+    response_model=list[ScenarioSummary],
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def list_scenarios(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+) -> list[ScenarioSummary]:
+    """List saved A/B scenarios for a channel and selling model."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    rows = (
+        await session.execute(
+            select(PricingScenario).where(
+                PricingScenario.channel_id == channel_id,
+                PricingScenario.selling_model == selling_model.value,
+            )
+        )
+    ).scalars().all()
+    return [
+        ScenarioSummary(
+            id=r.id,
+            slot=r.slot,
+            label=r.label,
+            snapshot_at=r.snapshot_at.isoformat(),
+            selling_model=SellingModel(r.selling_model),
+        )
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# POST /scenarios/{slot}/load — restore saved scenario
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/scenarios/{slot}/load",
+    operation_id="loadScenario",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permissions("prices:propose"))],
+)
+async def load_scenario(
+    channel_code: str,
+    slot: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+) -> None:
+    """Restore saved scenario: applies its params + margins + overrides."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    sc = (
+        await session.execute(
+            select(PricingScenario).where(
+                PricingScenario.channel_id == channel_id,
+                PricingScenario.selling_model == selling_model.value,
+                PricingScenario.slot == slot,
+            )
+        )
+    ).scalars().first()
+    if sc is None:
+        raise HTTPException(404, f"Scenario {slot} not found")
+
+    cfg = sc.config_jsonb
+
+    # Restore fees
+    if cfg.get("fees"):
+        await session.execute(
+            update(ChannelFeeParams)
+            .where(ChannelFeeParams.channel_id == channel_id)
+            .values(**{k: float(v) for k, v in cfg["fees"].items()})
+        )
+    # Restore route (only the channel's route)
+    if cfg.get("route"):
+        fee_row = (
+            await session.execute(
+                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+            )
+        ).scalars().first()
+        if fee_row:
+            await session.execute(
+                update(TradeRouteParams)
+                .where(TradeRouteParams.id == fee_row.route_id)
+                .values(**{k: float(v) for k, v in cfg["route"].items()})
+            )
+    # Restore margin targets — wipe existing for this (channel, selling_model) then re-insert
+    await session.execute(
+        delete(ChannelMarginTarget).where(
+            ChannelMarginTarget.channel_id == channel_id,
+            ChannelMarginTarget.selling_model == selling_model.value,
+        )
+    )
+    for t in cfg.get("targets", []):
+        await session.execute(
+            pg_insert(ChannelMarginTarget)
+            .values(
+                channel_id=channel_id,
+                family_id=t["family_id"],
+                selling_model=selling_model.value,
+                margin_target_pct=float(t["margin"]),
+            )
+            .on_conflict_do_nothing()
+        )
+    # Restore overrides
+    await session.execute(
+        delete(ChannelMarginOverride).where(
+            ChannelMarginOverride.channel_id == channel_id,
+            ChannelMarginOverride.selling_model == selling_model.value,
+        )
+    )
+    for o in cfg.get("overrides", []):
+        await session.execute(
+            pg_insert(ChannelMarginOverride)
+            .values(
+                product_sku=o["sku"],
+                channel_id=channel_id,
+                selling_model=selling_model.value,
+                margin_override_pct=float(o["margin"]),
+                reason=f"loaded from scenario {slot}",
+            )
+            .on_conflict_do_nothing()
+        )
+    await session.commit()
 
 
 __all__ = ["router"]

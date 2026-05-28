@@ -254,6 +254,48 @@ export const pricingDeskApi = {
     return (await res.json()) as CatalogImportResult;
   },
 
+  /** GET /api/v1/pricing/{channel_code}/scenarios */
+  async listScenarios(channelCode: string, sellingModel: SellingModel = "b2c") {
+    const url = `/api/v1/pricing/${encodeURIComponent(channelCode)}/scenarios?selling_model=${sellingModel}`;
+    return authedFetch<Array<{
+      id: string;
+      slot: string;
+      label: string | null;
+      snapshot_at: string;
+      selling_model: SellingModel;
+    }>>(url);
+  },
+
+  /** PUT /api/v1/pricing/{channel_code}/scenarios/{slot} */
+  async saveScenario(
+    channelCode: string,
+    slot: "A" | "B",
+    body: { selling_model: SellingModel; slot: "A" | "B"; label?: string },
+  ) {
+    const url = `/api/v1/pricing/${encodeURIComponent(channelCode)}/scenarios/${slot}`;
+    return authedFetch<{
+      id: string;
+      slot: string;
+      label: string | null;
+      snapshot_at: string;
+      selling_model: SellingModel;
+    }>(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  },
+
+  /** POST /api/v1/pricing/{channel_code}/scenarios/{slot}/load */
+  async loadScenario(
+    channelCode: string,
+    slot: "A" | "B",
+    sellingModel: SellingModel = "b2c",
+  ) {
+    const url = `/api/v1/pricing/${encodeURIComponent(channelCode)}/scenarios/${slot}/load?selling_model=${sellingModel}`;
+    return authedFetch<void>(url, { method: "POST" });
+  },
+
   /** POST /api/v1/pricing/{channel_code}/logistics/import */
   async importLogistics(
     channelCode: string,

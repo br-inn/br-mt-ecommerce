@@ -185,6 +185,24 @@ class ScenarioRead(BaseModel):
     label: str | None
 
 
+# ── Pricing Scenarios A/B ─────────────────────────────────────────────
+
+class ScenarioSaveRequest(BaseModel):
+    selling_model: SellingModel = SellingModel.B2C
+    slot: str = Field(pattern="^[AB]$")
+    label: str | None = None
+
+
+class ScenarioSummary(BaseModel):
+    id: UUID
+    slot: str
+    label: str | None
+    snapshot_at: str
+    selling_model: SellingModel
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ── Pricing calculation results ───────────────────────────────────────
 
 
@@ -279,6 +297,8 @@ __all__ = [
     "ProposeSelectedRequest",
     "ProposeSelectedResult",
     "ScenarioRead",
+    "ScenarioSaveRequest",
+    "ScenarioSummary",
     "TradeRouteParamsRead",
     "TradeRouteParamsUpdate",
 ]

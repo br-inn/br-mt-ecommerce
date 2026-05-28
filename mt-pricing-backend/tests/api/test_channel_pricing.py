@@ -654,3 +654,20 @@ async def test_upsert_margin_target_returns_204(cp_client: AsyncClient) -> None:
         },
     )
     assert resp.status_code == 204, resp.text
+
+
+@pytest.mark.asyncio
+async def test_save_and_list_scenarios(cp_client: AsyncClient) -> None:
+    """PUT /scenarios/A then GET /scenarios returns slot A."""
+    save_resp = await cp_client.put(
+        "/api/v1/pricing/amazon_uae/scenarios/A",
+        json={"selling_model": "b2c", "slot": "A", "label": "test scenario"},
+    )
+    assert save_resp.status_code == 200, save_resp.text
+
+    list_resp = await cp_client.get(
+        "/api/v1/pricing/amazon_uae/scenarios?selling_model=b2c"
+    )
+    assert list_resp.status_code == 200
+    data = list_resp.json()
+    assert any(s["slot"] == "A" for s in data)
