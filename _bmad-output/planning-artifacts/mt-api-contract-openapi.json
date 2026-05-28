@@ -25545,6 +25545,127 @@
         "title": "ProfitCenterOut",
         "type": "object"
       },
+      "ProposeSelectedItemResult": {
+        "properties": {
+          "price_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "selling_price_aed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selling Price Aed"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "status"
+        ],
+        "title": "ProposeSelectedItemResult",
+        "type": "object"
+      },
+      "ProposeSelectedRequest": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel",
+            "default": "b2c"
+          },
+          "skus": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Skus",
+            "type": "array"
+          }
+        },
+        "required": [
+          "skus"
+        ],
+        "title": "ProposeSelectedRequest",
+        "type": "object"
+      },
+      "ProposeSelectedResult": {
+        "properties": {
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposeSelectedItemResult"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "proposed": {
+            "title": "Proposed",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "total_requested": {
+            "title": "Total Requested",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_requested",
+          "proposed",
+          "skipped",
+          "errors",
+          "items"
+        ],
+        "title": "ProposeSelectedResult",
+        "type": "object"
+      },
       "ProxyAddRequest": {
         "properties": {
           "proxy": {
@@ -28346,6 +28467,75 @@
           }
         },
         "title": "SalesOrderUpdate",
+        "type": "object"
+      },
+      "ScenarioSaveRequest": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel",
+            "default": "b2c"
+          },
+          "slot": {
+            "pattern": "^[AB]$",
+            "title": "Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot"
+        ],
+        "title": "ScenarioSaveRequest",
+        "type": "object"
+      },
+      "ScenarioSummary": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slot",
+          "label",
+          "snapshot_at",
+          "selling_model"
+        ],
+        "title": "ScenarioSummary",
         "type": "object"
       },
       "SchemeResponse": {
@@ -53685,6 +53875,64 @@
         ]
       }
     },
+    "/api/v1/pricing/{channel_code}/prices/propose-selected": {
+      "post": {
+        "description": "Propose prices for selected SKUs into the approval flow.\n\nRuns the pricing engine for each SKU and inserts rows into `prices`\nwith status='pending_review'. SKUs not found in channel logistics are\nskipped; infeasible prices are reported as errors.\n\nproposed_by is stored as NULL until get_current_user is threaded through.\n# TODO: thread current user UUID once auth dependency is available here.",
+        "operationId": "proposePricesSelected",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeSelectedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposeSelectedResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Propose Prices Selected",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
     "/api/v1/pricing/{channel_code}/product/{sku}": {
       "get": {
         "description": "Calculate price for one SKU across all schemes + best.",
@@ -53820,6 +54068,193 @@
           }
         ],
         "summary": "Update trade route parameters",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/scenarios": {
+      "get": {
+        "description": "List saved A/B scenarios for a channel and selling model.",
+        "operationId": "listScenarios",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioSummary"
+                  },
+                  "title": "Response Listscenarios",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Scenarios",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/scenarios/{slot}": {
+      "put": {
+        "description": "Save current params + margins + overrides as scenario A or B.",
+        "operationId": "saveScenario",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "title": "Slot",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Scenario",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/scenarios/{slot}/load": {
+      "post": {
+        "description": "Restore saved scenario: applies its params + margins + overrides.",
+        "operationId": "loadScenario",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "title": "Slot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Load Scenario",
         "tags": [
           "channel-pricing"
         ]

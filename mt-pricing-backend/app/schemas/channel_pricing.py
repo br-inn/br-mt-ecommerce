@@ -187,6 +187,7 @@ class ScenarioRead(BaseModel):
 
 # ── Pricing Scenarios A/B ─────────────────────────────────────────────
 
+
 class ScenarioSaveRequest(BaseModel):
     selling_model: SellingModel = SellingModel.B2C
     slot: str = Field(pattern="^[AB]$")

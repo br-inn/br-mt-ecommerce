@@ -976,48 +976,83 @@ async def save_scenario(
 
     # Snapshot of current state
     fee_row = (
-        await session.execute(
-            select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+        (
+            await session.execute(
+                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     route_row = (
-        await session.execute(
-            select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
+        (
+            await session.execute(
+                select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
+            )
         )
-    ).scalars().first() if fee_row else None
+        .scalars()
+        .first()
+        if fee_row
+        else None
+    )
     targets = (
-        await session.execute(
-            select(ChannelMarginTarget).where(
-                ChannelMarginTarget.channel_id == channel_id,
-                ChannelMarginTarget.selling_model == body.selling_model.value,
+        (
+            await session.execute(
+                select(ChannelMarginTarget).where(
+                    ChannelMarginTarget.channel_id == channel_id,
+                    ChannelMarginTarget.selling_model == body.selling_model.value,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     overrides = (
-        await session.execute(
-            select(ChannelMarginOverride).where(
-                ChannelMarginOverride.channel_id == channel_id,
-                ChannelMarginOverride.selling_model == body.selling_model.value,
+        (
+            await session.execute(
+                select(ChannelMarginOverride).where(
+                    ChannelMarginOverride.channel_id == channel_id,
+                    ChannelMarginOverride.selling_model == body.selling_model.value,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     snapshot = {
-        "route": {c: str(getattr(route_row, c)) for c in (
-            "fx_rate", "fx_buffer_pct", "freight_rate_per_kg", "freight_min_aed",
-            "import_tariff_pct", "local_warehouse_pct", "handling_pct",
-        )} if route_row else {},
-        "fees": {c: str(getattr(fee_row, c)) for c in (
-            "mt_discount_pct", "commission_pct", "vat_pct", "advertising_pct",
-            "returns_pct", "storage_multiplier",
-        )} if fee_row else {},
+        "route": {
+            c: str(getattr(route_row, c))
+            for c in (
+                "fx_rate",
+                "fx_buffer_pct",
+                "freight_rate_per_kg",
+                "freight_min_aed",
+                "import_tariff_pct",
+                "local_warehouse_pct",
+                "handling_pct",
+            )
+        }
+        if route_row
+        else {},
+        "fees": {
+            c: str(getattr(fee_row, c))
+            for c in (
+                "mt_discount_pct",
+                "commission_pct",
+                "vat_pct",
+                "advertising_pct",
+                "returns_pct",
+                "storage_multiplier",
+            )
+        }
+        if fee_row
+        else {},
         "targets": [
-            {"family_id": str(t.family_id), "margin": str(t.margin_target_pct)}
-            for t in targets
+            {"family_id": str(t.family_id), "margin": str(t.margin_target_pct)} for t in targets
         ],
         "overrides": [
-            {"sku": o.product_sku, "margin": str(o.margin_override_pct)}
-            for o in overrides
+            {"sku": o.product_sku, "margin": str(o.margin_override_pct)} for o in overrides
         ],
     }
 
@@ -1042,14 +1077,18 @@ async def save_scenario(
     await session.commit()
 
     saved = (
-        await session.execute(
-            select(PricingScenario).where(
-                PricingScenario.channel_id == channel_id,
-                PricingScenario.selling_model == body.selling_model.value,
-                PricingScenario.slot == slot,
+        (
+            await session.execute(
+                select(PricingScenario).where(
+                    PricingScenario.channel_id == channel_id,
+                    PricingScenario.selling_model == body.selling_model.value,
+                    PricingScenario.slot == slot,
+                )
             )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
 
     return ScenarioSummary(
         id=saved.id,
@@ -1079,13 +1118,17 @@ async def list_scenarios(
     """List saved A/B scenarios for a channel and selling model."""
     channel_id = await _resolve_channel_id(channel_code, session)
     rows = (
-        await session.execute(
-            select(PricingScenario).where(
-                PricingScenario.channel_id == channel_id,
-                PricingScenario.selling_model == selling_model.value,
+        (
+            await session.execute(
+                select(PricingScenario).where(
+                    PricingScenario.channel_id == channel_id,
+                    PricingScenario.selling_model == selling_model.value,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [
         ScenarioSummary(
             id=r.id,
@@ -1118,14 +1161,18 @@ async def load_scenario(
     """Restore saved scenario: applies its params + margins + overrides."""
     channel_id = await _resolve_channel_id(channel_code, session)
     sc = (
-        await session.execute(
-            select(PricingScenario).where(
-                PricingScenario.channel_id == channel_id,
-                PricingScenario.selling_model == selling_model.value,
-                PricingScenario.slot == slot,
+        (
+            await session.execute(
+                select(PricingScenario).where(
+                    PricingScenario.channel_id == channel_id,
+                    PricingScenario.selling_model == selling_model.value,
+                    PricingScenario.slot == slot,
+                )
             )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if sc is None:
         raise HTTPException(404, f"Scenario {slot} not found")
 
@@ -1141,10 +1188,14 @@ async def load_scenario(
     # Restore route (only the channel's route)
     if cfg.get("route"):
         fee_row = (
-            await session.execute(
-                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+            (
+                await session.execute(
+                    select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if fee_row:
             await session.execute(
                 update(TradeRouteParams)

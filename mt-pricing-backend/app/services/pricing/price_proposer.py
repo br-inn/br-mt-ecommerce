@@ -12,6 +12,7 @@ prices table notes (verified against actual schema):
 - currency      : varchar, default 'AED'
 - notes column  : does not exist — notes stored inside breakdown JSONB
 """
+
 from __future__ import annotations
 
 import json
@@ -75,13 +76,9 @@ class PriceProposer:
 
                 margin = margins.get(sku, Decimal("12"))
                 if selling_model == SellingModel.B2C:
-                    best = ChannelOptimizer.best_scheme_b2c(
-                        product, route, fees, schemes, margin
-                    )
+                    best = ChannelOptimizer.best_scheme_b2c(product, route, fees, schemes, margin)
                 else:
-                    best = ChannelOptimizer.best_scheme_b2b(
-                        product, route, fees, schemes, margin
-                    )
+                    best = ChannelOptimizer.best_scheme_b2b(product, route, fees, schemes, margin)
 
                 if best is None or best.selling_price_aed == Decimal("Infinity"):
                     items.append(
@@ -96,9 +93,7 @@ class PriceProposer:
                 price_id = uuid.uuid4()
                 # Map fulfillment_scheme → valid schemes.code CHECK value
                 # ('FBA','FBM','DIRECT_B2C','DIRECT_B2B','MARKETPLACE')
-                scheme_code = _FULFILLMENT_TO_SCHEME_CODE.get(
-                    best.fulfillment_scheme, "FBA"
-                )
+                scheme_code = _FULFILLMENT_TO_SCHEME_CODE.get(best.fulfillment_scheme, "FBA")
 
                 breakdown_dict = {
                     **best.breakdown.to_dict(),

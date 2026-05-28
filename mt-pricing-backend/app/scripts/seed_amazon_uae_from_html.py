@@ -11,6 +11,7 @@ Run once:
 Idempotent. Products NOT in the products table are reported as 'skipped'
 (this script does NOT create products -- only updates existing ones).
 """
+
 from __future__ import annotations
 
 import asyncio
