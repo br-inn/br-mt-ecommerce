@@ -97,6 +97,12 @@ def _detect_mode(html: str, url: str) -> Literal["static", "headless", "stealth"
     html_lower = html.lower()
     if any(sig in html_lower for sig in cf_signals):
         return "stealth"
+    # Detect SPA/RSC pages: body has text (nav/header) but no product-list content.
+    # Signal: Next.js RSC flight scripts present but no repeating product containers.
+    rsc_signals = ("self.__next_f.push", "__next_f", "self.__next_s")
+    if any(sig in html for sig in rsc_signals):
+        # Page uses React Server Components streaming — products render client-side
+        return "headless"
     return "static"
 
 
