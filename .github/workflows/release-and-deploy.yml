@@ -292,14 +292,15 @@ jobs:
           GHCR_ACTOR: ${{ github.actor }}
           IMAGE_TAG: ${{ steps.tag.outputs.TAG }}
           STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
             "echo '${GHCR_TOKEN}' | docker login ghcr.io -u '${GHCR_ACTOR}' --password-stdin \
              && cd ~/mt-deploy \
              && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
                 docker compose -f docker-compose.staging.yml pull \
-             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} \
-                docker compose -f docker-compose.staging.yml up -d --remove-orphans"
+             && IMAGE_TAG=${IMAGE_TAG} STAGING_DOMAIN=${STAGING_DOMAIN} ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY} \
+                docker compose -f docker-compose.staging.yml up -d --remove-orphans --force-recreate"
 
       - name: Healthcheck
         run: |
