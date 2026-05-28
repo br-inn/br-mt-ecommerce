@@ -17156,12 +17156,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17199,12 +17225,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17242,12 +17294,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17285,12 +17363,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17328,12 +17432,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17371,12 +17501,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17414,12 +17570,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17457,12 +17639,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17500,12 +17708,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -17543,12 +17777,38 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P\u00e1gina actual (offset mode).",
+            "title": "Page"
+          },
           "page_size": {
             "description": "Tama\u00f1o de p\u00e1gina solicitado.",
             "maximum": 500.0,
             "minimum": 1.0,
             "title": "Page Size",
             "type": "integer"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total de p\u00e1ginas (offset mode).",
+            "title": "Pages"
           },
           "total": {
             "anyOf": [
@@ -54210,6 +54470,25 @@
               "default": false,
               "title": "Include Total",
               "type": "boolean"
+            }
+          },
+          {
+            "description": "Offset page (activates include_total)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Offset page (activates include_total)",
+              "title": "Page"
             }
           }
         ],
