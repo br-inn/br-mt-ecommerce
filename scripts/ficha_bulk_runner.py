@@ -40,7 +40,6 @@ import os
 import re
 import sys
 import time
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -55,8 +54,8 @@ sys.path.insert(0, "/app")
 
 FICHAS_DIR = "/tmp/fichas"
 PROGRESS_FILE = "/tmp/ficha_bulk_progress.json"
-DELAY_BETWEEN_PDFS = 2.0   # segundos entre PDFs (respetar rate limits de Claude)
-MAX_PAGES_FOR_IMAGES = 8   # máximo de páginas a clasificar para imágenes
+DELAY_BETWEEN_PDFS = 2.0  # segundos entre PDFs (respetar rate limits de Claude)
+MAX_PAGES_FOR_IMAGES = 8  # máximo de páginas a clasificar para imágenes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -70,17 +69,39 @@ logger = logging.getLogger("ficha_bulk")
 # Progreso
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Progress:
     done: set[str] = field(default_factory=set)
     failed: dict[str, str] = field(default_factory=dict)
+    series_done: dict[str, list[str]] = field(default_factory=dict)
+    # Per-SKU checkpoint: key = "filename:series", value = sorted list of done SKUs
+    sku_done: dict[str, list[str]] = field(default_factory=dict)
 
     def save(self) -> None:
         with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
             json.dump(
-                {"done": sorted(self.done), "failed": self.failed},
-                f, indent=2, ensure_ascii=False,
+                {
+                    "done": sorted(self.done),
+                    "failed": self.failed,
+                    "series_done": self.series_done,
+                    "sku_done": self.sku_done,
+                },
+                f,
+                indent=2,
+                ensure_ascii=False,
             )
+
+    def mark_sku(self, filename: str, series: str, sku: str) -> None:
+        key = f"{filename}:{series}"
+        if key not in self.sku_done:
+            self.sku_done[key] = []
+        if sku not in self.sku_done[key]:
+            self.sku_done[key].append(sku)
+        self.save()
+
+    def skus_already_done(self, filename: str, series: str) -> set[str]:
+        return set(self.sku_done.get(f"{filename}:{series}", []))
 
     @classmethod
     def load(cls) -> "Progress":
@@ -92,6 +113,8 @@ class Progress:
             return cls(
                 done=set(data.get("done", [])),
                 failed=dict(data.get("failed", {})),
+                series_done=dict(data.get("series_done", {})),
+                sku_done=dict(data.get("sku_done", {})),
             )
         except Exception:
             return cls()
@@ -100,6 +123,7 @@ class Progress:
 # ---------------------------------------------------------------------------
 # Mapping de MTFT_XXXX.pdf → series prefix
 # ---------------------------------------------------------------------------
+
 
 def pdf_to_series_prefix(filename: str) -> str | None:
     """MTFT_0910.pdf → '0910', MTFT_01A.pdf → '01A', MTFT_S09014.pdf → 'S09014'."""
@@ -119,6 +143,7 @@ def pdf_to_series_prefix(filename: str) -> str | None:
 # Core processor — un PDF a la vez
 # ---------------------------------------------------------------------------
 
+
 async def process_one_pdf(
     pdf_path: Path,
     session_factory: Any,
@@ -126,6 +151,7 @@ async def process_one_pdf(
     *,
     classify_pages: bool = True,
     apply_images: bool = True,
+    progress: "Progress | None" = None,
 ) -> dict[str, Any]:
     """Extrae datos del PDF y los aplica a la BD.
 
@@ -152,10 +178,7 @@ async def process_one_pdf(
     # pero necesitamos el texto completo para detect_series_from_text).
     from app.services.importer_datasheets.pdf_extractor import extract_pdf_metadata
     from app.services.ficha_enrichment.series_resolver import (
-        extract_all_series_from_text,
         resolve_all_series,
-        resolve_series,
-        generate_candidate_skus,
     )
 
     logger.info("  parsing PDF text...")
@@ -167,26 +190,50 @@ async def process_one_pdf(
         pdf_text = ""
     logger.info("  pdf_text len=%d  (%.1fs)", len(pdf_text), time.time() - t_meta)
 
-    # Extracción con Claude
+    # Extracción con Claude (con caché en disco para sobrevivir reinicios)
     from app.services.ficha_enrichment.extractor import FichaEnrichmentExtractor
+    from app.schemas.ficha_enrich import FichaExtractionResult
 
-    extractor = FichaEnrichmentExtractor()
-    t0 = time.time()
-    try:
-        extraction = await extractor.extract(
-            pdf_bytes=pdf_bytes,
-            filename=filename,
-            classify_pages=classify_pages and apply_images,
+    _cache_path = f"/tmp/ficha_extract_cache_{filename}.json"
+    extraction = None
+    if os.path.exists(_cache_path):
+        try:
+            extraction = FichaExtractionResult.model_validate_json(
+                open(_cache_path, encoding="utf-8").read()
+            )
+            logger.info(
+                "  extraction loaded from cache (%.2f conf)", extraction.confidence
+            )
+        except Exception:
+            extraction = None
+
+    if extraction is None:
+        extractor = FichaEnrichmentExtractor()
+        t0 = time.time()
+        try:
+            extraction = await extractor.extract(
+                pdf_bytes=pdf_bytes,
+                filename=filename,
+                classify_pages=classify_pages and apply_images,
+            )
+        except Exception as exc:
+            logger.error("extraction failed %s: %s", filename, exc)
+            return {
+                "filename": filename,
+                "error": f"extraction_failed: {type(exc).__name__}: {exc}",
+            }
+        elapsed_extract = time.time() - t0
+        logger.info(
+            "  extracted: confidence=%.2f  gaps=%d  (%.1fs)",
+            extraction.confidence,
+            len(extraction.model_gaps),
+            elapsed_extract,
         )
-    except Exception as exc:
-        logger.error("extraction failed %s: %s", filename, exc)
-        return {"filename": filename, "error": f"extraction_failed: {type(exc).__name__}: {exc}"}
-
-    elapsed_extract = time.time() - t0
-    logger.info(
-        "  extracted: confidence=%.2f  gaps=%d  (%.1fs)",
-        extraction.confidence, len(extraction.model_gaps), elapsed_extract,
-    )
+        try:
+            with open(_cache_path, "w", encoding="utf-8") as _f:
+                _f.write(extraction.model_dump_json())
+        except Exception as _e:
+            logger.warning("extraction cache write failed: %s", _e)
 
     # Skip apply when the extraction has near-zero confidence (image scans,
     # non-datasheet PDFs, or API failures) to avoid overwriting good DB data.
@@ -194,7 +241,8 @@ async def process_one_pdf(
     if extraction.confidence < MIN_CONFIDENCE:
         logger.warning(
             "  skipping apply: confidence=%.2f below %.2f",
-            extraction.confidence, MIN_CONFIDENCE,
+            extraction.confidence,
+            MIN_CONFIDENCE,
         )
         return {
             "filename": filename,
@@ -228,22 +276,26 @@ async def process_one_pdf(
                     )
             break
         except Exception as exc:
-            logger.warning("  resolve_all_series failed (attempt %d): %s", _attempt + 1, exc)
+            logger.warning(
+                "  resolve_all_series failed (attempt %d): %s", _attempt + 1, exc
+            )
             if _attempt == 2:
                 logger.warning("  falling back to filename prefix only")
 
     if not series_groups and series_prefix:
         series_groups_list = [(series_prefix, None)]
     else:
-        series_groups_list = [
-            (g.base_series, g.variant_series) for g in series_groups
-        ]
+        series_groups_list = [(g.base_series, g.variant_series) for g in series_groups]
     logger.info("  series groups: %s", series_groups_list)
 
     # Paso 2: aplicar por serie — cada SKU en su propia transacción
     # para evitar que un timeout o error rompa toda la operación.
+    already_done_series = progress.series_done.get(filename, []) if progress else []
     for base_series, variant_series in series_groups_list:
         for current_series in filter(None, [base_series, variant_series]):
+            if current_series in already_done_series:
+                logger.info("  series %s already done -- skipping", current_series)
+                continue
             logger.info("  applying series %s ...", current_series)
             await _apply_series(
                 session_factory,
@@ -254,21 +306,38 @@ async def process_one_pdf(
                 skus_created,
                 skus_updated,
                 all_warnings,
+                progress=progress,
+                filename=filename,
             )
-            logger.info("  series %s done (+%d created, +%d updated)",
-                        current_series, len(skus_created), len(skus_updated))
+            logger.info(
+                "  series %s done (+%d created, +%d updated)",
+                current_series,
+                len(skus_created),
+                len(skus_updated),
+            )
+            if progress:
+                if filename not in progress.series_done:
+                    progress.series_done[filename] = []
+                if current_series not in progress.series_done[filename]:
+                    progress.series_done[filename].append(current_series)
+                progress.save()
 
     # Paso 3: datos de modelo (dimensiones, P/T curves, certs, flow)
     logger.info("  writing model data...")
-    primary_series = series_groups_list[0][0] if series_groups_list else (series_prefix or "")
+    primary_series = (
+        series_groups_list[0][0] if series_groups_list else (series_prefix or "")
+    )
     variant_series_primary = series_groups_list[0][1] if series_groups_list else None
     async with session_factory() as session:
         async with session.begin():
             await session.execute(text("SET LOCAL statement_timeout = 0"))
             from app.services.ficha_enrichment.model_writer import write_model_data
+
             try:
                 await write_model_data(
-                    session, primary_series, extraction,
+                    session,
+                    primary_series,
+                    extraction,
                     variant_series=variant_series_primary,
                 )
             except Exception as exc:
@@ -283,7 +352,10 @@ async def process_one_pdf(
             async with session.begin():
                 await session.execute(text("SET LOCAL statement_timeout = 0"))
                 try:
-                    from app.services.ficha_enrichment.document_saver import save_ficha_document
+                    from app.services.ficha_enrichment.document_saver import (
+                        save_ficha_document,
+                    )
+
                     await save_ficha_document(
                         session=session,
                         pdf_bytes=pdf_bytes,
@@ -316,6 +388,8 @@ async def _apply_series(
     skus_created: list[str],
     skus_updated: list[str],
     all_warnings: list[str],
+    progress: "Progress | None" = None,
+    filename: str = "",
 ) -> None:
     """Aplica extraction a todos los SKUs de la serie (existentes + nuevos candidatos).
 
@@ -325,7 +399,9 @@ async def _apply_series(
     from sqlalchemy import select as _select
     from app.db.models.product import Product
     from app.services.ficha_enrichment.applier import FichaEnrichmentApplier
-    from app.services.ficha_enrichment.product_creator import create_product_from_extraction
+    from app.services.ficha_enrichment.product_creator import (
+        create_product_from_extraction,
+    )
     from app.services.ficha_enrichment.series_resolver import generate_candidate_skus
     from app.schemas.ficha_enrich import FichaEnrichApplyRequest
 
@@ -375,8 +451,23 @@ async def _apply_series(
 
     # Fase 2: una transacción por SKU para aislar fallos
     total_skus = len(all_target_skus)
-    logger.info("  series %s: %d SKUs to process", series_prefix, total_skus)
+    already_done_skus = (
+        progress.skus_already_done(filename, series_prefix) if progress else set()
+    )
+    skipped_skus = len([s for s in all_target_skus if s in already_done_skus])
+    logger.info(
+        "  series %s: %d SKUs to process (%d already done)",
+        series_prefix,
+        total_skus,
+        skipped_skus,
+    )
     for sku_idx, target_sku in enumerate(all_target_skus):
+        if target_sku in already_done_skus:
+            if target_sku in existing_sku_set:
+                skus_updated.append(target_sku)
+            else:
+                skus_created.append(target_sku)
+            continue
         if sku_idx % 10 == 0 or sku_idx == total_skus - 1:
             logger.info("  [%d/%d] %s", sku_idx + 1, total_skus, target_sku)
         if target_sku in existing_sku_set:
@@ -393,6 +484,8 @@ async def _apply_series(
                 if result.warnings:
                     all_warnings.extend([f"{target_sku}: {w}" for w in result.warnings])
                 skus_updated.append(target_sku)
+                if progress:
+                    progress.mark_sku(filename, series_prefix, target_sku)
                 logger.debug("  updated %s: %s", target_sku, result.applied_fields)
             except Exception as exc:
                 logger.warning("  apply failed %s: %s", target_sku, exc)
@@ -405,12 +498,20 @@ async def _apply_series(
                         await session.execute(text("SET LOCAL statement_timeout = 0"))
                         await session.execute(text("SET LOCAL lock_timeout = '60s'"))
                         result = await create_product_from_extraction(
-                            session, target_sku, extraction, is_variant=False, actor=actor,
+                            session,
+                            target_sku,
+                            extraction,
+                            is_variant=False,
+                            actor=actor,
                         )
                 if result.warnings:
-                    all_warnings.extend([f"{target_sku}(new): {w}" for w in result.warnings])
+                    all_warnings.extend(
+                        [f"{target_sku}(new): {w}" for w in result.warnings]
+                    )
                 if not result.warnings:
                     skus_created.append(target_sku)
+                    if progress:
+                        progress.mark_sku(filename, series_prefix, target_sku)
                     logger.debug("  created %s", target_sku)
             except Exception as exc:
                 logger.warning("  create failed %s: %s", target_sku, exc)
@@ -421,27 +522,46 @@ async def _apply_series(
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Bulk ficha enrichment")
-    parser.add_argument("--test", metavar="FILENAME",
-                        help="Procesar solo este archivo PDF (modo validación)")
-    parser.add_argument("--resume", action="store_true",
-                        help="Saltar PDFs ya procesados según " + PROGRESS_FILE)
-    parser.add_argument("--no-images", action="store_true",
-                        help="No extraer ni subir imágenes (más rápido)")
-    parser.add_argument("--dir", default=FICHAS_DIR, metavar="PATH",
-                        help=f"Directorio con PDFs (default: {FICHAS_DIR})")
+    parser.add_argument(
+        "--test",
+        metavar="FILENAME",
+        help="Procesar solo este archivo PDF (modo validación)",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Saltar PDFs ya procesados según " + PROGRESS_FILE,
+    )
+    parser.add_argument(
+        "--no-images",
+        action="store_true",
+        help="No extraer ni subir imágenes (más rápido)",
+    )
+    parser.add_argument(
+        "--dir",
+        default=FICHAS_DIR,
+        metavar="PATH",
+        help=f"Directorio con PDFs (default: {FICHAS_DIR})",
+    )
     args = parser.parse_args()
 
     fichas_dir = Path(args.dir)
     if not fichas_dir.is_dir():
         print(f"ERROR: {fichas_dir} no existe. Copiar fichas primero:")
-        print(f'  docker cp "Documentos referencia de articulos/FICHAS TÉCNICAS" mt-backend:/tmp/fichas')
+        print(
+            '  docker cp "Documentos referencia de articulos/FICHAS TÉCNICAS" mt-backend:/tmp/fichas'
+        )
         sys.exit(1)
 
     # Listar PDFs
-    all_pdfs = sorted(p for p in fichas_dir.iterdir()
-                      if p.suffix.lower() == ".pdf" and p.name.startswith("MTFT_"))
+    all_pdfs = sorted(
+        p
+        for p in fichas_dir.iterdir()
+        if p.suffix.lower() == ".pdf" and p.name.startswith("MTFT_")
+    )
     if not all_pdfs:
         print(f"ERROR: no se encontraron archivos MTFT_*.pdf en {fichas_dir}")
         sys.exit(1)
@@ -460,7 +580,9 @@ async def main() -> None:
     to_process = [p for p in all_pdfs if p.name not in progress.done]
     if args.resume:
         skipped = len(all_pdfs) - len(to_process)
-        logger.info("Reanudando: %d ya procesados, %d pendientes", skipped, len(to_process))
+        logger.info(
+            "Reanudando: %d ya procesados, %d pendientes", skipped, len(to_process)
+        )
 
     print("=" * 65)
     print(f"Ficha Bulk Runner — {len(to_process)} PDFs a procesar")
@@ -500,10 +622,18 @@ async def main() -> None:
                 actor,
                 classify_pages=not args.no_images,
                 apply_images=not args.no_images,
+                progress=progress if args.resume else None,
             )
-        except Exception as exc:
-            logger.exception("FATAL for %s", pdf_path.name)
-            summary = {"filename": pdf_path.name, "error": str(exc)[:200]}
+        except BaseException as exc:
+            logger.exception(
+                "FATAL for %s: %s: %s", pdf_path.name, type(exc).__name__, exc
+            )
+            summary = {
+                "filename": pdf_path.name,
+                "error": f"{type(exc).__name__}: {str(exc)[:200]}",
+            }
+            if not isinstance(exc, Exception):
+                raise  # re-raise BaseException (SIGINT, SystemExit, etc.)
 
         if "error" in summary:
             total_errors += 1
@@ -515,8 +645,14 @@ async def main() -> None:
             total_created += nc
             total_updated += nu
             progress.done.add(pdf_path.name)
+            progress.series_done.pop(pdf_path.name, None)
+            _cache = f"/tmp/ficha_extract_cache_{pdf_path.name}.json"
+            try:
+                os.remove(_cache)
+            except FileNotFoundError:
+                pass
             print(
-                f"  ✓ series={summary.get('series','?')}  "
+                f"  ✓ series={summary.get('series', '?')}  "
                 f"created={nc}  updated={nu}  "
                 f"conf={summary.get('confidence', 0):.2f}  "
                 f"warns={len(summary.get('warnings', []))}"
@@ -564,10 +700,29 @@ def _asyncio_exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -
 
 
 if __name__ == "__main__":
+    import signal
+
+    def _handle_signal(signum: int, frame: Any) -> None:
+        sig_name = signal.Signals(signum).name
+        logger.warning("SIGNAL received: %s (%d) — exiting", sig_name, signum)
+        sys.exit(128 + signum)
+
+    for _sig in (signal.SIGTERM, signal.SIGHUP):
+        try:
+            signal.signal(_sig, _handle_signal)
+        except OSError:
+            pass
+
     loop = asyncio.new_event_loop()
     loop.set_exception_handler(_asyncio_exception_handler)
     asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(main())
+    except BaseException as _exc:
+        logger.exception("RUNNER CRASHED: %s: %s", type(_exc).__name__, _exc)
+        sys.exit(1)
     finally:
-        loop.close()
+        try:
+            loop.close()
+        except Exception:
+            pass

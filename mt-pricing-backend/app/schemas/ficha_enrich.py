@@ -40,8 +40,20 @@ class ExtractedMaterial(BaseModel):
 
 class ExtractedDimensionRow(BaseModel):
     dn_label: str
-    values: dict[str, float | str]
+    values: dict[str, Any]
     dn_secondary_label: str | None = None
+
+    def flat_values(self) -> dict[str, float | str]:
+        """Flatten nested dicts into scalar values (LLM sometimes nests dicts)."""
+        result: dict[str, float | str] = {}
+        for k, v in self.values.items():
+            if isinstance(v, dict):
+                for k2, v2 in v.items():
+                    if isinstance(v2, (float, int, str)):
+                        result[f"{k}.{k2}"] = v2
+            elif isinstance(v, (float, int, str)):
+                result[k] = v
+        return result
 
 
 class ExtractedTranslation(BaseModel):

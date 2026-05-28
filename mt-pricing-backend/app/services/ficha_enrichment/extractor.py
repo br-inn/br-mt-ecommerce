@@ -159,10 +159,22 @@ _TOOL_SCHEMA: dict[str, Any] = {
                                 "other=anything else not covered above."
                             ),
                             "enum": [
-                                "body", "closure", "seat", "gasket", "screen",
-                                "actuator_housing", "stem", "handle",
-                                "nut", "packing", "bonnet", "insert",
-                                "spring", "washer", "o_ring", "cap",
+                                "body",
+                                "closure",
+                                "seat",
+                                "gasket",
+                                "screen",
+                                "actuator_housing",
+                                "stem",
+                                "handle",
+                                "nut",
+                                "packing",
+                                "bonnet",
+                                "insert",
+                                "spring",
+                                "washer",
+                                "o_ring",
+                                "cap",
                                 "other",
                             ],
                         },
@@ -203,10 +215,12 @@ _TOOL_SCHEMA: dict[str, Any] = {
                                 "Flat dict mapping each column header to its value for this "
                                 "DN row. Keys are dimension names (e.g. 'A', 'C', 'L'), "
                                 "values are numbers or strings. "
-                                "Example: {\"A\": 250, \"C\": 10, \"L\": 150}. "
+                                'Example: {"A": 250, "C": 10, "L": 150}. '
                                 "Do NOT nest dicts — each value must be a scalar."
                             ),
-                            "additionalProperties": {"oneOf": [{"type": "number"}, {"type": "string"}]},
+                            "additionalProperties": {
+                                "oneOf": [{"type": "number"}, {"type": "string"}]
+                            },
                         },
                         "dn_secondary_label": {
                             "type": "string",
@@ -486,7 +500,9 @@ def _build_result(data: dict[str, Any], raw_text: str) -> FichaExtractionResult:
         # Guard: skip rows where values are nested dicts (Claude misread table structure)
         flat_values = {k: v for k, v in raw_values.items() if not isinstance(v, dict)}
         if not flat_values and raw_values:
-            logger.warning("dimensions: skipping row dn_label=%r — values are nested dicts", d["dn_label"])
+            logger.warning(
+                "dimensions: skipping row dn_label=%r — values are nested dicts", d["dn_label"]
+            )
             continue
         dimensions.append(
             ExtractedDimensionRow(
