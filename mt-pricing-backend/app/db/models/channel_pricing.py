@@ -116,7 +116,7 @@ class ChannelFeeParams(UuidPkMixin, Base):
     route: Mapped[TradeRouteParams] = relationship(
         "TradeRouteParams",
         foreign_keys=[route_id],
-        lazy="select",
+        lazy="raise",
     )
 
     __table_args__ = (Index("idx_channel_fee_params_channel", "channel_id"),)

@@ -112,7 +112,7 @@ class ParameterLoader:
                 & (ChannelProductLogistics.channel_id == channel_id),
                 isouter=True,
             )
-            .where(Product.lifecycle_status == "active")
+            .where(Product.active)
         )
         if skus:
             q = q.where(Product.sku.in_(skus))
@@ -169,7 +169,7 @@ class ParameterLoader:
             await self._session.execute(
                 select(ChannelMarginTarget).where(
                     ChannelMarginTarget.channel_id == channel_id,
-                    ChannelMarginTarget.selling_model == selling_model,
+                    ChannelMarginTarget.selling_model == selling_model.value,
                 )
             )
         ).scalars().all()
@@ -181,7 +181,7 @@ class ParameterLoader:
             await self._session.execute(
                 select(ChannelMarginOverride).where(
                     ChannelMarginOverride.channel_id == channel_id,
-                    ChannelMarginOverride.selling_model == selling_model,
+                    ChannelMarginOverride.selling_model == selling_model.value,
                     ChannelMarginOverride.product_sku.in_(skus) if skus else True,
                 )
             )
@@ -190,6 +190,7 @@ class ParameterLoader:
             r.product_sku: r.margin_override_pct for r in override_rows
         }
 
+        # Note: SKUs that don't exist in products table are omitted from the result.
         product_rows = (
             await self._session.execute(
                 select(Product.sku, Product.family_id).where(Product.sku.in_(skus))
