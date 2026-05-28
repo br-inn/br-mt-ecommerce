@@ -28,8 +28,8 @@ export default function AmazonUaePage() {
   // Filter
   const [skuFilter, setSkuFilter] = React.useState("");
 
-  // Pagination (client-side)
-  const [page, setPage] = React.useState(0);
+  // Pagination (client-side, 1-indexed)
+  const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(50);
 
   // Selection
@@ -71,20 +71,19 @@ export default function AmazonUaePage() {
   }, [allListings, skuFilter]);
 
   const totalFiltered = filtered.length;
-  const pageStart = page * pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const pageStart = (page - 1) * pageSize;
   const pageItems = filtered.slice(pageStart, pageStart + pageSize);
-  const hasNext = pageStart + pageSize < totalFiltered;
-  const hasPrev = page > 0;
 
   // Reset page when filter or pageSize changes
   const handleSkuFilter = React.useCallback((v: string) => {
     setSkuFilter(v);
-    setPage(0);
+    setPage(1);
   }, []);
 
   const handlePageSize = React.useCallback((size: number) => {
     setPageSize(size);
-    setPage(0);
+    setPage(1);
   }, []);
 
   // -------------------------------------------------------------------------
@@ -472,13 +471,12 @@ export default function AmazonUaePage() {
 
       {/* ── Paginator ── */}
       <Paginator
-        loaded={Math.min(pageStart + pageSize, totalFiltered)}
+        page={page}
+        pages={totalPages}
         total={totalFiltered}
         pageSize={pageSize}
         onPageSize={handlePageSize}
-        hasNext={hasNext}
-        onNext={() => setPage((p) => p + 1)}
-        {...(hasPrev ? { onPrev: () => setPage((p) => p - 1) } : {})}
+        onPage={(p) => setPage(p)}
       />
     </div>
   );

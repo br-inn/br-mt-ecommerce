@@ -44,18 +44,12 @@ export function ProductsTable() {
     data,
     isLoading,
     isError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
     refetch,
   } = useProducts(filters);
 
   const toggleActive = useToggleProductActive();
 
-  const items = React.useMemo<ProductListItem[]>(
-    () => (data?.pages.flatMap((p) => p.items) ?? []),
-    [data],
-  );
+  const items: ProductListItem[] = data?.items ?? [];
   const totalLoaded = items.length;
 
   const columns = React.useMemo<ColumnDef<ProductListItem>[]>(
@@ -230,16 +224,6 @@ export function ProductsTable() {
       <DataTable<ProductListItem, unknown> columns={columns} data={items} />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>{t("totalCount", { count: totalLoaded })}</span>
-        {hasNextPage ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-          >
-            {isFetchingNextPage ? tCommon("loading") : t("loadMore")}
-          </Button>
-        ) : null}
       </div>
     </div>
   );
