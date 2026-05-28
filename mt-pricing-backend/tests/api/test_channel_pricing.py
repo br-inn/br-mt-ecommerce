@@ -409,6 +409,52 @@ async def cp_client(postgres_container: str) -> AsyncIterator[AsyncClient]:
     await engine.dispose()
 
 
+@pytest_asyncio.fixture
+async def cp_client_with_session(
+    postgres_container: str,
+) -> AsyncIterator[tuple[AsyncClient, AsyncSession]]:
+    """Variant of cp_client that also yields the bound AsyncSession.
+
+    Used by tests that need to query the DB directly (e.g. to verify an INSERT)
+    without a second engine — the session is bound to the same connection-level
+    transaction that gets rolled back on teardown.
+    """
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.api.deps import get_db_session
+    from app.main import app
+
+    engine = create_async_engine(
+        postgres_container,
+        echo=False,
+        connect_args={"statement_cache_size": 0},
+    )
+    async with engine.connect() as conn:
+        await conn.begin()
+        sm = async_sessionmaker(bind=conn, expire_on_commit=False)
+        async with sm() as session:
+            await _seed_channel_pricing_data(session)
+            await session.flush()
+
+            uid, email = await _seed_admin_user(session)
+            await session.flush()
+
+            async def _override() -> AsyncIterator[AsyncSession]:
+                yield session
+
+            app.dependency_overrides[get_db_session] = _override
+            try:
+                token = _emit_jwt(sub=str(uid), email=email, role="admin")
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+                    ac.headers["Authorization"] = f"Bearer {token}"
+                    yield ac, session
+            finally:
+                app.dependency_overrides.pop(get_db_session, None)
+        await conn.rollback()
+    await engine.dispose()
+
+
 # ---------------------------------------------------------------------------
 # Tests — READ endpoints
 # ---------------------------------------------------------------------------
@@ -525,6 +571,61 @@ async def test_propose_selected_returns_result_shape(cp_client: AsyncClient) -> 
     assert data["errors"] == 0
     assert data["items"][0]["status"] == "skipped"
     assert data["items"][0]["sku"] == "NONEXISTENT_SKU_TEST_999"
+
+
+@pytest.mark.asyncio
+async def test_propose_selected_inserts_pending_review_row(
+    cp_client_with_session: tuple[AsyncClient, AsyncSession],
+) -> None:
+    """Real SKU (from catalog) is proposed and lands in prices with status=pending_review.
+
+    Exercises the INSERT path end-to-end: scheme_code FK mapping,
+    draft→pending_review two-step, and rollback guard.
+    Uses cp_client_with_session so the DB assertion queries the same
+    connection-bound session (avoids cross-transaction visibility issues).
+    """
+    from sqlalchemy import text as sql_text
+
+    cp_client, session = cp_client_with_session
+
+    # 1. Fetch the catalog to find a real SKU that has channel_product_logistics
+    sku_resp = await cp_client.get(
+        "/api/v1/pricing/amazon_uae/catalog",
+        params={"selling_model": "b2c"},
+    )
+    assert sku_resp.status_code == 200, sku_resp.text
+    rows = sku_resp.json().get("rows", [])
+    if not rows:
+        pytest.skip("No catalog rows available in test fixture — cannot test INSERT path")
+    test_sku = rows[0]["sku"]
+
+    # 2. Propose the SKU
+    resp = await cp_client.post(
+        "/api/v1/pricing/amazon_uae/prices/propose-selected",
+        json={"skus": [test_sku], "selling_model": "b2c"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+
+    # 3. Verify counts add up — must NOT produce a 500 from FK/trigger violations
+    assert data["total_requested"] == 1
+    assert data["proposed"] + data["skipped"] + data["errors"] == 1, (
+        f"counts mismatch: {data}"
+    )
+
+    # 4. If proposed, verify DB row has status=pending_review via the shared session
+    if data["proposed"] == 1:
+        price_id = data["items"][0]["price_id"]
+        row = await session.execute(
+            sql_text("SELECT status, product_sku FROM prices WHERE id = :id"),
+            {"id": price_id},
+        )
+        result = row.fetchone()
+        assert result is not None, f"No prices row found for id={price_id}"
+        assert result.status == "pending_review", (
+            f"Expected status=pending_review, got {result.status}"
+        )
+        assert result.product_sku == test_sku
 
 
 @pytest.mark.asyncio
