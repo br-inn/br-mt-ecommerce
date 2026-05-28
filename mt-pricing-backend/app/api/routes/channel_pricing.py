@@ -14,7 +14,8 @@ Endpoints prefix: /pricing/{channel_code}
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from decimal import Decimal
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, select, update
@@ -22,7 +23,10 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
-from app.db.enums import SellingModel
+from app.db.enums import FulfillmentScheme, SellingModel
+from app.services.pricing.engine import PricingEngine
+from app.services.pricing.loader import ParameterLoader
+from app.services.pricing.optimizer import ChannelOptimizer
 from app.db.models.channel_pricing import (
     ChannelFeeParams,
     ChannelMarginOverride,
@@ -391,6 +395,245 @@ async def delete_margin_override(
             ChannelMarginOverride.selling_model == selling_model.value,
         )
     )
+    await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Calculation helpers
+# ---------------------------------------------------------------------------
+
+
+def _price_result_to_dict(r) -> dict:
+    """Serialize PriceResult to JSON-friendly dict. Infinity → None."""
+    inf = Decimal("Infinity")
+    return {
+        "sku": r.sku,
+        "selling_model": r.selling_model.value,
+        "fulfillment_scheme": r.fulfillment_scheme.value,
+        "scheme_label": r.scheme_label,
+        "margin_pct": float(r.margin_pct),
+        "cost_op_aed": float(r.cost_op_aed),
+        "selling_price_aed": (
+            float(r.selling_price_aed) if r.selling_price_aed != inf else None
+        ),
+        "ceiling_aed": (
+            float(r.ceiling_aed)
+            if r.ceiling_aed not in (inf, Decimal("0"))
+            else None
+        ),
+        "benefit_per_unit_aed": float(r.benefit_per_unit_aed),
+        "roi_pct": float(r.roi_pct),
+        "margin_to_ceiling_pct": float(r.margin_to_ceiling_pct),
+        "is_publishable": r.is_publishable,
+        "signal": r.signal,
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /product/{sku} — single-SKU price calculation
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/product/{sku}",
+    operation_id="getProductPrice",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_product_price(
+    channel_code: str,
+    sku: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+    margin_pct: Optional[float] = None,
+) -> dict:
+    """Calculate price for one SKU across all schemes + best."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    loader = ParameterLoader(session)
+    route, fees, schemes = await loader.load_route_and_fees(channel_id)
+    products = await loader.load_product_data(channel_id, skus=[sku])
+    if not products:
+        raise HTTPException(
+            status_code=404,
+            detail=f"SKU '{sku}' not found or has no logistics data",
+        )
+
+    product = products[0]
+    effective_margins = await loader.load_effective_margins(
+        channel_id, selling_model, [sku]
+    )
+    m = (
+        Decimal(str(margin_pct))
+        if margin_pct is not None
+        else effective_margins.get(sku, Decimal("12"))
+    )
+
+    compute = (
+        PricingEngine.compute_b2c
+        if selling_model == SellingModel.B2C
+        else PricingEngine.compute_b2b
+    )
+    results = [compute(product, route, fees, s, m) for s in schemes if s.is_available]
+
+    if selling_model == SellingModel.B2C:
+        best = ChannelOptimizer.best_scheme_b2c(product, route, fees, schemes, m)
+    else:
+        best = ChannelOptimizer.best_scheme_b2b(product, route, fees, schemes, m)
+
+    return {
+        "sku": sku,
+        "effective_margin_pct": float(m),
+        "best_scheme": _price_result_to_dict(best) if best else None,
+        "all_schemes": [_price_result_to_dict(r) for r in results],
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /catalog — full catalog summary with semáforo + filters
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/catalog",
+    operation_id="getCatalogSummary",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_catalog_summary(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+    family_id: Optional[str] = None,
+    signal: Optional[str] = None,
+) -> dict:
+    """Return price analysis for the full catalog with semáforo summary."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    loader = ParameterLoader(session)
+    route, fees, schemes = await loader.load_route_and_fees(channel_id)
+    products = await loader.load_product_data(channel_id)
+
+    if family_id:
+        products = [p for p in products if p.family_id == family_id]
+
+    skus = [p.sku for p in products]
+    margins = await loader.load_effective_margins(channel_id, selling_model, skus)
+
+    if selling_model == SellingModel.B2C:
+        results = ChannelOptimizer.optimize_catalog_b2c(
+            products, route, fees, schemes, margins
+        )
+    else:
+        results = ChannelOptimizer.optimize_catalog_b2b(
+            products, route, fees, schemes, margins
+        )
+
+    if signal:
+        results = [r for r in results if r.signal == signal.upper()]
+
+    rows = [_price_result_to_dict(r) for r in results]
+    publishable = sum(1 for r in results if r.is_publishable)
+    in_loss = sum(1 for r in results if r.signal == "PÉRDIDA")
+
+    return {
+        "semaforo": {
+            "total": len(results),
+            "publishable": publishable,
+            "blocked": len(results) - publishable,
+            "in_loss": in_loss,
+            "by_scheme": {
+                scheme.value: sum(
+                    1 for r in results if r.fulfillment_scheme == scheme
+                )
+                for scheme in FulfillmentScheme
+            },
+        },
+        "rows": rows,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /optimize — optimization preview (does NOT persist)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/optimize",
+    operation_id="optimizeCatalog",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def optimize_catalog(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+) -> dict:
+    """Preview the best scheme+margin per product. Does NOT persist.
+
+    PERFORMANCE: CPU-bound. For catalogs >50 SKUs, consider a Celery task.
+    """
+    channel_id = await _resolve_channel_id(channel_code, session)
+    loader = ParameterLoader(session)
+    route, fees, schemes = await loader.load_route_and_fees(channel_id)
+    products = await loader.load_product_data(channel_id)
+
+    if selling_model == SellingModel.B2C:
+        results = ChannelOptimizer.full_optimize_catalog_b2c(
+            products, route, fees, schemes
+        )
+    else:
+        results = ChannelOptimizer.full_optimize_catalog_b2b(
+            products, route, fees, schemes
+        )
+
+    return {"results": [_price_result_to_dict(r) for r in results]}
+
+
+# ---------------------------------------------------------------------------
+# POST /optimize/apply — persist optimization as overrides
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/optimize/apply",
+    operation_id="applyOptimization",
+    dependencies=[Depends(require_permissions("prices:propose"))],
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def apply_optimization(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+) -> None:
+    """Persist optimization result as per-SKU margin overrides."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    loader = ParameterLoader(session)
+    route, fees, schemes = await loader.load_route_and_fees(channel_id)
+    products = await loader.load_product_data(channel_id)
+
+    if selling_model == SellingModel.B2C:
+        results = ChannelOptimizer.full_optimize_catalog_b2c(
+            products, route, fees, schemes
+        )
+    else:
+        results = ChannelOptimizer.full_optimize_catalog_b2b(
+            products, route, fees, schemes
+        )
+
+    for r in results:
+        await session.execute(
+            pg_insert(ChannelMarginOverride)
+            .values(
+                product_sku=r.sku,
+                channel_id=channel_id,
+                selling_model=selling_model.value,
+                margin_override_pct=r.margin_pct,
+                reason="auto-optimized",
+            )
+            .on_conflict_do_update(
+                constraint="uq_channel_margin_overrides",
+                set_={
+                    "margin_override_pct": r.margin_pct,
+                    "reason": "auto-optimized",
+                },
+            )
+        )
     await session.commit()
 
 
