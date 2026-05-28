@@ -30,7 +30,8 @@ export function RbacGuard({
   fallback = null,
   children,
 }: RbacGuardProps) {
-  const { hasPermissions, hasAnyPermission } = usePermissions();
+  const { hasPermissions, hasAnyPermission, isLoading } = usePermissions();
+  if (isLoading) return null;
   const allowed = any ? hasAnyPermission(permissions) : hasPermissions(permissions);
   if (!allowed) return <>{fallback}</>;
   return <>{children}</>;
