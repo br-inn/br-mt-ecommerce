@@ -7382,6 +7382,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scraper-sources/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Url
+         * @description Fetches the URL, calls Claude to generate a scraping recipe, returns proposal.
+         *     No DB writes — pure analysis for the wizard Step 2 preview.
+         */
+        post: operations["analyzeScraperUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scraper-sources/{source_id}": {
         parameters: {
             query?: never;
@@ -8305,6 +8326,49 @@ export interface components {
             proposed_mapping: components["schemas"]["ColumnMappingItemSchema"][];
             /** Sample Rows */
             sample_rows: (string | null)[][];
+        };
+        /** AnalyzeRequest */
+        AnalyzeRequest: {
+            /**
+             * Context
+             * @description Optional description of the site
+             */
+            context?: string | null;
+            /**
+             * Hint
+             * @description If set, find only this one field instead of full recipe
+             */
+            hint?: string | null;
+            /**
+             * Url
+             * @description URL to analyze and generate recipe for
+             */
+            url: string;
+        };
+        /** AnalyzeResponse */
+        AnalyzeResponse: {
+            /** Detected Mode */
+            detected_mode: string;
+            /** Field Confidence */
+            field_confidence: {
+                [key: string]: number;
+            };
+            /** Missing Required */
+            missing_required: string[];
+            /** Preview Records */
+            preview_records: {
+                [key: string]: unknown;
+            }[];
+            /** Proposed Recipe */
+            proposed_recipe: {
+                [key: string]: unknown;
+            };
+            /** Proposed Source */
+            proposed_source: {
+                [key: string]: string;
+            };
+            /** Warnings */
+            warnings: string[];
         };
         /** ApAgingBucket */
         ApAgingBucket: {
@@ -11389,7 +11453,7 @@ export interface components {
             dn_secondary_label?: string | null;
             /** Values */
             values: {
-                [key: string]: number | string;
+                [key: string]: unknown;
             };
         };
         /**
@@ -37806,6 +37870,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScraperSourceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyzeScraperUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalyzeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyzeResponse"];
                 };
             };
             /** @description Validation Error */

@@ -2,34 +2,33 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
-
 import { MT } from "@/components/mt/tokens";
 
 interface PaginatorProps {
-  loaded: number;
+  page: number;
+  pages: number | null;
   total: number | null;
   pageSize: number;
   onPageSize: (size: number) => void;
-  hasNext: boolean;
-  onNext: () => void;
-  onPrev?: () => void;
+  onPage: (page: number) => void;
   isFetching?: boolean;
 }
 
 /**
- * Cursor-based "load more" paginator with page size selector.
- * Backend uses cursors not offsets so we don't expose page numbers.
+ * Offset-based paginator: shows page X / Y, total count, prev/next arrows.
  */
 export function Paginator({
-  loaded,
+  page,
+  pages,
   total,
   pageSize,
   onPageSize,
-  hasNext,
-  onNext,
-  onPrev,
+  onPage,
   isFetching = false,
 }: PaginatorProps) {
+  const hasPrev = page > 1;
+  const hasNext = pages !== null ? page < pages : false;
+
   return (
     <div
       className="flex items-center justify-between gap-3 border-t px-4 py-1.5 text-[11.5px]"
@@ -38,19 +37,15 @@ export function Paginator({
       <span className="mt-mono tabular-nums">
         {total !== null ? (
           <>
-            mostrando <strong style={{ color: MT.ink }}>{loaded.toLocaleString()}</strong> de{" "}
-            <strong style={{ color: MT.ink }}>{total.toLocaleString()}</strong>
+            <strong style={{ color: MT.ink }}>{total.toLocaleString()}</strong>{" "}
+            resultados
           </>
-        ) : (
-          <>
-            mostrando <strong style={{ color: MT.ink }}>{loaded.toLocaleString()}</strong>
-          </>
-        )}
+        ) : null}
       </span>
 
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-1">
-          <span style={{ color: MT.ink4 }}>tamaño</span>
+          <span style={{ color: MT.ink4 }}>por página</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSize(Number(e.target.value))}
@@ -60,30 +55,43 @@ export function Paginator({
             <option value={25}>25</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
-            <option value={250}>250</option>
           </select>
         </label>
 
-        {onPrev ? (
-          <button
-            type="button"
-            onClick={onPrev}
-            className="flex size-6 items-center justify-center rounded-sm hover:bg-mt-surface2"
-            aria-label="Anterior"
-          >
-            <ChevronLeft className="size-3.5" />
-          </button>
-        ) : null}
+        <button
+          type="button"
+          disabled={!hasPrev || isFetching}
+          onClick={() => onPage(page - 1)}
+          className="flex size-6 items-center justify-center rounded-sm hover:bg-mt-surface2
+                     disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Página anterior"
+        >
+          <ChevronLeft className="size-3.5" />
+        </button>
+
+        <span
+          className="mt-mono tabular-nums min-w-[5.5rem] text-center"
+          style={{ color: MT.ink }}
+        >
+          {isFetching ? (
+            <RefreshCcw className="inline size-3 animate-spin" />
+          ) : (
+            <>
+              pág. <strong>{page}</strong>
+              {pages !== null ? <> / {pages}</> : null}
+            </>
+          )}
+        </span>
 
         <button
           type="button"
           disabled={!hasNext || isFetching}
-          onClick={onNext}
-          className="flex items-center gap-1 rounded-sm px-2 py-0.5 hover:bg-mt-surface2 disabled:cursor-not-allowed disabled:opacity-50"
-          style={{ color: hasNext ? MT.ink : MT.ink4 }}
+          onClick={() => onPage(page + 1)}
+          className="flex size-6 items-center justify-center rounded-sm hover:bg-mt-surface2
+                     disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Página siguiente"
         >
-          {isFetching ? <RefreshCcw className="size-3 animate-spin" /> : <ChevronRight className="size-3.5" />}
-          <span>cargar más</span>
+          <ChevronRight className="size-3.5" />
         </button>
       </div>
     </div>

@@ -60,3 +60,5 @@ class Pagination(BaseModel, Generic[T]):
         description="Total absoluto si el endpoint lo expone (puede ser caro).",
     )
     page_size: int = Field(ge=1, le=500, description="Tamaño de página solicitado.")
+    page: int | None = Field(default=None, ge=1, description="Página actual (offset mode).")
+    pages: int | None = Field(default=None, ge=0, description="Total de páginas (offset mode).")

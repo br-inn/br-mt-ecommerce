@@ -382,6 +382,10 @@ export interface ProductListResponse {
   next_cursor: string | null;
   total: number | null;
   page_size: number;
+  /** Current page number in offset mode. Null when using cursor mode. */
+  page: number | null;
+  /** Total page count in offset mode. Null when using cursor mode. */
+  pages: number | null;
 }
 
 export interface ProductCreatePayload {
@@ -574,6 +578,10 @@ export interface ProductFilters {
   series_id?: string | undefined;
   material_id?: string | undefined;
   tier_code?: string | undefined;
+  /** Offset pagination: 1-based page number. Activates include_total on backend. */
+  page?: number | undefined;
+  /** Items per page for offset pagination. Alias for `limit` in offset mode. */
+  per_page?: number | undefined;
 }
 
 // ---- Internals ------------------------------------------------------------
@@ -656,6 +664,8 @@ interface BackendPagination<T> {
   cursor: { next: string | null; prev?: string | null };
   total: number | null;
   page_size: number;
+  page?: number | null;
+  pages?: number | null;
 }
 
 export const productsApi = {
@@ -683,7 +693,8 @@ export const productsApi = {
         material_id: filters.material_id,
         tier_code: filters.tier_code,
         cursor: filters.cursor ?? undefined,
-        limit: filters.limit,
+        limit: filters.per_page ?? filters.limit,
+        page: filters.page,
       })}`,
     );
     return {
@@ -691,6 +702,8 @@ export const productsApi = {
       next_cursor: raw.cursor?.next ?? null,
       total: raw.total,
       page_size: raw.page_size,
+      page: raw.page ?? null,
+      pages: raw.pages ?? null,
     };
   },
   get: (id: string): Promise<Product> => authedFetch<Product>(`/api/v1/products/${id}`),

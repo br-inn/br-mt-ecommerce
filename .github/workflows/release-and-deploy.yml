@@ -271,10 +271,15 @@ jobs:
       - name: Write .env.staging to server
         env:
           ENV_STAGING: ${{ secrets.ENV_STAGING }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           printf '%s' "$ENV_STAGING" | \
             ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
               "cat > ~/mt-deploy/.env.staging"
+          # Ensure ANTHROPIC_API_KEY is always present (scraper AI wizard)
+          ssh "${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}" \
+            "grep -q '^ANTHROPIC_API_KEY=' ~/mt-deploy/.env.staging \
+             || echo 'ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}' >> ~/mt-deploy/.env.staging"
 
       - name: Prune old images before pull
         run: |
