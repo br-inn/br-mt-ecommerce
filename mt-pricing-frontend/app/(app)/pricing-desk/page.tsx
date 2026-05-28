@@ -58,6 +58,7 @@ export default function PricingDeskPage() {
           setChannelCode(c);
           setFamilyId(undefined);
           setSignal(undefined);
+          setSelectedSkus(new Set());
         }}
         sellingModel={sellingModel}
         onSellingModelChange={setSellingModel}

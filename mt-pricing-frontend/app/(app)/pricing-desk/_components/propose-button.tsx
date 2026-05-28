@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProposeSelected } from "@/lib/hooks/pricing-desk/use-propose-prices";
 import type { SellingModel } from "@/lib/api/endpoints/pricing-desk";
 
@@ -20,11 +20,16 @@ export function ProposeButton({ channelCode, sellingModel, selectedSkus, onPropo
     errors: number;
   } | null>(null);
 
+  useEffect(() => {
+    if (!confirming) return;
+    const timeoutId = setTimeout(() => setConfirming(false), 4000);
+    return () => clearTimeout(timeoutId);
+  }, [confirming]);
+
   const handleClick = async () => {
     if (selectedSkus.size === 0) return;
     if (!confirming) {
       setConfirming(true);
-      setTimeout(() => setConfirming(false), 4000);
       return;
     }
     const result = await propose.mutateAsync({
