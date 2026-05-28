@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -107,8 +108,11 @@ async def _generate_recipe(
 ) -> dict[str, Any]:
     import anthropic  # lazy import — not needed if feature flag off
 
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        raise ScraperAgentError("ANTHROPIC_API_KEY no está configurada en el servidor")
     try:
-        client = anthropic.Anthropic()
+        client = anthropic.Anthropic(api_key=api_key)
     except Exception as exc:
         raise ScraperAgentError(f"Anthropic client init failed: {exc}") from exc
 
