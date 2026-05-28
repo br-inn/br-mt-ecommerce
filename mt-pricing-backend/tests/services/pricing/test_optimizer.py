@@ -99,3 +99,37 @@ def test_full_optimize_catalog(standard_product, standard_route, standard_fees, 
     )
     assert len(results) == 1
     assert results[0].is_publishable
+
+
+def test_tie_break_prefers_canal_full(standard_route, standard_fees):
+    """When two schemes are publishable with same benefit, CANAL_FULL wins."""
+    from app.services.pricing.optimizer import _pick_best
+    from app.services.pricing.schemas import CostBreakdown, PriceResult
+    from app.db.enums import SellingModel
+
+    def make_result(scheme, benefit, publishable):
+        zero = Decimal("0")
+        return PriceResult(
+            sku="X", selling_model=SellingModel.B2C,
+            fulfillment_scheme=scheme, scheme_label=scheme.value,
+            margin_pct=Decimal("12"),
+            cost_op_aed=Decimal("10"),
+            selling_price_aed=Decimal("20"),
+            ceiling_aed=Decimal("100"),
+            benefit_per_unit_aed=benefit,
+            roi_pct=Decimal("50"),
+            margin_to_ceiling_pct=Decimal("80"),
+            is_publishable=publishable, signal="ÓPTIMO",
+            breakdown=CostBreakdown(
+                net_eur=zero, fx_applied=zero, aed_before_freight=zero,
+                freight_aed=zero, landed_aed=zero, labeling_aed=zero,
+                channel_logistics_aed=zero, cost_op_aed=zero,
+                fees_frac=zero, scheme=scheme.value,
+            ),
+        )
+
+    canal_full = make_result(FulfillmentScheme.CANAL_FULL, Decimal("5"), True)
+    canal_lastmile = make_result(FulfillmentScheme.CANAL_LASTMILE, Decimal("5"), True)
+    merchant = make_result(FulfillmentScheme.MERCHANT_MANAGED, Decimal("5"), True)
+    chosen = _pick_best([canal_lastmile, merchant, canal_full])
+    assert chosen.fulfillment_scheme == FulfillmentScheme.CANAL_FULL
