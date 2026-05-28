@@ -15,6 +15,7 @@ interface Props {
   selectedSkus: Set<string>;
   onToggleSku: (sku: string) => void;
   onToggleAll: (allCurrentlyShown: string[], selectAll: boolean) => void;
+  onOpenComparator: (sku: string) => void;
 }
 
 export function CatalogTable({
@@ -24,6 +25,7 @@ export function CatalogTable({
   selectedSkus,
   onToggleSku,
   onToggleAll,
+  onOpenComparator,
 }: Props) {
   const upsertOverride = useUpsertMarginOverride(channelCode);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -49,6 +51,7 @@ export function CatalogTable({
                 aria-label="Seleccionar todos"
               />
             </th>
+            <th className="px-2 py-2 w-6" aria-label="Comparar"></th>
             <th className="px-3 py-2 text-left text-xs font-semibold uppercase">SKU</th>
             <th className="px-3 py-2 text-left text-xs font-semibold uppercase">Esquema</th>
             <th className="px-3 py-2 text-right text-xs font-semibold uppercase">Coste op.</th>
@@ -77,6 +80,17 @@ export function CatalogTable({
                   onChange={() => onToggleSku(r.sku)}
                   aria-label={`Seleccionar ${r.sku}`}
                 />
+              </td>
+              <td className="px-2 py-1.5 text-center">
+                <button
+                  type="button"
+                  onClick={() => onOpenComparator(r.sku)}
+                  className="text-mt-brand-deep hover:text-mt-brand"
+                  aria-label={`Comparar esquemas para ${r.sku}`}
+                  title="Comparar esquemas"
+                >
+                  ▸
+                </button>
               </td>
               <td className="mt-mono px-3 py-1.5 text-xs text-mt-brand-deep">{r.sku}</td>
               <td className="px-3 py-1.5 text-xs">
@@ -122,7 +136,7 @@ export function CatalogTable({
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={10} className="px-3 py-6 text-center text-sm text-mt-ink-3">
+              <td colSpan={11} className="px-3 py-6 text-center text-sm text-mt-ink-3">
                 No hay productos con los filtros actuales.
               </td>
             </tr>

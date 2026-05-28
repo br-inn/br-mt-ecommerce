@@ -7,6 +7,7 @@ import { FiltersBar } from "./_components/filters-bar";
 import { CatalogTable } from "./_components/catalog-table";
 import { ProposeButton } from "./_components/propose-button";
 import { SidePanel } from "./_components/side-panel";
+import { SchemeComparatorModal } from "./_components/scheme-comparator-modal";
 import { useCatalogSummary } from "@/lib/hooks/pricing-desk/use-catalog-summary";
 import type { SellingModel } from "@/lib/api/endpoints/pricing-desk";
 
@@ -16,6 +17,7 @@ export default function PricingDeskPage() {
   const [familyId, setFamilyId] = useState<string | undefined>();
   const [signal, setSignal] = useState<string | undefined>();
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+  const [comparatorSku, setComparatorSku] = useState<string | null>(null);
 
   const toggleSku = (sku: string) => {
     setSelectedSkus((prev) => {
@@ -102,11 +104,18 @@ export default function PricingDeskPage() {
                 selectedSkus={selectedSkus}
                 onToggleSku={toggleSku}
                 onToggleAll={toggleAll}
+                onOpenComparator={setComparatorSku}
               />
             )}
           </main>
         </div>
       </div>
+      <SchemeComparatorModal
+        channelCode={channelCode}
+        sellingModel={sellingModel}
+        sku={comparatorSku}
+        onClose={() => setComparatorSku(null)}
+      />
     </>
   );
 }
