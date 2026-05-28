@@ -4,7 +4,7 @@ Covers:
 - UNIQUE constraint on trade_route_params.route_code
 - UNIQUE constraint on channel_scheme_params(channel_id, fulfillment_scheme)
 - CASCADE delete on channel_margin_overrides when product is deleted
-- Alembic ORM drift check (documentation test)
+- UNIQUE constraint on channel_fee_params.channel_id
 
 Migration: 20260603_147_channel_pricing_engine.py
 """
@@ -129,14 +129,12 @@ async def test_channel_scheme_params_unique_channel_scheme(
 async def test_channel_margin_overrides_cascade_on_product_delete(
     db_session: AsyncSession,
 ) -> None:
-    """Deleting a product cascades and removes its margin overrides.
-
-    Uses raw SQL INSERT to avoid ORM enum-lookup issues with PG_ENUM columns
-    that have no Python enum values list (e.g. ceiling_basis added in mig 147).
-    """
+    """Deleting a product cascades and removes its margin overrides."""
     sku = "MT-TEST-CMO-CAS-001"
 
-    # Insert product via raw SQL to bypass ORM enum type cache issues
+    # WORKAROUND: product INSERT uses raw SQL because brand_id/family_id
+    # require existing FK rows whose UUIDs are unknown at test time.
+    # Using SELECT subqueries is more concise than a multi-step ORM setup.
     await db_session.execute(
         text(
             """
@@ -153,16 +151,15 @@ async def test_channel_margin_overrides_cascade_on_product_delete(
 
     channel_id = await _make_channel(db_session, "test_ch_margin_cascade")
 
-    # Insert the override via raw SQL for consistency
-    await db_session.execute(
-        text(
-            """
-            INSERT INTO channel_margin_overrides
-                (product_sku, channel_id, selling_model, margin_override_pct)
-            VALUES (:sku, :channel_id, 'b2c', 15.00)
-            """
-        ).bindparams(sku=sku, channel_id=channel_id)
+    from app.db.models.channel_pricing import ChannelMarginOverride
+
+    override = ChannelMarginOverride(
+        product_sku=sku,
+        channel_id=channel_id,
+        selling_model="b2c",
+        margin_override_pct=Decimal("15.00"),
     )
+    db_session.add(override)
     await db_session.flush()
 
     # Verify it exists
@@ -201,18 +198,24 @@ async def test_channel_margin_overrides_cascade_on_product_delete(
 
 
 # ---------------------------------------------------------------------------
-# Test 4 — Alembic ORM drift (documentation test)
+# Test 4 — UNIQUE constraint on channel_fee_params.channel_id
 # ---------------------------------------------------------------------------
 
 
-def test_alembic_no_orm_drift() -> None:
-    """ORM is in sync with Alembic migrations.
+async def test_channel_fee_params_channel_id_unique(
+    db_session: AsyncSession,
+) -> None:
+    """Inserting two fee-param rows for the same channel raises IntegrityError."""
+    from app.db.models.channel_pricing import ChannelFeeParams
 
-    `alembic check` is enforced in CI (see .github/workflows/pr-checks.yml).
-    This test documents that constraint and ensures it is not forgotten.
-    The actual drift check runs during CI/pre-push, not inline here to
-    avoid requiring a live DB connection at unit-test time.
-    """
-    # alembic check is verified externally by CI — assert True here to
-    # document the contract without duplicating the infrastructure check.
-    assert True, "alembic check must pass (no ORM drift) — enforced by CI"
+    channel_id = await _make_channel(db_session, "test_ch_fee_dup")
+    route = await _make_route(db_session, "test_rt_fee_dup")
+
+    first = ChannelFeeParams(channel_id=channel_id, route_id=route.id)
+    db_session.add(first)
+    await db_session.flush()
+
+    with pytest.raises(IntegrityError):
+        dup = ChannelFeeParams(channel_id=channel_id, route_id=route.id)
+        db_session.add(dup)
+        await db_session.flush()

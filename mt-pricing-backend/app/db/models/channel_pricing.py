@@ -133,7 +133,10 @@ class ChannelSchemeParams(UuidPkMixin, Base):
         nullable=False,
     )
     fulfillment_scheme: Mapped[str] = mapped_column(
-        PG_ENUM(name="fulfillment_scheme", create_type=False),
+        PG_ENUM(
+            "canal_full", "canal_lastmile", "merchant_managed",
+            name="fulfillment_scheme", create_type=False,
+        ),
         nullable=False,
     )
     scheme_label: Mapped[str] = mapped_column(Text, nullable=False)
@@ -183,7 +186,10 @@ class ChannelProductLogistics(UuidPkMixin, Base):
         Numeric(8, 4), nullable=False, server_default=text("0")
     )
     default_scheme: Mapped[str] = mapped_column(
-        PG_ENUM(name="fulfillment_scheme", create_type=False),
+        PG_ENUM(
+            "canal_full", "canal_lastmile", "merchant_managed",
+            name="fulfillment_scheme", create_type=False,
+        ),
         nullable=False,
         server_default=text("'canal_full'"),
     )
@@ -217,7 +223,7 @@ class ChannelMarginTarget(UuidPkMixin, Base):
         nullable=False,
     )
     selling_model: Mapped[str] = mapped_column(
-        PG_ENUM(name="selling_model", create_type=False),
+        PG_ENUM("b2c", "b2b", name="selling_model", create_type=False),
         nullable=False,
         server_default=text("'b2c'"),
     )
@@ -260,7 +266,7 @@ class ChannelMarginOverride(UuidPkMixin, Base):
         nullable=False,
     )
     selling_model: Mapped[str] = mapped_column(
-        PG_ENUM(name="selling_model", create_type=False),
+        PG_ENUM("b2c", "b2b", name="selling_model", create_type=False),
         nullable=False,
         server_default=text("'b2c'"),
     )
@@ -299,7 +305,7 @@ class PricingScenario(UuidPkMixin, Base):
         nullable=False,
     )
     selling_model: Mapped[str] = mapped_column(
-        PG_ENUM(name="selling_model", create_type=False),
+        PG_ENUM("b2c", "b2b", name="selling_model", create_type=False),
         nullable=False,
         server_default=text("'b2c'"),
     )

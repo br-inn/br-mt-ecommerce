@@ -108,7 +108,7 @@ class Product(Base):
         Numeric(10, 4), nullable=False, server_default=text("0")
     )
     ceiling_basis: Mapped[str] = mapped_column(
-        PG_ENUM(name="ceiling_basis", create_type=False),
+        PG_ENUM("catalog_pvp", "margin_floor", name="ceiling_basis", create_type=False),
         nullable=False, server_default=text("'catalog_pvp'"),
     )
 
