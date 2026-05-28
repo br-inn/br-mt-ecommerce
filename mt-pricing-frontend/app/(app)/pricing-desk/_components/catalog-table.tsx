@@ -12,9 +12,19 @@ interface Props {
   channelCode: string;
   sellingModel: SellingModel;
   rows: CatalogSummary["rows"];
+  selectedSkus: Set<string>;
+  onToggleSku: (sku: string) => void;
+  onToggleAll: (allCurrentlyShown: string[], selectAll: boolean) => void;
 }
 
-export function CatalogTable({ channelCode, sellingModel, rows }: Props) {
+export function CatalogTable({
+  channelCode,
+  sellingModel,
+  rows,
+  selectedSkus,
+  onToggleSku,
+  onToggleAll,
+}: Props) {
   const upsertOverride = useUpsertMarginOverride(channelCode);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const deleteOverride = useDeleteMarginOverride(channelCode);
@@ -31,6 +41,14 @@ export function CatalogTable({ channelCode, sellingModel, rows }: Props) {
       <table className="mt-data-table w-full text-sm">
         <thead>
           <tr className="bg-mt-ink text-white">
+            <th className="px-3 py-2 w-8">
+              <input
+                type="checkbox"
+                checked={rows.length > 0 && rows.every((r) => selectedSkus.has(r.sku))}
+                onChange={(e) => onToggleAll(rows.map((r) => r.sku), e.target.checked)}
+                aria-label="Seleccionar todos"
+              />
+            </th>
             <th className="px-3 py-2 text-left text-xs font-semibold uppercase">SKU</th>
             <th className="px-3 py-2 text-left text-xs font-semibold uppercase">Esquema</th>
             <th className="px-3 py-2 text-right text-xs font-semibold uppercase">Coste op.</th>
@@ -52,6 +70,14 @@ export function CatalogTable({ channelCode, sellingModel, rows }: Props) {
                   : "border-b border-mt-border bg-mt-danger-soft/30"
               }
             >
+              <td className="px-3 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={selectedSkus.has(r.sku)}
+                  onChange={() => onToggleSku(r.sku)}
+                  aria-label={`Seleccionar ${r.sku}`}
+                />
+              </td>
               <td className="mt-mono px-3 py-1.5 text-xs text-mt-brand-deep">{r.sku}</td>
               <td className="px-3 py-1.5 text-xs">
                 <span className="mt-mono rounded bg-mt-brand-soft px-2 py-0.5 text-[10px] font-bold text-mt-brand-deep">
@@ -96,7 +122,7 @@ export function CatalogTable({ channelCode, sellingModel, rows }: Props) {
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={9} className="px-3 py-6 text-center text-sm text-mt-ink-3">
+              <td colSpan={10} className="px-3 py-6 text-center text-sm text-mt-ink-3">
                 No hay productos con los filtros actuales.
               </td>
             </tr>

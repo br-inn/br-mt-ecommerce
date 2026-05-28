@@ -202,6 +202,28 @@ export const pricingDeskApi = {
     );
   },
 
+  /** POST /pricing/{channel_code}/prices/propose-selected */
+  async proposeSelected(
+    channelCode: string,
+    body: { skus: string[]; selling_model: SellingModel; notes?: string },
+  ): Promise<{
+    total_requested: number;
+    proposed: number;
+    skipped: number;
+    errors: number;
+    items: Array<{
+      sku: string;
+      status: string;
+      selling_price_aed: number | null;
+      reason: string | null;
+    }>;
+  }> {
+    return authedFetch(
+      `/api/v1/pricing/${encodeURIComponent(channelCode)}/prices/propose-selected`,
+      { method: "POST", body: JSON.stringify(body) },
+    );
+  },
+
   /** POST /api/v1/pricing/{channel_code}/catalog/import */
   async importCatalog(
     channelCode: string,
