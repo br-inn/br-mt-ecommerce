@@ -22,7 +22,6 @@ from sqlalchemy import select, text
 
 from app.db.engine import get_sessionmaker
 
-
 # ---------------------------------------------------------------------------
 # Pricing Desk family mapping (Spanish name → DB slug keywords for matching)
 # ---------------------------------------------------------------------------
@@ -36,7 +35,7 @@ _FAMILY_DESK_MAP: list[tuple[str, list[str], Decimal]] = [
 ]
 
 
-async def main() -> None:  # noqa: C901  (complexity OK for seed script)
+async def main() -> None:
     Session = get_sessionmaker()
 
     async with Session() as session:

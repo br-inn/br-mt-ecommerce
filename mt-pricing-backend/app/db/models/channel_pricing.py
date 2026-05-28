@@ -14,8 +14,8 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
-    Boolean,
     CHAR,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -25,8 +25,8 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as UUID_PG_TYPE
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -134,15 +134,16 @@ class ChannelSchemeParams(UuidPkMixin, Base):
     )
     fulfillment_scheme: Mapped[str] = mapped_column(
         PG_ENUM(
-            "canal_full", "canal_lastmile", "merchant_managed",
-            name="fulfillment_scheme", create_type=False,
+            "canal_full",
+            "canal_lastmile",
+            "merchant_managed",
+            name="fulfillment_scheme",
+            create_type=False,
         ),
         nullable=False,
     )
     scheme_label: Mapped[str] = mapped_column(Text, nullable=False)
-    is_available: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     flat_supplement_aed: Mapped[Decimal] = mapped_column(
         Numeric(8, 2), nullable=False, server_default=text("0")
     )
@@ -187,8 +188,11 @@ class ChannelProductLogistics(UuidPkMixin, Base):
     )
     default_scheme: Mapped[str] = mapped_column(
         PG_ENUM(
-            "canal_full", "canal_lastmile", "merchant_managed",
-            name="fulfillment_scheme", create_type=False,
+            "canal_full",
+            "canal_lastmile",
+            "merchant_managed",
+            name="fulfillment_scheme",
+            create_type=False,
         ),
         nullable=False,
         server_default=text("'canal_full'"),
@@ -199,9 +203,7 @@ class ChannelProductLogistics(UuidPkMixin, Base):
     updated_by: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
-        UniqueConstraint(
-            "product_sku", "channel_id", name="uq_channel_product_logistics"
-        ),
+        UniqueConstraint("product_sku", "channel_id", name="uq_channel_product_logistics"),
         Index("idx_channel_product_logistics_sku_ch", "product_sku", "channel_id"),
         Index("idx_channel_product_logistics_channel", "channel_id"),
     )
@@ -241,7 +243,9 @@ class ChannelMarginTarget(UuidPkMixin, Base):
         ),
         Index(
             "idx_channel_margin_targets_lookup",
-            "channel_id", "family_id", "selling_model",
+            "channel_id",
+            "family_id",
+            "selling_model",
         ),
     )
 
@@ -286,7 +290,9 @@ class ChannelMarginOverride(UuidPkMixin, Base):
         ),
         Index(
             "idx_channel_margin_overrides_sku",
-            "product_sku", "channel_id", "selling_model",
+            "product_sku",
+            "channel_id",
+            "selling_model",
         ),
     )
 
@@ -321,9 +327,7 @@ class PricingScenario(UuidPkMixin, Base):
 
     __table_args__ = (
         CheckConstraint("slot IN ('A','B')", name="ck_pricing_scenarios_slot"),
-        UniqueConstraint(
-            "channel_id", "selling_model", "slot", name="uq_pricing_scenarios_slot"
-        ),
+        UniqueConstraint("channel_id", "selling_model", "slot", name="uq_pricing_scenarios_slot"),
         Index("idx_pricing_scenarios_lookup", "channel_id", "selling_model"),
     )
 

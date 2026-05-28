@@ -14,7 +14,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.enums import CeilingBasis, FulfillmentScheme, SellingModel
 
-
 # ── Trade Route Params ────────────────────────────────────────────────
 
 
@@ -199,7 +198,9 @@ class PriceResultJSON(BaseModel):
     margin_pct: float
     cost_op_aed: float
     selling_price_aed: float | None
-    ceiling_aed: float | None  # null when ceiling is Infinity (MARGIN_FLOOR basis) or 0 (infeasible)
+    ceiling_aed: (
+        float | None
+    )  # null when ceiling is Infinity (MARGIN_FLOOR basis) or 0 (infeasible)
     benefit_per_unit_aed: float
     roi_pct: float
     margin_to_ceiling_pct: float

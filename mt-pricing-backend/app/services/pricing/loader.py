@@ -1,4 +1,5 @@
 """ParameterLoader — loads all pricing params in one JOIN per request."""
+
 from __future__ import annotations
 
 import uuid
@@ -39,12 +40,16 @@ class ParameterLoader:
     ) -> tuple[RouteParams, ChannelFees, list[SchemeConfig]]:
         """Load trade route + channel fees + available schemes for a channel."""
         fee_row = (
-            await self._session.execute(
-                select(ChannelFeeParams)
-                .where(ChannelFeeParams.channel_id == channel_id)
-                .options(joinedload(ChannelFeeParams.route))
+            (
+                await self._session.execute(
+                    select(ChannelFeeParams)
+                    .where(ChannelFeeParams.channel_id == channel_id)
+                    .options(joinedload(ChannelFeeParams.route))
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
 
         if fee_row is None:
             raise ValueError(
@@ -73,13 +78,17 @@ class ParameterLoader:
         )
 
         scheme_rows = (
-            await self._session.execute(
-                select(ChannelSchemeParams).where(
-                    ChannelSchemeParams.channel_id == channel_id,
-                    ChannelSchemeParams.is_available.is_(True),
+            (
+                await self._session.execute(
+                    select(ChannelSchemeParams).where(
+                        ChannelSchemeParams.channel_id == channel_id,
+                        ChannelSchemeParams.is_available.is_(True),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         schemes = [
             SchemeConfig(
@@ -121,11 +130,7 @@ class ParameterLoader:
 
         result = []
         for product, logistics_row in rows:
-            if (
-                logistics_row is None
-                or product.pe_eur is None
-                or product.catalog_pvp_eur is None
-            ):
+            if logistics_row is None or product.pe_eur is None or product.catalog_pvp_eur is None:
                 continue
 
             logistics = ProductLogistics(
@@ -166,36 +171,48 @@ class ParameterLoader:
         Priority: SKU override > family target > default 12%.
         """
         target_rows = (
-            await self._session.execute(
-                select(ChannelMarginTarget).where(
-                    ChannelMarginTarget.channel_id == channel_id,
-                    ChannelMarginTarget.selling_model == selling_model.value,
+            (
+                await self._session.execute(
+                    select(ChannelMarginTarget).where(
+                        ChannelMarginTarget.channel_id == channel_id,
+                        ChannelMarginTarget.selling_model == selling_model.value,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         family_targets: dict[str, Decimal] = {
             str(r.family_id): r.margin_target_pct for r in target_rows
         }
 
         override_rows = (
-            await self._session.execute(
-                select(ChannelMarginOverride).where(
-                    ChannelMarginOverride.channel_id == channel_id,
-                    ChannelMarginOverride.selling_model == selling_model.value,
-                    ChannelMarginOverride.product_sku.in_(skus) if skus else True,
+            (
+                await self._session.execute(
+                    select(ChannelMarginOverride).where(
+                        ChannelMarginOverride.channel_id == channel_id,
+                        ChannelMarginOverride.selling_model == selling_model.value,
+                        ChannelMarginOverride.product_sku.in_(skus) if skus else True,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         overrides: dict[str, Decimal] = {
             r.product_sku: r.margin_override_pct for r in override_rows
         }
 
         # Note: SKUs that don't exist in products table are omitted from the result.
         product_rows = (
-            await self._session.execute(
-                select(Product.sku, Product.family_id).where(Product.sku.in_(skus))
-            )
-        ).all() if skus else []
+            (
+                await self._session.execute(
+                    select(Product.sku, Product.family_id).where(Product.sku.in_(skus))
+                )
+            ).all()
+            if skus
+            else []
+        )
 
         result: dict[str, Decimal] = {}
         for sku, family_id in product_rows:

@@ -80,9 +80,7 @@ async def _resolve_channel_id(
 ) -> uuid.UUID:
     """Resolve channel_code → channel.id. Raises 404 if not found."""
     row = (
-        await session.execute(
-            select(Channel.id).where(Channel.code == channel_code)
-        )
+        await session.execute(select(Channel.id).where(Channel.code == channel_code))
     ).scalar_one_or_none()
     if row is None:
         raise HTTPException(
@@ -111,38 +109,41 @@ async def get_params(
     channel_id = await _resolve_channel_id(channel_code, session)
 
     fee_row = (
-        await session.execute(
-            select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
-        )
-    ).scalars().first()
-    if fee_row is None:
-        raise HTTPException(
-            404, detail=f"Channel '{channel_code}' has no fee params configured"
-        )
-
-    route_row = (
-        await session.execute(
-            select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
-        )
-    ).scalars().first()
-    if route_row is None:
-        raise HTTPException(
-            500, detail="Trade route params missing — data integrity issue"
-        )
-
-    scheme_rows = (
-        await session.execute(
-            select(ChannelSchemeParams).where(
-                ChannelSchemeParams.channel_id == channel_id
+        (
+            await session.execute(
+                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
             )
         )
-    ).scalars().all()
+        .scalars()
+        .first()
+    )
+    if fee_row is None:
+        raise HTTPException(404, detail=f"Channel '{channel_code}' has no fee params configured")
+
+    route_row = (
+        (
+            await session.execute(
+                select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if route_row is None:
+        raise HTTPException(500, detail="Trade route params missing — data integrity issue")
+
+    scheme_rows = (
+        (
+            await session.execute(
+                select(ChannelSchemeParams).where(ChannelSchemeParams.channel_id == channel_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     total_fees_pct = float(
-        fee_row.commission_pct
-        + fee_row.vat_pct
-        + fee_row.advertising_pct
-        + fee_row.returns_pct
+        fee_row.commission_pct + fee_row.vat_pct + fee_row.advertising_pct + fee_row.returns_pct
     )
 
     return {
@@ -152,8 +153,7 @@ async def get_params(
             "total_fees_pct": total_fees_pct,
         },
         "schemes": [
-            ChannelSchemeParamsRead.model_validate(s).model_dump(mode="json")
-            for s in scheme_rows
+            ChannelSchemeParamsRead.model_validate(s).model_dump(mode="json") for s in scheme_rows
         ],
     }
 
@@ -179,29 +179,33 @@ async def update_route_params(
     channel_id = await _resolve_channel_id(channel_code, session)
 
     fee_row = (
-        await session.execute(
-            select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+        (
+            await session.execute(
+                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if fee_row is None:
-        raise HTTPException(
-            404, detail=f"Channel '{channel_code}' has no fee params configured"
-        )
+        raise HTTPException(404, detail=f"Channel '{channel_code}' has no fee params configured")
 
     values = body.model_dump(exclude_unset=True)
     if values:
         await session.execute(
-            update(TradeRouteParams)
-            .where(TradeRouteParams.id == fee_row.route_id)
-            .values(**values)
+            update(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id).values(**values)
         )
         await session.commit()
 
     route = (
-        await session.execute(
-            select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
+        (
+            await session.execute(
+                select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     return TradeRouteParamsRead.model_validate(route)
 
 
@@ -235,10 +239,14 @@ async def update_fee_params(
         await session.commit()
 
     row = (
-        await session.execute(
-            select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+        (
+            await session.execute(
+                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if row is None:
         raise HTTPException(404, detail="Channel fee params not configured")
     return ChannelFeeParamsRead.model_validate(row)
@@ -372,14 +380,18 @@ async def upsert_margin_override(
     await session.commit()
 
     row = (
-        await session.execute(
-            select(ChannelMarginOverride).where(
-                ChannelMarginOverride.product_sku == sku,
-                ChannelMarginOverride.channel_id == channel_id,
-                ChannelMarginOverride.selling_model == body.selling_model.value,
+        (
+            await session.execute(
+                select(ChannelMarginOverride).where(
+                    ChannelMarginOverride.product_sku == sku,
+                    ChannelMarginOverride.channel_id == channel_id,
+                    ChannelMarginOverride.selling_model == body.selling_model.value,
+                )
             )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     return MarginOverrideRead.model_validate(row)
 
 
@@ -429,18 +441,12 @@ def _price_result_to_dict(r) -> dict:
         "scheme_label": r.scheme_label,
         "margin_pct": float(r.margin_pct),
         "cost_op_aed": float(r.cost_op_aed),
-        "selling_price_aed": (
-            float(r.selling_price_aed) if r.selling_price_aed != inf else None
-        ),
+        "selling_price_aed": (float(r.selling_price_aed) if r.selling_price_aed != inf else None),
         # ceiling_aed=null means EITHER:
         # - Decimal("Infinity") (MARGIN_FLOOR basis: no PVP catalog reference)
         # - Decimal("0") (infeasible result placeholder)
         # Frontend should use `signal` and `is_publishable` as canonical indicators.
-        "ceiling_aed": (
-            float(r.ceiling_aed)
-            if r.ceiling_aed not in (inf, Decimal("0"))
-            else None
-        ),
+        "ceiling_aed": (float(r.ceiling_aed) if r.ceiling_aed not in (inf, Decimal("0")) else None),
         "benefit_per_unit_aed": float(r.benefit_per_unit_aed),
         "roi_pct": float(r.roi_pct),
         "margin_to_ceiling_pct": float(r.margin_to_ceiling_pct),
@@ -479,9 +485,7 @@ async def get_product_price(
         )
 
     product = products[0]
-    effective_margins = await loader.load_effective_margins(
-        channel_id, selling_model, [sku]
-    )
+    effective_margins = await loader.load_effective_margins(channel_id, selling_model, [sku])
     m = (
         Decimal(str(margin_pct))
         if margin_pct is not None
@@ -539,13 +543,9 @@ async def get_catalog_summary(
     margins = await loader.load_effective_margins(channel_id, selling_model, skus)
 
     if selling_model == SellingModel.B2C:
-        results = ChannelOptimizer.optimize_catalog_b2c(
-            products, route, fees, schemes, margins
-        )
+        results = ChannelOptimizer.optimize_catalog_b2c(products, route, fees, schemes, margins)
     else:
-        results = ChannelOptimizer.optimize_catalog_b2b(
-            products, route, fees, schemes, margins
-        )
+        results = ChannelOptimizer.optimize_catalog_b2b(products, route, fees, schemes, margins)
 
     if signal:
         results = [r for r in results if r.signal == signal.upper()]
@@ -561,9 +561,7 @@ async def get_catalog_summary(
             blocked=len(results) - publishable,
             in_loss=in_loss,
             by_scheme={
-                scheme.value: sum(
-                    1 for r in results if r.fulfillment_scheme == scheme
-                )
+                scheme.value: sum(1 for r in results if r.fulfillment_scheme == scheme)
                 for scheme in FulfillmentScheme
             },
         ),
@@ -597,17 +595,11 @@ async def optimize_catalog(
     products = await loader.load_product_data(channel_id)
 
     if selling_model == SellingModel.B2C:
-        results = ChannelOptimizer.full_optimize_catalog_b2c(
-            products, route, fees, schemes
-        )
+        results = ChannelOptimizer.full_optimize_catalog_b2c(products, route, fees, schemes)
     else:
-        results = ChannelOptimizer.full_optimize_catalog_b2b(
-            products, route, fees, schemes
-        )
+        results = ChannelOptimizer.full_optimize_catalog_b2b(products, route, fees, schemes)
 
-    return OptimizeResponse(
-        results=[PriceResultJSON(**_price_result_to_dict(r)) for r in results]
-    )
+    return OptimizeResponse(results=[PriceResultJSON(**_price_result_to_dict(r)) for r in results])
 
 
 # ---------------------------------------------------------------------------
@@ -633,13 +625,9 @@ async def apply_optimization(
     products = await loader.load_product_data(channel_id)
 
     if selling_model == SellingModel.B2C:
-        results = ChannelOptimizer.full_optimize_catalog_b2c(
-            products, route, fees, schemes
-        )
+        results = ChannelOptimizer.full_optimize_catalog_b2c(products, route, fees, schemes)
     else:
-        results = ChannelOptimizer.full_optimize_catalog_b2b(
-            products, route, fees, schemes
-        )
+        results = ChannelOptimizer.full_optimize_catalog_b2b(products, route, fees, schemes)
 
     for r in results:
         await session.execute(
@@ -688,9 +676,7 @@ async def import_catalog(
     channel_id = await _resolve_channel_id(channel_code, session)
     content = await file.read()
     try:
-        wb = openpyxl.load_workbook(
-            _io.BytesIO(content), read_only=True, data_only=True
-        )
+        wb = openpyxl.load_workbook(_io.BytesIO(content), read_only=True, data_only=True)
     except Exception as exc:
         raise HTTPException(400, detail=f"Cannot read Excel file: {exc}")
     ws = wb.active
@@ -698,31 +684,20 @@ async def import_catalog(
     headers_row = next(ws.iter_rows(max_row=1), None)
     if headers_row is None:
         raise HTTPException(400, detail="Empty Excel file")
-    headers = [
-        str(cell.value).strip().lower() if cell.value else ""
-        for cell in headers_row
-    ]
+    headers = [str(cell.value).strip().lower() if cell.value else "" for cell in headers_row]
     required = {"sku", "pe_eur", "pvp_eur", "uds_caja", "peso_kg"}
     missing = required - set(headers)
     if missing:
-        raise HTTPException(
-            400, detail=f"Missing required columns: {sorted(missing)}"
-        )
+        raise HTTPException(400, detail=f"Missing required columns: {sorted(missing)}")
 
     idx = {h: i for i, h in enumerate(headers)}
     errors: list[dict] = []
     valid_rows: list[dict] = []
 
-    for row_num, row in enumerate(
-        ws.iter_rows(min_row=2, values_only=True), start=2
-    ):
+    for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
 
         def cell(col_name: str, _row=row):
-            return (
-                _row[idx[col_name]]
-                if col_name in idx and idx[col_name] < len(_row)
-                else None
-            )
+            return _row[idx[col_name]] if col_name in idx and idx[col_name] < len(_row) else None
 
         sku = str(cell("sku") or "").strip()
         if not sku:
@@ -761,20 +736,22 @@ async def import_catalog(
 
     # Build ceiling preview using current route params
     fee_row = (
-        await session.execute(
-            select(ChannelFeeParams).where(
-                ChannelFeeParams.channel_id == channel_id
+        (
+            await session.execute(
+                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
             )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     route_row = (
         (
             await session.execute(
-                select(TradeRouteParams).where(
-                    TradeRouteParams.id == fee_row.route_id
-                )
+                select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
             )
-        ).scalars().first()
+        )
+        .scalars()
+        .first()
         if fee_row
         else None
     )
@@ -813,16 +790,8 @@ async def import_catalog(
             ceiling_preview.append(
                 {
                     "sku": r["sku"],
-                    "ceiling_b2c_aed": (
-                        float(c_b2c)
-                        if c_b2c != Decimal("Infinity")
-                        else None
-                    ),
-                    "ceiling_b2b_aed": (
-                        float(c_b2b)
-                        if c_b2b != Decimal("Infinity")
-                        else None
-                    ),
+                    "ceiling_b2c_aed": (float(c_b2c) if c_b2c != Decimal("Infinity") else None),
+                    "ceiling_b2b_aed": (float(c_b2b) if c_b2b != Decimal("Infinity") else None),
                 }
             )
 
@@ -838,9 +807,7 @@ async def import_catalog(
             if r.get("weight") is not None:
                 values["weight"] = r["weight"]
             result = await session.execute(
-                update(Product)
-                .where(Product.sku == r["sku"])
-                .values(**values)
+                update(Product).where(Product.sku == r["sku"]).values(**values)
             )
             if result.rowcount > 0:
                 upserted += 1
@@ -877,41 +844,28 @@ async def import_logistics(
     channel_id = await _resolve_channel_id(channel_code, session)
     content = await file.read()
     try:
-        wb = openpyxl.load_workbook(
-            _io.BytesIO(content), read_only=True, data_only=True
-        )
+        wb = openpyxl.load_workbook(_io.BytesIO(content), read_only=True, data_only=True)
     except Exception as exc:
         raise HTTPException(400, detail=f"Cannot read Excel file: {exc}")
     ws = wb.active
     headers_row = next(ws.iter_rows(max_row=1), None)
     if headers_row is None:
         raise HTTPException(400, detail="Empty Excel file")
-    headers = [
-        str(cell.value).strip().lower() if cell.value else ""
-        for cell in headers_row
-    ]
+    headers = [str(cell.value).strip().lower() if cell.value else "" for cell in headers_row]
     required = {"sku", "inbound_fee_aed", "storage_fee_aed", "fulfillment_fee_aed"}
     missing = required - set(headers)
     if missing:
-        raise HTTPException(
-            400, detail=f"Missing columns: {sorted(missing)}"
-        )
+        raise HTTPException(400, detail=f"Missing columns: {sorted(missing)}")
 
     idx = {h: i for i, h in enumerate(headers)}
     errors: list[dict] = []
     upserted = 0
     total = 0
 
-    for row_num, row in enumerate(
-        ws.iter_rows(min_row=2, values_only=True), start=2
-    ):
+    for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
 
         def cell(col_name: str, _row=row):
-            return (
-                _row[idx[col_name]]
-                if col_name in idx and idx[col_name] < len(_row)
-                else None
-            )
+            return _row[idx[col_name]] if col_name in idx and idx[col_name] < len(_row) else None
 
         sku = str(cell("sku") or "").strip()
         if not sku:
@@ -928,9 +882,7 @@ async def import_logistics(
                 "channel_id": channel_id,
                 "inbound_fee_aed": Decimal(str(cell("inbound_fee_aed") or 0)),
                 "storage_fee_aed": Decimal(str(cell("storage_fee_aed") or 0)),
-                "fulfillment_fee_aed": Decimal(
-                    str(cell("fulfillment_fee_aed") or 0)
-                ),
+                "fulfillment_fee_aed": Decimal(str(cell("fulfillment_fee_aed") or 0)),
                 "default_scheme": scheme.value,
             }
             if confirm:

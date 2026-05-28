@@ -4,6 +4,7 @@
 All inputs arrive as frozen dataclasses. All outputs are PriceResult.
 No database access, no side effects, fully unit-testable.
 """
+
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -33,10 +34,7 @@ class PricingEngine:
     ) -> PriceResult:
         """Calculate selling price for one unit on a B2C marketplace channel."""
         # Weight limit check (e.g. FBA: no products > 25 kg)
-        if (
-            scheme.max_weight_kg is not None
-            and product.weight_kg > scheme.max_weight_kg
-        ):
+        if scheme.max_weight_kg is not None and product.weight_kg > scheme.max_weight_kg:
             cost_op = PricingEngine._landed_b2c(product, route, fees)
             return PriceResult.infeasible(
                 product.sku, SellingModel.B2C, scheme, cost_op, margin_pct
@@ -60,8 +58,9 @@ class PricingEngine:
                 net_eur=product.pe_eur * (1 - fees.mt_discount_pct / 100),
                 fx_applied=route.fx_rate * (1 + route.fx_buffer_pct / 100),
                 aed_before_freight=product.pe_eur
-                    * (1 - fees.mt_discount_pct / 100)
-                    * route.fx_rate * (1 + route.fx_buffer_pct / 100),
+                * (1 - fees.mt_discount_pct / 100)
+                * route.fx_rate
+                * (1 + route.fx_buffer_pct / 100),
                 freight_aed=freight,
                 landed_aed=landed,
                 labeling_aed=labeling,
@@ -99,9 +98,11 @@ class PricingEngine:
             breakdown=CostBreakdown(
                 net_eur=product.pe_eur * n * (1 - fees.mt_discount_pct / 100),
                 fx_applied=route.fx_rate * (1 + route.fx_buffer_pct / 100),
-                aed_before_freight=product.pe_eur * n
-                    * (1 - fees.mt_discount_pct / 100)
-                    * route.fx_rate * (1 + route.fx_buffer_pct / 100),
+                aed_before_freight=product.pe_eur
+                * n
+                * (1 - fees.mt_discount_pct / 100)
+                * route.fx_rate
+                * (1 + route.fx_buffer_pct / 100),
                 freight_aed=freight,
                 landed_aed=landed,
                 labeling_aed=Decimal("0"),
@@ -139,9 +140,7 @@ class PricingEngine:
         )
 
     @staticmethod
-    def _landed_b2c(
-        product: ProductPricingData, route: RouteParams, fees: ChannelFees
-    ) -> Decimal:
+    def _landed_b2c(product: ProductPricingData, route: RouteParams, fees: ChannelFees) -> Decimal:
         """Cost of one unit landed in Dubai warehouse (layers 1-3)."""
         net_eur = product.pe_eur * (1 - fees.mt_discount_pct / 100)
         fx = route.fx_rate * (1 + route.fx_buffer_pct / 100)
@@ -150,9 +149,7 @@ class PricingEngine:
         return (aed + freight) * PricingEngine._import_factor(route)
 
     @staticmethod
-    def _landed_b2b(
-        product: ProductPricingData, route: RouteParams, fees: ChannelFees
-    ) -> Decimal:
+    def _landed_b2b(product: ProductPricingData, route: RouteParams, fees: ChannelFees) -> Decimal:
         """Cost of one box landed in Dubai warehouse (layers 1-3)."""
         n = Decimal(str(product.units_per_box))
         net_eur_box = product.pe_eur * n * (1 - fees.mt_discount_pct / 100)
@@ -171,16 +168,12 @@ class PricingEngine:
         ff = logistics.fulfillment_fee_aed
         if scheme.fulfillment_scheme == FulfillmentScheme.CANAL_FULL:
             return (
-                logistics.inbound_fee_aed
-                + logistics.storage_fee_aed * fees.storage_multiplier
-                + ff
+                logistics.inbound_fee_aed + logistics.storage_fee_aed * fees.storage_multiplier + ff
             )
         elif scheme.fulfillment_scheme == FulfillmentScheme.CANAL_LASTMILE:
             return ff + scheme.flat_supplement_aed
         else:  # MERCHANT_MANAGED
-            return (ff + scheme.flat_supplement_aed) * (
-                1 + scheme.pct_surcharge / 100
-            )
+            return (ff + scheme.flat_supplement_aed) * (1 + scheme.pct_surcharge / 100)
 
     @staticmethod
     def _ceiling_b2c(product: ProductPricingData, route: RouteParams) -> Decimal:
@@ -189,10 +182,7 @@ class PricingEngine:
             return Decimal("Infinity")
         pvp_aed = product.catalog_pvp_eur * route.fx_rate
         freight = PricingEngine._freight_per_unit(product, route)
-        return (
-            (pvp_aed + freight) * PricingEngine._import_factor(route)
-            + product.b2c_labeling_aed
-        )
+        return (pvp_aed + freight) * PricingEngine._import_factor(route) + product.b2c_labeling_aed
 
     @staticmethod
     def _ceiling_b2b(product: ProductPricingData, route: RouteParams) -> Decimal:
@@ -255,9 +245,7 @@ class PricingEngine:
             ),
             benefit_per_unit_aed=benefit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
             roi_pct=roi.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP),
-            margin_to_ceiling_pct=margin_to_ceil.quantize(
-                Decimal("0.1"), rounding=ROUND_HALF_UP
-            ),
+            margin_to_ceiling_pct=margin_to_ceil.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP),
             is_publishable=publishable,
             signal=PricingEngine._signal(margin_pct),
             breakdown=breakdown,

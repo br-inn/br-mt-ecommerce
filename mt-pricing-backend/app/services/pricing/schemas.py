@@ -4,6 +4,7 @@
 These are NOT ORM models — they carry the exact data the engine needs
 without touching the database. ParameterLoader builds them from DB rows.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

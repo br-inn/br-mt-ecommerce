@@ -4,6 +4,7 @@
 Best = highest benefit_per_unit_aed among publishable results.
 Tie-breaking: CANAL_FULL > CANAL_LASTMILE > MERCHANT_MANAGED.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -65,17 +66,13 @@ class ChannelOptimizer:
         floor = Decimal("-10")
 
         while margin >= floor:
-            candidate = ChannelOptimizer.best_scheme_b2c(
-                product, route, fees, schemes, margin
-            )
+            candidate = ChannelOptimizer.best_scheme_b2c(product, route, fees, schemes, margin)
             if candidate and candidate.is_publishable:
                 return candidate
             margin -= margin_step
 
         # No publishable margin found → return the least-bad at floor margin
-        return ChannelOptimizer.best_scheme_b2c(
-            product, route, fees, schemes, floor
-        )
+        return ChannelOptimizer.best_scheme_b2c(product, route, fees, schemes, floor)
 
     @staticmethod
     def optimize_catalog_b2c(
@@ -89,9 +86,7 @@ class ChannelOptimizer:
         results = []
         for product in products:
             margin = margins.get(product.sku, Decimal("12"))
-            result = ChannelOptimizer.best_scheme_b2c(
-                product, route, fees, schemes, margin
-            )
+            result = ChannelOptimizer.best_scheme_b2c(product, route, fees, schemes, margin)
             if result:
                 results.append(result)
         return results
@@ -155,17 +150,13 @@ class ChannelOptimizer:
         floor = Decimal("-10")
 
         while margin >= floor:
-            candidate = ChannelOptimizer.best_scheme_b2b(
-                product, route, fees, schemes, margin
-            )
+            candidate = ChannelOptimizer.best_scheme_b2b(product, route, fees, schemes, margin)
             if candidate and candidate.is_publishable:
                 return candidate
             margin -= margin_step
 
         # No publishable margin found → return the least-bad at floor margin
-        return ChannelOptimizer.best_scheme_b2b(
-            product, route, fees, schemes, floor
-        )
+        return ChannelOptimizer.best_scheme_b2b(product, route, fees, schemes, floor)
 
     @staticmethod
     def optimize_catalog_b2b(
@@ -179,9 +170,7 @@ class ChannelOptimizer:
         results = []
         for product in products:
             margin = margins.get(product.sku, Decimal("12"))
-            result = ChannelOptimizer.best_scheme_b2b(
-                product, route, fees, schemes, margin
-            )
+            result = ChannelOptimizer.best_scheme_b2b(product, route, fees, schemes, margin)
             if result:
                 results.append(result)
         return results
