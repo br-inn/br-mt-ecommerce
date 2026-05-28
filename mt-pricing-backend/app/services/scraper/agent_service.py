@@ -107,7 +107,11 @@ async def _generate_recipe(
 ) -> dict[str, Any]:
     import anthropic  # lazy import — not needed if feature flag off
 
-    client = anthropic.Anthropic()
+    try:
+        client = anthropic.Anthropic()
+    except Exception as exc:
+        raise ScraperAgentError(f"Anthropic client init failed: {exc}") from exc
+
     if hint:
         system = ""
         user_content = _HINT_PROMPT.format(hint=hint) + f"\n\nHTML:\n{html[:40_000]}"
@@ -119,12 +123,20 @@ async def _generate_recipe(
         parts.append(f"\nHTML:\n{html[:40_000]}")
         user_content = "\n".join(parts)
 
-    msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2048,
-        system=system,
-        messages=[{"role": "user", "content": user_content}],
-    )
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2048,
+            system=system,
+            messages=[{"role": "user", "content": user_content}],
+        )
+    except anthropic.AuthenticationError as exc:
+        raise ScraperAgentError("ANTHROPIC_API_KEY not configured or invalid") from exc
+    except anthropic.APIStatusError as exc:
+        raise ScraperAgentError(f"Anthropic API error {exc.status_code}: {exc.message}") from exc
+    except anthropic.APIConnectionError as exc:
+        raise ScraperAgentError(f"Anthropic API unreachable: {exc}") from exc
+
     raw = msg.content[0].text.strip()
 
     # Strip markdown fences if Claude wraps output
