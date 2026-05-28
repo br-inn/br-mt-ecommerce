@@ -26,6 +26,15 @@ from app.db.models.billing import (
 from app.db.models.cdc_event import CdcEvent
 from app.db.models.certificates import Certificate, CertificateScope
 from app.db.models.channel_listing import ChannelListing, ChannelSyncEvent
+from app.db.models.channel_pricing import (
+    ChannelFeeParams,
+    ChannelMarginOverride,
+    ChannelMarginTarget,
+    ChannelProductLogistics,
+    ChannelSchemeParams,
+    PricingScenario,
+    TradeRouteParams,
+)
 from app.db.models.channels import Channel, ChannelStateHistory
 from app.db.models.comparator import (
     BrandExtractor,
@@ -426,4 +435,12 @@ __all__ = [
     "ScraperSource",
     "ScraperSourceRecipe",
     "ScraperSourceTestRun",
+    # Channel Pricing Engine (mig. 20260603_147)
+    "TradeRouteParams",
+    "ChannelFeeParams",
+    "ChannelSchemeParams",
+    "ChannelProductLogistics",
+    "ChannelMarginTarget",
+    "ChannelMarginOverride",
+    "PricingScenario",
 ]
