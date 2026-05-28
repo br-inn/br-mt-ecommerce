@@ -205,3 +205,24 @@ def test_ceiling_catalog_pvp(brass_valve, route, fees, fba_scheme):
     """Ceiling ≈ catalog_pvp_eur × fx_rate × (1 + tariff + wh + handling)."""
     result = PricingEngine.compute_b2c(brass_valve, route, fees, fba_scheme, Decimal("0"))
     assert Decimal("40") < result.ceiling_aed < Decimal("50")
+
+
+def test_ceiling_basis_margin_floor_returns_infinity(brass_valve, route, fees, fba_scheme):
+    """Products with MARGIN_FLOOR basis have an infinite ceiling (optimizer handles)."""
+    from dataclasses import replace
+    product = replace(brass_valve, ceiling_basis=CeilingBasis.MARGIN_FLOOR)
+    result = PricingEngine.compute_b2c(product, route, fees, fba_scheme, Decimal("20"))
+    assert result.ceiling_aed == Decimal("Infinity")
+    assert result.is_publishable is True
+
+
+def test_product_pricing_data_rejects_zero_units_per_box(brass_valve_logistics):
+    """units_per_box < 1 must raise at construction time."""
+    with pytest.raises(ValueError, match="units_per_box must be >= 1"):
+        ProductPricingData(
+            sku="ZERO001", family_id="dummy",
+            pe_eur=Decimal("1"), catalog_pvp_eur=Decimal("10"),
+            units_per_box=0, weight_kg=Decimal("0.1"),
+            b2c_labeling_aed=Decimal("0"), ceiling_basis=CeilingBasis.CATALOG_PVP,
+            logistics=brass_valve_logistics,
+        )
