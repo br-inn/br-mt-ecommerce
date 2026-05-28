@@ -38,6 +38,19 @@ import { scraperSourceKeys, useAnalyzeUrl } from "@/lib/hooks/admin/use-scraper-
 
 const REQUIRED_FIELD_NAMES = new Set(["external_id", "title", "price_aed"]);
 
+function extractApiErrorMessage(err: unknown): string {
+  if (err instanceof ScraperSourcesApiError) {
+    const d = err.detail;
+    if (typeof d === "object" && d !== null && "detail" in d) {
+      return String((d as { detail: unknown }).detail);
+    }
+    if (typeof d === "string") return d;
+    return err.message;
+  }
+  if (err instanceof Error) return err.message;
+  return "Error inesperado al conectar con el servidor";
+}
+
 type Step = "url-form" | "analyzing" | "review" | "creating";
 
 const urlFormSchema = z.object({
@@ -124,9 +137,10 @@ export function SourceDialog({ mode: _mode, source: _source, open, onClose, onSu
       setEditedFields(result.proposed_recipe.fields ?? []);
       setOriginalUrl(values.url);
       setStep("review");
-    } catch {
+    } catch (err) {
       setStep("url-form");
-      toast.error("No se pudo analizar la URL. Verifica que sea accesible y pública.");
+      const msg = extractApiErrorMessage(err);
+      toast.error(msg);
     }
   };
 
@@ -181,8 +195,8 @@ export function SourceDialog({ mode: _mode, source: _source, open, onClose, onSu
       } else {
         toast.error("Claude no encontró un selector para ese campo");
       }
-    } catch {
-      toast.error("Error al buscar el campo con AI");
+    } catch (err) {
+      toast.error(extractApiErrorMessage(err));
     }
   };
 

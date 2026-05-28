@@ -203,6 +203,11 @@ export default function CatalogPage() {
     }
   }, [_filterHash, setPage]);
 
+  const _scrollRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    _scrollRef.current?.scrollTo({ top: 0 });
+  }, [page]);
+
   const filters: ProductFilters = React.useMemo(
     () => ({
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
@@ -789,6 +794,7 @@ export default function CatalogPage() {
       {/* A2 — Vista Galería */}
       {viewMode === "grid" ? (
         <div
+          ref={_scrollRef}
           className="mt-thin-scroll grid flex-1 grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 overflow-auto p-4"
           style={{ background: MT.surface }}
         >
@@ -835,7 +841,7 @@ export default function CatalogPage() {
 
       {/* Table */}
       {viewMode === "table" ? (
-      <div className="mt-thin-scroll flex-1 overflow-auto bg-mt-surface">
+      <div ref={_scrollRef} className="mt-thin-scroll flex-1 overflow-auto bg-mt-surface">
         <table className="mt-data-table w-full border-collapse text-[12.5px]">
           <thead className="sticky top-0 z-10">
             <tr>
