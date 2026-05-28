@@ -13,32 +13,33 @@ Endpoints prefix: /pricing/{channel_code}
 
 from __future__ import annotations
 
+import io as _io
 import uuid
 from decimal import Decimal
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import openpyxl
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
-from app.db.enums import FulfillmentScheme, SellingModel
-from app.services.pricing.engine import PricingEngine
-from app.services.pricing.loader import ParameterLoader
-from app.services.pricing.optimizer import ChannelOptimizer
+from app.db.enums import CeilingBasis, FulfillmentScheme, SellingModel
 from app.db.models.channel_pricing import (
     ChannelFeeParams,
     ChannelMarginOverride,
     ChannelMarginTarget,
+    ChannelProductLogistics,
     ChannelSchemeParams,
     TradeRouteParams,
 )
 from app.db.models.channels import Channel
 from app.db.models.product import Product
-from app.db.models.vocabularies import Family
 from app.db.models.user import User
+from app.db.models.vocabularies import Family
 from app.schemas.channel_pricing import (
+    CatalogImportResult,
     CatalogSemaforo,
     CatalogSummaryResponse,
     ChannelFeeParamsRead,
@@ -53,6 +54,16 @@ from app.schemas.channel_pricing import (
     ProductPriceResponse,
     TradeRouteParamsRead,
     TradeRouteParamsUpdate,
+)
+from app.services.pricing.engine import PricingEngine
+from app.services.pricing.loader import ParameterLoader
+from app.services.pricing.optimizer import ChannelOptimizer
+from app.services.pricing.schemas import (
+    ProductLogistics,
+    ProductPricingData,
+)
+from app.services.pricing.schemas import (
+    RouteParams as _RouteParams,
 )
 
 router = APIRouter(prefix="/pricing/{channel_code}", tags=["channel-pricing"])
@@ -649,6 +660,300 @@ async def apply_optimization(
             )
         )
     await session.commit()
+
+
+# ── Excel import endpoints ───────────────────────────────────────────
+
+
+@router.post(
+    "/catalog/import",
+    operation_id="importCatalog",
+    response_model=CatalogImportResult,
+    dependencies=[Depends(require_permissions("prices:propose"))],
+)
+async def import_catalog(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    file: UploadFile = File(...),
+    confirm: bool = False,
+) -> CatalogImportResult:
+    """Import MT catalog Excel.
+
+    Required columns: sku, pe_eur, pvp_eur, uds_caja, peso_kg.
+    Optional: ceiling_basis (default catalog_pvp).
+
+    Pass confirm=true to persist. Without confirm, returns preview with
+    calculated ceiling prices for the first 20 valid rows.
+    """
+    channel_id = await _resolve_channel_id(channel_code, session)
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(
+            _io.BytesIO(content), read_only=True, data_only=True
+        )
+    except Exception as exc:
+        raise HTTPException(400, detail=f"Cannot read Excel file: {exc}")
+    ws = wb.active
+
+    headers_row = next(ws.iter_rows(max_row=1), None)
+    if headers_row is None:
+        raise HTTPException(400, detail="Empty Excel file")
+    headers = [
+        str(cell.value).strip().lower() if cell.value else ""
+        for cell in headers_row
+    ]
+    required = {"sku", "pe_eur", "pvp_eur", "uds_caja", "peso_kg"}
+    missing = required - set(headers)
+    if missing:
+        raise HTTPException(
+            400, detail=f"Missing required columns: {sorted(missing)}"
+        )
+
+    idx = {h: i for i, h in enumerate(headers)}
+    errors: list[dict] = []
+    valid_rows: list[dict] = []
+
+    for row_num, row in enumerate(
+        ws.iter_rows(min_row=2, values_only=True), start=2
+    ):
+
+        def cell(col_name: str, _row=row):
+            return (
+                _row[idx[col_name]]
+                if col_name in idx and idx[col_name] < len(_row)
+                else None
+            )
+
+        sku = str(cell("sku") or "").strip()
+        if not sku:
+            continue
+        try:
+            pe = Decimal(str(cell("pe_eur")))
+            pvp = Decimal(str(cell("pvp_eur")))
+            uds = int(cell("uds_caja") or 1)
+            peso_raw = cell("peso_kg")
+            peso = Decimal(str(peso_raw)) if peso_raw is not None else None
+            cb_raw = str(cell("ceiling_basis") or "catalog_pvp").strip()
+            try:
+                cb = CeilingBasis(cb_raw)
+            except ValueError:
+                cb = CeilingBasis.CATALOG_PVP
+
+            if pe <= 0:
+                raise ValueError("pe_eur must be > 0")
+            if pvp <= 0:
+                raise ValueError("pvp_eur must be > 0")
+            if uds < 1:
+                raise ValueError("uds_caja must be >= 1")
+
+            valid_rows.append(
+                {
+                    "sku": sku,
+                    "pe_eur": pe,
+                    "catalog_pvp_eur": pvp,
+                    "units_per_box": uds,
+                    "weight": peso,
+                    "ceiling_basis": cb,
+                }
+            )
+        except Exception as e:
+            errors.append({"row": row_num, "sku": sku, "error": str(e)})
+
+    # Build ceiling preview using current route params
+    fee_row = (
+        await session.execute(
+            select(ChannelFeeParams).where(
+                ChannelFeeParams.channel_id == channel_id
+            )
+        )
+    ).scalars().first()
+    route_row = (
+        (
+            await session.execute(
+                select(TradeRouteParams).where(
+                    TradeRouteParams.id == fee_row.route_id
+                )
+            )
+        ).scalars().first()
+        if fee_row
+        else None
+    )
+
+    ceiling_preview: list[dict] = []
+    if route_row:
+        route_dc = _RouteParams(
+            fx_rate=route_row.fx_rate,
+            fx_buffer_pct=route_row.fx_buffer_pct,
+            freight_rate_per_kg=route_row.freight_rate_per_kg,
+            freight_min_aed=route_row.freight_min_aed,
+            import_tariff_pct=route_row.import_tariff_pct,
+            local_warehouse_pct=route_row.local_warehouse_pct,
+            handling_pct=route_row.handling_pct,
+        )
+        for r in valid_rows[:20]:
+            dummy_logistics = ProductLogistics(
+                inbound_fee_aed=Decimal("0"),
+                storage_fee_aed=Decimal("0"),
+                fulfillment_fee_aed=Decimal("0"),
+                default_scheme=FulfillmentScheme.CANAL_FULL,
+            )
+            dummy_product = ProductPricingData(
+                sku=r["sku"],
+                family_id="preview",
+                pe_eur=r["pe_eur"],
+                catalog_pvp_eur=r["catalog_pvp_eur"],
+                units_per_box=r["units_per_box"],
+                weight_kg=r.get("weight") or Decimal("0"),
+                b2c_labeling_aed=Decimal("0"),
+                ceiling_basis=r["ceiling_basis"],
+                logistics=dummy_logistics,
+            )
+            c_b2c = PricingEngine._ceiling_b2c(dummy_product, route_dc)
+            c_b2b = PricingEngine._ceiling_b2b(dummy_product, route_dc)
+            ceiling_preview.append(
+                {
+                    "sku": r["sku"],
+                    "ceiling_b2c_aed": (
+                        float(c_b2c)
+                        if c_b2c != Decimal("Infinity")
+                        else None
+                    ),
+                    "ceiling_b2b_aed": (
+                        float(c_b2b)
+                        if c_b2b != Decimal("Infinity")
+                        else None
+                    ),
+                }
+            )
+
+    upserted = 0
+    if confirm:
+        for r in valid_rows:
+            values: dict = {
+                "pe_eur": r["pe_eur"],
+                "catalog_pvp_eur": r["catalog_pvp_eur"],
+                "units_per_box": r["units_per_box"],
+                "ceiling_basis": r["ceiling_basis"].value,
+            }
+            if r.get("weight") is not None:
+                values["weight"] = r["weight"]
+            result = await session.execute(
+                update(Product)
+                .where(Product.sku == r["sku"])
+                .values(**values)
+            )
+            if result.rowcount > 0:
+                upserted += 1
+            else:
+                errors.append(
+                    {
+                        "row": None,
+                        "sku": r["sku"],
+                        "error": "SKU not found in products table",
+                    }
+                )
+        await session.commit()
+
+    return CatalogImportResult(
+        total_rows=len(valid_rows) + len(errors),
+        upserted=upserted,
+        errors=errors,
+        ceiling_preview=ceiling_preview,
+    )
+
+
+@router.post(
+    "/logistics/import",
+    operation_id="importLogistics",
+    dependencies=[Depends(require_permissions("prices:propose"))],
+)
+async def import_logistics(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    file: UploadFile = File(...),
+    confirm: bool = False,
+) -> dict:
+    """Import logistics fees Excel (inbound, storage, fulfillment per SKU)."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(
+            _io.BytesIO(content), read_only=True, data_only=True
+        )
+    except Exception as exc:
+        raise HTTPException(400, detail=f"Cannot read Excel file: {exc}")
+    ws = wb.active
+    headers_row = next(ws.iter_rows(max_row=1), None)
+    if headers_row is None:
+        raise HTTPException(400, detail="Empty Excel file")
+    headers = [
+        str(cell.value).strip().lower() if cell.value else ""
+        for cell in headers_row
+    ]
+    required = {"sku", "inbound_fee_aed", "storage_fee_aed", "fulfillment_fee_aed"}
+    missing = required - set(headers)
+    if missing:
+        raise HTTPException(
+            400, detail=f"Missing columns: {sorted(missing)}"
+        )
+
+    idx = {h: i for i, h in enumerate(headers)}
+    errors: list[dict] = []
+    upserted = 0
+    total = 0
+
+    for row_num, row in enumerate(
+        ws.iter_rows(min_row=2, values_only=True), start=2
+    ):
+
+        def cell(col_name: str, _row=row):
+            return (
+                _row[idx[col_name]]
+                if col_name in idx and idx[col_name] < len(_row)
+                else None
+            )
+
+        sku = str(cell("sku") or "").strip()
+        if not sku:
+            continue
+        total += 1
+        try:
+            scheme_raw = str(cell("default_scheme") or "canal_full").strip()
+            try:
+                scheme = FulfillmentScheme(scheme_raw)
+            except ValueError:
+                scheme = FulfillmentScheme.CANAL_FULL
+            values = {
+                "product_sku": sku,
+                "channel_id": channel_id,
+                "inbound_fee_aed": Decimal(str(cell("inbound_fee_aed") or 0)),
+                "storage_fee_aed": Decimal(str(cell("storage_fee_aed") or 0)),
+                "fulfillment_fee_aed": Decimal(
+                    str(cell("fulfillment_fee_aed") or 0)
+                ),
+                "default_scheme": scheme.value,
+            }
+            if confirm:
+                await session.execute(
+                    pg_insert(ChannelProductLogistics)
+                    .values(**values)
+                    .on_conflict_do_update(
+                        constraint="uq_channel_product_logistics",
+                        set_={
+                            k: v
+                            for k, v in values.items()
+                            if k not in ("product_sku", "channel_id")
+                        },
+                    )
+                )
+                upserted += 1
+        except Exception as e:
+            errors.append({"row": row_num, "sku": sku, "error": str(e)})
+
+    if confirm:
+        await session.commit()
+
+    return {"total_rows": total, "upserted": upserted, "errors": errors}
 
 
 __all__ = ["router"]

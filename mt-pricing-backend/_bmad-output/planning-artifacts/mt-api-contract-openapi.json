@@ -2395,6 +2395,20 @@
         "title": "Body_analyze_import_api_v1_imports_analyze_post",
         "type": "object"
       },
+      "Body_importCatalog": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_importCatalog",
+        "type": "object"
+      },
       "Body_importCostsPreview": {
         "properties": {
           "file": {
@@ -2426,6 +2440,20 @@
           "files"
         ],
         "title": "Body_importDatasheetsPreview",
+        "type": "object"
+      },
+      "Body_importLogistics": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_importLogistics",
         "type": "object"
       },
       "Body_importMaterialsPreview": {
@@ -3504,6 +3532,42 @@
           "closing_cash"
         ],
         "title": "CashFlowOut",
+        "type": "object"
+      },
+      "CatalogImportResult": {
+        "properties": {
+          "ceiling_preview": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Ceiling Preview",
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "upserted": {
+            "title": "Upserted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_rows",
+          "upserted",
+          "errors",
+          "ceiling_preview"
+        ],
+        "title": "CatalogImportResult",
         "type": "object"
       },
       "CatalogSemaforo": {
@@ -53043,6 +53107,74 @@
         ]
       }
     },
+    "/api/v1/pricing/{channel_code}/catalog/import": {
+      "post": {
+        "description": "Import MT catalog Excel.\n\nRequired columns: sku, pe_eur, pvp_eur, uds_caja, peso_kg.\nOptional: ceiling_basis (default catalog_pvp).\n\nPass confirm=true to persist. Without confirm, returns preview with\ncalculated ceiling prices for the first 20 valid rows.",
+        "operationId": "importCatalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importCatalog"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Catalog",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
     "/api/v1/pricing/{channel_code}/fee-params": {
       "patch": {
         "description": "Update channel-specific fee parameters (commission, VAT, advertising, returns\u2026).",
@@ -53096,6 +53228,76 @@
           }
         ],
         "summary": "Update channel fee parameters",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/logistics/import": {
+      "post": {
+        "description": "Import logistics fees Excel (inbound, storage, fulfillment per SKU).",
+        "operationId": "importLogistics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importLogistics"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Importlogistics",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Logistics",
         "tags": [
           "channel-pricing"
         ]
