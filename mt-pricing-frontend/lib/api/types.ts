@@ -4961,6 +4961,242 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pricing/{channel_code}/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Catalog Summary
+         * @description Return price analysis for the full catalog with semáforo summary.
+         */
+        get: operations["getCatalogSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/catalog/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Catalog
+         * @description Import MT catalog Excel.
+         *
+         *     Required columns: sku, pe_eur, pvp_eur, uds_caja, peso_kg.
+         *     Optional: ceiling_basis (default catalog_pvp).
+         *
+         *     Pass confirm=true to persist. Without confirm, returns preview with
+         *     calculated ceiling prices for the first 20 valid rows.
+         */
+        post: operations["importCatalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/fee-params": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update channel fee parameters
+         * @description Update channel-specific fee parameters (commission, VAT, advertising, returns…).
+         */
+        patch: operations["channelPricingPatchFeeParams"];
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/logistics/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Logistics
+         * @description Import logistics fees Excel (inbound, storage, fulfillment per SKU).
+         */
+        post: operations["importLogistics"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/margin-overrides/{sku}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upsert per-SKU margin override
+         * @description Upsert per-SKU margin override.
+         */
+        put: operations["channelPricingUpsertMarginOverride"];
+        post?: never;
+        /**
+         * Remove per-SKU margin override
+         * @description Remove a SKU override — product reverts to family margin target.
+         */
+        delete: operations["channelPricingDeleteMarginOverride"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/margin-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List margin targets for channel
+         * @description List margin targets for this channel, with family name joined in.
+         */
+        get: operations["channelPricingListMarginTargets"];
+        /**
+         * Upsert margin target (clears overrides for family)
+         * @description Upsert margin target. Clears all overrides for this family+selling_model.
+         */
+        put: operations["channelPricingUpsertMarginTarget"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/optimize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Optimize Catalog
+         * @description Preview the best scheme+margin per product. Does NOT persist.
+         *
+         *     PERFORMANCE: CPU-bound. For catalogs >50 SKUs, consider a Celery task.
+         */
+        post: operations["optimizeCatalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/optimize/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Optimization
+         * @description Persist optimization result as per-SKU margin overrides.
+         */
+        post: operations["applyOptimization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/params": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Channel pricing config (route + fees + schemes)
+         * @description Return route + fee + scheme params for this channel.
+         */
+        get: operations["channelPricingGetParams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/product/{sku}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Product Price
+         * @description Calculate price for one SKU across all schemes + best.
+         */
+        get: operations["getProductPrice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/route-params": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update trade route parameters
+         * @description Update trade route parameters (FX, freight, arancel…) for this channel.
+         */
+        patch: operations["channelPricingPatchRouteParams"];
+        trace?: never;
+    };
     "/api/v1/procurement/approval-rules": {
         parameters: {
             query?: never;
@@ -9042,6 +9278,11 @@ export interface components {
              */
             file: string;
         };
+        /** Body_importCatalog */
+        Body_importCatalog: {
+            /** File */
+            file: string;
+        };
         /** Body_importCostsPreview */
         Body_importCostsPreview: {
             /**
@@ -9057,6 +9298,11 @@ export interface components {
              * @description PDFs datasheet (≤ 10 MB c/u)
              */
             files: string[];
+        };
+        /** Body_importLogistics */
+        Body_importLogistics: {
+            /** File */
+            file: string;
         };
         /** Body_importMaterialsPreview */
         Body_importMaterialsPreview: {
@@ -9452,6 +9698,36 @@ export interface components {
             /** Period To */
             period_to: number;
         };
+        /** CatalogImportResult */
+        CatalogImportResult: {
+            /** Ceiling Preview */
+            ceiling_preview: {
+                [key: string]: unknown;
+            }[];
+            /** Errors */
+            errors: {
+                [key: string]: unknown;
+            }[];
+            /** Total Rows */
+            total_rows: number;
+            /** Upserted */
+            upserted: number;
+        };
+        /** CatalogSemaforo */
+        CatalogSemaforo: {
+            /** Blocked */
+            blocked: number;
+            /** By Scheme */
+            by_scheme: {
+                [key: string]: number;
+            };
+            /** In Loss */
+            in_loss: number;
+            /** Publishable */
+            publishable: number;
+            /** Total */
+            total: number;
+        };
         /**
          * CatalogStats
          * @description Conteos del catálogo de productos (excluye soft-deleted).
@@ -9482,6 +9758,12 @@ export interface components {
              * @description Total de SKUs no eliminados.
              */
             products_total: number;
+        };
+        /** CatalogSummaryResponse */
+        CatalogSummaryResponse: {
+            /** Rows */
+            rows: components["schemas"]["PriceResultJSON"][];
+            semaforo: components["schemas"]["CatalogSemaforo"];
         };
         /**
          * CdcProductEvent
@@ -9633,6 +9915,51 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** ChannelFeeParamsRead */
+        ChannelFeeParamsRead: {
+            /** Advertising Pct */
+            advertising_pct: string;
+            /**
+             * Channel Id
+             * Format: uuid
+             */
+            channel_id: string;
+            /** Commission Pct */
+            commission_pct: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mt Discount Pct */
+            mt_discount_pct: string;
+            /** Returns Pct */
+            returns_pct: string;
+            /**
+             * Route Id
+             * Format: uuid
+             */
+            route_id: string;
+            /** Storage Multiplier */
+            storage_multiplier: string;
+            /** Vat Pct */
+            vat_pct: string;
+        };
+        /** ChannelFeeParamsUpdate */
+        ChannelFeeParamsUpdate: {
+            /** Advertising Pct */
+            advertising_pct?: number | string | null;
+            /** Commission Pct */
+            commission_pct?: number | string | null;
+            /** Mt Discount Pct */
+            mt_discount_pct?: number | string | null;
+            /** Returns Pct */
+            returns_pct?: number | string | null;
+            /** Storage Multiplier */
+            storage_multiplier?: number | string | null;
+            /** Vat Pct */
+            vat_pct?: number | string | null;
         };
         /** ChannelHistoryEntry */
         ChannelHistoryEntry: {
@@ -12290,6 +12617,16 @@ export interface components {
             /** Source Module */
             source_module: string | null;
         };
+        /**
+         * FulfillmentScheme
+         * @description Generic fulfillment category, channel-independent.
+         *
+         *     CANAL_FULL      → FBA (Amazon) / FBN (Noon): channel stores + ships.
+         *     CANAL_LASTMILE  → Easy Ship: MT stores, channel ships last mile.
+         *     MERCHANT_MANAGED → Self-Ship / FBM: MT stores and ships.
+         * @enum {string}
+         */
+        FulfillmentScheme: "canal_full" | "canal_lastmile" | "merchant_managed";
         /** FxRevalResult */
         FxRevalResult: {
             /** Accounts Revalued */
@@ -13769,6 +14106,65 @@ export interface components {
             /** Manufacturer Name */
             manufacturer_name: string;
         };
+        /** MarginOverrideRead */
+        MarginOverrideRead: {
+            /**
+             * Channel Id
+             * Format: uuid
+             */
+            channel_id: string;
+            /** Margin Override Pct */
+            margin_override_pct: string;
+            /** Product Sku */
+            product_sku: string;
+            /** Reason */
+            reason: string | null;
+            selling_model: components["schemas"]["SellingModel"];
+        };
+        /** MarginOverrideUpsert */
+        MarginOverrideUpsert: {
+            /** Margin Override Pct */
+            margin_override_pct: number | string;
+            /** Reason */
+            reason?: string | null;
+            /** @default b2c */
+            selling_model: components["schemas"]["SellingModel"];
+        };
+        /** MarginTargetRead */
+        MarginTargetRead: {
+            /**
+             * Channel Id
+             * Format: uuid
+             */
+            channel_id: string;
+            /**
+             * Family Id
+             * Format: uuid
+             */
+            family_id: string;
+            /** Family Name */
+            family_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Margin Target Pct */
+            margin_target_pct: string;
+            selling_model: components["schemas"]["SellingModel"];
+        };
+        /** MarginTargetUpsert */
+        MarginTargetUpsert: {
+            /**
+             * Family Id
+             * Format: uuid
+             */
+            family_id: string;
+            /** Margin Target Pct */
+            margin_target_pct: number | string;
+            /** @default b2c */
+            selling_model: components["schemas"]["SellingModel"];
+        };
         /** MarketplaceListingRead */
         MarketplaceListingRead: {
             /** Ai Generated At */
@@ -14356,6 +14752,11 @@ export interface components {
             revenue_mtd: string;
             /** Rma Open Count */
             rma_open_count: number;
+        };
+        /** OptimizeResponse */
+        OptimizeResponse: {
+            /** Results */
+            results: components["schemas"]["PriceResultJSON"][];
         };
         /** OutboundDeliveryCreate */
         OutboundDeliveryCreate: {
@@ -15372,6 +15773,36 @@ export interface components {
             valid_from: string;
             /** Valid To */
             valid_to?: string | null;
+        };
+        /**
+         * PriceResultJSON
+         * @description JSON-friendly serialization of PricingEngine.PriceResult.
+         */
+        PriceResultJSON: {
+            /** Benefit Per Unit Aed */
+            benefit_per_unit_aed: number;
+            /** Ceiling Aed */
+            ceiling_aed: number | null;
+            /** Cost Op Aed */
+            cost_op_aed: number;
+            fulfillment_scheme: components["schemas"]["FulfillmentScheme"];
+            /** Is Publishable */
+            is_publishable: boolean;
+            /** Margin Pct */
+            margin_pct: number;
+            /** Margin To Ceiling Pct */
+            margin_to_ceiling_pct: number;
+            /** Roi Pct */
+            roi_pct: number;
+            /** Scheme Label */
+            scheme_label: string;
+            selling_model: components["schemas"]["SellingModel"];
+            /** Selling Price Aed */
+            selling_price_aed: number | null;
+            /** Signal */
+            signal: string;
+            /** Sku */
+            sku: string;
         };
         /** PriceReviseRequest */
         PriceReviseRequest: {
@@ -16492,6 +16923,16 @@ export interface components {
             weight?: number | string | null;
             /** Weight Unit */
             weight_unit?: string | null;
+        };
+        /** ProductPriceResponse */
+        ProductPriceResponse: {
+            /** All Schemes */
+            all_schemes: components["schemas"]["PriceResultJSON"][];
+            best_scheme: components["schemas"]["PriceResultJSON"] | null;
+            /** Effective Margin Pct */
+            effective_margin_pct: number;
+            /** Sku */
+            sku: string;
         };
         /** ProductReleaseCreate */
         ProductReleaseCreate: {
@@ -18283,6 +18724,12 @@ export interface components {
             /** Total Costs */
             total_costs: number;
         };
+        /**
+         * SellingModel
+         * @description B2C = por unidad (Amazon/Noon). B2B = por caja (clientes directos).
+         * @enum {string}
+         */
+        SellingModel: "b2c" | "b2b";
         /** SeriesCreate */
         SeriesCreate: {
             /**
@@ -19514,6 +19961,49 @@ export interface components {
             po_number: string | null;
             /** Supplier Code */
             supplier_code: string | null;
+        };
+        /** TradeRouteParamsRead */
+        TradeRouteParamsRead: {
+            /** Description */
+            description: string | null;
+            /** Freight Min Aed */
+            freight_min_aed: string;
+            /** Freight Rate Per Kg */
+            freight_rate_per_kg: string;
+            /** Fx Buffer Pct */
+            fx_buffer_pct: string;
+            /** Fx Rate */
+            fx_rate: string;
+            /** Handling Pct */
+            handling_pct: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Import Tariff Pct */
+            import_tariff_pct: string;
+            /** Local Warehouse Pct */
+            local_warehouse_pct: string;
+            /** Route Code */
+            route_code: string;
+        };
+        /** TradeRouteParamsUpdate */
+        TradeRouteParamsUpdate: {
+            /** Freight Min Aed */
+            freight_min_aed?: number | string | null;
+            /** Freight Rate Per Kg */
+            freight_rate_per_kg?: number | string | null;
+            /** Fx Buffer Pct */
+            fx_buffer_pct?: number | string | null;
+            /** Fx Rate */
+            fx_rate?: number | string | null;
+            /** Handling Pct */
+            handling_pct?: number | string | null;
+            /** Import Tariff Pct */
+            import_tariff_pct?: number | string | null;
+            /** Local Warehouse Pct */
+            local_warehouse_pct?: number | string | null;
         };
         /** TranslationCoverageResponse */
         TranslationCoverageResponse: {
@@ -31520,6 +32010,451 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PricingResultResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getCatalogSummary: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+                family_id?: string | null;
+                signal?: string | null;
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    importCatalog: {
+        parameters: {
+            query?: {
+                confirm?: boolean;
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importCatalog"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channelPricingPatchFeeParams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelFeeParamsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelFeeParamsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    importLogistics: {
+        parameters: {
+            query?: {
+                confirm?: boolean;
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importLogistics"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channelPricingUpsertMarginOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+                sku: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarginOverrideUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarginOverrideRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channelPricingDeleteMarginOverride: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+                sku: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channelPricingListMarginTargets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarginTargetRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channelPricingUpsertMarginTarget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarginTargetUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    optimizeCatalog: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptimizeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    applyOptimization: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channelPricingGetParams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getProductPrice: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+                margin_pct?: number | null;
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+                sku: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductPriceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channelPricingPatchRouteParams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TradeRouteParamsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeRouteParamsRead"];
                 };
             };
             /** @description Validation Error */

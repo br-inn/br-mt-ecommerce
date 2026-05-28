@@ -2395,6 +2395,20 @@
         "title": "Body_analyze_import_api_v1_imports_analyze_post",
         "type": "object"
       },
+      "Body_importCatalog": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_importCatalog",
+        "type": "object"
+      },
       "Body_importCostsPreview": {
         "properties": {
           "file": {
@@ -2426,6 +2440,20 @@
           "files"
         ],
         "title": "Body_importDatasheetsPreview",
+        "type": "object"
+      },
+      "Body_importLogistics": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_importLogistics",
         "type": "object"
       },
       "Body_importMaterialsPreview": {
@@ -3506,6 +3534,78 @@
         "title": "CashFlowOut",
         "type": "object"
       },
+      "CatalogImportResult": {
+        "properties": {
+          "ceiling_preview": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Ceiling Preview",
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "upserted": {
+            "title": "Upserted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_rows",
+          "upserted",
+          "errors",
+          "ceiling_preview"
+        ],
+        "title": "CatalogImportResult",
+        "type": "object"
+      },
+      "CatalogSemaforo": {
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "integer"
+          },
+          "by_scheme": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Scheme",
+            "type": "object"
+          },
+          "in_loss": {
+            "title": "In Loss",
+            "type": "integer"
+          },
+          "publishable": {
+            "title": "Publishable",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "publishable",
+          "blocked",
+          "in_loss",
+          "by_scheme"
+        ],
+        "title": "CatalogSemaforo",
+        "type": "object"
+      },
       "CatalogStats": {
         "description": "Conteos del cat\u00e1logo de productos (excluye soft-deleted).",
         "properties": {
@@ -3548,6 +3648,26 @@
           "products_blocked"
         ],
         "title": "CatalogStats",
+        "type": "object"
+      },
+      "CatalogSummaryResponse": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PriceResultJSON"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "semaforo": {
+            "$ref": "#/components/schemas/CatalogSemaforo"
+          }
+        },
+        "required": [
+          "semaforo",
+          "rows"
+        ],
+        "title": "CatalogSummaryResponse",
         "type": "object"
       },
       "CdcProductEvent": {
@@ -3980,6 +4100,176 @@
           "updated_at"
         ],
         "title": "CertificationResponse",
+        "type": "object"
+      },
+      "ChannelFeeParamsRead": {
+        "properties": {
+          "advertising_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Advertising Pct",
+            "type": "string"
+          },
+          "channel_id": {
+            "format": "uuid",
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "commission_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Commission Pct",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mt_discount_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Mt Discount Pct",
+            "type": "string"
+          },
+          "returns_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Returns Pct",
+            "type": "string"
+          },
+          "route_id": {
+            "format": "uuid",
+            "title": "Route Id",
+            "type": "string"
+          },
+          "storage_multiplier": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Storage Multiplier",
+            "type": "string"
+          },
+          "vat_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Vat Pct",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "channel_id",
+          "route_id",
+          "mt_discount_pct",
+          "commission_pct",
+          "vat_pct",
+          "advertising_pct",
+          "returns_pct",
+          "storage_multiplier"
+        ],
+        "title": "ChannelFeeParamsRead",
+        "type": "object"
+      },
+      "ChannelFeeParamsUpdate": {
+        "properties": {
+          "advertising_pct": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advertising Pct"
+          },
+          "commission_pct": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commission Pct"
+          },
+          "mt_discount_pct": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mt Discount Pct"
+          },
+          "returns_pct": {
+            "anyOf": [
+              {
+                "maximum": 15.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returns Pct"
+          },
+          "storage_multiplier": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Multiplier"
+          },
+          "vat_pct": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vat Pct"
+          }
+        },
+        "title": "ChannelFeeParamsUpdate",
         "type": "object"
       },
       "ChannelHistoryEntry": {
@@ -11154,6 +11444,16 @@
         "title": "FinancialEntryOut",
         "type": "object"
       },
+      "FulfillmentScheme": {
+        "description": "Generic fulfillment category, channel-independent.\n\nCANAL_FULL      \u2192 FBA (Amazon) / FBN (Noon): channel stores + ships.\nCANAL_LASTMILE  \u2192 Easy Ship: MT stores, channel ships last mile.\nMERCHANT_MANAGED \u2192 Self-Ship / FBM: MT stores and ships.",
+        "enum": [
+          "canal_full",
+          "canal_lastmile",
+          "merchant_managed"
+        ],
+        "title": "FulfillmentScheme",
+        "type": "string"
+      },
       "FxRevalResult": {
         "properties": {
           "accounts_revalued": {
@@ -15023,6 +15323,159 @@
         "title": "ManufacturerWhitelistToggleResponse",
         "type": "object"
       },
+      "MarginOverrideRead": {
+        "properties": {
+          "channel_id": {
+            "format": "uuid",
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "margin_override_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Margin Override Pct",
+            "type": "string"
+          },
+          "product_sku": {
+            "title": "Product Sku",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel"
+          }
+        },
+        "required": [
+          "product_sku",
+          "channel_id",
+          "selling_model",
+          "margin_override_pct",
+          "reason"
+        ],
+        "title": "MarginOverrideRead",
+        "type": "object"
+      },
+      "MarginOverrideUpsert": {
+        "properties": {
+          "margin_override_pct": {
+            "anyOf": [
+              {
+                "maximum": 80.0,
+                "minimum": -10.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Margin Override Pct"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel",
+            "default": "b2c"
+          }
+        },
+        "required": [
+          "margin_override_pct"
+        ],
+        "title": "MarginOverrideUpsert",
+        "type": "object"
+      },
+      "MarginTargetRead": {
+        "properties": {
+          "channel_id": {
+            "format": "uuid",
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "family_id": {
+            "format": "uuid",
+            "title": "Family Id",
+            "type": "string"
+          },
+          "family_name": {
+            "title": "Family Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "margin_target_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Margin Target Pct",
+            "type": "string"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel"
+          }
+        },
+        "required": [
+          "id",
+          "channel_id",
+          "family_id",
+          "family_name",
+          "selling_model",
+          "margin_target_pct"
+        ],
+        "title": "MarginTargetRead",
+        "type": "object"
+      },
+      "MarginTargetUpsert": {
+        "properties": {
+          "family_id": {
+            "format": "uuid",
+            "title": "Family Id",
+            "type": "string"
+          },
+          "margin_target_pct": {
+            "anyOf": [
+              {
+                "maximum": 80.0,
+                "minimum": -10.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Margin Target Pct"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel",
+            "default": "b2c"
+          }
+        },
+        "required": [
+          "family_id",
+          "margin_target_pct"
+        ],
+        "title": "MarginTargetUpsert",
+        "type": "object"
+      },
       "MarketplaceListingRead": {
         "properties": {
           "ai_generated_at": {
@@ -16647,6 +17100,22 @@
           "rma_open_count"
         ],
         "title": "O2CKpisOut",
+        "type": "object"
+      },
+      "OptimizeResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PriceResultJSON"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "OptimizeResponse",
         "type": "object"
       },
       "OutboundDeliveryCreate": {
@@ -19358,6 +19827,92 @@
           "updated_at"
         ],
         "title": "PriceResponse",
+        "type": "object"
+      },
+      "PriceResultJSON": {
+        "description": "JSON-friendly serialization of PricingEngine.PriceResult.",
+        "properties": {
+          "benefit_per_unit_aed": {
+            "title": "Benefit Per Unit Aed",
+            "type": "number"
+          },
+          "ceiling_aed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ceiling Aed"
+          },
+          "cost_op_aed": {
+            "title": "Cost Op Aed",
+            "type": "number"
+          },
+          "fulfillment_scheme": {
+            "$ref": "#/components/schemas/FulfillmentScheme"
+          },
+          "is_publishable": {
+            "title": "Is Publishable",
+            "type": "boolean"
+          },
+          "margin_pct": {
+            "title": "Margin Pct",
+            "type": "number"
+          },
+          "margin_to_ceiling_pct": {
+            "title": "Margin To Ceiling Pct",
+            "type": "number"
+          },
+          "roi_pct": {
+            "title": "Roi Pct",
+            "type": "number"
+          },
+          "scheme_label": {
+            "title": "Scheme Label",
+            "type": "string"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel"
+          },
+          "selling_price_aed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selling Price Aed"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "string"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "selling_model",
+          "fulfillment_scheme",
+          "scheme_label",
+          "margin_pct",
+          "cost_op_aed",
+          "selling_price_aed",
+          "ceiling_aed",
+          "benefit_per_unit_aed",
+          "roi_pct",
+          "margin_to_ceiling_pct",
+          "is_publishable",
+          "signal"
+        ],
+        "title": "PriceResultJSON",
         "type": "object"
       },
       "PriceReviseRequest": {
@@ -22786,6 +23341,43 @@
           }
         },
         "title": "ProductPatch",
+        "type": "object"
+      },
+      "ProductPriceResponse": {
+        "properties": {
+          "all_schemes": {
+            "items": {
+              "$ref": "#/components/schemas/PriceResultJSON"
+            },
+            "title": "All Schemes",
+            "type": "array"
+          },
+          "best_scheme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceResultJSON"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_margin_pct": {
+            "title": "Effective Margin Pct",
+            "type": "number"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "effective_margin_pct",
+          "best_scheme",
+          "all_schemes"
+        ],
+        "title": "ProductPriceResponse",
         "type": "object"
       },
       "ProductReleaseCreate": {
@@ -28190,6 +28782,15 @@
         "title": "SeedInventoryResponse",
         "type": "object"
       },
+      "SellingModel": {
+        "description": "B2C = por unidad (Amazon/Noon). B2B = por caja (clientes directos).",
+        "enum": [
+          "b2c",
+          "b2b"
+        ],
+        "title": "SellingModel",
+        "type": "string"
+      },
       "SeriesCreate": {
         "additionalProperties": false,
         "properties": {
@@ -31598,6 +32199,198 @@
           "supplier_code"
         ],
         "title": "TraceabilityUpstream",
+        "type": "object"
+      },
+      "TradeRouteParamsRead": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "freight_min_aed": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Freight Min Aed",
+            "type": "string"
+          },
+          "freight_rate_per_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Freight Rate Per Kg",
+            "type": "string"
+          },
+          "fx_buffer_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Fx Buffer Pct",
+            "type": "string"
+          },
+          "fx_rate": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Fx Rate",
+            "type": "string"
+          },
+          "handling_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Handling Pct",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "import_tariff_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Import Tariff Pct",
+            "type": "string"
+          },
+          "local_warehouse_pct": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Local Warehouse Pct",
+            "type": "string"
+          },
+          "route_code": {
+            "title": "Route Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "route_code",
+          "description",
+          "fx_rate",
+          "fx_buffer_pct",
+          "freight_rate_per_kg",
+          "freight_min_aed",
+          "import_tariff_pct",
+          "local_warehouse_pct",
+          "handling_pct"
+        ],
+        "title": "TradeRouteParamsRead",
+        "type": "object"
+      },
+      "TradeRouteParamsUpdate": {
+        "properties": {
+          "freight_min_aed": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freight Min Aed"
+          },
+          "freight_rate_per_kg": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freight Rate Per Kg"
+          },
+          "fx_buffer_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Buffer Pct"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
+          },
+          "handling_pct": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handling Pct"
+          },
+          "import_tariff_pct": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Tariff Pct"
+          },
+          "local_warehouse_pct": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Warehouse Pct"
+          }
+        },
+        "title": "TradeRouteParamsUpdate",
         "type": "object"
       },
       "TranslationCoverageResponse": {
@@ -52221,6 +53014,814 @@
         "summary": "What-if simulator con overrides arbitrarios (cost_total, fx_rate, market)",
         "tags": [
           "pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/catalog": {
+      "get": {
+        "description": "Return price analysis for the full catalog with sem\u00e1foro summary.",
+        "operationId": "getCatalogSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          },
+          {
+            "in": "query",
+            "name": "family_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Family Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Catalog Summary",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/catalog/import": {
+      "post": {
+        "description": "Import MT catalog Excel.\n\nRequired columns: sku, pe_eur, pvp_eur, uds_caja, peso_kg.\nOptional: ceiling_basis (default catalog_pvp).\n\nPass confirm=true to persist. Without confirm, returns preview with\ncalculated ceiling prices for the first 20 valid rows.",
+        "operationId": "importCatalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importCatalog"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Catalog",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/fee-params": {
+      "patch": {
+        "description": "Update channel-specific fee parameters (commission, VAT, advertising, returns\u2026).",
+        "operationId": "channelPricingPatchFeeParams",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelFeeParamsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelFeeParamsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update channel fee parameters",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/logistics/import": {
+      "post": {
+        "description": "Import logistics fees Excel (inbound, storage, fulfillment per SKU).",
+        "operationId": "importLogistics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importLogistics"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Importlogistics",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Logistics",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/margin-overrides/{sku}": {
+      "delete": {
+        "description": "Remove a SKU override \u2014 product reverts to family margin target.",
+        "operationId": "channelPricingDeleteMarginOverride",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sku",
+            "required": true,
+            "schema": {
+              "title": "Sku",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove per-SKU margin override",
+        "tags": [
+          "channel-pricing"
+        ]
+      },
+      "put": {
+        "description": "Upsert per-SKU margin override.",
+        "operationId": "channelPricingUpsertMarginOverride",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sku",
+            "required": true,
+            "schema": {
+              "title": "Sku",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarginOverrideUpsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarginOverrideRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upsert per-SKU margin override",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/margin-targets": {
+      "get": {
+        "description": "List margin targets for this channel, with family name joined in.",
+        "operationId": "channelPricingListMarginTargets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MarginTargetRead"
+                  },
+                  "title": "Response Channelpricinglistmargintargets",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List margin targets for channel",
+        "tags": [
+          "channel-pricing"
+        ]
+      },
+      "put": {
+        "description": "Upsert margin target. Clears all overrides for this family+selling_model.",
+        "operationId": "channelPricingUpsertMarginTarget",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarginTargetUpsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upsert margin target (clears overrides for family)",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/optimize": {
+      "post": {
+        "description": "Preview the best scheme+margin per product. Does NOT persist.\n\nPERFORMANCE: CPU-bound. For catalogs >50 SKUs, consider a Celery task.",
+        "operationId": "optimizeCatalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Optimize Catalog",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/optimize/apply": {
+      "post": {
+        "description": "Persist optimization result as per-SKU margin overrides.",
+        "operationId": "applyOptimization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Optimization",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/params": {
+      "get": {
+        "description": "Return route + fee + scheme params for this channel.",
+        "operationId": "channelPricingGetParams",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Channelpricinggetparams",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Channel pricing config (route + fees + schemes)",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/product/{sku}": {
+      "get": {
+        "description": "Calculate price for one SKU across all schemes + best.",
+        "operationId": "getProductPrice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sku",
+            "required": true,
+            "schema": {
+              "title": "Sku",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          },
+          {
+            "in": "query",
+            "name": "margin_pct",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Margin Pct"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPriceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Product Price",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/route-params": {
+      "patch": {
+        "description": "Update trade route parameters (FX, freight, arancel\u2026) for this channel.",
+        "operationId": "channelPricingPatchRouteParams",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeRouteParamsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeRouteParamsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update trade route parameters",
+        "tags": [
+          "channel-pricing"
         ]
       }
     },
