@@ -188,7 +188,7 @@ class PricingEngine:
             # No PVP in MT catalog — optimizer handles this differently
             return Decimal("Infinity")
         pvp_aed = product.catalog_pvp_eur * route.fx_rate
-        freight = PricingEngine._freight_per_unit_no_buffer(product, route)
+        freight = PricingEngine._freight_per_unit(product, route)
         return (
             (pvp_aed + freight) * PricingEngine._import_factor(route)
             + product.b2c_labeling_aed
@@ -200,26 +200,8 @@ class PricingEngine:
             return Decimal("Infinity")
         n = Decimal(str(product.units_per_box))
         pvp_aed_box = product.catalog_pvp_eur * n * route.fx_rate
-        freight = PricingEngine._freight_per_box_no_buffer(product, route)
+        freight = PricingEngine._freight_per_box(product, route)
         return (pvp_aed_box + freight) * PricingEngine._import_factor(route)
-
-    @staticmethod
-    def _freight_per_unit_no_buffer(
-        product: ProductPricingData, route: RouteParams
-    ) -> Decimal:
-        """Freight for ceiling calc — uses raw fx_rate, no buffer."""
-        units = max(product.units_per_box, 1)
-        per_kg = route.freight_rate_per_kg * product.weight_kg * route.fx_rate
-        per_min = route.freight_min_aed / Decimal(str(units))
-        return max(per_min, per_kg)
-
-    @staticmethod
-    def _freight_per_box_no_buffer(
-        product: ProductPricingData, route: RouteParams
-    ) -> Decimal:
-        n = Decimal(str(product.units_per_box))
-        per_kg = route.freight_rate_per_kg * product.weight_kg * n * route.fx_rate
-        return max(route.freight_min_aed, per_kg)
 
     @staticmethod
     def _signal(margin_pct: Decimal) -> str:

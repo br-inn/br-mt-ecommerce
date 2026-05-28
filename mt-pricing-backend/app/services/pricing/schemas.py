@@ -81,6 +81,12 @@ class ProductPricingData:
     ceiling_basis: CeilingBasis
     logistics: ProductLogistics
 
+    def __post_init__(self) -> None:
+        if self.units_per_box < 1:
+            raise ValueError(
+                f"units_per_box must be >= 1, got {self.units_per_box} for sku={self.sku}"
+            )
+
 
 @dataclass(frozen=True)
 class CostBreakdown:
