@@ -168,3 +168,36 @@ class ReleaseStatus(StrEnum):
 def values_csv(enum_cls: type[StrEnum]) -> str:
     """Renderiza ('a','b','c') para usar en CHECK constraints."""
     return "(" + ",".join(f"'{m.value}'" for m in enum_cls) + ")"
+
+
+# ── Channel Pricing Engine ─────────────────────────────────────────────
+class SellingModel(StrEnum):
+    """B2C = por unidad (Amazon/Noon). B2B = por caja (clientes directos)."""
+
+    B2C = "b2c"
+    B2B = "b2b"
+
+
+class FulfillmentScheme(StrEnum):
+    """Generic fulfillment category, channel-independent.
+
+    CANAL_FULL      → FBA (Amazon) / FBN (Noon): channel stores + ships.
+    CANAL_LASTMILE  → Easy Ship: MT stores, channel ships last mile.
+    MERCHANT_MANAGED → Self-Ship / FBM: MT stores and ships.
+    """
+
+    CANAL_FULL = "canal_full"
+    CANAL_LASTMILE = "canal_lastmile"
+    MERCHANT_MANAGED = "merchant_managed"
+
+
+class CeilingBasis(StrEnum):
+    """How the ceiling price is calculated per product.
+
+    CATALOG_PVP  → ceiling = catalog_pvp_eur × fx + UAE costs (normal).
+    MARGIN_FLOOR → ceiling derived from a minimum guaranteed margin
+                   (for products without MT catalog PVP, e.g. tank bottom valves).
+    """
+
+    CATALOG_PVP = "catalog_pvp"
+    MARGIN_FLOOR = "margin_floor"

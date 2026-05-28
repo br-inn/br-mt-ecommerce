@@ -23,6 +23,7 @@ from app.api.routes import (
     audit_query,
     auth,
     billing,
+    channel_pricing,
     channels,
     channels_mirror,
     competitor_brands,
@@ -226,3 +227,5 @@ router.include_router(rule_engine.router)
 router.include_router(marketplace_listings.router)
 # EP-F1 — Scraper Source Builder (CRUD sources + recipes + validate + activate)
 router.include_router(scraper_sources.router)
+# Channel Pricing Engine — config and margin endpoints
+router.include_router(channel_pricing.router)
