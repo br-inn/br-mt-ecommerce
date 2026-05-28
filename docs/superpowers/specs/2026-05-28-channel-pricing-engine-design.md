@@ -220,17 +220,28 @@ CREATE TABLE channel_product_logistics (
 
 Margen objetivo por canal × familia de producto × modelo de venta. El motor usa este margen como punto de partida si el producto no tiene override.
 
+`family_id` apunta a `families.id` (tabla de vocabulario existente en el proyecto, con `code` y `name`).
+
 ```sql
 CREATE TABLE channel_margin_targets (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   channel_id        UUID NOT NULL REFERENCES channels(id) ON DELETE RESTRICT,
-  family_name       TEXT NOT NULL,
+  family_id         UUID NOT NULL REFERENCES families(id) ON DELETE RESTRICT,
   selling_model     selling_model NOT NULL DEFAULT 'b2c',
   margin_target_pct NUMERIC(5,2) NOT NULL DEFAULT 12,
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_by        TEXT,
-  UNIQUE (channel_id, family_name, selling_model)
+  UNIQUE (channel_id, family_id, selling_model)
 );
+```
+
+El JOIN para obtener el margen base de un producto:
+```sql
+SELECT mt.margin_target_pct
+FROM   channel_margin_targets mt
+WHERE  mt.channel_id   = :channel_id
+  AND  mt.family_id    = :product.family_id   -- FK directo, sin string matching
+  AND  mt.selling_model = :selling_model
 ```
 
 ### 3.8 `channel_margin_overrides`
@@ -398,7 +409,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True,
                   server_default=sa.text('gen_random_uuid()')),
         sa.Column('channel_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('family_name', sa.Text(), nullable=False),
+        sa.Column('family_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('selling_model',
                   sa.Enum('b2c', 'b2b', name='selling_model', create_type=False),
                   nullable=False, server_default='b2c'),
@@ -408,7 +419,9 @@ def upgrade() -> None:
         sa.Column('updated_by', sa.Text()),
         sa.ForeignKeyConstraint(['channel_id'], ['channels.id'],
                                 name='fk_channel_margin_targets_channel'),
-        sa.UniqueConstraint('channel_id', 'family_name', 'selling_model',
+        sa.ForeignKeyConstraint(['family_id'], ['families.id'],
+                                name='fk_channel_margin_targets_family'),
+        sa.UniqueConstraint('channel_id', 'family_id', 'selling_model',
                             name='uq_channel_margin_targets'),
     )
 
@@ -466,7 +479,7 @@ def upgrade() -> None:
     op.create_index('idx_channel_product_logistics_channel',
                     'channel_product_logistics', ['channel_id'])
     op.create_index('idx_channel_margin_targets_lookup',
-                    'channel_margin_targets', ['channel_id', 'family_name', 'selling_model'])
+                    'channel_margin_targets', ['channel_id', 'family_id', 'selling_model'])
     op.create_index('idx_channel_margin_overrides_sku',
                     'channel_margin_overrides', ['product_sku', 'channel_id', 'selling_model'])
     op.create_index('idx_pricing_scenarios_lookup',
