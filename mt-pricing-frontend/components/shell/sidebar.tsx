@@ -12,6 +12,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  Calculator,
   ClipboardList,
   Coins,
   Construction,
@@ -84,6 +85,7 @@ const SECTION_COMPRAS: readonly NavItem[] = [
 
 const SECTION_PRECIOS: readonly NavItem[] = [
   { href: "/precios", label: "Precios", icon: Tags },
+  { href: "/pricing-desk", label: "Pricing Desk", icon: Calculator, permissions: ["prices:read"] },
   { href: "/costos", label: "Cobertura costes", icon: Receipt, permissions: ["costs:read"] },
   { href: "/precios/aprobaciones", label: "Aprobaciones", icon: ShieldCheck },
 ] as const;
