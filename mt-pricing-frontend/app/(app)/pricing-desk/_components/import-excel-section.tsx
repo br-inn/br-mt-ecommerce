@@ -2,7 +2,19 @@
 
 import { useRef, useState } from "react";
 import { useImportCatalog, useImportLogistics } from "@/lib/hooks/pricing-desk/use-import";
-import type { CatalogImportResult } from "@/lib/api/endpoints/pricing-desk";
+
+interface ValidationError {
+  row: number | null;
+  sku: string;
+  error: string;
+}
+
+interface ImportResult {
+  total_rows: number;
+  upserted: number;
+  errors: ValidationError[];
+  ceiling_preview?: unknown[];  // only catalog has this
+}
 
 interface Props {
   channelCode: string;
@@ -10,11 +22,15 @@ interface Props {
 
 type Mode = "catalog" | "logistics";
 
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 export function ImportExcelSection({ channelCode }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<Mode>("catalog");
-  const [preview, setPreview] = useState<CatalogImportResult | null>(null);
+  const [preview, setPreview] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [sizeError, setSizeError] = useState<string | null>(null);
 
   const catalogImport = useImportCatalog(channelCode);
   const logisticsImport = useImportLogistics(channelCode);
@@ -23,6 +39,13 @@ export function ImportExcelSection({ channelCode }: Props) {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
+    setSizeError(null);
+    if (file && file.size > MAX_FILE_SIZE_BYTES) {
+      setSizeError(`Archivo demasiado grande (máximo ${MAX_FILE_SIZE_MB} MB).`);
+      e.target.value = "";
+      setSelectedFile(null);
+      return;
+    }
     setSelectedFile(file);
     setPreview(null);
   };
@@ -31,7 +54,7 @@ export function ImportExcelSection({ channelCode }: Props) {
     if (!selectedFile) return;
     const fn = mode === "catalog" ? catalogImport : logisticsImport;
     const result = await fn.mutateAsync({ file: selectedFile, confirm: false });
-    setPreview(result as CatalogImportResult);
+    setPreview(result as ImportResult);
   };
 
   const confirmImport = async () => {
@@ -80,6 +103,12 @@ export function ImportExcelSection({ channelCode }: Props) {
         className="mb-2 w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-mt-brand file:px-2 file:py-1 file:text-xs file:font-semibold file:text-white hover:file:bg-mt-brand-deep"
       />
 
+      {sizeError && (
+        <div className="mb-2 rounded bg-mt-danger-soft px-2 py-1 text-[11px] text-mt-danger">
+          {sizeError}
+        </div>
+      )}
+
       <div className="flex gap-1">
         <button
           type="button"
@@ -108,8 +137,7 @@ export function ImportExcelSection({ channelCode }: Props) {
             <ul className="mt-1 max-h-32 overflow-auto">
               {preview.errors.slice(0, 5).map((e, i) => (
                 <li key={i} className="text-mt-danger">
-                  • Fila {(e as { row?: number }).row ?? "?"} ({(e as { sku?: string }).sku}):{" "}
-                  {(e as { error?: string }).error}
+                  • Fila {e.row ?? "?"} ({e.sku}): {e.error}
                 </li>
               ))}
               {preview.errors.length > 5 && (
@@ -117,6 +145,15 @@ export function ImportExcelSection({ channelCode }: Props) {
               )}
             </ul>
           )}
+        </div>
+      )}
+
+      {(catalogImport.error || logisticsImport.error) && (
+        <div className="mt-2 rounded border border-mt-danger-border bg-mt-danger-soft p-2 text-[11px] text-mt-danger">
+          <strong>Error:</strong>{" "}
+          {(catalogImport.error || logisticsImport.error) instanceof Error
+            ? (catalogImport.error || logisticsImport.error)!.message
+            : "Operación fallida"}
         </div>
       )}
     </section>
