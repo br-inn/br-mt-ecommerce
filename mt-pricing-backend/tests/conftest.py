@@ -15,9 +15,11 @@ Convenciones:
 
 from __future__ import annotations
 
+import http.server
 import os
 import pathlib
 import subprocess
+import threading
 from collections.abc import AsyncIterator, Callable, Iterator
 from typing import TYPE_CHECKING, Any
 
@@ -86,7 +88,11 @@ _BACKEND_DIR = pathlib.Path(__file__).parent.parent
 
 
 def _create_auth_stub() -> None:
-    """Crea el schema `auth` y tabla `auth.users` mínima si no existen."""
+    """Crea el schema `auth` y tabla `auth.users` mínima si no existen.
+
+    Silencia errores de permisos para entornos Supabase cloud donde `auth`
+    ya existe y no se puede modificar.
+    """
     import psycopg
 
     alembic_url = os.environ.get("ALEMBIC_DATABASE_URL", "")
@@ -95,33 +101,47 @@ def _create_auth_stub() -> None:
     raw_url = alembic_url.replace("postgresql+psycopg://", "postgresql://").replace(
         "postgresql+psycopg2://", "postgresql://"
     )
-    with psycopg.connect(raw_url, autocommit=True) as conn:
-        conn.execute("CREATE SCHEMA IF NOT EXISTS auth")
-        conn.execute("CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY)")
-        conn.execute(
-            "CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid"
-            " LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$"
-        )
-        conn.execute(
-            "DO $$ BEGIN"
-            "  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role')"
-            "  THEN CREATE ROLE service_role NOLOGIN; END IF; END $$"
-        )
+    try:
+        with psycopg.connect(raw_url, autocommit=True) as conn:
+            conn.execute("CREATE SCHEMA IF NOT EXISTS auth")
+            conn.execute("CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY)")
+            conn.execute(
+                "CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid"
+                " LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$"
+            )
+            conn.execute(
+                "DO $$ BEGIN"
+                "  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role')"
+                "  THEN CREATE ROLE service_role NOLOGIN; END IF; END $$"
+            )
+    except Exception:
+        # auth schema already exists (Supabase cloud or local supabase start)
+        pass
 
 
 def _run_migrations() -> None:
     """Corre `alembic upgrade head` en el directorio del backend."""
     _create_auth_stub()
-    result = subprocess.run(
+    # Try uv run alembic first (CI / local dev); fall back to python -m alembic
+    # (Docker containers where README.md is not volume-mounted so uv build fails)
+    for cmd in (
         ["uv", "run", "alembic", "upgrade", "head"],
-        capture_output=True,
-        text=True,
-        cwd=_BACKEND_DIR,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"Alembic migration failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        ["python", "-m", "alembic", "upgrade", "head"],
+    ):
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=_BACKEND_DIR,
         )
+        if result.returncode == 0:
+            return
+        # Only retry if it looks like a uv build error (not a real migration error)
+        if "uv" not in cmd[0]:
+            raise RuntimeError(
+                f"Alembic migration failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+            )
+        # uv failed — fall through to python -m alembic
 
 
 @pytest.fixture(scope="session")
@@ -519,6 +539,47 @@ def sample_equivalences_pdf() -> pathlib.Path:
     """Ruta al PDF de equivalencias de prueba."""
     _ensure_sample_pdf()
     return _SAMPLE_PDF
+
+
+# =============================================================================
+# Local HTTP server — serves tests/fixtures/html/ for scraper agent tests
+# =============================================================================
+_HTML_FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures" / "html"
+
+
+@pytest.fixture(scope="session")
+def html_fixture_server() -> Iterator[str]:
+    """Serves tests/fixtures/html/ at http://127.0.0.1:{port}/.
+
+    curl_cffi_fetch runs against this real HTTP server — no patching.
+    Requires ANTHROPIC_API_KEY to be set for agent tests.
+    """
+    fixtures_dir = _HTML_FIXTURES_DIR
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # type: ignore[override]
+            path = self.path.lstrip("/") or "index.html"
+            file_path = fixtures_dir / path
+            if not file_path.exists():
+                self.send_response(404)
+                self.end_headers()
+                return
+            content = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+
+        def log_message(self, *args: object) -> None:  # type: ignore[override]
+            pass  # silence test output
+
+    server = http.server.HTTPServer(("0.0.0.0", 0), _Handler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{port}"
+    server.shutdown()
 
 
 # =============================================================================

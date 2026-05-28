@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 from typing import Annotated
 from urllib.parse import urlparse
@@ -16,6 +17,8 @@ from app.db.models.user import User
 from app.repositories.scraper_sources import ScraperSourceRepository
 from app.schemas.scraper_sources import (
     ActivateRequest,
+    AnalyzeRequest,
+    AnalyzeResponse,
     RecipeRead,
     RecipeSubmit,
     ScraperSourceCreate,
@@ -25,6 +28,7 @@ from app.schemas.scraper_sources import (
     ValidateResponse,
 )
 from app.services.matching.adapters.generic_configurable import curl_cffi_fetch
+from app.services.scraper.agent_service import ScraperAgentError, ScraperAgentService
 from app.services.scraper.source_validation_service import SourceValidationService
 
 router = APIRouter(prefix="/scraper-sources", tags=["scraper-sources"])
@@ -36,7 +40,11 @@ def _assert_public_url(url: str) -> None:
     ``validate_recipe`` hace un fetch en vivo de una URL provista por el usuario;
     sin este guard un usuario con ``products:write`` podría sondear servicios
     internos (metadata de la nube, red privada).
+
+    SCRAPER_ALLOW_LOOPBACK=true skips the loopback rejection (127.0.0.1) for
+    test fixtures only; private/RFC1918 ranges are still blocked.
     """
+    _allow_loopback = os.environ.get("SCRAPER_ALLOW_LOOPBACK", "").lower() == "true"
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(
@@ -58,6 +66,8 @@ def _assert_public_url(url: str) -> None:
         ) from exc
     for info in addr_infos:
         ip = ipaddress.ip_address(info[4][0])
+        if _allow_loopback and ip.is_loopback:
+            continue
         if (
             ip.is_private
             or ip.is_loopback
@@ -70,6 +80,38 @@ def _assert_public_url(url: str) -> None:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="test_url apunta a una dirección no permitida (red interna)",
             )
+
+
+@router.post(
+    "/analyze",
+    response_model=AnalyzeResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="analyzeScraperUrl",
+)
+async def analyze_url(
+    body: AnalyzeRequest,
+    _user: Annotated[User, Depends(require_permissions("products:read"))],
+) -> AnalyzeResponse:
+    """Fetches the URL, calls Claude to generate a scraping recipe, returns proposal.
+    No DB writes — pure analysis for the wizard Step 2 preview."""
+    _assert_public_url(body.url)
+    service = ScraperAgentService()
+    try:
+        result = await service.analyze(body.url, context=body.context, hint=body.hint)
+    except ScraperAgentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return AnalyzeResponse(
+        detected_mode=result.detected_mode,
+        proposed_source=result.proposed_source,
+        proposed_recipe=result.proposed_recipe,
+        field_confidence=result.field_confidence,
+        preview_records=result.preview_records,
+        missing_required=result.missing_required,
+        warnings=result.warnings,
+    )
 
 
 @router.post(
@@ -100,6 +142,7 @@ async def create_source(
         created_by=user.id,
     )
     await session.commit()
+    await session.refresh(source)
     return ScraperSourceRead.model_validate(source)
 
 
@@ -180,6 +223,7 @@ async def add_recipe(
         source_id, body.recipe.model_dump(mode="json"), created_by=user.id
     )
     await session.commit()
+    await session.refresh(recipe_row)
     return RecipeRead.model_validate(recipe_row)
 
 
@@ -244,4 +288,5 @@ async def activate_source(
     await repo.set_recipe_live(body.recipe_id)
     source.status = "active"
     await session.commit()
+    await session.refresh(source)
     return ScraperSourceRead.model_validate(source)

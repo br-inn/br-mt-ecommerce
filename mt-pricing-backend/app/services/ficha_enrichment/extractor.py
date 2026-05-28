@@ -142,6 +142,22 @@ _TOOL_SCHEMA: dict[str, Any] = {
                     "properties": {
                         "component": {
                             "type": "string",
+                            "description": (
+                                "Component kind. Use the most specific value available. "
+                                "body=main pressure-containing body; closure=end cap/bonnet flange; "
+                                "seat=valve seat ring; gasket=sealing gasket/O-ring flat; "
+                                "screen=filter/strainer mesh; actuator_housing=actuator body; "
+                                "stem=valve stem/spindle; handle=lever/handle; "
+                                "nut=union nut/gland nut/packing nut/lock nut; "
+                                "packing=stem packing/gland packing/PTFE packing; "
+                                "bonnet=bonnet/second body piece/yoke; "
+                                "insert=threaded insert/tube insert/sleeve; "
+                                "spring=spring/spring washer/compression spring; "
+                                "washer=flat washer/thrust washer/backing ring; "
+                                "o_ring=O-ring/stem O-ring/sealing ring; "
+                                "cap=end cap/plug/protection cap; "
+                                "other=anything else not covered above."
+                            ),
                             "enum": [
                                 "body",
                                 "closure",
@@ -151,6 +167,14 @@ _TOOL_SCHEMA: dict[str, Any] = {
                                 "actuator_housing",
                                 "stem",
                                 "handle",
+                                "nut",
+                                "packing",
+                                "bonnet",
+                                "insert",
+                                "spring",
+                                "washer",
+                                "o_ring",
+                                "cap",
                                 "other",
                             ],
                         },
@@ -185,7 +209,19 @@ _TOOL_SCHEMA: dict[str, Any] = {
                             "type": "string",
                             "description": "DN label as it appears in the table (e.g. '1/2\"', 'DN15').",
                         },
-                        "values": {"type": "object"},
+                        "values": {
+                            "type": "object",
+                            "description": (
+                                "Flat dict mapping each column header to its value for this "
+                                "DN row. Keys are dimension names (e.g. 'A', 'C', 'L'), "
+                                "values are numbers or strings. "
+                                'Example: {"A": 250, "C": 10, "L": 150}. '
+                                "Do NOT nest dicts — each value must be a scalar."
+                            ),
+                            "additionalProperties": {
+                                "oneOf": [{"type": "number"}, {"type": "string"}]
+                            },
+                        },
                         "dn_secondary_label": {
                             "type": "string",
                             "description": "Outlet DN for reducers (e.g. '3/8\"' in a 1/2 x 3/8 reduction).",
@@ -456,15 +492,25 @@ def _build_result(data: dict[str, Any], raw_text: str) -> FichaExtractionResult:
         for m in (data.get("materials") or [])
         if m.get("component") and m.get("material")
     ]
-    dimensions = [
-        ExtractedDimensionRow(
-            dn_label=d.get("dn_label", ""),
-            values=d.get("values", {}),
-            dn_secondary_label=d.get("dn_secondary_label"),
+    dimensions = []
+    for d in data.get("dimensions") or []:
+        if not d.get("dn_label"):
+            continue
+        raw_values = d.get("values") or {}
+        # Guard: skip rows where values are nested dicts (Claude misread table structure)
+        flat_values = {k: v for k, v in raw_values.items() if not isinstance(v, dict)}
+        if not flat_values and raw_values:
+            logger.warning(
+                "dimensions: skipping row dn_label=%r — values are nested dicts", d["dn_label"]
+            )
+            continue
+        dimensions.append(
+            ExtractedDimensionRow(
+                dn_label=d["dn_label"],
+                values=flat_values,
+                dn_secondary_label=d.get("dn_secondary_label"),
+            )
         )
-        for d in (data.get("dimensions") or [])
-        if d.get("dn_label")
-    ]
     translations = [
         ExtractedTranslation(lang=t["lang"], name=t.get("name"), description=t.get("description"))
         for t in (data.get("translations") or [])

@@ -133,3 +133,32 @@ class ActivateRequest(BaseModel):
     """Body de activación — solo necesita la receta a promover a is_live."""
 
     recipe_id: UUID
+
+
+# ---------------------------------------------------------------------------
+# Scraper Agent schemas — POST /scraper-sources/analyze
+# ---------------------------------------------------------------------------
+
+
+class AnalyzeRequest(BaseModel):
+    url: str = Field(min_length=1, description="URL to analyze and generate recipe for")
+    context: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional description of the site",
+    )
+    hint: str | None = Field(
+        default=None,
+        max_length=200,
+        description="If set, find only this one field instead of full recipe",
+    )
+
+
+class AnalyzeResponse(BaseModel):
+    detected_mode: str
+    proposed_source: dict[str, str]
+    proposed_recipe: dict[str, Any]
+    field_confidence: dict[str, float]
+    preview_records: list[dict[str, Any]]
+    missing_required: list[str]
+    warnings: list[str]

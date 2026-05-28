@@ -70,6 +70,48 @@ export interface ActivateRequest {
   recipe_id: string;
 }
 
+export interface RecipeTransformDef {
+  op: "regex_capture" | "strip_currency" | "replace" | "map_values" | "unit_factor";
+  pattern?: string;
+  find?: string;
+  replace_with?: string;
+  mapping?: Record<string, string>;
+  factor?: number;
+}
+
+export interface RecipeFieldDef {
+  name: string;
+  selector: string;
+  extract: string;
+  type: "str" | "float" | "int" | "currency" | "bool";
+  transform: RecipeTransformDef | null;
+}
+
+export interface AnalyzeRequest {
+  url: string;
+  context?: string | null;
+  hint?: string | null;
+}
+
+export interface AnalyzeResponse {
+  detected_mode: "static" | "headless" | "stealth";
+  proposed_source: {
+    name: string;
+    slug: string;
+    base_url: string;
+  };
+  proposed_recipe: {
+    url_templates: { search?: string; pdp?: string; list?: string; product?: string };
+    list_item_selector: string | null;
+    fields: RecipeFieldDef[];
+    anti_bot_hints?: Record<string, unknown>;
+  };
+  field_confidence: Record<string, number>;
+  preview_records: Record<string, unknown>[];
+  missing_required: string[];
+  warnings: string[];
+}
+
 export class ScraperSourcesApiError extends Error {
   public readonly status: number;
   public readonly detail: unknown;
@@ -159,4 +201,10 @@ export const scraperSourcesApi = {
         body: JSON.stringify(req),
       },
     ),
+
+  analyze: (req: AnalyzeRequest): Promise<AnalyzeResponse> =>
+    authedFetch<AnalyzeResponse>("/api/v1/scraper-sources/analyze", {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
 };

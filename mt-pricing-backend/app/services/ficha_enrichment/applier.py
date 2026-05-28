@@ -116,7 +116,8 @@ class FichaEnrichmentApplier:
         # --- materials ---
         if request.apply_materials and request.extraction.materials:
             try:
-                await self._replace_materials(sku, request.extraction.materials)
+                async with self._session.begin_nested():
+                    await self._replace_materials(sku, request.extraction.materials)
                 applied.append("materials")
             except Exception as exc:
                 logger.warning("materials apply failed sku=%s err=%s", sku, exc)
@@ -125,7 +126,8 @@ class FichaEnrichmentApplier:
         # --- dimensions tech-table ---
         if request.apply_dimensions and request.extraction.dimensions:
             try:
-                await self._upsert_dimensions_table(sku, request.extraction.dimensions)
+                async with self._session.begin_nested():
+                    await self._upsert_dimensions_table(sku, request.extraction.dimensions)
                 applied.append("dimensions_by_dn")
             except Exception as exc:
                 logger.warning("dimensions apply failed sku=%s err=%s", sku, exc)
@@ -134,7 +136,8 @@ class FichaEnrichmentApplier:
         # --- translations ---
         if request.apply_translations and request.extraction.translations:
             try:
-                await self._upsert_translations(sku, request.extraction.translations, actor)
+                async with self._session.begin_nested():
+                    await self._upsert_translations(sku, request.extraction.translations, actor)
                 applied.append("translations")
             except Exception as exc:
                 logger.warning("translations apply failed sku=%s err=%s", sku, exc)
@@ -143,7 +146,8 @@ class FichaEnrichmentApplier:
         # --- P/T curve ---
         if request.apply_pt_curve and request.extraction.pt_curve_points:
             try:
-                await self._upsert_pt_curve(sku, request.extraction.pt_curve_points)
+                async with self._session.begin_nested():
+                    await self._upsert_pt_curve(sku, request.extraction.pt_curve_points)
                 applied.append(f"pt_curve({len(request.extraction.pt_curve_points)} pts)")
             except Exception as exc:
                 logger.warning("pt_curve apply failed sku=%s err=%s", sku, exc)
@@ -169,9 +173,12 @@ class FichaEnrichmentApplier:
         )
 
     async def _load_product(self, sku: str) -> Any:
-        from app.db.models.product import Product
+        from app.db.models.product import Product  # noqa: I001
+        from sqlalchemy.orm import raiseload
 
-        result = await self._session.execute(select(Product).where(Product.sku == sku))
+        result = await self._session.execute(
+            select(Product).where(Product.sku == sku).options(raiseload("*"))
+        )
         return result.scalar_one_or_none()
 
     _VALID_COMPONENT_KINDS = frozenset(
@@ -184,6 +191,15 @@ class FichaEnrichmentApplier:
             "actuator_housing",
             "stem",
             "handle",
+            # Extended component kinds (migration 20260527_159)
+            "nut",
+            "packing",
+            "bonnet",
+            "insert",
+            "spring",
+            "washer",
+            "o_ring",
+            "cap",
             "other",
         }
     )
@@ -196,26 +212,42 @@ class FichaEnrichmentApplier:
         await self._session.execute(
             _sa_delete(ProductMaterial).where(ProductMaterial.product_sku == sku)
         )
+        # Product.materials uses lazy="selectin", so _load_product already populated
+        # the identity map with these rows. Core DELETE removes them from DB but not
+        # from the map — expunge them so subsequent session.add() doesn't conflict.
+        stale = [
+            obj
+            for obj in self._session.identity_map.values()
+            if isinstance(obj, ProductMaterial) and obj.product_sku == sku
+        ]
+        for obj in stale:
+            self._session.expunge(obj)
+
+        # Deduplicate by (component, position) — LLM sometimes returns duplicates
+        seen: dict[tuple[str, int], Any] = {}
         for m in materials:
             component = m.component if m.component in self._VALID_COMPONENT_KINDS else "other"
-            row = ProductMaterial(
-                product_sku=sku,
-                component=component,
-                position=m.position,
-                material=m.material,
-                observations=m.observations,
-                material_grade=getattr(m, "material_grade", None),
-                material_standard=getattr(m, "material_standard", None),
-                surface_treatment=getattr(m, "surface_treatment", None),
+            seen[(component, m.position)] = m
+        for (component, position), m in seen.items():
+            self._session.add(
+                ProductMaterial(
+                    product_sku=sku,
+                    component=component,
+                    position=position,
+                    material=m.material,
+                    observations=m.observations,
+                    material_grade=getattr(m, "material_grade", None),
+                    material_standard=getattr(m, "material_standard", None),
+                    surface_treatment=getattr(m, "surface_treatment", None),
+                )
             )
-            self._session.add(row)
         await self._session.flush()
 
     async def _upsert_dimensions_table(self, sku: str, dimensions: list[Any]) -> None:
         from app.db.models.tech_tables import ProductTechTable
 
         data_payload: dict[str, Any] = {
-            "rows": [{"dn_label": d.dn_label, "values": d.values} for d in dimensions]
+            "rows": [{"dn_label": d.dn_label, "values": d.flat_values()} for d in dimensions]
         }
         existing = (
             await self._session.execute(

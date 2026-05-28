@@ -37,14 +37,21 @@ class UnmatchedOfferRepository(BaseRepository[UnmatchedOffer]):
     # ------------------------------------------------------------------
 
     async def upsert_from_raw(
-        self, raw: CandidateRaw, *, source_sku: str | None = None
+        self,
+        raw: CandidateRaw,
+        *,
+        source_sku: str | None = None,
+        specs_override: dict[str, Any] | None = None,
+        image_url: str | None = None,
+        source_url: str | None = None,
     ) -> UnmatchedOffer:
-        """Inserta o toca la fila correspondiente a `raw`.
+        """Inserta o actualiza la fila correspondiente a `raw`.
 
         El fingerprint se calcula como SHA-256 de ``"<source>|<external_id>"``.
-        Si ya existe una fila con ese fingerprint solo actualiza `updated_at`
-        via flush (el contenido no cambia — es la misma oferta).
-        Si no existe, crea una fila nueva con `source_sku` si se provee.
+        Si ya existe una fila con ese fingerprint, actualiza `specs_jsonb` con
+        los specs enriquecidos cuando se provee `specs_override` (incluye
+        _scoring, _delivery, aliases normalizados).
+        Si no existe, crea una fila nueva.
         """
         fingerprint = hashlib.sha256(f"{raw.source}|{raw.external_id}".encode()).hexdigest()
 
@@ -53,12 +60,19 @@ class UnmatchedOfferRepository(BaseRepository[UnmatchedOffer]):
         existing = result.scalar_one_or_none()
 
         if existing is not None:
-            # Misma oferta — solo forzar updated_at via flush. No actualizar source_sku (append-only).
+            if specs_override is not None:
+                existing.specs_jsonb = specs_override
+            if image_url is not None and existing.image_url is None:
+                existing.image_url = image_url
+            if source_url is not None and existing.source_url is None:
+                existing.source_url = source_url
             await self.session.flush()
             return existing
 
-        embedding = _generate_embedding(raw.title, raw.brand, raw.specs or {})
+        specs_to_store = specs_override if specs_override is not None else (raw.specs or {})
+        embedding = _generate_embedding(raw.title, raw.brand, specs_to_store)
 
+        raw_payload = raw.raw_payload or {}
         return await self.create(
             marketplace=raw.source,
             external_id=raw.external_id,
@@ -66,10 +80,12 @@ class UnmatchedOfferRepository(BaseRepository[UnmatchedOffer]):
             brand=raw.brand,
             price_aed=raw.price_aed,
             delivery_text=raw.delivery_text,
-            specs_jsonb=raw.specs,
+            specs_jsonb=specs_to_store,
             fingerprint=fingerprint,
             embedding=embedding,
             source_sku=source_sku,
+            image_url=image_url or raw_payload.get("image_url") or None,
+            source_url=source_url or raw_payload.get("url") or None,
         )
 
     # ------------------------------------------------------------------

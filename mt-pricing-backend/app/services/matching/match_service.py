@@ -268,19 +268,31 @@ class MatchService:
                     seen_external_ids.add(raw.external_id)
                     total_fetched += 1
                     row = await self._score_and_upsert(sku_dict, raw)
+
+                    # Persist ALL scraped items to the pool with enriched specs —
+                    # serves as universal cache so future SKU refreshes can reuse
+                    # previously scraped offers without hitting Amazon/Noon again.
+                    if self._unmatched_repo is not None:
+                        try:
+                            raw_payload = raw.raw_payload or {}
+                            await self._unmatched_repo.upsert_from_raw(
+                                raw,
+                                source_sku=sku,
+                                specs_override=row.specs_jsonb,
+                                image_url=raw_payload.get("image_url") or None,
+                                source_url=raw_payload.get("url") or None,
+                            )
+                        except Exception:
+                            logger.warning(
+                                "unmatched_offer.upsert_failed",
+                                extra={"external_id": raw.external_id, "channel": raw.source},
+                                exc_info=True,
+                            )
+
                     # Discard candidates below score floor OR blocked by a hard
                     # taxonomy rule (kind="unknown" = product type mismatch, PN
                     # below requirement, etc.). Taxonomy blockers supersede score.
                     if row.score < DROP_SCORE_THRESHOLD or row.kind == "unknown":
-                        if self._unmatched_repo is not None:
-                            try:
-                                await self._unmatched_repo.upsert_from_raw(raw, source_sku=sku)
-                            except Exception:
-                                logger.warning(
-                                    "unmatched_offer.upsert_failed",
-                                    extra={"external_id": raw.external_id, "channel": raw.source},
-                                    exc_info=True,
-                                )
                         await self.session.delete(row)
                         await self.session.flush()
                         continue
