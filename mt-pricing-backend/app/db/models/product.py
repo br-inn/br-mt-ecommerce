@@ -101,15 +101,14 @@ class Product(Base):
     # ── Channel Pricing Engine ────────────────────────────────────────────
     pe_eur: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
     catalog_pvp_eur: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
-    units_per_box: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("1")
-    )
+    units_per_box: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     b2c_labeling_aed: Mapped[Decimal] = mapped_column(
         Numeric(10, 4), nullable=False, server_default=text("0")
     )
     ceiling_basis: Mapped[str] = mapped_column(
         PG_ENUM("catalog_pvp", "margin_floor", name="ceiling_basis", create_type=False),
-        nullable=False, server_default=text("'catalog_pvp'"),
+        nullable=False,
+        server_default=text("'catalog_pvp'"),
     )
 
     data_quality: Mapped[str] = mapped_column(
