@@ -3506,6 +3506,42 @@
         "title": "CashFlowOut",
         "type": "object"
       },
+      "CatalogSemaforo": {
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "integer"
+          },
+          "by_scheme": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Scheme",
+            "type": "object"
+          },
+          "in_loss": {
+            "title": "In Loss",
+            "type": "integer"
+          },
+          "publishable": {
+            "title": "Publishable",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "publishable",
+          "blocked",
+          "in_loss",
+          "by_scheme"
+        ],
+        "title": "CatalogSemaforo",
+        "type": "object"
+      },
       "CatalogStats": {
         "description": "Conteos del cat\u00e1logo de productos (excluye soft-deleted).",
         "properties": {
@@ -3548,6 +3584,26 @@
           "products_blocked"
         ],
         "title": "CatalogStats",
+        "type": "object"
+      },
+      "CatalogSummaryResponse": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PriceResultJSON"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "semaforo": {
+            "$ref": "#/components/schemas/CatalogSemaforo"
+          }
+        },
+        "required": [
+          "semaforo",
+          "rows"
+        ],
+        "title": "CatalogSummaryResponse",
         "type": "object"
       },
       "CdcProductEvent": {
@@ -11324,6 +11380,16 @@
         "title": "FinancialEntryOut",
         "type": "object"
       },
+      "FulfillmentScheme": {
+        "description": "Generic fulfillment category, channel-independent.\n\nCANAL_FULL      \u2192 FBA (Amazon) / FBN (Noon): channel stores + ships.\nCANAL_LASTMILE  \u2192 Easy Ship: MT stores, channel ships last mile.\nMERCHANT_MANAGED \u2192 Self-Ship / FBM: MT stores and ships.",
+        "enum": [
+          "canal_full",
+          "canal_lastmile",
+          "merchant_managed"
+        ],
+        "title": "FulfillmentScheme",
+        "type": "string"
+      },
       "FxRevalResult": {
         "properties": {
           "accounts_revalued": {
@@ -16972,6 +17038,22 @@
         "title": "O2CKpisOut",
         "type": "object"
       },
+      "OptimizeResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PriceResultJSON"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "OptimizeResponse",
+        "type": "object"
+      },
       "OutboundDeliveryCreate": {
         "properties": {
           "line_so_line_ids": {
@@ -19681,6 +19763,92 @@
           "updated_at"
         ],
         "title": "PriceResponse",
+        "type": "object"
+      },
+      "PriceResultJSON": {
+        "description": "JSON-friendly serialization of PricingEngine.PriceResult.",
+        "properties": {
+          "benefit_per_unit_aed": {
+            "title": "Benefit Per Unit Aed",
+            "type": "number"
+          },
+          "ceiling_aed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ceiling Aed"
+          },
+          "cost_op_aed": {
+            "title": "Cost Op Aed",
+            "type": "number"
+          },
+          "fulfillment_scheme": {
+            "$ref": "#/components/schemas/FulfillmentScheme"
+          },
+          "is_publishable": {
+            "title": "Is Publishable",
+            "type": "boolean"
+          },
+          "margin_pct": {
+            "title": "Margin Pct",
+            "type": "number"
+          },
+          "margin_to_ceiling_pct": {
+            "title": "Margin To Ceiling Pct",
+            "type": "number"
+          },
+          "roi_pct": {
+            "title": "Roi Pct",
+            "type": "number"
+          },
+          "scheme_label": {
+            "title": "Scheme Label",
+            "type": "string"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel"
+          },
+          "selling_price_aed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selling Price Aed"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "string"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "selling_model",
+          "fulfillment_scheme",
+          "scheme_label",
+          "margin_pct",
+          "cost_op_aed",
+          "selling_price_aed",
+          "ceiling_aed",
+          "benefit_per_unit_aed",
+          "roi_pct",
+          "margin_to_ceiling_pct",
+          "is_publishable",
+          "signal"
+        ],
+        "title": "PriceResultJSON",
         "type": "object"
       },
       "PriceReviseRequest": {
@@ -23109,6 +23277,43 @@
           }
         },
         "title": "ProductPatch",
+        "type": "object"
+      },
+      "ProductPriceResponse": {
+        "properties": {
+          "all_schemes": {
+            "items": {
+              "$ref": "#/components/schemas/PriceResultJSON"
+            },
+            "title": "All Schemes",
+            "type": "array"
+          },
+          "best_scheme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceResultJSON"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_margin_pct": {
+            "title": "Effective Margin Pct",
+            "type": "number"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "effective_margin_pct",
+          "best_scheme",
+          "all_schemes"
+        ],
+        "title": "ProductPriceResponse",
         "type": "object"
       },
       "ProductReleaseCreate": {
@@ -52748,6 +52953,96 @@
         ]
       }
     },
+    "/api/v1/pricing/{channel_code}/catalog": {
+      "get": {
+        "description": "Return price analysis for the full catalog with sem\u00e1foro summary.",
+        "operationId": "getCatalogSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          },
+          {
+            "in": "query",
+            "name": "family_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Family Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Catalog Summary",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
     "/api/v1/pricing/{channel_code}/fee-params": {
       "patch": {
         "description": "Update channel-specific fee parameters (commission, VAT, advertising, returns\u2026).",
@@ -53031,6 +53326,113 @@
         ]
       }
     },
+    "/api/v1/pricing/{channel_code}/optimize": {
+      "post": {
+        "description": "Preview the best scheme+margin per product. Does NOT persist.\n\nPERFORMANCE: CPU-bound. For catalogs >50 SKUs, consider a Celery task.",
+        "operationId": "optimizeCatalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Optimize Catalog",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/optimize/apply": {
+      "post": {
+        "description": "Persist optimization result as per-SKU margin overrides.",
+        "operationId": "applyOptimization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Optimization",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
     "/api/v1/pricing/{channel_code}/params": {
       "get": {
         "description": "Return route + fee + scheme params for this channel.",
@@ -53076,6 +53478,88 @@
           }
         ],
         "summary": "Channel pricing config (route + fees + schemes)",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/product/{sku}": {
+      "get": {
+        "description": "Calculate price for one SKU across all schemes + best.",
+        "operationId": "getProductPrice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sku",
+            "required": true,
+            "schema": {
+              "title": "Sku",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          },
+          {
+            "in": "query",
+            "name": "margin_pct",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Margin Pct"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPriceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Product Price",
         "tags": [
           "channel-pricing"
         ]

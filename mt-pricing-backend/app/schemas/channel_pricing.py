@@ -186,9 +186,56 @@ class ScenarioRead(BaseModel):
     label: str | None
 
 
+# ── Pricing calculation results ───────────────────────────────────────
+
+
+class PriceResultJSON(BaseModel):
+    """JSON-friendly serialization of PricingEngine.PriceResult."""
+
+    sku: str
+    selling_model: SellingModel
+    fulfillment_scheme: FulfillmentScheme
+    scheme_label: str
+    margin_pct: float
+    cost_op_aed: float
+    selling_price_aed: float | None
+    ceiling_aed: float | None  # null when ceiling is Infinity (MARGIN_FLOOR basis) or 0 (infeasible)
+    benefit_per_unit_aed: float
+    roi_pct: float
+    margin_to_ceiling_pct: float
+    is_publishable: bool
+    signal: str  # PÉRDIDA | FRÁGIL | FINO | ÓPTIMO | EXCELENTE
+
+
+class ProductPriceResponse(BaseModel):
+    sku: str
+    effective_margin_pct: float
+    best_scheme: PriceResultJSON | None
+    all_schemes: list[PriceResultJSON]
+
+
+class CatalogSemaforo(BaseModel):
+    total: int
+    publishable: int
+    blocked: int
+    in_loss: int
+    by_scheme: dict[str, int]  # {scheme_value: count}
+
+
+class CatalogSummaryResponse(BaseModel):
+    semaforo: CatalogSemaforo
+    rows: list[PriceResultJSON]
+
+
+class OptimizeResponse(BaseModel):
+    results: list[PriceResultJSON]
+
+
 __all__ = [
     "CatalogImportResult",
     "CatalogImportRow",
+    "CatalogSemaforo",
+    "CatalogSummaryResponse",
     "ChannelFeeParamsRead",
     "ChannelFeeParamsUpdate",
     "ChannelProductLogisticsRead",
@@ -199,6 +246,9 @@ __all__ = [
     "MarginOverrideUpsert",
     "MarginTargetRead",
     "MarginTargetUpsert",
+    "OptimizeResponse",
+    "PriceResultJSON",
+    "ProductPriceResponse",
     "ScenarioRead",
     "TradeRouteParamsRead",
     "TradeRouteParamsUpdate",

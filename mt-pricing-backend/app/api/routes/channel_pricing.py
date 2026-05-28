@@ -39,6 +39,8 @@ from app.db.models.product import Product
 from app.db.models.vocabularies import Family
 from app.db.models.user import User
 from app.schemas.channel_pricing import (
+    CatalogSemaforo,
+    CatalogSummaryResponse,
     ChannelFeeParamsRead,
     ChannelFeeParamsUpdate,
     ChannelSchemeParamsRead,
@@ -46,6 +48,9 @@ from app.schemas.channel_pricing import (
     MarginOverrideUpsert,
     MarginTargetRead,
     MarginTargetUpsert,
+    OptimizeResponse,
+    PriceResultJSON,
+    ProductPriceResponse,
     TradeRouteParamsRead,
     TradeRouteParamsUpdate,
 )
@@ -416,6 +421,10 @@ def _price_result_to_dict(r) -> dict:
         "selling_price_aed": (
             float(r.selling_price_aed) if r.selling_price_aed != inf else None
         ),
+        # ceiling_aed=null means EITHER:
+        # - Decimal("Infinity") (MARGIN_FLOOR basis: no PVP catalog reference)
+        # - Decimal("0") (infeasible result placeholder)
+        # Frontend should use `signal` and `is_publishable` as canonical indicators.
         "ceiling_aed": (
             float(r.ceiling_aed)
             if r.ceiling_aed not in (inf, Decimal("0"))
@@ -436,6 +445,7 @@ def _price_result_to_dict(r) -> dict:
 
 @router.get(
     "/product/{sku}",
+    response_model=ProductPriceResponse,
     operation_id="getProductPrice",
     dependencies=[Depends(require_permissions("prices:read"))],
 )
@@ -445,7 +455,7 @@ async def get_product_price(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     selling_model: SellingModel = Query(default=SellingModel.B2C),
     margin_pct: Optional[float] = None,
-) -> dict:
+) -> ProductPriceResponse:
     """Calculate price for one SKU across all schemes + best."""
     channel_id = await _resolve_channel_id(channel_code, session)
     loader = ParameterLoader(session)
@@ -479,12 +489,12 @@ async def get_product_price(
     else:
         best = ChannelOptimizer.best_scheme_b2b(product, route, fees, schemes, m)
 
-    return {
-        "sku": sku,
-        "effective_margin_pct": float(m),
-        "best_scheme": _price_result_to_dict(best) if best else None,
-        "all_schemes": [_price_result_to_dict(r) for r in results],
-    }
+    return ProductPriceResponse(
+        sku=sku,
+        effective_margin_pct=float(m),
+        best_scheme=PriceResultJSON(**_price_result_to_dict(best)) if best else None,
+        all_schemes=[PriceResultJSON(**_price_result_to_dict(r)) for r in results],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -494,6 +504,7 @@ async def get_product_price(
 
 @router.get(
     "/catalog",
+    response_model=CatalogSummaryResponse,
     operation_id="getCatalogSummary",
     dependencies=[Depends(require_permissions("prices:read"))],
 )
@@ -501,9 +512,9 @@ async def get_catalog_summary(
     channel_code: str,
     session: Annotated[AsyncSession, Depends(get_db_session)],
     selling_model: SellingModel = Query(default=SellingModel.B2C),
-    family_id: Optional[str] = None,
+    family_id: Optional[uuid.UUID] = None,
     signal: Optional[str] = None,
-) -> dict:
+) -> CatalogSummaryResponse:
     """Return price analysis for the full catalog with semáforo summary."""
     channel_id = await _resolve_channel_id(channel_code, session)
     loader = ParameterLoader(session)
@@ -511,7 +522,7 @@ async def get_catalog_summary(
     products = await loader.load_product_data(channel_id)
 
     if family_id:
-        products = [p for p in products if p.family_id == family_id]
+        products = [p for p in products if p.family_id == str(family_id)]
 
     skus = [p.sku for p in products]
     margins = await loader.load_effective_margins(channel_id, selling_model, skus)
@@ -528,25 +539,25 @@ async def get_catalog_summary(
     if signal:
         results = [r for r in results if r.signal == signal.upper()]
 
-    rows = [_price_result_to_dict(r) for r in results]
+    rows = [PriceResultJSON(**_price_result_to_dict(r)) for r in results]
     publishable = sum(1 for r in results if r.is_publishable)
     in_loss = sum(1 for r in results if r.signal == "PÉRDIDA")
 
-    return {
-        "semaforo": {
-            "total": len(results),
-            "publishable": publishable,
-            "blocked": len(results) - publishable,
-            "in_loss": in_loss,
-            "by_scheme": {
+    return CatalogSummaryResponse(
+        semaforo=CatalogSemaforo(
+            total=len(results),
+            publishable=publishable,
+            blocked=len(results) - publishable,
+            in_loss=in_loss,
+            by_scheme={
                 scheme.value: sum(
                     1 for r in results if r.fulfillment_scheme == scheme
                 )
                 for scheme in FulfillmentScheme
             },
-        },
-        "rows": rows,
-    }
+        ),
+        rows=rows,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -556,6 +567,7 @@ async def get_catalog_summary(
 
 @router.post(
     "/optimize",
+    response_model=OptimizeResponse,
     operation_id="optimizeCatalog",
     dependencies=[Depends(require_permissions("prices:read"))],
 )
@@ -563,7 +575,7 @@ async def optimize_catalog(
     channel_code: str,
     session: Annotated[AsyncSession, Depends(get_db_session)],
     selling_model: SellingModel = Query(default=SellingModel.B2C),
-) -> dict:
+) -> OptimizeResponse:
     """Preview the best scheme+margin per product. Does NOT persist.
 
     PERFORMANCE: CPU-bound. For catalogs >50 SKUs, consider a Celery task.
@@ -582,7 +594,9 @@ async def optimize_catalog(
             products, route, fees, schemes
         )
 
-    return {"results": [_price_result_to_dict(r) for r in results]}
+    return OptimizeResponse(
+        results=[PriceResultJSON(**_price_result_to_dict(r)) for r in results]
+    )
 
 
 # ---------------------------------------------------------------------------
