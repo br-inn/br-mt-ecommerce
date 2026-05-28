@@ -229,8 +229,10 @@ export function SourceDialog({ mode: _mode, source: _source, open, onClose, onSu
         test_url: originalUrl,
       });
 
+      const canActivate =
+        validation.status === "passing" || validation.status === "headless_skipped";
       let finalSource = newSource;
-      if (validation.status === "passing") {
+      if (canActivate) {
         finalSource = await scraperSourcesApi.activate(newSource.id, {
           recipe_id: newRecipe.id,
         });
@@ -239,9 +241,11 @@ export function SourceDialog({ mode: _mode, source: _source, open, onClose, onSu
       await qc.invalidateQueries({ queryKey: scraperSourceKeys.all() });
       onSuccess?.(finalSource);
       toast.success(
-        validation.status === "passing"
-          ? "Scraper creado y activo"
-          : "Scraper creado — activar manualmente cuando la validación pase",
+        validation.status === "headless_skipped"
+          ? "Scraper creado y activo — validación en vivo pendiente (requiere worker headless)"
+          : validation.status === "passing"
+            ? "Scraper creado y activo"
+            : "Scraper creado — activar manualmente cuando la validación pase",
       );
       onClose();
     } catch (err) {

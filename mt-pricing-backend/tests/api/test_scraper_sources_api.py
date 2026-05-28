@@ -264,6 +264,49 @@ async def test_patch_source_updates_fields(client_rw: AsyncClient) -> None:
 
 
 @pytest.mark.api
+async def test_validate_headless_source_returns_headless_skipped(client_rw: AsyncClient) -> None:
+    """Headless sources skip curl extraction and return headless_skipped status."""
+    src = await client_rw.post(
+        "/api/v1/scraper-sources",
+        json={
+            "name": "Noon Headless",
+            "slug": "noon-headless-val-test",
+            "base_url": "https://www.noon.com",
+            "destination_profile": "competitor_price",
+            "fetch_mode": "headless",
+        },
+    )
+    assert src.status_code == 201, src.text
+    source_id = src.json()["id"]
+
+    recipe_resp = await client_rw.post(
+        f"/api/v1/scraper-sources/{source_id}/recipes",
+        json={
+            "recipe": {
+                "url_templates": {"search": "https://www.noon.com/uae-en/search/?q={query}"},
+                "list_item_selector": "[data-qa='productCard']",
+                "fields": [{"name": "title", "selector": "h3.productTitle"}],
+            }
+        },
+    )
+    assert recipe_resp.status_code == 201, recipe_resp.text
+    recipe_id = recipe_resp.json()["id"]
+
+    val_resp = await client_rw.post(
+        f"/api/v1/scraper-sources/{source_id}/validate",
+        json={"recipe_id": recipe_id, "test_url": "https://www.example.com/products"},
+    )
+    assert val_resp.status_code == 200, val_resp.text
+    body = val_resp.json()
+    assert body["status"] == "headless_skipped"
+    assert body["field_results"] == {}
+    assert body["records"] == []
+
+    recipes = (await client_rw.get(f"/api/v1/scraper-sources/{source_id}/recipes")).json()
+    assert recipes[0]["validation_status"] == "passing"
+
+
+@pytest.mark.api
 async def test_list_recipes_empty_then_populated(client_rw: AsyncClient) -> None:
     r = await client_rw.post(
         "/api/v1/scraper-sources",

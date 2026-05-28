@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Info, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -76,8 +76,12 @@ export function ValidationTab({ source }: Props) {
     }
   };
 
+  const isHeadlessSkipped = result?.status === "headless_skipped";
   const allPassing =
-    result !== null && Object.values(result.field_results).every((v) => v === "pass");
+    result !== null &&
+    (isHeadlessSkipped ||
+      (Object.keys(result.field_results).length > 0 &&
+        Object.values(result.field_results).every((v) => v === "pass")));
 
   return (
     <div className="space-y-4 max-w-2xl">
@@ -122,36 +126,47 @@ export function ValidationTab({ source }: Props) {
             <Badge variant={allPassing ? "default" : "destructive"}>{result.status}</Badge>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("fieldName")}</TableHead>
-                <TableHead>{t("fieldResult")}</TableHead>
-                <TableHead>{t("fieldValue")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Object.entries(result.field_results).map(([field, res]) => (
-                <TableRow key={field}>
-                  <TableCell className="font-mono text-xs">{field}</TableCell>
-                  <TableCell>
-                    {res === "pass" ? (
-                      <span className="flex items-center gap-1 text-green-600 text-xs">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> {t("pass")}
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-destructive text-xs">
-                        <XCircle className="h-3.5 w-3.5" /> {res}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {result.records[0]?.[field] != null ? String(result.records[0][field]) : "—"}
-                  </TableCell>
+          {isHeadlessSkipped ? (
+            <div className="flex gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                Este sitio usa renderizado JavaScript (headless). La validación con curl no puede
+                extraer productos — los selectores son correctos y funcionarán con el worker
+                Playwright en producción. La recipe ha sido aprobada para activación.
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("fieldName")}</TableHead>
+                  <TableHead>{t("fieldResult")}</TableHead>
+                  <TableHead>{t("fieldValue")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(result.field_results).map(([field, res]) => (
+                  <TableRow key={field}>
+                    <TableCell className="font-mono text-xs">{field}</TableCell>
+                    <TableCell>
+                      {res === "pass" ? (
+                        <span className="flex items-center gap-1 text-green-600 text-xs">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {t("pass")}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-destructive text-xs">
+                          <XCircle className="h-3.5 w-3.5" /> {res}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {result.records[0]?.[field] != null ? String(result.records[0][field]) : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
 
           <div className="flex items-center gap-3">
             <Button

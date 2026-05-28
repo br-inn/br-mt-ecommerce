@@ -39,6 +39,17 @@ def test_detect_mode_headless_none_body():
     assert _detect_mode(html, "http://example.com") == "headless"
 
 
+def test_detect_mode_headless_rsc_nextjs():
+    """Next.js RSC pages have rich nav/header text but products render client-side."""
+    html = (
+        "<html><body>"
+        + "<nav>Product navigation home categories</nav>" * 15
+        + "<script>self.__next_f.push([1,'some RSC payload'])</script>"
+        + "</body></html>"
+    )
+    assert _detect_mode(html, "http://www.noon.com") == "headless"
+
+
 @pytest.mark.integration
 @pytest.mark.skipif(
     not os.environ.get("ANTHROPIC_API_KEY"),
