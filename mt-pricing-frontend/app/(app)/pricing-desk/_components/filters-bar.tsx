@@ -8,6 +8,8 @@ interface Props {
   onFamilyChange: (id: string | undefined) => void;
   signal?: string;
   onSignalChange: (s: string | undefined) => void;
+  searchSku: string;
+  onSearchSkuChange: (value: string) => void;
   totalShown: number;
   totalAll: number;
 }
@@ -20,6 +22,8 @@ export function FiltersBar({
   onFamilyChange,
   signal,
   onSignalChange,
+  searchSku,
+  onSearchSkuChange,
   totalShown,
   totalAll,
 }: Props) {
@@ -64,12 +68,25 @@ export function FiltersBar({
         </select>
       </label>
 
-      {(familyId || signal) && (
+      <label className="flex items-center gap-2">
+        <span className="mt-mono text-[10px] uppercase tracking-wider text-mt-ink-3">SKU</span>
+        <input
+          type="search"
+          value={searchSku}
+          onChange={(e) => onSearchSkuChange(e.target.value)}
+          placeholder="Buscar SKU…"
+          className="mt-mono rounded border border-mt-border bg-white px-2 py-1 text-xs text-mt-ink placeholder:text-mt-ink-4 focus:border-mt-brand focus:outline-none focus:ring-1 focus:ring-mt-brand-soft"
+          aria-label="Buscar por SKU"
+        />
+      </label>
+
+      {(familyId || signal || searchSku) && (
         <button
           type="button"
           onClick={() => {
             onFamilyChange(undefined);
             onSignalChange(undefined);
+            onSearchSkuChange("");
           }}
           className="mt-mono rounded border border-mt-border bg-mt-surface-3 px-2 py-1 text-[10px] uppercase tracking-wider text-mt-brand-deep hover:bg-mt-ink hover:text-white"
         >

@@ -185,6 +185,25 @@ class ScenarioRead(BaseModel):
     label: str | None
 
 
+# ── Pricing Scenarios A/B ─────────────────────────────────────────────
+
+
+class ScenarioSaveRequest(BaseModel):
+    selling_model: SellingModel = SellingModel.B2C
+    slot: str = Field(pattern="^[AB]$")
+    label: str | None = None
+
+
+class ScenarioSummary(BaseModel):
+    id: UUID
+    slot: str
+    label: str | None
+    snapshot_at: str
+    selling_model: SellingModel
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ── Pricing calculation results ───────────────────────────────────────
 
 
@@ -232,6 +251,31 @@ class OptimizeResponse(BaseModel):
     results: list[PriceResultJSON]
 
 
+# ── Propose selected ──────────────────────────────────────────────────
+
+
+class ProposeSelectedRequest(BaseModel):
+    skus: list[str] = Field(min_length=1, max_length=500)
+    selling_model: SellingModel = SellingModel.B2C
+    notes: str | None = None
+
+
+class ProposeSelectedItemResult(BaseModel):
+    sku: str
+    status: str  # "proposed" | "skipped" | "error"
+    price_id: UUID | None = None
+    selling_price_aed: float | None = None
+    reason: str | None = None
+
+
+class ProposeSelectedResult(BaseModel):
+    total_requested: int
+    proposed: int
+    skipped: int
+    errors: int
+    items: list[ProposeSelectedItemResult]
+
+
 __all__ = [
     "CatalogImportResult",
     "CatalogImportRow",
@@ -250,7 +294,12 @@ __all__ = [
     "OptimizeResponse",
     "PriceResultJSON",
     "ProductPriceResponse",
+    "ProposeSelectedItemResult",
+    "ProposeSelectedRequest",
+    "ProposeSelectedResult",
     "ScenarioRead",
+    "ScenarioSaveRequest",
+    "ScenarioSummary",
     "TradeRouteParamsRead",
     "TradeRouteParamsUpdate",
 ]

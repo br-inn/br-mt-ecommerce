@@ -5,7 +5,9 @@ import { PricingHeader } from "./_components/pricing-header";
 import { Semaforo } from "./_components/semaforo";
 import { FiltersBar } from "./_components/filters-bar";
 import { CatalogTable } from "./_components/catalog-table";
+import { ProposeButton } from "./_components/propose-button";
 import { SidePanel } from "./_components/side-panel";
+import { SchemeComparatorModal } from "./_components/scheme-comparator-modal";
 import { useCatalogSummary } from "@/lib/hooks/pricing-desk/use-catalog-summary";
 import type { SellingModel } from "@/lib/api/endpoints/pricing-desk";
 
@@ -14,6 +16,31 @@ export default function PricingDeskPage() {
   const [sellingModel, setSellingModel] = useState<SellingModel>("b2c");
   const [familyId, setFamilyId] = useState<string | undefined>();
   const [signal, setSignal] = useState<string | undefined>();
+  const [searchSku, setSearchSku] = useState("");
+  const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+  const [comparatorSku, setComparatorSku] = useState<string | null>(null);
+
+  const toggleSku = (sku: string) => {
+    setSelectedSkus((prev) => {
+      const next = new Set(prev);
+      if (next.has(sku)) next.delete(sku);
+      else next.add(sku);
+      return next;
+    });
+  };
+
+  const toggleAll = (allCurrentlyShown: string[], selectAll: boolean) => {
+    setSelectedSkus((prev) => {
+      const next = new Set(prev);
+      for (const s of allCurrentlyShown) {
+        if (selectAll) next.add(s);
+        else next.delete(s);
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedSkus(new Set());
 
   const filters = {
     ...(familyId !== undefined && { familyId }),
@@ -26,6 +53,19 @@ export default function PricingDeskPage() {
     filters,
   );
 
+  // Client-side filtered rows: SKU search + defensive signal filter
+  // (backend also filters by signal, but this guards against encoding mismatches)
+  const filteredRows = (data?.rows ?? []).filter((r) => {
+    if (
+      searchSku.trim() !== "" &&
+      !r.sku.toLowerCase().includes(searchSku.trim().toLowerCase())
+    ) {
+      return false;
+    }
+    if (signal && r.signal !== signal) return false;
+    return true;
+  });
+
   return (
     <>
       <PricingHeader
@@ -34,6 +74,8 @@ export default function PricingDeskPage() {
           setChannelCode(c);
           setFamilyId(undefined);
           setSignal(undefined);
+          setSearchSku("");
+          setSelectedSkus(new Set());
         }}
         sellingModel={sellingModel}
         onSellingModelChange={setSellingModel}
@@ -50,8 +92,16 @@ export default function PricingDeskPage() {
             onFamilyChange={setFamilyId}
             {...(signal !== undefined && { signal })}
             onSignalChange={setSignal}
-            totalShown={data?.rows.length ?? 0}
+            searchSku={searchSku}
+            onSearchSkuChange={setSearchSku}
+            totalShown={filteredRows.length}
             totalAll={data?.semaforo.total ?? 0}
+          />
+          <ProposeButton
+            channelCode={channelCode}
+            sellingModel={sellingModel}
+            selectedSkus={selectedSkus}
+            onProposed={clearSelection}
           />
 
           <main className="flex-1 overflow-auto px-4 pb-6">
@@ -67,12 +117,22 @@ export default function PricingDeskPage() {
               <CatalogTable
                 channelCode={channelCode}
                 sellingModel={sellingModel}
-                rows={data.rows}
+                rows={filteredRows}
+                selectedSkus={selectedSkus}
+                onToggleSku={toggleSku}
+                onToggleAll={toggleAll}
+                onOpenComparator={setComparatorSku}
               />
             )}
           </main>
         </div>
       </div>
+      <SchemeComparatorModal
+        channelCode={channelCode}
+        sellingModel={sellingModel}
+        sku={comparatorSku}
+        onClose={() => setComparatorSku(null)}
+      />
     </>
   );
 }

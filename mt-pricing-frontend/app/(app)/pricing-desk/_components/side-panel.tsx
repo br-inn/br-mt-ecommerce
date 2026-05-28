@@ -2,7 +2,9 @@
 
 import { CostParamsSection } from "./cost-params-section";
 import { FamilyMarginsSection } from "./family-margins-section";
+import { ImportExcelSection } from "./import-excel-section";
 import { OptimizeSection } from "./optimize-section";
+import { ScenariosSection } from "./scenarios-section";
 import type { SellingModel } from "@/lib/api/endpoints/pricing-desk";
 
 interface Props {
@@ -19,6 +21,8 @@ export function SidePanel({ channelCode, sellingModel }: Props) {
         sellingModel={sellingModel}
       />
       <OptimizeSection channelCode={channelCode} sellingModel={sellingModel} />
+      <ScenariosSection channelCode={channelCode} sellingModel={sellingModel} />
+      <ImportExcelSection channelCode={channelCode} />
     </aside>
   );
 }
