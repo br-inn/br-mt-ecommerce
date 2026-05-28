@@ -2,7 +2,10 @@
 
 Requires ANTHROPIC_API_KEY env var for integration tests.
 """
+
 from __future__ import annotations
+
+import os
 
 import pytest
 
@@ -37,6 +40,10 @@ def test_detect_mode_headless_none_body():
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="requires ANTHROPIC_API_KEY",
+)
 async def test_analyze_returns_required_fields(html_fixture_server: str):
     """Claude analyzes the generic_serp.html fixture and proposes canonical fields."""
     service = ScraperAgentService()
@@ -58,6 +65,10 @@ async def test_analyze_returns_required_fields(html_fixture_server: str):
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="requires ANTHROPIC_API_KEY",
+)
 async def test_analyze_detects_headless_for_js_page(html_fixture_server: str):
     """js_heavy.html fixture has empty body — should be detected as headless."""
     service = ScraperAgentService()
@@ -67,6 +78,10 @@ async def test_analyze_detects_headless_for_js_page(html_fixture_server: str):
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="requires ANTHROPIC_API_KEY",
+)
 async def test_analyze_hint_returns_single_field(html_fixture_server: str):
     """When hint is set, Claude returns exactly one field."""
     service = ScraperAgentService()

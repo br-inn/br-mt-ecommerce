@@ -1,4 +1,5 @@
 """ScraperAgentService — analiza una URL y genera una receta de scraping via Claude Haiku."""
+
 from __future__ import annotations
 
 import json
@@ -192,14 +193,11 @@ class ScraperAgentService:
 
         warnings: list[str] = []
         if detected_mode in ("headless", "stealth"):
-            warnings.append(
-                f"Site requires {detected_mode} rendering — Playwright worker needed"
-            )
+            warnings.append(f"Site requires {detected_mode} rendering — Playwright worker needed")
         for fname in REQUIRED_FIELDS:
             if fname in recipe_field_names and field_conf.get(fname, 1.0) < 0.3:
                 warnings.append(
-                    f"Field '{fname}' found but low confidence "
-                    f"({field_conf[fname]:.0%})"
+                    f"Field '{fname}' found but low confidence ({field_conf[fname]:.0%})"
                 )
 
         return AnalysisResult(

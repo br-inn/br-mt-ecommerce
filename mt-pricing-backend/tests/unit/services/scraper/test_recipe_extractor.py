@@ -1,4 +1,5 @@
 """Unit tests for recipe_extractor and recipe_transforms — pure logic, no IO."""
+
 from __future__ import annotations
 
 import pytest
@@ -147,14 +148,14 @@ def test_coerce_type_bool_falsy():
 
 
 def test_apply_transform_regex_capture():
-    result = apply_transform({"op": "regex_capture", "pattern": r"/products/(\d+)"}, "/products/123")
+    result = apply_transform(
+        {"op": "regex_capture", "pattern": r"/products/(\d+)"}, "/products/123"
+    )
     assert result == "123"
 
 
 def test_apply_transform_regex_no_match_returns_empty():
-    result = apply_transform(
-        {"op": "regex_capture", "pattern": r"NOMATCH(\d+)"}, "/products/123"
-    )
+    result = apply_transform({"op": "regex_capture", "pattern": r"NOMATCH(\d+)"}, "/products/123")
     assert result == ""
 
 

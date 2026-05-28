@@ -1,4 +1,5 @@
 """Integration tests for POST /api/v1/scraper-sources/analyze."""
+
 from __future__ import annotations
 
 import os
@@ -114,9 +115,7 @@ def _emit_jwt(*, sub: str, email: str) -> str:
     )
 
 
-async def _seed_user_with_perms(
-    session: AsyncSession, perms_codes: list[str]
-) -> tuple[UUID, str]:
+async def _seed_user_with_perms(session: AsyncSession, perms_codes: list[str]) -> tuple[UUID, str]:
     from app.db.models.user import Permission, Role, RolePermission, User
 
     perm_ids = []

@@ -29,9 +29,7 @@ _NEW_VALUES = ["nut", "packing", "bonnet", "insert", "spring", "washer", "o_ring
 
 def upgrade() -> None:
     for val in _NEW_VALUES:
-        op.execute(
-            f"ALTER TYPE component_kind ADD VALUE IF NOT EXISTS '{val}'"
-        )
+        op.execute(f"ALTER TYPE component_kind ADD VALUE IF NOT EXISTS '{val}'")
 
 
 def downgrade() -> None:

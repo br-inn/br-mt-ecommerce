@@ -216,7 +216,8 @@ class FichaEnrichmentApplier:
         # the identity map with these rows. Core DELETE removes them from DB but not
         # from the map — expunge them so subsequent session.add() doesn't conflict.
         stale = [
-            obj for obj in self._session.identity_map.values()
+            obj
+            for obj in self._session.identity_map.values()
             if isinstance(obj, ProductMaterial) and obj.product_sku == sku
         ]
         for obj in stale:
@@ -228,16 +229,18 @@ class FichaEnrichmentApplier:
             component = m.component if m.component in self._VALID_COMPONENT_KINDS else "other"
             seen[(component, m.position)] = m
         for (component, position), m in seen.items():
-            self._session.add(ProductMaterial(
-                product_sku=sku,
-                component=component,
-                position=position,
-                material=m.material,
-                observations=m.observations,
-                material_grade=getattr(m, "material_grade", None),
-                material_standard=getattr(m, "material_standard", None),
-                surface_treatment=getattr(m, "surface_treatment", None),
-            ))
+            self._session.add(
+                ProductMaterial(
+                    product_sku=sku,
+                    component=component,
+                    position=position,
+                    material=m.material,
+                    observations=m.observations,
+                    material_grade=getattr(m, "material_grade", None),
+                    material_standard=getattr(m, "material_standard", None),
+                    surface_treatment=getattr(m, "surface_treatment", None),
+                )
+            )
         await self._session.flush()
 
     async def _upsert_dimensions_table(self, sku: str, dimensions: list[Any]) -> None:

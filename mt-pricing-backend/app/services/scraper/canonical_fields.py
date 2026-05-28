@@ -1,4 +1,5 @@
 """Schema canónico de campos para scrapers — todos los adapters deben alinearse a estos campos."""
+
 from __future__ import annotations
 
 import json
@@ -15,20 +16,24 @@ class CanonicalField:
 
 
 CANONICAL_FIELDS: list[CanonicalField] = [
-    CanonicalField("external_id", True, "str",
-                   "Unique product ID on that site (ASIN, SKU, URL path segment)"),
+    CanonicalField(
+        "external_id", True, "str", "Unique product ID on that site (ASIN, SKU, URL path segment)"
+    ),
     CanonicalField("title", True, "str", "Product name"),
-    CanonicalField("price_aed", True, "currency",
-                   "Current price in AED (numeric only, no currency symbol)"),
+    CanonicalField(
+        "price_aed", True, "currency", "Current price in AED (numeric only, no currency symbol)"
+    ),
     CanonicalField("brand", False, "str", "Brand or manufacturer name"),
     CanonicalField("image_url", False, "str", "Main product image URL (absolute)"),
     CanonicalField("delivery_text", False, "str", "Delivery or shipping info text"),
     CanonicalField("rating", False, "float", "Numeric rating score (e.g. 4.5)"),
     CanonicalField("review_count", False, "int", "Number of customer reviews"),
-    CanonicalField("availability", False, "str",
-                   "Stock status text (e.g. 'In Stock', 'Out of Stock')"),
-    CanonicalField("original_price_aed", False, "currency",
-                   "Original price before discount in AED"),
+    CanonicalField(
+        "availability", False, "str", "Stock status text (e.g. 'In Stock', 'Out of Stock')"
+    ),
+    CanonicalField(
+        "original_price_aed", False, "currency", "Original price before discount in AED"
+    ),
 ]
 
 REQUIRED_FIELDS: set[str] = {f.name for f in CANONICAL_FIELDS if f.required}

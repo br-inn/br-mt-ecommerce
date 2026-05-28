@@ -1,4 +1,5 @@
 """End-to-end integration: analyze → create source → recipe → validate → activate."""
+
 from __future__ import annotations
 
 import os
@@ -170,14 +171,16 @@ async def flow_client(postgres_container: str) -> AsyncIterator[AsyncClient]:
         app.dependency_overrides.pop(get_db_session, None)
         # Clean up test sources created during this run (unique slug prefix)
         async with sm() as cleanup:
-            await cleanup.execute(
-                text("DELETE FROM scraper_sources WHERE slug LIKE 'test-site-%'")
-            )
+            await cleanup.execute(text("DELETE FROM scraper_sources WHERE slug LIKE 'test-site-%'"))
             await cleanup.commit()
         await engine.dispose()
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="requires ANTHROPIC_API_KEY",
+)
 async def test_full_wizard_flow(flow_client: AsyncClient, html_fixture_server: str) -> None:
     """Simulates the 3-step wizard: analyze → create source → recipe → validate → activate."""
     url = f"{html_fixture_server}/generic_serp.html"
