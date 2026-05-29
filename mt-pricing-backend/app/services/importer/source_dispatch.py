@@ -13,7 +13,7 @@ from app.services.importer.xml_parser import parse_xml_stream
 
 
 def is_xml_filename(filename: str | None) -> bool:
-    return bool(filename) and filename.lower().endswith(".xml")
+    return filename is not None and filename.lower().endswith(".xml")
 
 
 def parse_source(
