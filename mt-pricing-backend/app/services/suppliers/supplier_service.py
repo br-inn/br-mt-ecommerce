@@ -208,26 +208,3 @@ class SupplierService:
                 payload_diff=diff,
             )
         return sup
-
-    async def soft_delete_supplier(self, code: str, actor: User) -> Supplier:
-        """Setea ``active=false`` con audit. Mantiene la fila (VAT-compliance)."""
-        sup = await self.suppliers.get_by_code(code)
-        if sup is None:
-            raise SupplierNotFoundError(code)
-        if not sup.active:
-            return sup  # Idempotente.
-        before = _snapshot(sup)
-        sup.active = False
-        sup.updated_at = datetime.now(tz=UTC)
-        await self.session.flush()
-        await self.audit.record(
-            entity_type="supplier",
-            entity_id=sup.code,
-            action="supplier.deactivated",
-            actor_id=actor.id,
-            actor_email=actor.email,
-            before=before,
-            after=_snapshot(sup),
-            payload_diff={"active": {"from": True, "to": False}},
-        )
-        return sup
