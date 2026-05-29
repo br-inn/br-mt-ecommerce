@@ -28,6 +28,7 @@ def _parse_invoice_text(lines: list[str]) -> InvoiceParseResult:
     order_refs: list[str] = []
     parsed: list[InvoiceLine] = []
     errors: list[dict] = []
+    current_order: str | None = None
 
     for raw in lines:
         s = raw.strip()
@@ -40,8 +41,10 @@ def _parse_invoice_text(lines: list[str]) -> InvoiceParseResult:
             if m:
                 incoterms = m.group(1)
         m = _ORDER_RE.search(s)
-        if m and m.group(1) not in order_refs:
-            order_refs.append(m.group(1))
+        if m:
+            current_order = m.group(1)
+            if current_order not in order_refs:
+                order_refs.append(current_order)
 
         m = _INTRASTAT_RE.search(s)
         if m and parsed and parsed[-1].intrastat_code is None:
@@ -58,6 +61,7 @@ def _parse_invoice_text(lines: list[str]) -> InvoiceParseResult:
                     description=m.group("desc").strip(),
                     quantity=_num(m.group("qty")),
                     unit_price=_num(m.group("unit")),
+                    order_no=current_order,
                 )
             )
         except (InvalidOperation, ValueError) as e:

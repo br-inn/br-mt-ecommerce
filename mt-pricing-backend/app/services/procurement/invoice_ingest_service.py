@@ -7,6 +7,7 @@ from decimal import Decimal
 from sqlalchemy import select as _select
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.db.models.procurement import VendorInvoice
 from app.db.models.product import Product
@@ -34,7 +35,6 @@ class InvoiceIngestService:
         confirm: bool,
     ) -> InvoiceIngestResult:
         import_by_code = {ln.code: ln for ln in import_inv.lines}
-        order_no = commercial.order_refs[0] if commercial.order_refs else None
         result = InvoiceIngestResult()
 
         already: set[str] = set()
@@ -54,6 +54,13 @@ class InvoiceIngestService:
                 already.update((md or {}).get("codes", []))
 
         for line in commercial.lines:
+            # FIX 2: resolve po_number per line; fall back to single ref or error
+            po_number: str | None = line.order_no
+            if po_number is None:
+                if len(commercial.order_refs) == 1:
+                    po_number = commercial.order_refs[0]
+                # else: po_number stays None → error recorded below
+
             imp = import_by_code.get(line.code)
             import_value = imp.unit_price if imp else Decimal("0")
             breakdown = build_actual_breakdown(line.unit_price, import_value, tariff_pct)
@@ -64,10 +71,15 @@ class InvoiceIngestService:
                 import_value_eur=import_value,
                 duty_eur=duty,
                 qty=line.quantity,
-                po_number=order_no,
+                po_number=po_number,
                 po_action="matched",
                 status="ok",
             )
+
+            # FIX 3: flag missing import line
+            if imp is None:
+                item.detail = "no matching import line; duty=0"
+
             if confirm and line.code in already:
                 item.status = "skipped"
                 result.skipped += 1
@@ -77,14 +89,16 @@ class InvoiceIngestService:
                 result.items.append(item)
                 continue
             try:
-                if order_no is None:
-                    raise ValueError("invoice has no Order No.")
-                po = await resolve_or_create_po(
+                if po_number is None:
+                    raise ValueError("cannot determine Order No. for line")
+                po, was_created = await resolve_or_create_po(
                     self._session,
-                    order_no,
+                    po_number,
                     [(line.code, line.quantity, line.unit_price)],
                 )
-                item.po_action = "matched" if po.status == "partial" else "created"
+                # FIX 4: set po_action from was_created, not from post-receipt status
+                item.po_action = "created" if was_created else "matched"
+                item.po_number = po_number
                 pol = await find_po_line(self._session, po.id, line.code)
                 if pol is None:
                     raise ValueError(f"no PO line for sku {line.code}")
@@ -112,33 +126,66 @@ class InvoiceIngestService:
                 result.errors += 1
             result.items.append(item)
 
-        if confirm and result.created and order_no is not None:
+        if confirm and result.created:
             import datetime as _dt
 
             from app.db.models.inventory import PurchaseOrder
 
-            po_row = (
-                await self._session.execute(
-                    _select(PurchaseOrder).where(PurchaseOrder.po_number == order_no)
-                )
-            ).scalar_one()
             ok_items = [i for i in result.items if i.status == "ok"]
-            total = sum(
+            ok_codes = [i.code for i in ok_items]
+            new_total = sum(
                 (Decimal(str(i.commercial_eur)) * Decimal(str(i.qty)) for i in ok_items),
                 Decimal("0"),
             )
-            self._session.add(
-                VendorInvoice(
-                    invoice_number=commercial.invoice_number or "",
-                    vendor_id="mt_spain",
-                    po_id=po_row.id,
-                    invoice_date=_dt.date.today(),
-                    total_amount=total,
-                    currency="EUR",
-                    status="pending",
-                    match_details={"codes": [i.code for i in ok_items]},
+
+            # FIX 1: upsert VendorInvoice — merge codes if row already exists
+            inv_number = commercial.invoice_number or ""
+            existing_vi = (
+                await self._session.execute(
+                    _select(VendorInvoice).where(VendorInvoice.invoice_number == inv_number)
                 )
-            )
+            ).scalar_one_or_none()
+
+            if existing_vi is not None:
+                # Merge new ok-codes into existing match_details (dedup)
+                md = existing_vi.match_details or {}
+                existing_codes: list[str] = md.get("codes", [])
+                merged = existing_codes + [c for c in ok_codes if c not in existing_codes]
+                md["codes"] = merged
+                existing_vi.match_details = md
+                existing_vi.total_amount = existing_vi.total_amount + new_total
+                flag_modified(existing_vi, "match_details")
+            else:
+                # Derive a representative PO id for the marker row.
+                # Use the PO of the first ok item (or the single order_ref if available).
+                first_po_number = next((i.po_number for i in ok_items if i.po_number), None) or (
+                    commercial.order_refs[0] if commercial.order_refs else None
+                )
+                po_row = None
+                if first_po_number:
+                    po_row = (
+                        await self._session.execute(
+                            _select(PurchaseOrder).where(PurchaseOrder.po_number == first_po_number)
+                        )
+                    ).scalar_one_or_none()
+
+                if po_row is None:
+                    # Fallback: skip VendorInvoice creation if no PO can be found
+                    await self._session.flush()
+                    return result
+
+                self._session.add(
+                    VendorInvoice(
+                        invoice_number=inv_number,
+                        vendor_id="mt_spain",
+                        po_id=po_row.id,
+                        invoice_date=_dt.date.today(),
+                        total_amount=new_total,
+                        currency="EUR",
+                        status="pending",
+                        match_details={"codes": ok_codes},
+                    )
+                )
             await self._session.flush()
 
         return result

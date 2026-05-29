@@ -20,16 +20,19 @@ async def resolve_or_create_po(
     session: AsyncSession,
     po_number: str,
     lines: list[tuple[str, Decimal, Decimal]],  # (sku, qty, unit_price_eur)
-) -> PurchaseOrder:
+) -> tuple[PurchaseOrder, bool]:
+    """Return (po, was_created). Raises ValueError for terminal PO statuses."""
     existing = (
         await session.execute(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number))
     ).scalar_one_or_none()
 
     repo = PurchaseOrderRepository(session)
     if existing is not None:
+        if existing.status in ("cancelled", "received"):
+            raise ValueError(f"PO {po_number} is {existing.status}, cannot receive")
         if existing.status == "draft":
             await repo.confirm(existing.id)
-        return existing
+        return existing, False
 
     po = await repo.create(
         PurchaseOrderCreate(
@@ -45,7 +48,7 @@ async def resolve_or_create_po(
         )
     )
     await repo.confirm(po.id)
-    return po
+    return po, True
 
 
 async def find_po_line(session: AsyncSession, po_id: object, sku: str) -> PurchaseOrderLine | None:
