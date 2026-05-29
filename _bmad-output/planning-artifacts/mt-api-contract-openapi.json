@@ -2485,6 +2485,26 @@
         "title": "Body_import_csv_api_v1_admin_price_calibration_import_csv_post",
         "type": "object"
       },
+      "Body_ingestInvoice": {
+        "properties": {
+          "commercial_pdf": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Commercial Pdf",
+            "type": "string"
+          },
+          "import_pdf": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Import Pdf",
+            "type": "string"
+          }
+        },
+        "required": [
+          "commercial_pdf",
+          "import_pdf"
+        ],
+        "title": "Body_ingestInvoice",
+        "type": "object"
+      },
       "Body_preview_ficha_enrich_api_v1_products__sku__ficha_enrich_preview_post": {
         "properties": {
           "file": {
@@ -13471,6 +13491,105 @@
           "customer_id"
         ],
         "title": "InvoiceCreate",
+        "type": "object"
+      },
+      "InvoiceIngestItem": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "commercial_eur": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Commercial Eur",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "duty_eur": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Duty Eur",
+            "type": "string"
+          },
+          "import_value_eur": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Import Value Eur",
+            "type": "string"
+          },
+          "po_action": {
+            "title": "Po Action",
+            "type": "string"
+          },
+          "po_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Number"
+          },
+          "qty": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Qty",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "commercial_eur",
+          "import_value_eur",
+          "duty_eur",
+          "qty",
+          "po_number",
+          "po_action",
+          "status"
+        ],
+        "title": "InvoiceIngestItem",
+        "type": "object"
+      },
+      "InvoiceIngestResult": {
+        "properties": {
+          "created": {
+            "default": 0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "errors": {
+            "default": 0,
+            "title": "Errors",
+            "type": "integer"
+          },
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/InvoiceIngestItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "skipped": {
+            "default": 0,
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "title": "InvoiceIngestResult",
         "type": "object"
       },
       "InvoiceLineCreate": {
@@ -48053,6 +48172,75 @@
         "tags": [
           "imports",
           "imports:datasheets"
+        ]
+      }
+    },
+    "/api/v1/imports/invoice": {
+      "post": {
+        "description": "Ingest a commercial invoice + import invoice pair to cost records.\n\n- **commercial_pdf**: MT commercial invoice PDF (real cost per SKU).\n- **import_pdf**: customs import invoice PDF (intrastat values + duties).\n- **tariff_pct**: applicable tariff percentage (default 5 %).\n- **confirm**: dry-run when False (default); write to DB when True.",
+        "operationId": "ingestInvoice",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tariff_pct",
+            "required": false,
+            "schema": {
+              "default": 5.0,
+              "title": "Tariff Pct",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ingestInvoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceIngestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ingest Invoice",
+        "tags": [
+          "invoice-imports"
         ]
       }
     },
