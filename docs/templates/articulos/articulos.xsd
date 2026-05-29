@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  Plantilla estándar de carga de artículos — MT Middle East (PIM)
+  ============================================================================
+  Esquema XSD que define la estructura y las reglas de validación de un lote
+  de artículos para subir al catálogo (tabla `products` + traducciones,
+  releases por mercado, conversiones de unidad y dimensiones por norma).
+
+  Fuente de verdad de los campos y enumeraciones:
+    - app/schemas/products.py  (ProductCreate / ProductBase / Translations /
+      ProductRelease / ProductUomConversion / BoreDimension)
+    - app/schemas/specs/valve_ball.json  (specs técnicos por familia)
+    - app/services/importer/column_mapper.py  (claves JSONB dimensions/packaging/specs)
+
+  Idioma de los DATOS: SIEMPRE inglés (name, description, specs, materiales…).
+  Única excepción: las traducciones es/ar dentro de <translations>.
+  La documentación de cada campo (<xs:documentation>) está en español como ayuda.
+
+  Versión del esquema: 1.0  ·  Generado: 2026-05-29
+  ============================================================================
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns="https://mtme-api/schemas/articulos/v1"
+           targetNamespace="https://mtme-api/schemas/articulos/v1"
+           elementFormDefault="qualified"
+           version="1.0">
+
+  <!-- ====================================================================== -->
+  <!--  TIPOS SIMPLES — vocabularios controlados                              -->
+  <!-- ====================================================================== -->
+
+  <xs:simpleType name="SkuType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        SKU canónico (clave primaria, inmutable). Mayúsculas, dígitos, guiones
+        y guion bajo. Entre 3 y 64 caracteres. Ej.: MT-V-038, MT-FT-12345.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Z0-9][A-Z0-9\-_]{2,63}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="GtinType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        GTIN/EAN GS1 — sólo dígitos, longitud 8, 12, 13 o 14.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d{8}|\d{12}|\d{13}|\d{14}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DnType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Diámetro nominal DN (mm), sin prefijo. Valores permitidos del catálogo.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="8"/>
+      <xs:enumeration value="10"/>
+      <xs:enumeration value="15"/>
+      <xs:enumeration value="20"/>
+      <xs:enumeration value="25"/>
+      <xs:enumeration value="32"/>
+      <xs:enumeration value="40"/>
+      <xs:enumeration value="50"/>
+      <xs:enumeration value="65"/>
+      <xs:enumeration value="80"/>
+      <xs:enumeration value="100"/>
+      <xs:enumeration value="125"/>
+      <xs:enumeration value="150"/>
+      <xs:enumeration value="200"/>
+      <xs:enumeration value="250"/>
+      <xs:enumeration value="300"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PnType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Presión nominal PN (bar), sin prefijo. Valores permitidos del catálogo.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="6"/>
+      <xs:enumeration value="10"/>
+      <xs:enumeration value="16"/>
+      <xs:enumeration value="20"/>
+      <xs:enumeration value="25"/>
+      <xs:enumeration value="30"/>
+      <xs:enumeration value="40"/>
+      <xs:enumeration value="63"/>
+      <xs:enumeration value="100"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="WeightUnitType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="kg"/>
+      <xs:enumeration value="g"/>
+      <xs:enumeration value="lb"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DataQualityType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Calidad del dato. Por defecto "partial". "complete" sólo cuando todos
+        los campos obligatorios de la familia están rellenos.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="complete"/>
+      <xs:enumeration value="partial"/>
+      <xs:enumeration value="blocked"/>
+      <xs:enumeration value="migrated_demo"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="LifecycleStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="draft"/>
+      <xs:enumeration value="in_review"/>
+      <xs:enumeration value="active"/>
+      <xs:enumeration value="deprecated"/>
+      <xs:enumeration value="replaced"/>
+      <xs:enumeration value="discontinued"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="LangType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Idioma de la traducción. "en" es la base (no se traduce, va en los
+        campos *_en). Sólo se admiten traducciones a "es" y "ar".
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="es"/>
+      <xs:enumeration value="ar"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TranslationStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="pending"/>
+      <xs:enumeration value="draft"/>
+      <xs:enumeration value="approved"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ManufacturingMethodType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="forged"/>
+      <xs:enumeration value="cast"/>
+      <xs:enumeration value="machined"/>
+      <xs:enumeration value="welded"/>
+      <xs:enumeration value="molded"/>
+      <xs:enumeration value="extruded"/>
+      <xs:enumeration value="stamped"/>
+      <xs:enumeration value="sintered"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ActuatorType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="lever"/>
+      <xs:enumeration value="handwheel"/>
+      <xs:enumeration value="electric"/>
+      <xs:enumeration value="pneumatic"/>
+      <xs:enumeration value="hydraulic"/>
+      <xs:enumeration value="gear"/>
+      <xs:enumeration value="manual"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ConnectionEndType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="threaded"/>
+      <xs:enumeration value="flanged"/>
+      <xs:enumeration value="butt_weld"/>
+      <xs:enumeration value="socket_weld"/>
+      <xs:enumeration value="compression"/>
+      <xs:enumeration value="push_fit"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Iso5211FaceType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="F03"/>
+      <xs:enumeration value="F05"/>
+      <xs:enumeration value="F07"/>
+      <xs:enumeration value="F10"/>
+      <xs:enumeration value="F12"/>
+      <xs:enumeration value="F14"/>
+      <xs:enumeration value="F03/F05"/>
+      <xs:enumeration value="F05/F07"/>
+      <xs:enumeration value="F07/F10"/>
+      <xs:enumeration value="F10/F12"/>
+      <xs:enumeration value="F12/F14"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="MarketCodeType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Código de mercado (release local). Mayúsculas.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="UAE"/>
+      <xs:enumeration value="KSA"/>
+      <xs:enumeration value="MX"/>
+      <xs:enumeration value="ES"/>
+      <xs:enumeration value="GLOBAL"/>
+      <xs:enumeration value="US"/>
+      <xs:enumeration value="EU"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CurrencyType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">Moneda ISO-4217 (3 letras mayúsculas).</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Z]{3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TempCType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">Temperatura en °C, entero entre -273 y 2000.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:integer">
+      <xs:minInclusive value="-273"/>
+      <xs:maxInclusive value="2000"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="NonNegativeDecimalType">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PositiveDecimalType">
+    <xs:restriction base="xs:decimal">
+      <xs:minExclusive value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ====================================================================== -->
+  <!--  TIPOS COMPLEJOS — bloques estructurados                               -->
+  <!-- ====================================================================== -->
+
+  <!--  dimensions: dimensiones físicas del producto (mm)  -->
+  <xs:complexType name="DimensionsType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Dimensiones físicas del artículo en milímetros (corresponde al JSONB
+        `products.dimensions`). Todos opcionales.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="high_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="wide_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="deep_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!--  packaging: empaquetado y logística  -->
+  <xs:complexType name="PackagingType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Datos de empaquetado (JSONB `products.packaging`). Dimensiones de caja
+        en mm; cantidades en unidades. Todos opcionales.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="qty_per_box" type="xs:nonNegativeInteger" minOccurs="0"/>
+      <xs:element name="box_high_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="box_wide_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="box_deep_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="moq_inner_box" type="xs:nonNegativeInteger" minOccurs="0"/>
+      <xs:element name="x_pallet" type="xs:nonNegativeInteger" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!--  connection end (specs de válvula)  -->
+  <xs:complexType name="ConnectionType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Extremo de conexión (1 a 3). Para válvulas y fittings.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="position" minOccurs="1">
+        <xs:simpleType>
+          <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="3"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element name="type" type="ConnectionEndType" minOccurs="1"/>
+      <xs:element name="dn" type="xs:string" minOccurs="0"/>
+      <xs:element name="threading" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!--
+     specs: especificaciones técnicas (JSONB products.specs) 
+    El contenido REAL de specs es específico por familia y se valida en el
+    backend contra app/schemas/specs/<familia>.json. Aquí modelamos:
+      a) Las claves transversales más comunes (EANs, peso bruto).
+      b) Los campos canónicos de "Válvula Bola" (valve_ball.json) como guía.
+      c) Un bloque <extra> libre (clave/valor) para cualquier campo adicional
+         de la familia que no esté listado.
+    Si tu familia NO es válvula, deja los campos de válvula vacíos y usa <extra>.
+  -->
+  <xs:complexType name="SpecsType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Especificaciones técnicas. Rellenar las que apliquen a la familia del
+        artículo. Para claves no listadas, usar el bloque &lt;extra&gt;.
+        Los DATOS van en inglés.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <!-- Identificadores GS1 adicionales (además del gtin principal) -->
+      <xs:element name="ean_individual" type="GtinType" minOccurs="0"/>
+      <xs:element name="ean_box" type="GtinType" minOccurs="0"/>
+      <xs:element name="ean_inner_box" type="GtinType" minOccurs="0"/>
+      <xs:element name="weight_gross_kg" type="NonNegativeDecimalType" minOccurs="0"/>
+
+      <!--  Campos canónicos válvula de bola (valve_ball.json)  -->
+      <xs:element name="dn_real" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Diámetro agujero interno real.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="size" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Medida de brida o rosca — ej. 1/2", DN50.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="materials_body" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Material del cuerpo (en inglés).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="materials_closure" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Material de cierre / bola.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="materials_seats" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Material de asientos.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="materials_gaskets" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Material de juntas / empaquetadura.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="fabrication_method" type="xs:string" minOccurs="0"/>
+      <xs:element name="actuator" type="ActuatorType" minOccurs="0"/>
+      <xs:element name="iso5211_face" type="Iso5211FaceType" minOccurs="0"/>
+      <xs:element name="dim_SCH" type="xs:string" minOccurs="0"/>
+      <xs:element name="dim_L" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_H" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_H1" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_W" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_T1" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_T2" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_T3" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_S" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_h" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_D" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="dim_K" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="kv" type="PositiveDecimalType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Coeficiente de caudal Kv (m³/h a 1 bar).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="torque_nm" type="PositiveDecimalType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Par de maniobra (N·m).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- Extremos de conexión (válvulas / fittings) -->
+      <xs:element name="connections" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="connection" type="ConnectionType" minOccurs="1" maxOccurs="3"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <!--  Bloque libre para claves no listadas  -->
+      <xs:element name="extra" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">
+            Pares clave/valor para specs de la familia no contemplados arriba.
+            La clave (atributo key) debe ser en inglés y snake_case.
+          </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="field" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <xs:attribute name="key" type="xs:string" use="required"/>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!--  translation: una traducción es/ar  -->
+  <xs:complexType name="TranslationType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Traducción del artículo a un idioma (es o ar). El inglés NO va aquí:
+        usar los campos name_en / description_en / marketing_copy_en.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="name" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="512"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="description" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="4000"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="marketing_copy" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="8000"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="meta_title" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="70"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="meta_description" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="160"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="applications_text" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="4000"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="technical_limits" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="4000"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="notes" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="4000"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="marketing_features" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="8000"/></xs:restriction></xs:simpleType>
+      </xs:element>
+    </xs:all>
+    <xs:attribute name="lang" type="LangType" use="required"/>
+    <xs:attribute name="status" type="TranslationStatusType" use="optional" default="draft"/>
+  </xs:complexType>
+
+  <!--  release: publicación por mercado  -->
+  <xs:complexType name="ReleaseType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Datos de publicación local por mercado (precio de lista, nombre local,
+        clase fiscal). Opcional; un artículo puede tener varios.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="local_name" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="200"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="local_description" type="xs:string" minOccurs="0"/>
+      <xs:element name="local_sku" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="50"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="local_uom" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="10"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="list_price" type="PositiveDecimalType" minOccurs="0"/>
+      <xs:element name="price_currency" type="CurrencyType" minOccurs="0"/>
+      <xs:element name="tax_class" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="50"/></xs:restriction></xs:simpleType>
+      </xs:element>
+    </xs:all>
+    <xs:attribute name="market_code" type="MarketCodeType" use="required"/>
+  </xs:complexType>
+
+  <!--  uom_conversion: conversión de unidad de medida  -->
+  <xs:complexType name="UomConversionType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Conversión de unidad: qty(uom_from) × factor = qty(uom_to).
+        uom_from y uom_to deben ser distintos.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="uom_from" type="xs:string" use="required"/>
+    <xs:attribute name="uom_to" type="xs:string" use="required"/>
+    <xs:attribute name="factor" type="PositiveDecimalType" use="required"/>
+  </xs:complexType>
+
+  <!--  bore_dimension: dimensiones por norma aplicable  -->
+  <xs:complexType name="BoreDimensionType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Dimensiones de bridas/caras por sistema y código de norma (EN, ASME…).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="dn_nominal_ref" type="xs:string" minOccurs="0"/>
+      <xs:element name="pressure_class" type="xs:string" minOccurs="0"/>
+      <xs:element name="bore_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="face_to_face_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="end_to_end_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="flange_od_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="bolt_circle_mm" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="bolt_count" type="xs:nonNegativeInteger" minOccurs="0"/>
+      <xs:element name="bolt_size" type="xs:string" minOccurs="0"/>
+      <xs:element name="notes" type="xs:string" minOccurs="0"/>
+    </xs:all>
+    <xs:attribute name="standard_system" type="xs:string" use="required"/>
+    <xs:attribute name="standard_code" type="xs:string" use="required"/>
+    <xs:attribute name="is_primary" type="xs:boolean" use="optional" default="false"/>
+  </xs:complexType>
+
+  <!-- ====================================================================== -->
+  <!--  ARTÍCULO                                                              -->
+  <!-- ====================================================================== -->
+  <xs:complexType name="ArticleType">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Un artículo del catálogo. Campos OBLIGATORIOS: sku, name_en, family.
+        El resto es opcional — rellenar lo que se conozca. Los DATOS van en
+        inglés; las traducciones a es/ar van dentro de &lt;translations&gt;.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <!--  Identidad y textos base (inglés)  -->
+      <xs:element name="sku" type="SkuType"/>
+      <xs:element name="name_en" minOccurs="1">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Nombre en inglés (obligatorio).</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="512"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="description_en" type="xs:string" minOccurs="0"/>
+      <xs:element name="marketing_copy_en" type="xs:string" minOccurs="0"/>
+
+      <!--  Clasificación  -->
+      <xs:element name="family" minOccurs="1">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Familia (obligatorio). Ej. ball_valve, filter.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="64"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="subfamily" type="xs:string" minOccurs="0"/>
+      <xs:element name="type" type="xs:string" minOccurs="0"/>
+      <xs:element name="series" type="xs:string" minOccurs="0"/>
+      <xs:element name="brand" type="xs:string" minOccurs="0" default="MT"/>
+
+      <!--  Características técnicas transversales  -->
+      <xs:element name="material" type="xs:string" minOccurs="0"/>
+      <xs:element name="dn" type="DnType" minOccurs="0"/>
+      <xs:element name="pn" type="PnType" minOccurs="0"/>
+      <xs:element name="connection" type="xs:string" minOccurs="0"/>
+      <xs:element name="size" type="xs:string" minOccurs="0"/>
+      <xs:element name="temp_min_c" type="TempCType" minOccurs="0"/>
+      <xs:element name="temp_max_c" type="TempCType" minOccurs="0"/>
+      <xs:element name="pressure_max_bar" type="NonNegativeDecimalType" minOccurs="0"/>
+      <xs:element name="manufacturing_method" type="ManufacturingMethodType" minOccurs="0"/>
+
+      <!--  Identificadores / códigos  -->
+      <xs:element name="gtin" type="GtinType" minOccurs="0"/>
+      <xs:element name="intrastat_code" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="16"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="erp_name" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="128"/></xs:restriction></xs:simpleType>
+      </xs:element>
+
+      <!--  Peso  -->
+      <xs:element name="weight" type="NonNegativeDecimalType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">Peso neto. Unidad en weight_unit.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="weight_unit" type="WeightUnitType" minOccurs="0" default="kg"/>
+
+      <!--  Estado y revisión  -->
+      <xs:element name="lifecycle_status" type="LifecycleStatusType" minOccurs="0" default="active"/>
+      <xs:element name="revision" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="32"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="data_quality" type="DataQualityType" minOccurs="0" default="partial"/>
+
+      <!--  Jerarquía padre/variante  -->
+      <xs:element name="parent_sku" type="xs:string" minOccurs="0"/>
+      <xs:element name="is_parent" type="xs:boolean" minOccurs="0" default="false"/>
+      <xs:element name="is_variant" type="xs:boolean" minOccurs="0" default="false"/>
+      <xs:element name="display_pair_sku" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation xml:lang="es">SKU emparejado por color para display.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!--  URLs editoriales  -->
+      <xs:element name="video_url" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:anyURI"><xs:maxLength value="2048"/></xs:restriction></xs:simpleType>
+      </xs:element>
+      <xs:element name="external_url" minOccurs="0">
+        <xs:simpleType><xs:restriction base="xs:anyURI"><xs:maxLength value="2048"/></xs:restriction></xs:simpleType>
+      </xs:element>
+
+      <!--  Divisiones (M:N)  -->
+      <xs:element name="division_codes" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="code" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <!--  Bloques estructurados  -->
+      <xs:element name="dimensions" type="DimensionsType" minOccurs="0"/>
+      <xs:element name="packaging" type="PackagingType" minOccurs="0"/>
+      <xs:element name="specs" type="SpecsType" minOccurs="0"/>
+
+      <xs:element name="translations" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="translation" type="TranslationType" minOccurs="0" maxOccurs="2"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="releases" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="release" type="ReleaseType" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="uom_conversions" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="uom_conversion" type="UomConversionType" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="bore_dimensions" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="bore_dimension" type="BoreDimensionType" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- ====================================================================== -->
+  <!--  RAÍZ — catálogo (lote de artículos)                                   -->
+  <!-- ====================================================================== -->
+  <xs:element name="catalog">
+    <xs:annotation>
+      <xs:documentation xml:lang="es">
+        Lote de artículos a cargar. Cada &lt;article&gt; es un SKU. Los SKU
+        deben ser únicos dentro del lote.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="article" type="ArticleType" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="schema_version" type="xs:string" use="optional" default="1.0"/>
+    </xs:complexType>
+
+    <!-- Unicidad de SKU dentro del lote -->
+    <xs:unique name="uniqueSku">
+      <xs:selector xpath="article"/>
+      <xs:field xpath="sku"/>
+    </xs:unique>
+  </xs:element>
+
+</xs:schema>

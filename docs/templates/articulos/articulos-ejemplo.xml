@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  EJEMPLO DE PLANTILLA — carga de artículos
+  ============================================================================
+  Copia este archivo, renómbralo (p.ej. articulos-2026-06.xml) y reemplaza los
+  valores por los de tus artículos. Valídalo contra articulos.xsd antes de
+  entregarlo (ver README.md).
+
+  REGLAS RÁPIDAS:
+    · Obligatorios en CADA <article>: sku, name_en, family.
+    · TODO dato va en INGLÉS. Las traducciones es/ar van en <translations>.
+    · Borra los elementos opcionales que no apliquen — no los dejes vacíos.
+    · DN/PN/actuator/iso5211_face… sólo aceptan valores de la lista (ver XSD).
+
+  Abajo hay 2 ejemplos:
+    1) Artículo COMPLETO (válvula de bola) — todos los bloques rellenos.
+    2) Artículo PARCIAL — sólo lo mínimo; el resto queda "información faltante"
+       que el usuario debe completar.
+  ============================================================================
+-->
+<catalog xmlns="https://mtme-api/schemas/articulos/v1"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://mtme-api/schemas/articulos/v1 articulos.xsd"
+         schema_version="1.0">
+
+  <!-- ====================== EJEMPLO 1: COMPLETO ========================== -->
+  <article>
+    <sku>MT-V-038</sku>
+    <name_en>Brass Ball Valve DN25 PN40 Lever</name_en>
+    <description_en>Full-bore two-way brass ball valve with PTFE seats, lever operated.</description_en>
+    <marketing_copy_en>Reliable full-bore shutoff for water and gas lines.</marketing_copy_en>
+
+    <family>ball_valve</family>
+    <subfamily>two_way</subfamily>
+    <type>full_bore</type>
+    <series>Serie 300</series>
+    <brand>MT</brand>
+
+    <material>brass</material>
+    <dn>25</dn>
+    <pn>40</pn>
+    <connection>threaded</connection>
+    <size>1"</size>
+    <temp_min_c>-20</temp_min_c>
+    <temp_max_c>150</temp_max_c>
+    <pressure_max_bar>40</pressure_max_bar>
+    <manufacturing_method>forged</manufacturing_method>
+
+    <gtin>8412345000389</gtin>
+    <intrastat_code>84818019</intrastat_code>
+    <erp_name>VALV BOLA LATON 1" M-H</erp_name>
+
+    <weight>0.420</weight>
+    <weight_unit>kg</weight_unit>
+
+    <lifecycle_status>active</lifecycle_status>
+    <revision>A</revision>
+    <data_quality>complete</data_quality>
+
+    <is_parent>false</is_parent>
+    <is_variant>false</is_variant>
+
+    <video_url>https://www.youtube.com/watch?v=example</video_url>
+    <external_url>https://www.mt.es/products/MT-V-038</external_url>
+
+    <division_codes>
+      <code>WATER</code>
+      <code>GAS</code>
+    </division_codes>
+
+    <dimensions>
+      <high_mm>62.5</high_mm>
+      <wide_mm>48.0</wide_mm>
+      <deep_mm>70.0</deep_mm>
+    </dimensions>
+
+    <packaging>
+      <qty_per_box>20</qty_per_box>
+      <box_high_mm>150</box_high_mm>
+      <box_wide_mm>200</box_wide_mm>
+      <box_deep_mm>300</box_deep_mm>
+      <moq_inner_box>5</moq_inner_box>
+      <x_pallet>1200</x_pallet>
+    </packaging>
+
+    <specs>
+      <ean_individual>8412345000389</ean_individual>
+      <ean_box>18412345000386</ean_box>
+      <weight_gross_kg>0.450</weight_gross_kg>
+      <dn_real>25</dn_real>
+      <size>1"</size>
+      <materials_body>brass CW617N</materials_body>
+      <materials_closure>chrome-plated brass</materials_closure>
+      <materials_seats>PTFE</materials_seats>
+      <materials_gaskets>PTFE + NBR</materials_gaskets>
+      <fabrication_method>forging</fabrication_method>
+      <actuator>lever</actuator>
+      <dim_L>68.0</dim_L>
+      <dim_H>52.0</dim_H>
+      <dim_W>110.0</dim_W>
+      <kv>32.5</kv>
+      <torque_nm>9.0</torque_nm>
+      <connections>
+        <connection>
+          <position>1</position>
+          <type>threaded</type>
+          <dn>25</dn>
+          <threading>BSP</threading>
+        </connection>
+        <connection>
+          <position>2</position>
+          <type>threaded</type>
+          <dn>25</dn>
+          <threading>BSP</threading>
+        </connection>
+      </connections>
+      <!-- Cualquier spec de la familia que no esté listado arriba: -->
+      <extra>
+        <field key="surface_treatment">nickel_plated</field>
+        <field key="standard_compliance">EN 13828</field>
+      </extra>
+    </specs>
+
+    <translations>
+      <translation lang="es" status="approved">
+        <name>Válvula de bola de latón DN25 PN40 con maneta</name>
+        <description>Válvula de bola de paso total de dos vías, asientos de PTFE, accionamiento por maneta.</description>
+        <applications_text>Líneas de agua y gas.</applications_text>
+      </translation>
+      <translation lang="ar" status="draft">
+        <name>صمام كروي نحاسي DN25 PN40 برافعة</name>
+      </translation>
+    </translations>
+
+    <releases>
+      <release market_code="UAE">
+        <local_name>Brass Ball Valve DN25 PN40</local_name>
+        <local_sku>MT-V-038-UAE</local_sku>
+        <local_uom>EA</local_uom>
+        <list_price>45.00</list_price>
+        <price_currency>AED</price_currency>
+        <tax_class>standard</tax_class>
+      </release>
+    </releases>
+
+    <uom_conversions>
+      <uom_conversion uom_from="BOX" uom_to="EA" factor="20"/>
+    </uom_conversions>
+
+    <bore_dimensions>
+      <bore_dimension standard_system="EN" standard_code="EN 1092-1" is_primary="true">
+        <dn_nominal_ref>25</dn_nominal_ref>
+        <pressure_class>PN40</pressure_class>
+        <bore_mm>25</bore_mm>
+        <face_to_face_mm>68</face_to_face_mm>
+      </bore_dimension>
+    </bore_dimensions>
+  </article>
+
+  <!-- ====================== EJEMPLO 2: PARCIAL =========================== -->
+  <!--
+    Caso "información faltante": sólo se conocen los 3 obligatorios y un par de
+    datos. Lo demás se deja fuera para que el usuario lo complete después.
+    data_quality="partial" indica que la ficha aún no está cerrada.
+  -->
+  <article>
+    <sku>MT-FT-12345</sku>
+    <name_en>Y-Strainer Stainless Steel DN50</name_en>
+    <family>filter</family>
+    <material>stainless_steel</material>
+    <dn>50</dn>
+    <data_quality>partial</data_quality>
+    <!-- TODO usuario: pn, peso, dimensiones, specs (mesh, materials…), traducciones, precio UAE -->
+  </article>
+
+</catalog>
