@@ -124,15 +124,18 @@ def _run_migrations() -> None:
     _create_auth_stub()
     # Try uv run alembic first (CI / local dev); fall back to python -m alembic
     # (Docker containers where README.md is not volume-mounted so uv build fails)
+    _env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     for cmd in (
-        ["uv", "run", "alembic", "upgrade", "head"],
+        ["uv", "run", "--no-sync", "alembic", "upgrade", "head"],
         ["python", "-m", "alembic", "upgrade", "head"],
     ):
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             cwd=_BACKEND_DIR,
+            env=_env,
         )
         if result.returncode == 0:
             return
