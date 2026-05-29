@@ -271,3 +271,45 @@ def test_product_pricing_data_landed_cost_defaults_none(brass_valve_logistics):
         logistics=brass_valve_logistics,
     )
     assert p.landed_cost_aed is None
+
+
+def _product_with(landed, logistics, **kw):
+    base = dict(
+        sku="OVR1",
+        family_id="fam-1",
+        pe_eur=Decimal("10"),
+        catalog_pvp_eur=Decimal("40"),
+        units_per_box=10,
+        weight_kg=Decimal("0.5"),
+        b2c_labeling_aed=Decimal("0"),
+        ceiling_basis=CeilingBasis.CATALOG_PVP,
+        logistics=logistics,
+        landed_cost_aed=landed,
+    )
+    base.update(kw)
+    return ProductPricingData(**base)
+
+
+def test_b2c_uses_landed_override_when_present(route, fees, fba_scheme, brass_valve_logistics):
+    product = _product_with(Decimal("47.5"), brass_valve_logistics)
+    r = PricingEngine.compute_b2c(product, route, fees, fba_scheme, Decimal("12"))
+    expected_logistics = PricingEngine._logistics_cost(brass_valve_logistics, fba_scheme, fees)
+    assert r.breakdown.landed_aed == Decimal("47.5")
+    assert r.cost_op_aed == (Decimal("47.5") + expected_logistics).quantize(Decimal("0.0001"))
+
+
+def test_b2b_scales_landed_override_by_units_per_box(route, fees, fba_scheme, brass_valve_logistics):
+    product = _product_with(Decimal("47.5"), brass_valve_logistics, units_per_box=10)
+    r = PricingEngine.compute_b2b(product, route, fees, fba_scheme, Decimal("12"))
+    assert r.breakdown.landed_aed == Decimal("475.0")
+
+
+def test_landed_override_none_keeps_pe_eur_derivation(
+    route, fees, fba_scheme, brass_valve_logistics
+):
+    """Regression: no override → engine derives landed from pe_eur exactly as before."""
+    product = _product_with(None, brass_valve_logistics)
+    r = PricingEngine.compute_b2c(product, route, fees, fba_scheme, Decimal("12"))
+    expected_landed = PricingEngine._landed_b2c(product, route, fees)
+    assert r.breakdown.landed_aed == expected_landed
+    assert r.breakdown.landed_aed != Decimal("47.5")
