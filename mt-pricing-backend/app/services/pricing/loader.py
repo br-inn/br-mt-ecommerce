@@ -19,6 +19,7 @@ from app.db.models.channel_pricing import (
     ChannelSchemeParams,
     TradeRouteParams,
 )
+from app.db.models.inventory import InventoryPosition
 from app.db.models.product import Product
 from app.services.pricing.schemas import (
     ChannelFees,
@@ -128,6 +129,30 @@ class ParameterLoader:
 
         rows = (await self._session.execute(q)).all()
 
+        # Resolve real landed cost per SKU from inventory_positions (MAP). Dominant lot:
+        # highest qty_on_hand with non-null map_aed. Scheme/supplier-agnostic — landed
+        # cost (layers 1-3) is route-level, not channel-scheme-level. F0 cost wiring.
+        sku_list = [p.sku for p, _ in rows]
+        landed_by_sku: dict[str, Decimal] = {}
+        if sku_list:
+            pos_rows = (
+                await self._session.execute(
+                    select(
+                        InventoryPosition.sku,
+                        InventoryPosition.map_aed,
+                        InventoryPosition.qty_on_hand,
+                    ).where(
+                        InventoryPosition.sku.in_(sku_list),
+                        InventoryPosition.map_aed.is_not(None),
+                    )
+                )
+            ).all()
+            best_qty: dict[str, Decimal] = {}
+            for sku, map_aed, qty in pos_rows:
+                if sku not in best_qty or qty > best_qty[sku]:
+                    best_qty[sku] = qty
+                    landed_by_sku[sku] = map_aed
+
         result = []
         for product, logistics_row in rows:
             if logistics_row is None or product.pe_eur is None or product.catalog_pvp_eur is None:
@@ -156,6 +181,7 @@ class ParameterLoader:
                     b2c_labeling_aed=product.b2c_labeling_aed or Decimal("0"),
                     ceiling_basis=cb,
                     logistics=logistics,
+                    landed_cost_aed=landed_by_sku.get(product.sku),
                 )
             )
         return result
