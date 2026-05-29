@@ -89,6 +89,104 @@ _DIM_INT: frozenset[str] = frozenset()
 _PKG_INT: frozenset[str] = frozenset({"qty_per_box", "moq_inner_box", "x_pallet"})
 
 
+def _build_specs(article: Element) -> dict[str, Any]:
+    """Parse <specs> into a flat dict with connections list and extra fields merged."""
+    block = article.find(f"{{{NS}}}specs")
+    out: dict[str, Any] = {}
+    if block is None:
+        return out
+    for child in block:
+        key = _tag(child)
+        if key == "connections":
+            conns = []
+            for conn in child:
+                c: dict[str, Any] = {}
+                for f in conn:
+                    fk = _tag(f)
+                    if f.text is None or not f.text.strip():
+                        continue
+                    val = f.text.strip()
+                    c[fk] = int(val) if fk == "position" else val
+                if c:
+                    conns.append(c)
+            if conns:
+                out["connections"] = conns
+        elif key == "extra":
+            for fld in child:
+                k = fld.get("key")
+                if k and fld.text and fld.text.strip():
+                    out[k] = fld.text.strip()
+        else:
+            if child.text and child.text.strip():
+                out[key] = child.text.strip()
+    return out
+
+
+def _children_to_dict(elem: Element) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for child in elem:
+        if child.text and child.text.strip():
+            out[_tag(child)] = child.text.strip()
+    return out
+
+
+def _build_translations(article: Element) -> list[dict[str, Any]]:
+    block = article.find(f"{{{NS}}}translations")
+    if block is None:
+        return []
+    out = []
+    for tr in block.findall(f"{{{NS}}}translation"):
+        entry: dict[str, Any] = {
+            "lang": tr.get("lang"),
+            "status": tr.get("status", "draft"),
+        }
+        entry.update(_children_to_dict(tr))
+        out.append(entry)
+    return out
+
+
+def _build_releases(article: Element) -> list[dict[str, Any]]:
+    block = article.find(f"{{{NS}}}releases")
+    if block is None:
+        return []
+    out = []
+    for rel in block.findall(f"{{{NS}}}release"):
+        entry: dict[str, Any] = {"market_code": rel.get("market_code")}
+        entry.update(_children_to_dict(rel))
+        out.append(entry)
+    return out
+
+
+def _build_uom(article: Element) -> list[dict[str, Any]]:
+    block = article.find(f"{{{NS}}}uom_conversions")
+    if block is None:
+        return []
+    return [
+        {
+            "uom_from": u.get("uom_from"),
+            "uom_to": u.get("uom_to"),
+            "factor": u.get("factor"),
+        }
+        for u in block.findall(f"{{{NS}}}uom_conversion")
+    ]
+
+
+def _build_bore(article: Element) -> list[dict[str, Any]]:
+    block = article.find(f"{{{NS}}}bore_dimensions")
+    if block is None:
+        return []
+    out = []
+    for b in block.findall(f"{{{NS}}}bore_dimension"):
+        entry: dict[str, Any] = {
+            "standard_system": b.get("standard_system"),
+            "standard_code": b.get("standard_code"),
+            "is_primary": (b.get("is_primary", "false").lower() == "true"),
+        }
+        entry.update(_children_to_dict(b))
+        out.append(entry)
+    return out
+
+
 def _build_scalars(article: Element) -> tuple[dict[str, Any], list[str]]:
     """Devuelve (payload_escalar, errores_de_cast). Cast inválido → error de fila."""
     payload: dict[str, Any] = {}
@@ -157,7 +255,7 @@ def parse_xml_stream(source: bytes | BinaryIO) -> ParseResult:
         payload, cast_errors = _build_scalars(article)
         dimensions, dim_errors = _jsonb_block(article, "dimensions", _DIM_INT)
         packaging, pkg_errors = _jsonb_block(article, "packaging", _PKG_INT)
-        specs, spec_errors = _jsonb_block(article, "specs", frozenset())
+        specs = _build_specs(article)
         # manufacturing_method no es columna de Product: se pliega en specs JSONB.
         mfg = _text(article, "manufacturing_method")
         if mfg is not None:
@@ -165,8 +263,21 @@ def parse_xml_stream(source: bytes | BinaryIO) -> ParseResult:
         payload["dimensions"] = dimensions
         payload["packaging"] = packaging
         payload["specs"] = specs
+        # Rich blocks — only attached when non-empty.
+        _tr = _build_translations(article)
+        if _tr:
+            payload["_translations"] = _tr
+        _rel = _build_releases(article)
+        if _rel:
+            payload["_releases"] = _rel
+        _uom = _build_uom(article)
+        if _uom:
+            payload["_uom_conversions"] = _uom
+        _bore = _build_bore(article)
+        if _bore:
+            payload["_bore_dimensions"] = _bore
         errors = _validate_row(payload)
-        errors = cast_errors + dim_errors + pkg_errors + spec_errors + errors
+        errors = cast_errors + dim_errors + pkg_errors + errors
         sku = payload.get("sku")
         if sku is not None:
             if sku in seen:
