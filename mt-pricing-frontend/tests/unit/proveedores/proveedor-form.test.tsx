@@ -23,7 +23,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { suppliersApi, SuppliersApiError } from "@/lib/api/endpoints/suppliers";
-import { SupplierForm } from "@/app/(app)/suppliers/_components/supplier-form";
+import { ProveedorFormClient } from "@/app/(app)/proveedores/_components/proveedor-form-client";
 
 const messages = {
   suppliers: {
@@ -33,25 +33,27 @@ const messages = {
       created: "Creado.",
       updated: "Actualizado.",
       errors: { duplicateCode: "Ya existe ese código." },
-      fields: {
-        code: "Código",
-        name: "Nombre",
-        country: "País",
-        currency: "Moneda",
-        leadTimeDays: "Lead time",
-        email: "Email",
-        phone: "Teléfono",
-        notes: "Notas",
-        active: "Activo",
-      },
       validation: {
         codeRequired: "Código obligatorio.",
         codeFormat: "Formato inválido.",
-        nameRequired: "Nombre obligatorio.",
         nameMin: "Mínimo 2 caracteres.",
         emailInvalid: "Email inválido.",
         leadTimeInvalid: "Debe ser >= 0.",
+        currencyRequired: "Moneda obligatoria.",
       },
+    },
+  },
+  proveedores: {
+    fields: {
+      code: "Código",
+      name: "Nombre",
+      contract_currency: "Moneda",
+      lead_time_days: "Lead time",
+      contact_email: "Email",
+      contact_phone: "Teléfono",
+      payment_terms_days: "Términos de pago",
+      notes: "Notas",
+      active: "Activo",
     },
   },
   common: { cancel: "Cancelar", loading: "…", error: "Error" },
@@ -62,13 +64,13 @@ function renderForm() {
   return render(
     <QueryClientProvider client={client}>
       <NextIntlClientProvider locale="es" messages={messages} timeZone="UTC">
-        <SupplierForm />
+        <ProveedorFormClient />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
 }
 
-describe("SupplierForm (US-1A-03-02 frontend)", () => {
+describe("ProveedorFormClient (US-1A-03-02 frontend)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -77,7 +79,7 @@ describe("SupplierForm (US-1A-03-02 frontend)", () => {
     const created = vi.spyOn(suppliersApi, "create").mockResolvedValue({
       code: "ACME_001",
       name: "ACME",
-      contract_currency: "EUR",
+      contract_currency: "AED",
       lead_time_days: 30,
       contact_email: null,
       contact_phone: null,
@@ -97,7 +99,7 @@ describe("SupplierForm (US-1A-03-02 frontend)", () => {
     fireEvent.change(code, { target: { value: "ACME_001" } });
     fireEvent.change(name, { target: { value: "ACME" } });
 
-    await userEvent.click(screen.getByTestId("supplier-submit"));
+    await userEvent.click(screen.getByTestId("proveedor-submit"));
     await waitFor(() => {
       expect(created).toHaveBeenCalledWith(
         expect.objectContaining({ code: "ACME_001", name: "ACME" }),
@@ -118,7 +120,7 @@ describe("SupplierForm (US-1A-03-02 frontend)", () => {
     ) as HTMLInputElement;
     fireEvent.change(code, { target: { value: "DUP" } });
     fireEvent.change(name, { target: { value: "Dup Co" } });
-    await userEvent.click(screen.getByTestId("supplier-submit"));
+    await userEvent.click(screen.getByTestId("proveedor-submit"));
     await waitFor(() => {
       expect(screen.getByText("Ya existe ese código.")).toBeInTheDocument();
     });

@@ -20,14 +20,14 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 const useFiltersMock = vi.fn();
-vi.mock("@/app/(app)/suppliers/_components/suppliers-filters", () => ({
-  useSuppliersListFilters: () => useFiltersMock(),
+vi.mock("@/app/(app)/proveedores/_components/proveedores-filters", () => ({
+  useProveedoresListFilters: () => useFiltersMock(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
-  usePathname: () => "/suppliers",
+  usePathname: () => "/proveedores",
 }));
 
 vi.mock("@/lib/hooks/use-permissions", () => ({
@@ -41,24 +41,22 @@ import {
   suppliersApi,
   type SupplierListResponse,
 } from "@/lib/api/endpoints/suppliers";
-import { SuppliersTable } from "@/app/(app)/suppliers/_components/suppliers-table";
+import { ProveedoresTable } from "@/app/(app)/proveedores/_components/proveedores-table";
 
 const messages = {
-  suppliers: {
+  proveedores: {
     title: "Proveedores",
     subtitle: "—",
     search: "Buscar",
     loadMore: "Cargar más",
     totalCount:
       "{count, plural, =0 {Sin proveedores} =1 {1 proveedor} other {# proveedores}}",
-    daysShort: "{count, plural, =1 {1 día} other {# días}}",
     columns: {
       code: "Código",
       name: "Nombre",
-      country: "País",
       currency: "Moneda",
       leadTime: "Lead time",
-      email: "Email",
+      paymentTerms: "Términos de pago",
       active: "Activo",
       actions: "Acciones",
     },
@@ -66,14 +64,14 @@ const messages = {
     empty: { title: "Sin proveedores", description: "—" },
     errors: { loadFailed: "No se pudieron cargar." },
     actions: {
-      view: "Ver",
+      view: "Ver detalle",
       edit: "Editar",
+      archive: "Archivar",
       activate: "Activar",
-      deactivate: "Desactivar",
-      deactivateConfirm: "Confirmar?",
+      deleteConfirm: "¿Continuar?",
       menu: "Acciones",
-      activated: "Activado.",
-      deactivated: "Desactivado.",
+      activated: "Proveedor activado.",
+      deactivated: "Proveedor archivado.",
     },
   },
   common: {
@@ -90,7 +88,7 @@ function renderTable() {
   return render(
     <QueryClientProvider client={client}>
       <NextIntlClientProvider locale="es" messages={messages} timeZone="UTC">
-        <SuppliersTable />
+        <ProveedoresTable />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
@@ -130,7 +128,7 @@ const sample: SupplierListResponse = {
   total: 2,
 };
 
-describe("SuppliersTable (smoke)", () => {
+describe("ProveedoresTable (smoke)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useFiltersMock.mockReturnValue({
@@ -146,7 +144,7 @@ describe("SuppliersTable (smoke)", () => {
     vi.spyOn(suppliersApi, "list").mockResolvedValue(sample);
     renderTable();
     await waitFor(() => {
-      expect(screen.getByTestId("supplier-row-MT_VALVES_ES")).toBeInTheDocument();
+      expect(screen.getByTestId("proveedor-row-MT_VALVES_ES")).toBeInTheDocument();
     });
     expect(screen.getByText("MT Valves Iberia")).toBeInTheDocument();
     expect(screen.getByText("ACME Dubai LLC")).toBeInTheDocument();
@@ -161,7 +159,7 @@ describe("SuppliersTable (smoke)", () => {
     });
     renderTable();
     await waitFor(() =>
-      expect(screen.getByTestId("suppliers-empty")).toBeInTheDocument(),
+      expect(screen.getByTestId("proveedores-empty")).toBeInTheDocument(),
     );
   });
 
@@ -169,7 +167,7 @@ describe("SuppliersTable (smoke)", () => {
     vi.spyOn(suppliersApi, "list").mockRejectedValue(new Error("network"));
     renderTable();
     await waitFor(() =>
-      expect(screen.getByTestId("suppliers-error")).toBeInTheDocument(),
+      expect(screen.getByTestId("proveedores-error")).toBeInTheDocument(),
     );
   });
 });

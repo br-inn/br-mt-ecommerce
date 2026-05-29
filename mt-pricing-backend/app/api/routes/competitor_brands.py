@@ -89,7 +89,7 @@ async def _auto_create_brand_job(session: AsyncSession, brand_name: str, brand_i
                     'cron',
                     '0 2 * * *',
                     'scraper',
-                    :kwargs::jsonb,
+                    CAST(:kwargs AS jsonb),
                     true
                 )
                 ON CONFLICT (code) DO NOTHING
