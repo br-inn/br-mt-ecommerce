@@ -52,7 +52,7 @@ _NS = "https://mtme-api/schemas/articulos/v1"
 _XML = (
     f'<catalog xmlns="{_NS}"><article><sku>MT-ASYNC-1</sku>'
     f"<name_en>Async Valve</name_en><family>ball_valve</family><dn>25</dn>"
-    f"<releases><release market_code=\"UAE\"><local_name>AV</local_name>"
+    f'<releases><release market_code="UAE"><local_name>AV</local_name>'
     f"<list_price>50.00</list_price><price_currency>AED</price_currency>"
     f"</release></releases></article></catalog>"
 )
@@ -89,9 +89,13 @@ async def test_pim_importer_xml_source(db_session: AsyncSession) -> None:
     ).scalar_one()
     assert prod.family == "ball_valve"
     rel = (
-        await db_session.execute(
-            select(ProductRelease).where(ProductRelease.product_sku == "MT-ASYNC-1")
+        (
+            await db_session.execute(
+                select(ProductRelease).where(ProductRelease.product_sku == "MT-ASYNC-1")
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rel) == 1
     assert rel[0].market_code == "UAE"

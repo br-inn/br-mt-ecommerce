@@ -63,12 +63,18 @@ def test_specs_extra_and_connections() -> None:
 
 def test_rich_blocks() -> None:
     p = parse_xml_stream(_RICH.encode("utf-8")).rows[0].payload
-    assert {"lang": "es", "status": "approved", "name": "Válvula de bola",
-            "description": "Desc ES"}.items() <= p["_translations"][0].items()
+    assert {
+        "lang": "es",
+        "status": "approved",
+        "name": "Válvula de bola",
+        "description": "Desc ES",
+    }.items() <= p["_translations"][0].items()
     assert p["_translations"][1]["lang"] == "ar"
     assert p["_releases"][0] == {
-        "market_code": "UAE", "local_name": "Ball Valve",
-        "list_price": "45.00", "price_currency": "AED",
+        "market_code": "UAE",
+        "local_name": "Ball Valve",
+        "list_price": "45.00",
+        "price_currency": "AED",
     }
     assert p["_uom_conversions"][0] == {"uom_from": "BOX", "uom_to": "EA", "factor": "20"}
     bore = p["_bore_dimensions"][0]
@@ -79,11 +85,13 @@ def test_rich_blocks() -> None:
 
 
 def test_manufacturing_method_folds_into_specs() -> None:
-    xml = (f'<catalog xmlns="{_NS}"><article><sku>MT-V-1</sku>'
-           f"<name_en>x</name_en><family>ball_valve</family>"
-           f"<manufacturing_method>forged</manufacturing_method>"
-           f"<specs><materials_body>brass</materials_body></specs>"
-           f"</article></catalog>")
+    xml = (
+        f'<catalog xmlns="{_NS}"><article><sku>MT-V-1</sku>'
+        f"<name_en>x</name_en><family>ball_valve</family>"
+        f"<manufacturing_method>forged</manufacturing_method>"
+        f"<specs><materials_body>brass</materials_body></specs>"
+        f"</article></catalog>"
+    )
     p = parse_xml_stream(xml.encode("utf-8")).rows[0].payload
     assert p["specs"]["manufacturing_method"] == "forged"
     assert p["specs"]["materials_body"] == "brass"

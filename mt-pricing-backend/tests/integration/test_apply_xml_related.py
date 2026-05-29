@@ -79,9 +79,7 @@ async def test_apply_create_persists_releases(db_session: AsyncSession) -> None:
             "sku": "MT-REL-1",
             "name_en": "Rel Valve",
             "family": "ball_valve",
-            "_translations": [
-                {"lang": "es", "status": "approved", "name": "Válvula Rel"}
-            ],
+            "_translations": [{"lang": "es", "status": "approved", "name": "Válvula Rel"}],
             "_releases": [
                 {
                     "market_code": "UAE",
@@ -95,28 +93,34 @@ async def test_apply_create_persists_releases(db_session: AsyncSession) -> None:
     await apply_diffs_chunked(db_session, [diff], user, run_id="t1")
     await db_session.flush()
 
-    prod = (
-        await db_session.execute(select(Product).where(Product.sku == "MT-REL-1"))
-    ).scalar_one()
+    prod = (await db_session.execute(select(Product).where(Product.sku == "MT-REL-1"))).scalar_one()
     assert prod.sku == "MT-REL-1"
 
     rel = (
-        await db_session.execute(
-            select(ProductRelease).where(ProductRelease.product_sku == "MT-REL-1")
+        (
+            await db_session.execute(
+                select(ProductRelease).where(ProductRelease.product_sku == "MT-REL-1")
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rel) == 1
     assert rel[0].market_code == "UAE"
     assert str(rel[0].list_price) == "45.0000"
 
     tr = (
-        await db_session.execute(
-            select(ProductTranslation).where(
-                ProductTranslation.sku == "MT-REL-1",
-                ProductTranslation.lang == "es",
+        (
+            await db_session.execute(
+                select(ProductTranslation).where(
+                    ProductTranslation.sku == "MT-REL-1",
+                    ProductTranslation.lang == "es",
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert tr and tr[0].name == "Válvula Rel"
 
 
@@ -147,9 +151,7 @@ async def test_apply_update_persists_releases(db_session: AsyncSession) -> None:
     await db_session.flush()
 
     # Confirm product exists.
-    prod = (
-        await db_session.execute(select(Product).where(Product.sku == sku))
-    ).scalar_one()
+    prod = (await db_session.execute(select(Product).where(Product.sku == sku))).scalar_one()
     assert prod.sku == sku
 
     # --- Step 2: UPDATE with _releases in payload ---
@@ -182,10 +184,10 @@ async def test_apply_update_persists_releases(db_session: AsyncSession) -> None:
 
     # Assert release persisted.
     rel = (
-        await db_session.execute(
-            select(ProductRelease).where(ProductRelease.product_sku == sku)
-        )
-    ).scalars().all()
+        (await db_session.execute(select(ProductRelease).where(ProductRelease.product_sku == sku)))
+        .scalars()
+        .all()
+    )
     assert len(rel) == 1
     assert rel[0].market_code == "KSA"
     assert str(rel[0].list_price) == "88.5000"

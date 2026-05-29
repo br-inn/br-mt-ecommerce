@@ -36,9 +36,11 @@ def _make_user() -> MagicMock:
 
 
 _NS = "https://mtme-api/schemas/articulos/v1"
-_XML = (f'<catalog xmlns="{_NS}"><article><sku>MT-XML-1</sku>'
-        f"<name_en>XML Valve</name_en><family>ball_valve</family>"
-        f"<dn>25</dn></article></catalog>")
+_XML = (
+    f'<catalog xmlns="{_NS}"><article><sku>MT-XML-1</sku>'
+    f"<name_en>XML Valve</name_en><family>ball_valve</family>"
+    f"<dn>25</dn></article></catalog>"
+)
 
 
 async def test_preview_accepts_xml(db_session: AsyncSession) -> None:

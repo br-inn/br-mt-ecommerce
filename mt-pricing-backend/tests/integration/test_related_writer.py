@@ -39,31 +39,65 @@ async def test_apply_all_blocks(db_session: AsyncSession, make_product) -> None:
             {"lang": "es", "status": "approved", "name": "Válvula", "description": "d"},
         ],
         "_releases": [
-            {"market_code": "UAE", "local_name": "BV", "list_price": "45.00",
-             "price_currency": "AED"},
+            {
+                "market_code": "UAE",
+                "local_name": "BV",
+                "list_price": "45.00",
+                "price_currency": "AED",
+            },
         ],
         "_uom_conversions": [{"uom_from": "BOX", "uom_to": "EA", "factor": "20"}],
         "_bore_dimensions": [
-            {"standard_system": "DIN", "standard_code": "EN 1092-1",
-             "is_primary": True, "bore_mm": "25"},
+            {
+                "standard_system": "DIN",
+                "standard_code": "EN 1092-1",
+                "is_primary": True,
+                "bore_mm": "25",
+            },
         ],
     }
     await apply_related_entities(db_session, "MT-V-1", related, actor_id=None)
     await db_session.flush()
 
-    tr = (await db_session.execute(
-        select(ProductTranslation).where(ProductTranslation.sku == "MT-V-1"))).scalars().all()
+    tr = (
+        (
+            await db_session.execute(
+                select(ProductTranslation).where(ProductTranslation.sku == "MT-V-1")
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert {t.lang for t in tr} == {"es"}
-    rel = (await db_session.execute(
-        select(ProductRelease).where(ProductRelease.product_sku == "MT-V-1"))).scalars().all()
+    rel = (
+        (
+            await db_session.execute(
+                select(ProductRelease).where(ProductRelease.product_sku == "MT-V-1")
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert rel[0].market_code == "UAE"
-    uom = (await db_session.execute(
-        select(ProductUomConversion).where(
-            ProductUomConversion.product_sku == "MT-V-1"))).scalars().all()
+    uom = (
+        (
+            await db_session.execute(
+                select(ProductUomConversion).where(ProductUomConversion.product_sku == "MT-V-1")
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert uom[0].uom_from == "BOX"
-    bore = (await db_session.execute(
-        select(ProductBoreDimension).where(
-            ProductBoreDimension.product_sku == "MT-V-1"))).scalars().all()
+    bore = (
+        (
+            await db_session.execute(
+                select(ProductBoreDimension).where(ProductBoreDimension.product_sku == "MT-V-1")
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert bore[0].standard_code == "EN 1092-1"
 
 

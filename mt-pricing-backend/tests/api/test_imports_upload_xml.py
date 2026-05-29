@@ -3,6 +3,7 @@
 Loads the module file directly (bypassing the routes package __init__)
 to avoid transitive imports of pydantic[email] / app bootstrap code.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -22,9 +23,7 @@ os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "service-test")
 # ---------------------------------------------------------------------------
 # Load imports.py directly, without going through app.api.routes.__init__
 # ---------------------------------------------------------------------------
-_ROUTES_FILE = (
-    Path(__file__).parent.parent.parent / "app" / "api" / "routes" / "imports.py"
-)
+_ROUTES_FILE = Path(__file__).parent.parent.parent / "app" / "api" / "routes" / "imports.py"
 
 
 def _load_imports_module() -> types.ModuleType:
