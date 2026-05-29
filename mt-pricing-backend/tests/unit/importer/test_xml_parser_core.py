@@ -63,3 +63,21 @@ def test_entity_expansion_attack_is_rejected() -> None:
     )
     with pytest.raises(XmlParseError):
         parse_xml_stream(evil.encode("utf-8"))
+
+
+def test_malformed_xml_raises_file_error() -> None:
+    import pytest
+
+    from app.services.importer.xml_parser import XmlParseError
+
+    with pytest.raises(XmlParseError):
+        parse_xml_stream(b"<catalog><article>")
+
+
+def test_wrong_root_raises_file_error() -> None:
+    import pytest
+
+    from app.services.importer.xml_parser import XmlParseError
+
+    with pytest.raises(XmlParseError):
+        parse_xml_stream(b"<wrong/>")
