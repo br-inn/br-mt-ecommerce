@@ -76,3 +76,15 @@ def test_rich_blocks() -> None:
     assert bore["standard_code"] == "EN 1092-1"
     assert bore["is_primary"] is True
     assert bore["bore_mm"] == "25"
+
+
+def test_manufacturing_method_folds_into_specs() -> None:
+    xml = (f'<catalog xmlns="{_NS}"><article><sku>MT-V-1</sku>'
+           f"<name_en>x</name_en><family>ball_valve</family>"
+           f"<manufacturing_method>forged</manufacturing_method>"
+           f"<specs><materials_body>brass</materials_body></specs>"
+           f"</article></catalog>")
+    p = parse_xml_stream(xml.encode("utf-8")).rows[0].payload
+    assert p["specs"]["manufacturing_method"] == "forged"
+    assert p["specs"]["materials_body"] == "brass"
+    assert "manufacturing_method" not in p  # not a top-level scalar

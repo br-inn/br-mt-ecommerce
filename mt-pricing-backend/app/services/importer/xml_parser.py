@@ -89,12 +89,13 @@ _DIM_INT: frozenset[str] = frozenset()
 _PKG_INT: frozenset[str] = frozenset({"qty_per_box", "moq_inner_box", "x_pallet"})
 
 
-def _build_specs(article: Element) -> dict[str, Any]:
-    """Parse <specs> into a flat dict with connections list and extra fields merged."""
+def _build_specs(article: Element) -> tuple[dict[str, Any], list[str]]:
+    """Devuelve (specs, errores_de_cast). Cast inválido → error de fila, no abort."""
     block = article.find(f"{{{NS}}}specs")
     out: dict[str, Any] = {}
+    errors: list[str] = []
     if block is None:
-        return out
+        return out, errors
     for child in block:
         key = _tag(child)
         if key == "connections":
@@ -106,7 +107,15 @@ def _build_specs(article: Element) -> dict[str, Any]:
                     if f.text is None or not f.text.strip():
                         continue
                     val = f.text.strip()
-                    c[fk] = int(val) if fk == "position" else val
+                    if fk == "position":
+                        try:
+                            c[fk] = int(val)
+                        except ValueError:
+                            errors.append(
+                                f"specs.connections.position inválido: {val!r}"
+                            )
+                    else:
+                        c[fk] = val
                 if c:
                     conns.append(c)
             if conns:
@@ -119,7 +128,7 @@ def _build_specs(article: Element) -> dict[str, Any]:
         else:
             if child.text and child.text.strip():
                 out[key] = child.text.strip()
-    return out
+    return out, errors
 
 
 def _children_to_dict(elem: Element) -> dict[str, str]:
@@ -136,8 +145,11 @@ def _build_translations(article: Element) -> list[dict[str, Any]]:
         return []
     out = []
     for tr in block.findall(f"{{{NS}}}translation"):
+        lang = tr.get("lang")
+        if not lang:
+            continue
         entry: dict[str, Any] = {
-            "lang": tr.get("lang"),
+            "lang": lang,
             "status": tr.get("status", "draft"),
         }
         entry.update(_children_to_dict(tr))
@@ -151,7 +163,10 @@ def _build_releases(article: Element) -> list[dict[str, Any]]:
         return []
     out = []
     for rel in block.findall(f"{{{NS}}}release"):
-        entry: dict[str, Any] = {"market_code": rel.get("market_code")}
+        market_code = rel.get("market_code")
+        if not market_code:
+            continue
+        entry: dict[str, Any] = {"market_code": market_code}
         entry.update(_children_to_dict(rel))
         out.append(entry)
     return out
@@ -161,14 +176,15 @@ def _build_uom(article: Element) -> list[dict[str, Any]]:
     block = article.find(f"{{{NS}}}uom_conversions")
     if block is None:
         return []
-    return [
-        {
-            "uom_from": u.get("uom_from"),
-            "uom_to": u.get("uom_to"),
-            "factor": u.get("factor"),
-        }
-        for u in block.findall(f"{{{NS}}}uom_conversion")
-    ]
+    out = []
+    for u in block.findall(f"{{{NS}}}uom_conversion"):
+        uom_from = u.get("uom_from")
+        uom_to = u.get("uom_to")
+        factor = u.get("factor")
+        if not (uom_from and uom_to and factor):
+            continue
+        out.append({"uom_from": uom_from, "uom_to": uom_to, "factor": factor})
+    return out
 
 
 def _build_bore(article: Element) -> list[dict[str, Any]]:
@@ -177,9 +193,13 @@ def _build_bore(article: Element) -> list[dict[str, Any]]:
         return []
     out = []
     for b in block.findall(f"{{{NS}}}bore_dimension"):
+        standard_system = b.get("standard_system")
+        standard_code = b.get("standard_code")
+        if not (standard_system and standard_code):
+            continue
         entry: dict[str, Any] = {
-            "standard_system": b.get("standard_system"),
-            "standard_code": b.get("standard_code"),
+            "standard_system": standard_system,
+            "standard_code": standard_code,
             "is_primary": (b.get("is_primary", "false").lower() == "true"),
         }
         entry.update(_children_to_dict(b))
@@ -255,7 +275,7 @@ def parse_xml_stream(source: bytes | BinaryIO) -> ParseResult:
         payload, cast_errors = _build_scalars(article)
         dimensions, dim_errors = _jsonb_block(article, "dimensions", _DIM_INT)
         packaging, pkg_errors = _jsonb_block(article, "packaging", _PKG_INT)
-        specs = _build_specs(article)
+        specs, spec_errors = _build_specs(article)
         # manufacturing_method no es columna de Product: se pliega en specs JSONB.
         mfg = _text(article, "manufacturing_method")
         if mfg is not None:
@@ -277,7 +297,7 @@ def parse_xml_stream(source: bytes | BinaryIO) -> ParseResult:
         if _bore:
             payload["_bore_dimensions"] = _bore
         errors = _validate_row(payload)
-        errors = cast_errors + dim_errors + pkg_errors + errors
+        errors = cast_errors + dim_errors + pkg_errors + spec_errors + errors
         sku = payload.get("sku")
         if sku is not None:
             if sku in seen:
