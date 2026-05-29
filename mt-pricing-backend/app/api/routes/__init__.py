@@ -46,6 +46,7 @@ from app.api.routes import (
     imports_costs,
     imports_datasheets,
     imports_materials,
+    invoice_imports,
     internal_cdc,
     inventory,
     jobs,
@@ -124,6 +125,7 @@ router.include_router(currencies.router)
 router.include_router(fx_rates.router)
 router.include_router(imports_costs.router)
 router.include_router(imports_materials.router)
+router.include_router(invoice_imports.router)
 router.include_router(translations_workflow.router)
 router.include_router(translations.router)
 router.include_router(products_costs_router)
