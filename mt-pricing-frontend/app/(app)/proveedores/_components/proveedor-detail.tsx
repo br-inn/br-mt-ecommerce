@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { RbacGuard } from "@/components/auth/rbac-guard";
+import { AuditTimelineRich } from "@/components/domain/audit/audit-timeline-rich";
 import { useSupplier } from "@/lib/hooks/suppliers/use-suppliers";
 import { useCosts } from "@/lib/hooks/costs/use-costs";
 
@@ -137,21 +138,26 @@ export function ProveedorDetail({ code }: Props) {
         </TabsContent>
 
         <TabsContent value="audit">
-          <Card>
-            <CardHeader>
-              <CardTitle>{tTabs("audit")}</CardTitle>
-              <CardDescription>
-                {/* TODO Sprint 2: timeline real desde audit_events. */}
-                Pendiente Sprint 2 — timeline desde audit_events.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Eventos del proveedor se están registrando server-side y se
-                mostrarán aquí en una iteración futura.
-              </p>
-            </CardContent>
-          </Card>
+          <RbacGuard
+            permissions={["audit:read"]}
+            fallback={
+              <Card>
+                <CardHeader>
+                  <CardTitle>{tTabs("audit")}</CardTitle>
+                  <CardDescription>
+                    No tienes permiso para ver el historial de auditoría.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            }
+          >
+            <AuditTimelineRich
+              baseFilters={{
+                entity_types: ["supplier"],
+                entity_id: supplier.code,
+              }}
+            />
+          </RbacGuard>
         </TabsContent>
       </Tabs>
     </div>
