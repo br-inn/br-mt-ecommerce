@@ -69,6 +69,9 @@ async def test_apply_all_blocks(db_session: AsyncSession, make_product) -> None:
 
 async def test_idempotent_reapply(db_session: AsyncSession, make_product) -> None:
     await make_product("MT-V-2", family="ball_valve")
+    # Mirror production session config (app/db/engine.py uses autoflush=False) so
+    # the select-or-insert in _upsert_bore is exercised faithfully.
+    db_session.sync_session.autoflush = False
     related = {
         "_releases": [{"market_code": "UAE", "local_name": "BV"}],
         "_uom_conversions": [{"uom_from": "BOX", "uom_to": "EA", "factor": "12"}],

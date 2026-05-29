@@ -54,6 +54,7 @@ _BORE_FIELDS = (
     "notes",
 )
 _BORE_DECIMAL = {"bore_mm", "face_to_face_mm", "end_to_end_mm", "flange_od_mm", "bolt_circle_mm"}
+_VALID_TR_STATUSES = frozenset(("pending", "draft", "approved"))
 
 
 def _dec(v: Any) -> Decimal | None:
@@ -65,10 +66,11 @@ async def _upsert_translations(session: AsyncSession, sku: str, items: list[dict
         lang = it.get("lang")
         if lang not in ("en", "es", "ar"):
             continue
+        status = it.get("status")
         values: dict[str, Any] = {
             "sku": sku,
             "lang": lang,
-            "status": it.get("status") or "draft",
+            "status": status if status in _VALID_TR_STATUSES else "draft",
         }
         for f in _TR_FIELDS:
             if it.get(f) is not None:
@@ -143,8 +145,18 @@ async def _upsert_bore(session: AsyncSession, sku: str, items: list[dict]) -> No
             if f == "pressure_class":
                 # handled as the lookup key separately
                 continue
-            if it.get(f) is not None:
-                fields[f] = _dec(it[f]) if f in _BORE_DECIMAL else it[f]
+            if it.get(f) is None:
+                continue
+            if f in _BORE_DECIMAL:
+                fields[f] = _dec(it[f])
+            elif f == "bolt_count":
+                try:
+                    fields[f] = int(it[f])
+                except (ValueError, TypeError):
+                    # tolerant parsing — skip a non-integer bolt_count
+                    continue
+            else:
+                fields[f] = it[f]
 
         # Look up existing row by natural key
         q = select(ProductBoreDimension).where(
@@ -166,6 +178,10 @@ async def _upsert_bore(session: AsyncSession, sku: str, items: list[dict]) -> No
                     **fields,
                 )
             )
+            # Flush immediately so a subsequent iteration / re-apply sees this row
+            # via the SELECT above. Production uses autoflush=False, so without
+            # this the pending insert is invisible and we'd add a duplicate.
+            await session.flush()
         else:
             for k, v in fields.items():
                 setattr(existing, k, v)
