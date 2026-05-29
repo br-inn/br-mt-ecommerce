@@ -298,7 +298,9 @@ def test_b2c_uses_landed_override_when_present(route, fees, fba_scheme, brass_va
     assert r.cost_op_aed == (Decimal("47.5") + expected_logistics).quantize(Decimal("0.0001"))
 
 
-def test_b2b_scales_landed_override_by_units_per_box(route, fees, fba_scheme, brass_valve_logistics):
+def test_b2b_scales_landed_override_by_units_per_box(
+    route, fees, fba_scheme, brass_valve_logistics
+):
     product = _product_with(Decimal("47.5"), brass_valve_logistics, units_per_box=10)
     r = PricingEngine.compute_b2b(product, route, fees, fba_scheme, Decimal("12"))
     assert r.breakdown.landed_aed == Decimal("475.0")

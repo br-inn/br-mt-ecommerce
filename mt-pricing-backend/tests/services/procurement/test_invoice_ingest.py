@@ -16,6 +16,7 @@ pytestmark = [pytest.mark.integration]
 @pytest.fixture(autouse=True, scope="module")
 def _migrate(postgres_container: str) -> None:
     from alembic.config import Config
+
     from alembic import command
 
     cfg = Config("alembic.ini")
@@ -163,20 +164,36 @@ async def test_ingest_is_idempotent_per_invoice(db_session: AsyncSession):
 
     await _seed_product(db_session, "310912025")
     commercial = InvoiceParseResult(
-        invoice_number="INV-IDEM", incoterms="DAP", order_refs=["POIDEM"],
-        lines=[InvoiceLine(code="310912025", description="V", quantity=Decimal("3"),
-                           unit_price=Decimal("68.208"), intrastat_code="84818081")],
+        invoice_number="INV-IDEM",
+        incoterms="DAP",
+        order_refs=["POIDEM"],
+        lines=[
+            InvoiceLine(
+                code="310912025",
+                description="V",
+                quantity=Decimal("3"),
+                unit_price=Decimal("68.208"),
+                intrastat_code="84818081",
+            )
+        ],
     )
     import_inv = InvoiceParseResult(
-        invoice_number="INV-IDEM-IMP", incoterms="DAP", order_refs=["POIDEM"],
-        lines=[InvoiceLine(code="310912025", description="V", quantity=Decimal("3"),
-                           unit_price=Decimal("60"))],
+        invoice_number="INV-IDEM-IMP",
+        incoterms="DAP",
+        order_refs=["POIDEM"],
+        lines=[
+            InvoiceLine(
+                code="310912025", description="V", quantity=Decimal("3"), unit_price=Decimal("60")
+            )
+        ],
     )
     svc = InvoiceIngestService(db_session)
-    r1 = await svc.ingest(commercial=commercial, import_inv=import_inv,
-                          tariff_pct=Decimal("5"), confirm=True)
-    r2 = await svc.ingest(commercial=commercial, import_inv=import_inv,
-                          tariff_pct=Decimal("5"), confirm=True)
+    r1 = await svc.ingest(
+        commercial=commercial, import_inv=import_inv, tariff_pct=Decimal("5"), confirm=True
+    )
+    r2 = await svc.ingest(
+        commercial=commercial, import_inv=import_inv, tariff_pct=Decimal("5"), confirm=True
+    )
     assert r1.created == 1
     assert r2.created == 0 and r2.skipped == 1
 
@@ -184,6 +201,7 @@ async def test_ingest_is_idempotent_per_invoice(db_session: AsyncSession):
 # ---------------------------------------------------------------------------
 # FIX 1 — partial re-ingest merges VendorInvoice marker, no IntegrityError
 # ---------------------------------------------------------------------------
+
 
 async def test_partial_reingest_merges_marker_no_crash(db_session: AsyncSession):
     """Re-ingesting the same invoice_number with a new code must NOT create a
@@ -206,8 +224,10 @@ async def test_partial_reingest_merges_marker_no_crash(db_session: AsyncSession)
             order_refs=["POPART1"],
             lines=[
                 InvoiceLine(
-                    code="310912030", description="A",
-                    quantity=Decimal("2"), unit_price=Decimal("10"),
+                    code="310912030",
+                    description="A",
+                    quantity=Decimal("2"),
+                    unit_price=Decimal("10"),
                     order_no="POPART1",
                 )
             ],
@@ -233,13 +253,17 @@ async def test_partial_reingest_merges_marker_no_crash(db_session: AsyncSession)
             order_refs=["POPART1", "POPART2"],
             lines=[
                 InvoiceLine(
-                    code="310912030", description="A",
-                    quantity=Decimal("2"), unit_price=Decimal("10"),
+                    code="310912030",
+                    description="A",
+                    quantity=Decimal("2"),
+                    unit_price=Decimal("10"),
                     order_no="POPART1",
                 ),
                 InvoiceLine(
-                    code="310912031", description="B",
-                    quantity=Decimal("3"), unit_price=Decimal("20"),
+                    code="310912031",
+                    description="B",
+                    quantity=Decimal("3"),
+                    unit_price=Decimal("20"),
                     order_no="POPART2",
                 ),
             ],
@@ -253,15 +277,19 @@ async def test_partial_reingest_merges_marker_no_crash(db_session: AsyncSession)
         tariff_pct=Decimal("5"),
         confirm=True,
     )
-    assert r2.created == 1   # only B is new
-    assert r2.skipped == 1   # A is skipped (already ingested)
+    assert r2.created == 1  # only B is new
+    assert r2.skipped == 1  # A is skipped (already ingested)
 
     # Exactly ONE VendorInvoice row for INV-PARTIAL, codes contain both A and B
     rows = (
-        await db_session.execute(
-            select(VendorInvoice).where(VendorInvoice.invoice_number == "INV-PARTIAL")
+        (
+            await db_session.execute(
+                select(VendorInvoice).where(VendorInvoice.invoice_number == "INV-PARTIAL")
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1, "must not create duplicate VendorInvoice rows"
     codes = rows[0].match_details["codes"]
     assert "310912030" in codes
@@ -271,6 +299,7 @@ async def test_partial_reingest_merges_marker_no_crash(db_session: AsyncSession)
 # ---------------------------------------------------------------------------
 # FIX 2 — multi-PO invoice routes each line to its own PO
 # ---------------------------------------------------------------------------
+
 
 async def test_multi_po_invoice_routes_lines_to_own_po(db_session: AsyncSession):
     """Each line carries its own order_no; the service must create two distinct
@@ -290,13 +319,17 @@ async def test_multi_po_invoice_routes_lines_to_own_po(db_session: AsyncSession)
             order_refs=["POA-MULTI", "POB-MULTI"],
             lines=[
                 InvoiceLine(
-                    code="310912040", description="X",
-                    quantity=Decimal("5"), unit_price=Decimal("15"),
+                    code="310912040",
+                    description="X",
+                    quantity=Decimal("5"),
+                    unit_price=Decimal("15"),
                     order_no="POA-MULTI",
                 ),
                 InvoiceLine(
-                    code="310912041", description="Y",
-                    quantity=Decimal("7"), unit_price=Decimal("25"),
+                    code="310912041",
+                    description="Y",
+                    quantity=Decimal("7"),
+                    unit_price=Decimal("25"),
                     order_no="POB-MULTI",
                 ),
             ],
@@ -344,14 +377,10 @@ async def test_multi_po_invoice_routes_lines_to_own_po(db_session: AsyncSession)
     ).scalar_one()
 
     gr_a = (
-        await db_session.execute(
-            select(GoodsReceipt).where(GoodsReceipt.po_line_id == pol_a.id)
-        )
+        await db_session.execute(select(GoodsReceipt).where(GoodsReceipt.po_line_id == pol_a.id))
     ).scalar_one()
     gr_b = (
-        await db_session.execute(
-            select(GoodsReceipt).where(GoodsReceipt.po_line_id == pol_b.id)
-        )
+        await db_session.execute(select(GoodsReceipt).where(GoodsReceipt.po_line_id == pol_b.id))
     ).scalar_one()
     assert gr_a.actual_breakdown["commercial_eur"] == "15"
     assert gr_b.actual_breakdown["commercial_eur"] == "25"
@@ -360,6 +389,7 @@ async def test_multi_po_invoice_routes_lines_to_own_po(db_session: AsyncSession)
 # ---------------------------------------------------------------------------
 # FIX 2 — line with no order_no when invoice has multiple refs → error
 # ---------------------------------------------------------------------------
+
 
 async def test_multi_po_line_without_order_no_is_error(db_session: AsyncSession):
     """A line with order_no=None on a multi-ref invoice must produce an error
@@ -377,8 +407,10 @@ async def test_multi_po_line_without_order_no_is_error(db_session: AsyncSession)
             order_refs=["PO-X1", "PO-X2"],
             lines=[
                 InvoiceLine(
-                    code="310912050", description="Z",
-                    quantity=Decimal("1"), unit_price=Decimal("10"),
+                    code="310912050",
+                    description="Z",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("10"),
                     order_no=None,  # explicitly ambiguous
                 ),
             ],
@@ -402,6 +434,7 @@ async def test_multi_po_line_without_order_no_is_error(db_session: AsyncSession)
 # FIX 3 — missing import line surfaces in item detail
 # ---------------------------------------------------------------------------
 
+
 async def test_missing_import_line_detail(db_session: AsyncSession):
     """When a commercial line has no matching import line the item must still
     be status='ok' but detail must contain the advisory message."""
@@ -418,8 +451,10 @@ async def test_missing_import_line_detail(db_session: AsyncSession):
             order_refs=["PO-NOIMP"],
             lines=[
                 InvoiceLine(
-                    code="310912060", description="W",
-                    quantity=Decimal("1"), unit_price=Decimal("50"),
+                    code="310912060",
+                    description="W",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("50"),
                     order_no="PO-NOIMP",
                 )
             ],
