@@ -713,15 +713,15 @@
     },
     "upload": {
       "title": "Upload the PIM file",
-      "hint": "Drag and drop the .xlsx or click to select.",
-      "limits": "Up to 50 MB. XLSX format.",
+      "hint": "Drag and drop the .xlsx or .xml, or click to select.",
+      "limits": "Up to 50 MB. XLSX or XML format.",
       "dropLabel": "Upload area",
       "remove": "Remove file",
       "startPreview": "Generate preview",
       "uploading": "Uploading…",
       "errors": {
         "tooLarge": "File exceeds 50 MB.",
-        "invalidFormat": "Only XLSX is allowed."
+        "invalidFormat": "Only XLSX or XML files are allowed."
       }
     },
     "preview": {
