@@ -280,6 +280,137 @@ async def test_patch_active_false_deactivates(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_create_supplier_invalid_currency_returns_422(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
+    # NOTA: no sembramos la currency "ZZZ" → FK violation → 422.
+    headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
+
+    payload = _payload("MT_BADCUR")
+    payload["contract_currency"] = "ZZZ"
+    r = await client.post("/api/v1/suppliers", json=payload, headers=headers)
+    assert r.status_code == 422, r.text
+    assert r.json()["code"] == "supplier_invalid_currency"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_create_supplier_invalid_email_returns_422(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
+    await _seed_currency(db_session, "EUR")
+    headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
+
+    payload = _payload("MT_BADMAIL")
+    payload["contact_email"] = "not-an-email"
+    r = await client.post("/api/v1/suppliers", json=payload, headers=headers)
+    assert r.status_code == 422, r.text
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_list_suppliers_search_and_active_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
+    await _seed_currency(db_session, "EUR")
+    headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
+
+    active_payload = _payload("MT_SEARCH_ACTIVE")
+    active_payload["name"] = "Acme Buscable"
+    inactive_payload = _payload("MT_SEARCH_INACTIVE")
+    inactive_payload["name"] = "Zeta Oculta"
+    inactive_payload["active"] = False
+    await client.post("/api/v1/suppliers", json=active_payload, headers=headers)
+    await client.post("/api/v1/suppliers", json=inactive_payload, headers=headers)
+
+    # Búsqueda por `q` (ilike sobre code/name).
+    r_search = await client.get("/api/v1/suppliers?q=Buscable", headers=headers)
+    assert r_search.status_code == 200
+    codes = [it["code"] for it in r_search.json()["items"]]
+    assert "MT_SEARCH_ACTIVE" in codes
+    assert "MT_SEARCH_INACTIVE" not in codes
+
+    # Filtro active=false → solo inactivos.
+    r_inactive = await client.get("/api/v1/suppliers?active=false", headers=headers)
+    assert r_inactive.status_code == 200
+    inactive_codes = [it["code"] for it in r_inactive.json()["items"]]
+    assert "MT_SEARCH_INACTIVE" in inactive_codes
+    assert "MT_SEARCH_ACTIVE" not in inactive_codes
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_put_supplier_invalid_currency_returns_422(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
+    await _seed_currency(db_session, "EUR")
+    headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
+
+    code = "MT_PUT_BADCUR"
+    await client.post("/api/v1/suppliers", json=_payload(code), headers=headers)
+
+    body = _payload(code)
+    body.pop("code")
+    body["contract_currency"] = "ZZZ"  # no sembrada → FK violation
+    r = await client.put(f"/api/v1/suppliers/{code}", json=body, headers=headers)
+    assert r.status_code == 422, r.text
+    assert r.json()["code"] == "supplier_invalid_currency"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_patch_empty_payload_returns_422(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
+    await _seed_currency(db_session, "EUR")
+    headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
+
+    code = "MT_PATCH_EMPTY"
+    await client.post("/api/v1/suppliers", json=_payload(code), headers=headers)
+
+    # SupplierPatch.model_validator rechaza payload sin campos.
+    r = await client.patch(f"/api/v1/suppliers/{code}", json={}, headers=headers)
+    assert r.status_code == 422, r.text
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_audit_event_emitted_on_create(client: AsyncClient, db_session: AsyncSession) -> None:
+    from app.db.models.audit import AuditEvent
+
+    uid, email = await _seed_user_with_perms(db_session, ["suppliers:read", "suppliers:write"])
+    await _seed_currency(db_session, "EUR")
+    headers = {"Authorization": f"Bearer {_emit_jwt(sub=str(uid), email=email)}"}
+
+    code = "MT_AUDIT"
+    r = await client.post("/api/v1/suppliers", json=_payload(code), headers=headers)
+    assert r.status_code == 201, r.text
+
+    rows = (
+        (
+            await db_session.execute(
+                select(AuditEvent).where(
+                    AuditEvent.entity_type == "supplier",
+                    AuditEvent.entity_id == code,
+                    AuditEvent.action == "supplier.created",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(rows) >= 1
+    assert rows[0].after is not None
+    assert rows[0].after["code"] == code
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_no_auth_returns_401(client: AsyncClient) -> None:
     r = await client.get("/api/v1/suppliers")
     assert r.status_code == 401
