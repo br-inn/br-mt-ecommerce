@@ -33,8 +33,15 @@ async def ingest_invoice(
     - **tariff_pct**: applicable tariff percentage (default 5 %).
     - **confirm**: dry-run when False (default); write to DB when True.
     """
-    commercial = parse_invoice_pdf(await commercial_pdf.read())
-    import_inv = parse_invoice_pdf(await import_pdf.read())
+    _MAX_BYTES = 20 * 1024 * 1024  # 20 MB
+    commercial_bytes = await commercial_pdf.read()
+    if len(commercial_bytes) > _MAX_BYTES:
+        raise HTTPException(413, detail={"code": "file_too_large"})
+    import_bytes = await import_pdf.read()
+    if len(import_bytes) > _MAX_BYTES:
+        raise HTTPException(413, detail={"code": "file_too_large"})
+    commercial = parse_invoice_pdf(commercial_bytes)
+    import_inv = parse_invoice_pdf(import_bytes)
     if not commercial.lines:
         raise HTTPException(
             422,

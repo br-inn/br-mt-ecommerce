@@ -13,6 +13,7 @@ class InvoiceLine(BaseModel):
     quantity: Decimal
     unit_price: Decimal  # EUR (commercial: real cost; import: customs value)
     intrastat_code: str | None = None
+    order_no: str | None = None  # 'Order No.' block this line belongs to
 
 
 class InvoiceParseResult(BaseModel):
