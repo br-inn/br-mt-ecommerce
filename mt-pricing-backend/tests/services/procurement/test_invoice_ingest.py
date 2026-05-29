@@ -155,3 +155,27 @@ async def test_ingest_preview_does_not_persist(db_session: AsyncSession):
         await db_session.execute(select(PurchaseOrder).where(PurchaseOrder.po_number == "POPREV"))
     ).scalar_one_or_none()
     assert po is None
+
+
+async def test_ingest_is_idempotent_per_invoice(db_session: AsyncSession):
+    from app.schemas.invoice_imports import InvoiceLine, InvoiceParseResult
+    from app.services.procurement.invoice_ingest_service import InvoiceIngestService
+
+    await _seed_product(db_session, "310912025")
+    commercial = InvoiceParseResult(
+        invoice_number="INV-IDEM", incoterms="DAP", order_refs=["POIDEM"],
+        lines=[InvoiceLine(code="310912025", description="V", quantity=Decimal("3"),
+                           unit_price=Decimal("68.208"), intrastat_code="84818081")],
+    )
+    import_inv = InvoiceParseResult(
+        invoice_number="INV-IDEM-IMP", incoterms="DAP", order_refs=["POIDEM"],
+        lines=[InvoiceLine(code="310912025", description="V", quantity=Decimal("3"),
+                           unit_price=Decimal("60"))],
+    )
+    svc = InvoiceIngestService(db_session)
+    r1 = await svc.ingest(commercial=commercial, import_inv=import_inv,
+                          tariff_pct=Decimal("5"), confirm=True)
+    r2 = await svc.ingest(commercial=commercial, import_inv=import_inv,
+                          tariff_pct=Decimal("5"), confirm=True)
+    assert r1.created == 1
+    assert r2.created == 0 and r2.skipped == 1

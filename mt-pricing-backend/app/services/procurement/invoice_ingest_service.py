@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from sqlalchemy import select as _select
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.procurement import VendorInvoice
 from app.db.models.product import Product
 from app.repositories.goods_receipt import GoodsReceiptRepository
 from app.schemas.goods_receipts import GoodsReceiptCreate
@@ -35,6 +37,22 @@ class InvoiceIngestService:
         order_no = commercial.order_refs[0] if commercial.order_refs else None
         result = InvoiceIngestResult()
 
+        already: set[str] = set()
+        if commercial.invoice_number:
+            seen = (
+                (
+                    await self._session.execute(
+                        _select(VendorInvoice.match_details).where(
+                            VendorInvoice.invoice_number == commercial.invoice_number
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for md in seen:
+                already.update((md or {}).get("codes", []))
+
         for line in commercial.lines:
             imp = import_by_code.get(line.code)
             import_value = imp.unit_price if imp else Decimal("0")
@@ -50,6 +68,11 @@ class InvoiceIngestService:
                 po_action="matched",
                 status="ok",
             )
+            if confirm and line.code in already:
+                item.status = "skipped"
+                result.skipped += 1
+                result.items.append(item)
+                continue
             if not confirm:
                 result.items.append(item)
                 continue
@@ -88,5 +111,34 @@ class InvoiceIngestService:
                 item.detail = str(e)
                 result.errors += 1
             result.items.append(item)
+
+        if confirm and result.created and order_no is not None:
+            import datetime as _dt
+
+            from app.db.models.inventory import PurchaseOrder
+
+            po_row = (
+                await self._session.execute(
+                    _select(PurchaseOrder).where(PurchaseOrder.po_number == order_no)
+                )
+            ).scalar_one()
+            ok_items = [i for i in result.items if i.status == "ok"]
+            total = sum(
+                (Decimal(str(i.commercial_eur)) * Decimal(str(i.qty)) for i in ok_items),
+                Decimal("0"),
+            )
+            self._session.add(
+                VendorInvoice(
+                    invoice_number=commercial.invoice_number or "",
+                    vendor_id="mt_spain",
+                    po_id=po_row.id,
+                    invoice_date=_dt.date.today(),
+                    total_amount=total,
+                    currency="EUR",
+                    status="pending",
+                    match_details={"codes": [i.code for i in ok_items]},
+                )
+            )
+            await self._session.flush()
 
         return result
