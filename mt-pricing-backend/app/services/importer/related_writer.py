@@ -4,6 +4,7 @@ Consumido por el applier del wizard y por PimImporter (async). Lee las claves
 reservadas `_translations`/`_releases`/`_uom_conversions`/`_bore_dimensions` y
 hace upsert por su clave natural.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -77,9 +78,13 @@ async def _upsert_translations(session: AsyncSession, sku: str, items: list[dict
                 values[f] = it[f]
         update_set = {k: v for k, v in values.items() if k not in ("sku", "lang")}
         update_set["updated_at"] = text("now()")
-        stmt = pg_insert(ProductTranslation).values(**values).on_conflict_do_update(
-            index_elements=["sku", "lang"],
-            set_=update_set,
+        stmt = (
+            pg_insert(ProductTranslation)
+            .values(**values)
+            .on_conflict_do_update(
+                index_elements=["sku", "lang"],
+                set_=update_set,
+            )
         )
         await session.execute(stmt)
 
@@ -97,9 +102,13 @@ async def _upsert_releases(session: AsyncSession, sku: str, items: list[dict]) -
                 values[f] = _dec(it[f]) if f == "list_price" else it[f]
         update_set = {k: v for k, v in values.items() if k not in ("product_sku", "market_code")}
         update_set["updated_at"] = text("now()")
-        stmt = pg_insert(ProductRelease).values(**values).on_conflict_do_update(
-            index_elements=["product_sku", "market_code"],
-            set_=update_set,
+        stmt = (
+            pg_insert(ProductRelease)
+            .values(**values)
+            .on_conflict_do_update(
+                index_elements=["product_sku", "market_code"],
+                set_=update_set,
+            )
         )
         await session.execute(stmt)
 
@@ -114,9 +123,13 @@ async def _upsert_uom(session: AsyncSession, sku: str, items: list[dict]) -> Non
             "uom_to": it["uom_to"],
             "factor": _dec(it["factor"]),
         }
-        stmt = pg_insert(ProductUomConversion).values(**values).on_conflict_do_update(
-            index_elements=["product_sku", "uom_from", "uom_to"],
-            set_={"factor": values["factor"]},
+        stmt = (
+            pg_insert(ProductUomConversion)
+            .values(**values)
+            .on_conflict_do_update(
+                index_elements=["product_sku", "uom_from", "uom_to"],
+                set_={"factor": values["factor"]},
+            )
         )
         await session.execute(stmt)
 

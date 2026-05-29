@@ -3,6 +3,7 @@
 Punto único de detección de formato. El wizard y el worker async llaman aquí
 en vez de a un parser concreto.
 """
+
 from __future__ import annotations
 
 import io

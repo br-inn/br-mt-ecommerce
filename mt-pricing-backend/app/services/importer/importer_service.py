@@ -193,8 +193,10 @@ class ImporterService:
             elif custom_mapping is not None:
                 header_idx, _headers, _samples = detect_header_row(file_bytes)
                 parse_result = parse_source(
-                    file_bytes, filename,
-                    custom_mapping=custom_mapping, header_row_index=header_idx,
+                    file_bytes,
+                    filename,
+                    custom_mapping=custom_mapping,
+                    header_row_index=header_idx,
                 )
             else:
                 parse_result = parse_source(file_bytes, filename)

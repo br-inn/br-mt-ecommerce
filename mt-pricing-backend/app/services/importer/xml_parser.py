@@ -5,6 +5,7 @@ del differ. Validación tolerante por fila: errores por <article> van a
 ParsedRow.errors (no abortan el archivo). Errores de archivo (XML malformado,
 raíz != catalog, entidades inseguras) se lanzan como XmlParseError.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -21,12 +22,30 @@ from app.services.importer.parser import ParsedRow, ParseResult
 NS = "https://mtme-api/schemas/articulos/v1"
 
 _TEXT_FIELDS: tuple[str, ...] = (
-    "name_en", "description_en", "marketing_copy_en",
-    "family", "subfamily", "type", "series", "brand",
-    "material", "dn", "pn", "connection", "size",
-    "gtin", "intrastat_code", "erp_name", "weight_unit",
-    "lifecycle_status", "revision", "data_quality",
-    "parent_sku", "display_pair_sku", "video_url", "external_url",
+    "name_en",
+    "description_en",
+    "marketing_copy_en",
+    "family",
+    "subfamily",
+    "type",
+    "series",
+    "brand",
+    "material",
+    "dn",
+    "pn",
+    "connection",
+    "size",
+    "gtin",
+    "intrastat_code",
+    "erp_name",
+    "weight_unit",
+    "lifecycle_status",
+    "revision",
+    "data_quality",
+    "parent_sku",
+    "display_pair_sku",
+    "video_url",
+    "external_url",
 )
 _INT_FIELDS: tuple[str, ...] = ("temp_min_c", "temp_max_c")
 _DECIMAL_FIELDS: tuple[str, ...] = ("weight", "pressure_max_bar")
@@ -37,9 +56,7 @@ _VALIDATABLE = set(_TEXT_FIELDS) | set(_INT_FIELDS) | set(_DECIMAL_FIELDS) | {"s
 # Campos que el XML transporta pero que ProductCreate (extra="forbid") NO acepta:
 # description_en / marketing_copy_en los consume el applier más tarde (siguen como
 # escalares top-level); manufacturing_method se pliega en specs (no es columna).
-_NOT_IN_PRODUCT_CREATE = frozenset(
-    {"description_en", "marketing_copy_en", "manufacturing_method"}
-)
+_NOT_IN_PRODUCT_CREATE = frozenset({"description_en", "marketing_copy_en", "manufacturing_method"})
 
 
 class XmlParseError(ValueError):
@@ -111,9 +128,7 @@ def _build_specs(article: Element) -> tuple[dict[str, Any], list[str]]:
                         try:
                             c[fk] = int(val)
                         except ValueError:
-                            errors.append(
-                                f"specs.connections.position inválido: {val!r}"
-                            )
+                            errors.append(f"specs.connections.position inválido: {val!r}")
                     else:
                         c[fk] = val
                 if c:
@@ -246,9 +261,7 @@ def _build_scalars(article: Element) -> tuple[dict[str, Any], list[str]]:
 
 def _validate_row(payload: dict[str, Any]) -> list[str]:
     scalars = {
-        k: v
-        for k, v in payload.items()
-        if k in _VALIDATABLE and k not in _NOT_IN_PRODUCT_CREATE
+        k: v for k, v in payload.items() if k in _VALIDATABLE and k not in _NOT_IN_PRODUCT_CREATE
     }
     try:
         ProductCreate(**scalars)  # type: ignore[arg-type]
@@ -302,9 +315,7 @@ def parse_xml_stream(source: bytes | BinaryIO) -> ParseResult:
         if sku is not None:
             if sku in seen:
                 duplicates.append(sku)
-                errors.append(
-                    f"SKU duplicado en archivo (primera ocurrencia row {seen[sku]})."
-                )
+                errors.append(f"SKU duplicado en archivo (primera ocurrencia row {seen[sku]}).")
             else:
                 seen[sku] = i
         rows.append(ParsedRow(row_index=i, sku=sku, payload=payload, errors=errors))
