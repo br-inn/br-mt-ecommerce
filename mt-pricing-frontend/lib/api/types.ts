@@ -3428,6 +3428,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/imports/invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Invoice
+         * @description Ingest a commercial invoice + import invoice pair to cost records.
+         *
+         *     - **commercial_pdf**: MT commercial invoice PDF (real cost per SKU).
+         *     - **import_pdf**: customs import invoice PDF (intrastat values + duties).
+         *     - **tariff_pct**: applicable tariff percentage (default 5 %).
+         *     - **confirm**: dry-run when False (default); write to DB when True.
+         */
+        post: operations["ingestInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports/materials/preview": {
         parameters: {
             query?: never;
@@ -9404,6 +9429,13 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_ingestInvoice */
+        Body_ingestInvoice: {
+            /** Commercial Pdf */
+            commercial_pdf: string;
+            /** Import Pdf */
+            import_pdf: string;
+        };
         /** Body_preview_ficha_enrich_api_v1_products__sku__ficha_enrich_preview_post */
         Body_preview_ficha_enrich_api_v1_products__sku__ficha_enrich_preview_post: {
             /**
@@ -13516,6 +13548,50 @@ export interface components {
             payment_terms: string;
             /** So Id */
             so_id?: string | null;
+        };
+        /** InvoiceIngestItem */
+        InvoiceIngestItem: {
+            /** Code */
+            code: string;
+            /** Commercial Eur */
+            commercial_eur: string;
+            /** Detail */
+            detail?: string | null;
+            /** Duty Eur */
+            duty_eur: string;
+            /** Import Value Eur */
+            import_value_eur: string;
+            /** Po Action */
+            po_action: string;
+            /** Po Number */
+            po_number: string | null;
+            /** Qty */
+            qty: string;
+            /** Status */
+            status: string;
+        };
+        /** InvoiceIngestResult */
+        InvoiceIngestResult: {
+            /**
+             * Created
+             * @default 0
+             */
+            created: number;
+            /**
+             * Errors
+             * @default 0
+             */
+            errors: number;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["InvoiceIngestItem"][];
+            /**
+             * Skipped
+             * @default 0
+             */
+            skipped: number;
         };
         /** InvoiceLineCreate */
         InvoiceLineCreate: {
@@ -29107,6 +29183,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingestInvoice: {
+        parameters: {
+            query?: {
+                tariff_pct?: number;
+                confirm?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_ingestInvoice"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceIngestResult"];
                 };
             };
             /** @description Validation Error */
