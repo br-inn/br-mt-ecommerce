@@ -237,3 +237,37 @@ def test_product_pricing_data_rejects_zero_units_per_box(brass_valve_logistics):
             ceiling_basis=CeilingBasis.CATALOG_PVP,
             logistics=brass_valve_logistics,
         )
+
+
+# ── F0: real landed cost override ──────────────────────────────────────────
+
+
+def test_product_pricing_data_accepts_landed_cost_override(brass_valve_logistics):
+    p = ProductPricingData(
+        sku="TEST1",
+        family_id="fam-1",
+        pe_eur=Decimal("10"),
+        catalog_pvp_eur=Decimal("40"),
+        units_per_box=10,
+        weight_kg=Decimal("0.5"),
+        b2c_labeling_aed=Decimal("0"),
+        ceiling_basis=CeilingBasis.CATALOG_PVP,
+        logistics=brass_valve_logistics,
+        landed_cost_aed=Decimal("47.5"),
+    )
+    assert p.landed_cost_aed == Decimal("47.5")
+
+
+def test_product_pricing_data_landed_cost_defaults_none(brass_valve_logistics):
+    p = ProductPricingData(
+        sku="TEST2",
+        family_id="fam-1",
+        pe_eur=Decimal("10"),
+        catalog_pvp_eur=Decimal("40"),
+        units_per_box=1,
+        weight_kg=Decimal("0"),
+        b2c_labeling_aed=Decimal("0"),
+        ceiling_basis=CeilingBasis.CATALOG_PVP,
+        logistics=brass_valve_logistics,
+    )
+    assert p.landed_cost_aed is None
