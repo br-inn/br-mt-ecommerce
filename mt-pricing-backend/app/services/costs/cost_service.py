@@ -373,6 +373,8 @@ class CostService:
             self._maybe_remap_overlap_error(exc)
             raise
 
+        await self.session.refresh(cost)
+
         after = _snapshot(cost)
         audit = AuditRepository(self.session)
         await audit.record(
@@ -390,15 +392,18 @@ class CostService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    async def missing_cost_skus(self, scheme_code: str, *, limit: int = 1000) -> Sequence[str]:
-        """Devuelve los SKUs sin coste vigente hoy para el scheme. Implementación
-        en SQL puro — usa NOT EXISTS para evitar un join LEFT con filtro post.
+    async def missing_cost_skus(
+        self, scheme_code: str, *, as_of: date | None = None, limit: int = 1000
+    ) -> Sequence[str]:
+        """Devuelve los SKUs sin coste vigente a la fecha ``as_of`` (default hoy)
+        para el scheme. Implementación en SQL puro — usa NOT EXISTS para evitar
+        un join LEFT con filtro post.
 
-        Vigente := ``valid_from <= current_date AND (valid_to IS NULL OR
-        valid_to >= current_date)``.
+        Vigente := ``valid_from <= :on AND (valid_to IS NULL OR valid_to >= :on)``.
         """
         from sqlalchemy import text as sql_text
 
+        on = as_of or date.today()
         stmt = sql_text(
             """
             SELECT p.sku
@@ -408,14 +413,14 @@ class CostService:
                 SELECT 1 FROM costs c
                 WHERE c.sku = p.sku
                   AND c.scheme_code = :scheme
-                  AND c.valid_from <= current_date
-                  AND (c.valid_to IS NULL OR c.valid_to >= current_date)
+                  AND c.valid_from <= :on
+                  AND (c.valid_to IS NULL OR c.valid_to >= :on)
               )
             ORDER BY p.sku
             LIMIT :lim
             """
         )
-        result = await self.session.execute(stmt, {"scheme": scheme_code, "lim": limit})
+        result = await self.session.execute(stmt, {"scheme": scheme_code, "on": on, "lim": limit})
         return [r[0] for r in result.all()]
 
     async def _get(self, cost_id: UUID) -> Cost | None:
