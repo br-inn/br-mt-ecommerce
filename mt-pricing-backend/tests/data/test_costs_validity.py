@@ -7,6 +7,9 @@ Cubren la migración ``20260603_148_costs_validity_ranges``:
   ``(sku, scheme_code, coalesce(supplier_code, ''))``.
 - ``test_columns_exist_and_status_dropped``: ``valid_from``/``valid_to`` existen
   y ``status``/``effective_at`` fueron dropeadas.
+- ``test_open_ended_range_accepted``: una fila con ``valid_to = NULL`` (rango
+  abierto) es aceptada y consultable — documenta que ``daterange(vf, NULL, '[]')``
+  no genera error (upper bound infinito).
 
 IMPORTANTE: usar SQL crudo (``text(...)``) + ``information_schema`` — NO el ORM
 ``Cost`` model, que en este punto aún referencia ``effective_at``/``status``
@@ -66,6 +69,35 @@ async def test_exclusion_rejects_overlapping_ranges(db_session, make_product):
                 "ver": 2,
             },
         )
+
+
+async def test_open_ended_range_accepted(db_session, make_product):
+    """Una fila con valid_to = NULL (rango abierto) se acepta y es consultable.
+
+    Documenta que la exclusión con ``daterange(valid_from, valid_to, '[]')`` y
+    ``valid_to = NULL`` produce un rango con cota superior infinita (no error).
+    """
+    await make_product("_TEST_OPEN")
+
+    await db_session.execute(
+        _INSERT,
+        {
+            "sku": "_TEST_OPEN",
+            "vf": dt.date(2026, 1, 1),
+            "vt": None,
+            "ver": 1,
+        },
+    )
+
+    row = (
+        await db_session.execute(
+            text("SELECT valid_from, valid_to FROM costs WHERE sku = :sku AND scheme_code = 'FBA'"),
+            {"sku": "_TEST_OPEN"},
+        )
+    ).one()
+
+    assert row.valid_from == dt.date(2026, 1, 1)
+    assert row.valid_to is None
 
 
 async def test_columns_exist_and_status_dropped(db_session):

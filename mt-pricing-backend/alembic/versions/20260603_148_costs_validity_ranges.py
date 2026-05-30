@@ -186,6 +186,9 @@ def upgrade() -> None:
     # 5) valid_from NOT NULL.
     op.alter_column("costs", "valid_from", nullable=False)
 
+    # 5b) Índice para el camino de consulta as-of (sku, scheme, valid_from).
+    op.create_index("idx_costs_valid_from", "costs", ["sku", "scheme_code", "valid_from"])
+
     # 6) Quitar el índice unique parcial viejo y añadir la exclusión de no-solape.
     op.execute("DROP INDEX IF EXISTS idx_costs_active_unique_lookup")
     op.execute(
@@ -244,6 +247,7 @@ def downgrade() -> None:
     #    En el head actual (migración 157) este índice NO es unique e indexa
     #    las columnas crudas (sin COALESCE) con WHERE status = 'active'.
     op.execute("ALTER TABLE costs DROP CONSTRAINT IF EXISTS ex_costs_no_overlap")
+    op.drop_index("idx_costs_valid_from", table_name="costs")
     op.create_index(
         "idx_costs_active_unique_lookup",
         "costs",
