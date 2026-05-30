@@ -1,17 +1,17 @@
-"""CostService — orquesta create/update/list de `costs` con versionado.
+"""CostService — orquesta create/update/close/list de `costs` con vigencia por rangos.
 
-Reglas (US-1A-04-03):
+Reglas (vigencia por rangos `valid_from`/`valid_to` — mig 20260603_148):
 - ``create_cost``:
     1. Valida breakdown vía `breakdown_validator`.
-    2. Inserta — el trigger DB busca FX as-of y estampa `fx_rate_id`.
-       Si no hay rate → IntegrityError mapeado a `fx_rate_not_found_at_effective_at`.
-    3. Audit `cost.created`.
-- ``update_cost`` (versionado):
-    1. Carga la row existente (status='active').
-    2. La marca `superseded`, flushea.
-    3. Crea row nueva con `version=prev+1`, `status='active'`, breakdown
-       merged + cualquier override (effective_at/currency_origin si llegan).
-    4. Audit `cost.updated` con diff.
+    2. Auto-encadenado: cierra la fila ABIERTA previa (`valid_to = vf - 1 día`).
+    3. Inserta la nueva con `valid_to = NULL` — el trigger DB busca FX as-of
+       (anclado a `valid_from`) y estampa `fx_rate_id` + `scheme_landed_aed`.
+       Si no hay rate → `FXRateNotFoundAtEffectiveAt`. Si solapa → `CostRangeOverlap`.
+    4. Audit `cost.created`.
+- ``update_cost`` (corrección IN-PLACE): muta breakdown/valid_from de la MISMA
+  fila y re-flushea para re-estampar FX/landed. NO crea versión nueva.
+- ``close_cost``: fija `valid_to` (descatalogar / cierre sin sucesor); audit.
+- ``cost_as_of``: resuelve la fila vigente a una fecha dada.
 - ``list_for_sku``: alias de CostRepository (con `only_active=True`).
 - ``compute_landed_aed``: helper Python para previews UI **sin** persistir.
   La fórmula DB se replica aquí; en BD vive el trigger AFTER (canonical).
@@ -21,12 +21,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,6 +62,17 @@ class CostNotFound(CostServiceError):
 class SchemeNotFound(CostServiceError):
     code = "scheme_not_found"
     http_status = 404
+
+
+class CostRangeOverlap(CostServiceError):
+    """409 — el rango de vigencia solaparía otro existente para la misma clave.
+
+    La exclusión GiST ``ex_costs_no_overlap`` lo garantiza en BD; aquí se
+    traduce el IntegrityError a error de dominio limpio.
+    """
+
+    code = "cost_range_overlap"
+    http_status = 409
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +135,7 @@ class CostService:
         scheme_code: str,
         supplier_code: str | None = None,
         currency_origin: str = "AED",
-        effective_at: datetime,
+        valid_from: date,
         breakdown: dict[str, Any],
         actor_id: UUID | None = None,
         actor_email: str | None = None,
@@ -132,12 +143,16 @@ class CostService:
         fx_inferred: bool = False,
         **_extra: Any,  # tolerate extra kwargs from importer (`_import_run_id`, `_actor_id`)
     ) -> CreateCostResult:
-        """Crea una row 'active' nueva. Si ya existe una active para el combo,
-        ESTE método NO la supersede — usa `update_cost` para versionar.
+        """Crea una nueva fila de coste vigente desde `valid_from` (rango abierto).
+
+        Auto-encadenado: cierra la fila ABIERTA previa cuya `valid_from` sea
+        anterior (set `valid_to = valid_from - 1 día`) y luego inserta la nueva
+        con `valid_to = NULL`. El `flush()` dispara los triggers FX/landed y la
+        exclusión GiST `ex_costs_no_overlap` valida que no haya solape.
 
         Validaciones:
         - Breakdown contra cost_components_template del scheme.
-        - El trigger DB se encarga de FX as-of stamping.
+        - El trigger DB se encarga de FX as-of stamping (anclado a `valid_from`).
         """
         # Importer compat: _actor_id / _import_run_id arrive as named extras.
         if actor_id is None and "_actor_id" in _extra:
@@ -152,15 +167,29 @@ class CostService:
             if any(e.get("code") == "scheme_not_found" for e in result.errors):
                 raise SchemeNotFound(scheme_code)
 
-        # 2) Insert — trigger BD estampa fx_rate_id, scheme_landed_aed.
+        # 2) Cerrar la fila abierta previa para la misma clave (auto-chaining).
+        #    Sólo cierra rangos abiertos que empiezan ANTES del nuevo valid_from.
+        await self.session.execute(
+            update(Cost)
+            .where(
+                Cost.sku == sku,
+                Cost.scheme_code == scheme_code,
+                func.coalesce(Cost.supplier_code, "") == (supplier_code or ""),
+                Cost.valid_to.is_(None),
+                Cost.valid_from < valid_from,
+            )
+            .values(valid_to=valid_from - timedelta(days=1), updated_by=actor_id)
+        )
+
+        # 3) Insert — trigger BD estampa fx_rate_id, scheme_landed_aed.
         cost = Cost(
             sku=sku,
             scheme_code=scheme_code,
             supplier_code=supplier_code,
             currency_origin=currency_origin,
-            effective_at=effective_at,
+            valid_from=valid_from,
+            valid_to=None,
             breakdown=dict(breakdown),
-            status="active",
             version=1,
             fx_inferred=fx_inferred,
             fx_rate_id=fx_rate_id,
@@ -172,9 +201,10 @@ class CostService:
         except IntegrityError as exc:
             await self.session.rollback()
             self._maybe_remap_fx_error(exc)
+            self._maybe_remap_overlap_error(exc)
             raise
 
-        # 3) Audit
+        # 4) Audit
         audit = AuditRepository(self.session)
         await audit.record(
             entity_type="cost",
@@ -187,7 +217,8 @@ class CostService:
                 "scheme_code": cost.scheme_code,
                 "supplier_code": cost.supplier_code,
                 "currency_origin": cost.currency_origin,
-                "effective_at": cost.effective_at.isoformat() if cost.effective_at else None,
+                "valid_from": cost.valid_from.isoformat() if cost.valid_from else None,
+                "valid_to": cost.valid_to.isoformat() if cost.valid_to else None,
                 "breakdown": cost.breakdown,
                 "scheme_landed_aed": str(cost.scheme_landed_aed)
                 if cost.scheme_landed_aed is not None
@@ -204,61 +235,62 @@ class CostService:
         actor_id: UUID | None,
         actor_email: str | None = None,
         breakdown: dict[str, Any] | None = None,
-        effective_at: datetime | None = None,
+        valid_from: date | None = None,
         currency_origin: str | None = None,
         fx_rate_id: UUID | None = None,
         fx_inferred: bool | None = None,
     ) -> CreateCostResult:
-        """Versionado: NO modifica la row existente in-place. Crea row nueva
-        con `version=prev+1, status='active'` y la previa pasa a 'superseded'.
-        El UNIQUE parcial (status='active') exige hacerlo en el orden correcto:
-        primero el flush del 'superseded' viejo, luego insertar la nueva.
+        """Corrección IN-PLACE: muta la MISMA fila (breakdown / valid_from /
+        currency_origin) y re-flushea para re-estampar FX as-of y landed_aed.
+
+        Ya NO crea una versión nueva (eso lo hace `create_cost` con su
+        auto-encadenado). Aquí se corrige un coste vigente sin alterar la
+        cadena de rangos. El `valid_to` no se toca por esta vía — para cerrar
+        un rango usar `close_cost`.
+
+        Si mover `valid_from` provocara solape con otro rango, la exclusión
+        GiST lo rechaza → se traduce a `CostRangeOverlap`.
         """
-        prev = await self._get(cost_id)
-        if prev is None:
+        cost = await self._get(cost_id)
+        if cost is None:
             raise CostNotFound(str(cost_id))
 
         # Snapshot del antes para audit.
-        before = _snapshot(prev)
+        before = _snapshot(cost)
 
-        # 1) supersede la previa.
-        prev.status = "superseded"
-        prev.updated_by = actor_id
-        await self.session.flush()
+        # 1) Validar breakdown final (merged si llega parcial).
+        new_breakdown = dict(breakdown) if breakdown is not None else dict(cost.breakdown or {})
+        validation = await validate_breakdown(self.session, cost.scheme_code, new_breakdown)
 
-        # 2) Validar breakdown final (merged si llega parcial).
-        new_breakdown = dict(breakdown) if breakdown is not None else dict(prev.breakdown or {})
-        validation = await validate_breakdown(self.session, prev.scheme_code, new_breakdown)
+        # 2) Mutar la fila in-place.
+        cost.breakdown = new_breakdown
+        if valid_from is not None:
+            cost.valid_from = valid_from
+        if currency_origin is not None:
+            cost.currency_origin = currency_origin
+        if fx_inferred is not None:
+            cost.fx_inferred = fx_inferred
+        # fx_rate_id explícito sobrescribe; NULL deja que el trigger re-estampe.
+        cost.fx_rate_id = fx_rate_id
+        cost.updated_by = actor_id
 
-        # 3) Insertar nueva row.
-        new = Cost(
-            sku=prev.sku,
-            scheme_code=prev.scheme_code,
-            supplier_code=prev.supplier_code,
-            currency_origin=currency_origin or prev.currency_origin,
-            effective_at=effective_at or prev.effective_at,
-            breakdown=new_breakdown,
-            status="active",
-            version=prev.version + 1,
-            fx_inferred=fx_inferred if fx_inferred is not None else False,
-            fx_rate_id=fx_rate_id,  # NULL → trigger re-estampará
-            created_by=actor_id,
-        )
-        self.session.add(new)
         try:
             await self.session.flush()
         except IntegrityError as exc:
             await self.session.rollback()
             self._maybe_remap_fx_error(exc)
+            self._maybe_remap_overlap_error(exc)
             raise
 
-        # 4) Audit con diff.
-        after = _snapshot(new)
+        await self.session.refresh(cost)
+
+        # 3) Audit con diff.
+        after = _snapshot(cost)
         diff = _compute_diff(before, after)
         audit = AuditRepository(self.session)
         await audit.record(
             entity_type="cost",
-            entity_id=str(new.id),
+            entity_id=str(cost.id),
             action="cost.updated",
             actor_id=actor_id,
             actor_email=actor_email,
@@ -266,7 +298,77 @@ class CostService:
             after=after,
             payload_diff=diff,
         )
-        return CreateCostResult(cost=new, warnings=validation.warnings)
+        return CreateCostResult(cost=cost, warnings=validation.warnings)
+
+    async def cost_as_of(
+        self,
+        *,
+        sku: str,
+        scheme_code: str,
+        supplier_code: str | None = None,
+        on: date,
+    ) -> Cost | None:
+        """Devuelve el coste vigente a la fecha `on` para la clave dada.
+
+        Vigente := ``valid_from <= on AND (valid_to IS NULL OR valid_to >= on)``.
+        Como la exclusión GiST garantiza no-solape, hay como mucho una fila.
+        """
+        stmt = (
+            select(Cost)
+            .where(
+                Cost.sku == sku,
+                Cost.scheme_code == scheme_code,
+                func.coalesce(Cost.supplier_code, "") == (supplier_code or ""),
+                Cost.valid_from <= on,
+                (Cost.valid_to.is_(None)) | (Cost.valid_to >= on),
+            )
+            .order_by(desc(Cost.valid_from))
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def close_cost(
+        self,
+        *,
+        cost_id: UUID,
+        valid_to: date,
+        actor_id: UUID | None = None,
+        actor_email: str | None = None,
+    ) -> Cost:
+        """Cierra (descataloga) un coste fijando su `valid_to` — sin sucesor.
+
+        Si fijar `valid_to` provocara solape con otro rango, la exclusión GiST
+        lo rechaza → se traduce a `CostRangeOverlap`.
+        """
+        cost = await self._get(cost_id)
+        if cost is None:
+            raise CostNotFound(str(cost_id))
+
+        before = _snapshot(cost)
+
+        cost.valid_to = valid_to
+        cost.updated_by = actor_id
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            self._maybe_remap_overlap_error(exc)
+            raise
+
+        after = _snapshot(cost)
+        audit = AuditRepository(self.session)
+        await audit.record(
+            entity_type="cost",
+            entity_id=str(cost.id),
+            action="cost.closed",
+            actor_id=actor_id,
+            actor_email=actor_email,
+            before=before,
+            after=after,
+            payload_diff=_compute_diff(before, after),
+        )
+        return cost
 
     # ------------------------------------------------------------------
     # Helpers
@@ -307,8 +409,18 @@ class CostService:
         msg = str(getattr(exc, "orig", exc) or exc).lower()
         if "fx_rate_not_found_at_effective_at" in msg:
             raise FXRateNotFoundAtEffectiveAt(
-                "No FX rate found for currency_origin → AED at effective_at"
+                "No FX rate found for currency_origin → AED at valid_from"
             )
+
+    @staticmethod
+    def _maybe_remap_overlap_error(exc: IntegrityError) -> None:
+        """La exclusión GiST `ex_costs_no_overlap` lanza ExclusionViolation
+        (SQLSTATE 23P01) cuyo mensaje cita la constraint. Si lo detectamos,
+        levantamos el error de dominio limpio `CostRangeOverlap`.
+        """
+        msg = str(getattr(exc, "orig", exc) or exc).lower()
+        if "ex_costs_no_overlap" in msg or "exclusion constraint" in msg:
+            raise CostRangeOverlap("Cost validity range overlaps an existing range for this key")
 
     # ------------------------------------------------------------------
     # Helper Python para preview UI (no persiste — usa misma fórmula que el trigger DB).
@@ -387,7 +499,8 @@ def _snapshot(cost: Cost) -> dict[str, Any]:
         "scheme_code": cost.scheme_code,
         "supplier_code": cost.supplier_code,
         "currency_origin": cost.currency_origin,
-        "effective_at": cost.effective_at.isoformat() if cost.effective_at else None,
+        "valid_from": cost.valid_from.isoformat() if cost.valid_from else None,
+        "valid_to": cost.valid_to.isoformat() if cost.valid_to else None,
         "breakdown": cost.breakdown,
         "scheme_landed_aed": str(cost.scheme_landed_aed)
         if cost.scheme_landed_aed is not None
@@ -412,6 +525,7 @@ def _compute_diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, An
 
 __all__ = [
     "CostNotFound",
+    "CostRangeOverlap",
     "CostService",
     "CostServiceError",
     "CreateCostResult",
