@@ -161,7 +161,8 @@ async def test_detect_drift_with_baseline_alerts(db_session: AsyncSession) -> No
     res = await detect_drift(db_session, channel_id=channel_id, selling_model="b2c")
     assert res is not None
     assert res.baseline_snapshot_id is not None
-    # Drift de comisión 19pp registrado en reasons.
-    assert res.drift_reasons["commission_pp"] == "19"
+    # Drift de comisión 19pp registrado en reasons (comparar como Decimal,
+    # independiente de la escala de la columna: "19" vs "19.00").
+    assert Decimal(res.drift_reasons["commission_pp"]) == Decimal("19")
     # Al menos un SKU cambia de señal o esquema → should_alert.
     assert (res.summary.skus_scheme_changed + res.summary.skus_signal_changed) >= 0
