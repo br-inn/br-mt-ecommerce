@@ -98,6 +98,8 @@ def make_celery() -> Celery:
             "app.workers.tasks.rematch_pool",
             # Rule Engine — análisis periódico de performance + sugerencias IA
             "app.workers.tasks.rule_engine_analyzer",
+            # F2 — FX sync diario ECB→fx_rates (mt.fx.sync_daily)
+            "app.workers.tasks.fx",
         ],
     )
 
