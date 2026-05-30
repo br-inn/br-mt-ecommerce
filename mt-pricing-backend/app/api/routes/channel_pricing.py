@@ -36,6 +36,7 @@ from app.db.models.channel_pricing import (
     TradeRouteParams,
 )
 from app.db.models.channels import Channel
+from app.db.models.optimization_run import PricingOptimizationRun
 from app.db.models.product import Product
 from app.db.models.user import User
 from app.db.models.vocabularies import Family
@@ -59,6 +60,10 @@ from app.schemas.channel_pricing import (
     ScenarioSummary,
     TradeRouteParamsRead,
     TradeRouteParamsUpdate,
+)
+from app.schemas.optimization_run import (
+    OptimizationRunDetail,
+    OptimizationRunSummary,
 )
 from app.schemas.provenance_query import (
     FreshnessResponse,
@@ -1496,6 +1501,91 @@ async def load_scenario(
             )
             .on_conflict_do_nothing()
         )
+    await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# F8 — Optimization drift runs (list / detalle / ack)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/optimization-runs",
+    operation_id="listOptimizationRuns",
+    response_model=list[OptimizationRunSummary],
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def list_optimization_runs(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+    unacknowledged: bool = Query(default=False),
+) -> list[OptimizationRunSummary]:
+    """List drift-detection runs for a channel + selling model (newest first)."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    stmt = (
+        select(PricingOptimizationRun)
+        .where(
+            PricingOptimizationRun.channel_id == channel_id,
+            PricingOptimizationRun.selling_model == selling_model.value,
+        )
+        .order_by(PricingOptimizationRun.detected_at.desc())
+    )
+    if unacknowledged:
+        stmt = stmt.where(PricingOptimizationRun.acknowledged_at.is_(None))
+    rows = (await session.execute(stmt)).scalars().all()
+    return [OptimizationRunSummary.model_validate(r) for r in rows]
+
+
+@router.get(
+    "/optimization-runs/{run_id}",
+    operation_id="getOptimizationRun",
+    response_model=OptimizationRunDetail,
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_optimization_run(
+    channel_code: str,
+    run_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> OptimizationRunDetail:
+    """Return the full diff detail of one drift-detection run."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    row = (
+        await session.execute(
+            select(PricingOptimizationRun).where(
+                PricingOptimizationRun.id == run_id,
+                PricingOptimizationRun.channel_id == channel_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(404, "Optimization run not found")
+    return OptimizationRunDetail.model_validate(row)
+
+
+@router.post(
+    "/optimization-runs/{run_id}/ack",
+    operation_id="ackOptimizationRun",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def ack_optimization_run(
+    channel_code: str,
+    run_id: uuid.UUID,
+    _user: Annotated[User, Depends(require_permissions("prices:propose"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> None:
+    """Mark a drift-detection run as reviewed (acknowledged)."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    result = await session.execute(
+        update(PricingOptimizationRun)
+        .where(
+            PricingOptimizationRun.id == run_id,
+            PricingOptimizationRun.channel_id == channel_id,
+        )
+        .values(acknowledged_at=text("now()"), acknowledged_by=_user.id)
+    )
+    if result.rowcount == 0:
+        raise HTTPException(404, "Optimization run not found")
     await session.commit()
 
 

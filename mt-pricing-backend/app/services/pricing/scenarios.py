@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -23,6 +24,7 @@ from app.db.models.channel_pricing import (
     PricingScenario,
     TradeRouteParams,
 )
+from app.services.pricing.schemas import ChannelFees, RouteParams
 
 _ROUTE_FIELDS = (
     "fx_rate",
@@ -132,4 +134,30 @@ async def create_auto_snapshot(
     return row.id
 
 
-__all__ = ["build_scenario_config", "create_auto_snapshot"]
+def route_fees_from_config(cfg: dict[str, Any]) -> tuple[RouteParams, ChannelFees] | None:
+    """Reconstruye RouteParams+ChannelFees desde un config_jsonb de PricingScenario."""
+    r = cfg.get("route") or {}
+    f = cfg.get("fees") or {}
+    if not r or not f:
+        return None
+    route = RouteParams(
+        fx_rate=Decimal(r["fx_rate"]),
+        fx_buffer_pct=Decimal(r["fx_buffer_pct"]),
+        freight_rate_per_kg=Decimal(r["freight_rate_per_kg"]),
+        freight_min_aed=Decimal(r["freight_min_aed"]),
+        import_tariff_pct=Decimal(r["import_tariff_pct"]),
+        local_warehouse_pct=Decimal(r["local_warehouse_pct"]),
+        handling_pct=Decimal(r["handling_pct"]),
+    )
+    fees = ChannelFees(
+        mt_discount_pct=Decimal(f["mt_discount_pct"]),
+        commission_pct=Decimal(f["commission_pct"]),
+        vat_pct=Decimal(f["vat_pct"]),
+        advertising_pct=Decimal(f["advertising_pct"]),
+        returns_pct=Decimal(f["returns_pct"]),
+        storage_multiplier=Decimal(f["storage_multiplier"]),
+    )
+    return route, fees
+
+
+__all__ = ["build_scenario_config", "create_auto_snapshot", "route_fees_from_config"]

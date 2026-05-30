@@ -102,6 +102,8 @@ def make_celery() -> Celery:
             "app.workers.tasks.fx",
             # F2 — cleanup nightly de snapshots auto vencidos
             "app.workers.tasks.pricing_snapshots",
+            # F8 — detección de drift de optimización + alerta (no aplica)
+            "app.workers.tasks.pricing_auto_optimize",
         ],
     )
 

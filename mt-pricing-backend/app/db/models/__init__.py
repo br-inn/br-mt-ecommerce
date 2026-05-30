@@ -112,6 +112,7 @@ from app.db.models.material_alias import MaterialAlias
 from app.db.models.material_compatibility import MaterialCompatibility
 from app.db.models.norm_equivalence import NormEquivalence
 from app.db.models.notification import Notification
+from app.db.models.optimization_run import PricingOptimizationRun
 from app.db.models.price_alerts import PriceAlert
 from app.db.models.price_history import PriceHistoryRaw
 from app.db.models.price_reference_excel import PriceReferenceExcel
@@ -447,4 +448,6 @@ __all__ = [
     # F1 Provenance + Audit (mig. 20260603_149)
     "SourceObservation",
     "SourceHealth",
+    # F8 Auto-optimization drift runs (mig. 20260603_151)
+    "PricingOptimizationRun",
 ]

@@ -5199,6 +5199,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pricing/{channel_code}/optimization-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Optimization Runs
+         * @description List drift-detection runs for a channel + selling model (newest first).
+         */
+        get: operations["listOptimizationRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/optimization-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Optimization Run
+         * @description Return the full diff detail of one drift-detection run.
+         */
+        get: operations["getOptimizationRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/optimization-runs/{run_id}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ack Optimization Run
+         * @description Mark a drift-detection run as reviewed (acknowledged).
+         */
+        post: operations["ackOptimizationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pricing/{channel_code}/optimize": {
         parameters: {
             query?: never;
@@ -15138,6 +15198,62 @@ export interface components {
             revenue_mtd: string;
             /** Rma Open Count */
             rma_open_count: number;
+        };
+        /**
+         * OptimizationRunDetail
+         * @description Vista de detalle — incluye el diff completo + razones + snapshots.
+         */
+        OptimizationRunDetail: {
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+            /** Baseline Snapshot Id */
+            baseline_snapshot_id: string | null;
+            /**
+             * Detected At
+             * Format: date-time
+             */
+            detected_at: string;
+            /** Diff Detail */
+            diff_detail: unknown[];
+            /** Drift Reasons */
+            drift_reasons: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revert Snapshot Id */
+            revert_snapshot_id: string | null;
+            selling_model: components["schemas"]["SellingModel"];
+            /** Skus Scheme Changed */
+            skus_scheme_changed: number;
+            /** Skus Signal Changed */
+            skus_signal_changed: number;
+        };
+        /**
+         * OptimizationRunSummary
+         * @description Vista de lista — campos esenciales de una alerta de drift.
+         */
+        OptimizationRunSummary: {
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+            /**
+             * Detected At
+             * Format: date-time
+             */
+            detected_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            selling_model: components["schemas"]["SellingModel"];
+            /** Skus Scheme Changed */
+            skus_scheme_changed: number;
+            /** Skus Signal Changed */
+            skus_signal_changed: number;
         };
         /** OptimizeResponse */
         OptimizeResponse: {
@@ -33019,6 +33135,102 @@ export interface operations {
                 "application/json": components["schemas"]["MarginTargetUpsert"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listOptimizationRuns: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+                unacknowledged?: boolean;
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptimizationRunSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getOptimizationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptimizationRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ackOptimizationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {

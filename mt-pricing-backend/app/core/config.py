@@ -260,6 +260,13 @@ class Settings(BaseSettings):
     ECB_FX_URL: str = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
     AUTO_SNAPSHOT_RETENTION_DAYS: int = 90
 
+    # ── Auto-optimization drift (F8) ─────────────────────────────────────
+    DRIFT_MIN_SKUS: int = 1
+    FX_DRIFT_PCT: Decimal = Decimal("0.5")
+    COMMISSION_DRIFT_PP: Decimal = Decimal("1.0")
+    TARIFF_DRIFT_PP: Decimal = Decimal("1.0")
+    AUTO_OPTIMIZE_CHECK_CRON: str = "30 1 * * *"
+
     @property
     def is_prod(self) -> bool:
         return self.ENV == "production"
