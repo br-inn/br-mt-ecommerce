@@ -36,6 +36,7 @@ import {
 import { SUPPLIER_CURRENCIES } from "@/lib/api/endpoints/suppliers";
 import { useCostsForSku } from "@/lib/hooks/costs/use-costs";
 import {
+  useCloseCost,
   useCreateCost,
   useUpdateCost,
 } from "@/lib/hooks/costs/use-cost-mutations";
@@ -55,11 +56,13 @@ interface Props {
 export function CostsTabClient({ sku }: Props) {
   const { data: costs, isLoading, isError, refetch } = useCostsForSku(
     sku,
-    false /* incluir histórico */,
+    undefined /* as_of: vigentes hoy */,
+    false /* only_active=false → incluir histórico */,
   );
   const [showHistory, setShowHistory] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Cost | null>(null);
+  const [closing, setClosing] = React.useState<Cost | null>(null);
 
   const handleAdd = () => {
     setEditing(null);
@@ -69,10 +72,11 @@ export function CostsTabClient({ sku }: Props) {
     setEditing(c);
     setSheetOpen(true);
   };
-  const handleClose = () => {
+  const handleCloseSheet = () => {
     setSheetOpen(false);
     setEditing(null);
   };
+  const handleDescatalogar = (c: Cost) => setClosing(c);
 
   if (isError) {
     return (
@@ -94,6 +98,7 @@ export function CostsTabClient({ sku }: Props) {
         loading={isLoading}
         onAdd={handleAdd}
         onEdit={handleEdit}
+        onClose={handleDescatalogar}
         showHistory={showHistory}
         onToggleHistory={setShowHistory}
         canWrite
@@ -104,9 +109,22 @@ export function CostsTabClient({ sku }: Props) {
           <CostFormSheet
             sku={sku}
             initial={editing}
-            onClose={handleClose}
+            onClose={handleCloseSheet}
             onSaved={() => {
-              handleClose();
+              handleCloseSheet();
+              void refetch();
+            }}
+          />
+        </RbacGuard>
+      ) : null}
+
+      {closing ? (
+        <RbacGuard permissions={["costs:write"]}>
+          <CloseCostDialog
+            cost={closing}
+            onCancel={() => setClosing(null)}
+            onClosed={() => {
+              setClosing(null);
               void refetch();
             }}
           />
@@ -140,10 +158,8 @@ function CostFormSheet({
   const [currencyOrigin, setCurrencyOrigin] = React.useState(
     initial?.currency_origin ?? "EUR",
   );
-  const [effectiveAt, setEffectiveAt] = React.useState<string>(
-    () =>
-      initial?.effective_at?.slice(0, 10) ??
-      new Date().toISOString().slice(0, 10),
+  const [validFrom, setValidFrom] = React.useState<string>(
+    () => initial?.valid_from ?? new Date().toISOString().slice(0, 10),
   );
   const [breakdown, setBreakdown] = React.useState<CostBreakdown>(
     initial?.breakdown ?? {},
@@ -166,10 +182,10 @@ function CostFormSheet({
       if (isEdit && initial) {
         const resp = await updateMut.mutateAsync({
           breakdown,
-          effective_at: new Date(effectiveAt + "T00:00:00Z").toISOString(),
+          valid_from: validFrom,
           currency_origin: currencyOrigin,
         });
-        toast.success(`Versión ${resp.cost.version} creada.`);
+        toast.success("Coste corregido.");
         if (resp.warnings.length) {
           toast.message(
             `Aviso: ${resp.warnings.length} campo(s) no declarado(s).`,
@@ -183,11 +199,11 @@ function CostFormSheet({
         scheme_code: schemeCode,
         supplier_code: supplier ? supplier : null,
         currency_origin: currencyOrigin,
-        effective_at: new Date(effectiveAt + "T00:00:00Z").toISOString(),
+        valid_from: validFrom,
         breakdown,
       };
       const resp = await createMut.mutateAsync(payload);
-      toast.success(`Coste creado (v${resp.cost.version}).`);
+      toast.success("Coste creado.");
       if (resp.warnings.length) {
         toast.message(
           `Aviso: ${resp.warnings.length} campo(s) no declarado(s).`,
@@ -242,12 +258,12 @@ function CostFormSheet({
         style={{ backgroundColor: MT.surface, borderColor: MT.border }}
         role="dialog"
         aria-modal="true"
-        aria-label={isEdit ? "Editar coste" : "Nuevo coste"}
+        aria-label={isEdit ? "Corregir coste" : "Nuevo coste desde fecha"}
         data-testid="cost-sheet"
       >
         <header className="flex items-center justify-between">
           <h2 className="text-[16px] font-semibold" style={{ color: MT.ink }}>
-            {isEdit ? "Editar coste" : "Nuevo coste"}
+            {isEdit ? "Corregir coste" : "Nuevo coste desde fecha"}
           </h2>
           <MtButton
             size="sm"
@@ -324,14 +340,14 @@ function CostFormSheet({
               </select>
             </FieldLabel>
 
-            <FieldLabel label="Effective at">
+            <FieldLabel label="Vigente desde">
               <input
                 type="date"
-                value={effectiveAt}
-                onChange={(e) => setEffectiveAt(e.target.value)}
+                value={validFrom}
+                onChange={(e) => setValidFrom(e.target.value)}
                 className="w-full rounded-[4px] border px-2 py-1 text-[12.5px]"
                 style={{ borderColor: MT.border }}
-                data-testid="cost-effective-at"
+                data-testid="cost-valid-from"
               />
             </FieldLabel>
           </div>
@@ -365,11 +381,138 @@ function CostFormSheet({
               disabled={isPending}
               data-testid="cost-submit"
             >
-              {isPending ? "Guardando…" : isEdit ? "Crear nueva versión" : "Crear coste"}
+              {isPending ? "Guardando…" : isEdit ? "Guardar corrección" : "Crear coste"}
             </MtButton>
           </footer>
         </form>
       </aside>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CloseCostDialog — descatalogar (fijar valid_to) el coste vigente.
+// Modal pequeño y centrado, consistente con el estilo del sheet (primitives).
+// ---------------------------------------------------------------------------
+function CloseCostDialog({
+  cost,
+  onCancel,
+  onClosed,
+}: {
+  cost: Cost;
+  onCancel: () => void;
+  onClosed: () => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [validTo, setValidTo] = React.useState<string>(today);
+  const [error, setError] = React.useState<string | null>(null);
+  const closeMut = useCloseCost();
+
+  const handleConfirm = async () => {
+    setError(null);
+    if (validTo < cost.valid_from) {
+      setError("La fecha de cierre no puede ser anterior a la fecha de inicio.");
+      return;
+    }
+    try {
+      await closeMut.mutateAsync({ id: cost.id, valid_to: validTo });
+      toast.success("Coste descatalogado.");
+      onClosed();
+    } catch (err) {
+      if (err instanceof CostsApiError) {
+        const detail = err.detail as Record<string, unknown> | undefined;
+        const inner = detail?.detail as Record<string, unknown> | undefined;
+        setError(
+          (typeof inner?.title === "string" && inner.title) ||
+            (typeof detail?.title === "string" && detail.title) ||
+            err.message,
+        );
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    }
+  };
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40"
+        style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+        onClick={onCancel}
+        aria-hidden
+        data-testid="cost-close-backdrop"
+      />
+      <div
+        className="fixed left-1/2 top-1/2 z-50 flex w-full max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-lg border p-5"
+        style={{ backgroundColor: MT.surface, borderColor: MT.border }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Descatalogar coste"
+        data-testid="cost-close-dialog"
+      >
+        <header className="flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold" style={{ color: MT.ink }}>
+            Descatalogar coste
+          </h2>
+          <MtButton
+            size="sm"
+            tone="ghost"
+            icon={<X className="size-3.5" />}
+            onClick={onCancel}
+            aria-label="Cerrar"
+          />
+        </header>
+
+        <p className="text-[12.5px]" style={{ color: MT.ink2 }}>
+          Se fijará la fecha de fin de vigencia (<span className="mt-mono">{cost.scheme_code}</span>
+          {cost.supplier_code ? ` · ${cost.supplier_code}` : ""}). El coste deja
+          de estar vigente a partir de esa fecha.
+        </p>
+
+        {error ? (
+          <div
+            className="rounded-md border px-3 py-2 text-[12.5px]"
+            style={{
+              backgroundColor: MT.dangerSoft,
+              borderColor: MT.dangerBorder,
+              color: MT.danger,
+            }}
+            data-testid="cost-close-error"
+          >
+            {error}
+          </div>
+        ) : null}
+
+        <FieldLabel label="Vigente hasta">
+          <input
+            type="date"
+            value={validTo}
+            min={cost.valid_from}
+            onChange={(e) => setValidTo(e.target.value)}
+            className="w-full rounded-[4px] border px-2 py-1 text-[12.5px]"
+            style={{ borderColor: MT.border }}
+            data-testid="cost-close-valid-to"
+          />
+        </FieldLabel>
+
+        <footer className="mt-1 flex items-center justify-end gap-2">
+          <MtButton
+            tone="ghost"
+            onClick={onCancel}
+            disabled={closeMut.isPending}
+          >
+            Cancelar
+          </MtButton>
+          <MtButton
+            tone="danger"
+            onClick={handleConfirm}
+            disabled={closeMut.isPending}
+            data-testid="cost-close-confirm"
+          >
+            {closeMut.isPending ? "Descatalogando…" : "Descatalogar"}
+          </MtButton>
+        </footer>
+      </div>
     </>
   );
 }

@@ -1402,6 +1402,51 @@
       }
     }
   },
+  "costos": {
+    "tabs": {
+      "resumen": "Resumen",
+      "costes": "Costes",
+      "importar": "Importar"
+    },
+    "search": "Buscar por SKU",
+    "loadMore": "Cargar más",
+    "totalCount": "{count, plural, =0 {Sin costes} =1 {1 coste} other {# costes}}",
+    "columns": {
+      "sku": "SKU",
+      "scheme": "Esquema",
+      "supplier": "Proveedor",
+      "validFrom": "Desde",
+      "validTo": "Hasta",
+      "landed": "Landed AED",
+      "state": "Estado"
+    },
+    "open": "abierto",
+    "viewInCosts": "Ver en Costos",
+    "states": {
+      "vigente": "Vigente",
+      "programado": "Programado",
+      "caducado": "Caducado"
+    },
+    "filters": {
+      "anyScheme": "Todos los esquemas",
+      "anySupplier": "Todos los proveedores",
+      "validOn": "Vigente a fecha",
+      "showHistory": "Mostrar histórico",
+      "clear": "Limpiar"
+    },
+    "empty": {
+      "title": "Sin costes",
+      "description": "No hay costes que coincidan con los filtros."
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los costes."
+    },
+    "importar": {
+      "title": "Importación masiva de costes",
+      "description": "La carga batch de costos por SKU × esquema × proveedor usa la columna valid_from para fijar el inicio de vigencia de cada fila. El backend cierra automáticamente el rango abierto previo.",
+      "cta": "Ir al importer de costes"
+    }
+  },
   "costsDashboard": {
     "title": "Cobertura de costes",
     "subtitle": "Cobertura de costes activos por esquema de venta.",

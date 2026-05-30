@@ -43,16 +43,55 @@ export function useCosts(filters: CostFilters = {}) {
   });
 }
 
-/** GET /products/{sku}/costs — costes activos del SKU agrupados por scheme. */
+/** GET /products/{sku}/costs — costes vigentes del SKU agrupados por scheme. */
 export function useCostsForSku(
   sku: string | undefined,
+  asOf?: string,
   onlyActive = true,
   enabled = true,
 ) {
   return useQuery<Cost[], Error>({
-    queryKey: [...costKeys.all(), "sku", sku ?? "", { onlyActive }] as const,
-    queryFn: () => costsApi.listForSku(sku as string, onlyActive),
+    queryKey: [
+      ...costKeys.all(),
+      "sku",
+      sku ?? "",
+      { asOf: asOf ?? null, onlyActive },
+    ] as const,
+    queryFn: () => costsApi.listForSku(sku as string, asOf, onlyActive),
     enabled: enabled && !!sku,
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * GET /costs/as-of — coste vigente a una fecha para sku+scheme(+supplier).
+ * Deshabilitado hasta que sku, scheme_code y date estén presentes.
+ */
+export function useCostAsOf(
+  params: {
+    sku: string | undefined;
+    scheme_code: string | undefined;
+    supplier_code?: string | null | undefined;
+    date: string | undefined;
+  },
+  enabled = true,
+) {
+  const { sku, scheme_code, supplier_code, date } = params;
+  const ready = !!sku && !!scheme_code && !!date;
+  return useQuery<Cost, Error>({
+    queryKey: [
+      ...costKeys.all(),
+      "as-of",
+      { sku: sku ?? "", scheme_code: scheme_code ?? "", supplier_code: supplier_code ?? null, date: date ?? "" },
+    ] as const,
+    queryFn: () =>
+      costsApi.asOf({
+        sku: sku as string,
+        scheme_code: scheme_code as string,
+        supplier_code: supplier_code ?? undefined,
+        date: date as string,
+      }),
+    enabled: enabled && ready,
     staleTime: 30_000,
   });
 }
@@ -77,7 +116,7 @@ export function useCreateCost() {
   });
 }
 
-/** PUT versionado — devuelve `{ cost, warnings }` con version+1. */
+/** PUT corrección in-place — devuelve `{ cost, warnings }`. */
 export function useUpdateCost(id: string) {
   const qc = useQueryClient();
   return useMutation<CostCreatedResponse, Error, CostUpdatePayload>({
@@ -85,6 +124,22 @@ export function useUpdateCost(id: string) {
     onSuccess: (resp) => {
       qc.setQueryData(costKeys.detail(resp.cost.id), resp.cost);
       void qc.invalidateQueries({ queryKey: costKeys.all() });
+    },
+  });
+}
+
+/**
+ * POST /costs/{id}/close — fija `valid_to` (descatalogar / cierre sin sucesor).
+ * Invalida los listados y el detalle del coste cerrado.
+ */
+export function useCloseCost() {
+  const qc = useQueryClient();
+  return useMutation<Cost, Error, { id: string; valid_to: string }>({
+    mutationFn: ({ id, valid_to }) => costsApi.close(id, valid_to),
+    onSuccess: (updated) => {
+      qc.setQueryData(costKeys.detail(updated.id), updated);
+      void qc.invalidateQueries({ queryKey: costKeys.lists() });
+      void qc.invalidateQueries({ queryKey: costKeys.detail(updated.id) });
     },
   });
 }
