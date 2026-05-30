@@ -60,6 +60,14 @@ from app.schemas.channel_pricing import (
     TradeRouteParamsRead,
     TradeRouteParamsUpdate,
 )
+from app.schemas.provenance_query import (
+    FreshnessResponse,
+    LineageResponse,
+    ParameterAuditResponse,
+    ProductCardResponse,
+    SourceHealthResponse,
+)
+from app.services.pricing import provenance_query
 from app.services.pricing.engine import PricingEngine
 from app.services.pricing.loader import ParameterLoader
 from app.services.pricing.optimizer import ChannelOptimizer
@@ -162,6 +170,122 @@ async def get_params(
             ChannelSchemeParamsRead.model_validate(s).model_dump(mode="json") for s in scheme_rows
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# GET /sources/health — health of all data sources
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/sources/health",
+    response_model=SourceHealthResponse,
+    operation_id="sourcesHealth",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_sources_health(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> SourceHealthResponse:
+    """Return health status of all data sources."""
+    data = await provenance_query.sources_health(session)
+    return SourceHealthResponse(**data)
+
+
+# ---------------------------------------------------------------------------
+# GET /freshness — freshness of channel config rows
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/freshness",
+    response_model=FreshnessResponse,
+    operation_id="freshness",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_freshness(
+    channel_code: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+) -> FreshnessResponse:
+    """Return freshness items for the channel's config tables."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    data = await provenance_query.freshness(session, channel_id, selling_model)
+    return FreshnessResponse(**data)
+
+
+# ---------------------------------------------------------------------------
+# GET /lineage/{sku}/{field} — cost/ceiling lineage for a SKU
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/lineage/{sku}/{field}",
+    response_model=LineageResponse,
+    operation_id="lineage",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_lineage(
+    channel_code: str,
+    sku: str,
+    field: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    selling_model: SellingModel = Query(default=SellingModel.B2C),
+) -> LineageResponse:
+    """Return cost/ceiling lineage for a SKU."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    try:
+        data = await provenance_query.lineage(session, channel_id, sku, field, selling_model)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return LineageResponse(**data)
+
+
+# ---------------------------------------------------------------------------
+# GET /parameters/{key}/audit — audit trail for a parameter key
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/parameters/{key}/audit",
+    response_model=ParameterAuditResponse,
+    operation_id="parameterAudit",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_parameter_audit(
+    channel_code: str,
+    key: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ParameterAuditResponse:
+    """Return audit trail for a pricing parameter key."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    data = await provenance_query.parameter_audit(session, channel_id, channel_code, key)
+    return ParameterAuditResponse(**data)
+
+
+# ---------------------------------------------------------------------------
+# GET /products/{sku}/card — product card with master + history + proposals
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/products/{sku}/card",
+    response_model=ProductCardResponse,
+    operation_id="getProductCard",
+    dependencies=[Depends(require_permissions("prices:read"))],
+)
+async def get_product_card(
+    channel_code: str,
+    sku: str,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ProductCardResponse:
+    """Return product card: master data, price history, listing, proposals."""
+    channel_id = await _resolve_channel_id(channel_code, session)
+    try:
+        data = await provenance_query.product_card(session, channel_id, channel_code, sku)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return ProductCardResponse(**data)
 
 
 # ---------------------------------------------------------------------------

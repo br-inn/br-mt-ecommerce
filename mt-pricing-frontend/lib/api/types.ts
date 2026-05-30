@@ -5091,6 +5091,46 @@ export interface paths {
         patch: operations["channelPricingPatchFeeParams"];
         trace?: never;
     };
+    "/api/v1/pricing/{channel_code}/freshness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Freshness
+         * @description Return freshness items for the channel's config tables.
+         */
+        get: operations["freshness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/lineage/{sku}/{field}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lineage
+         * @description Return cost/ceiling lineage for a SKU.
+         */
+        get: operations["lineage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pricing/{channel_code}/logistics/import": {
         parameters: {
             query?: never;
@@ -5201,6 +5241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pricing/{channel_code}/parameters/{key}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Parameter Audit
+         * @description Return audit trail for a pricing parameter key.
+         */
+        get: operations["parameterAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pricing/{channel_code}/params": {
         parameters: {
             query?: never;
@@ -5257,6 +5317,26 @@ export interface paths {
          * @description Calculate price for one SKU across all schemes + best.
          */
         get: operations["getProductPrice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/products/{sku}/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Product Card
+         * @description Return product card: master data, price history, listing, proposals.
+         */
+        get: operations["getProductCard"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5339,6 +5419,26 @@ export interface paths {
          * @description Restore saved scenario: applies its params + margins + overrides.
          */
         post: operations["loadScenario"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/{channel_code}/sources/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sources Health
+         * @description Return health status of all data sources.
+         */
+        get: operations["sourcesHealth"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9219,6 +9319,28 @@ export interface components {
             /** Id */
             id?: string | null;
         };
+        /** AuditEntry */
+        AuditEntry: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** After */
+            after: {
+                [key: string]: unknown;
+            } | null;
+            /** Before */
+            before: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Event At
+             * Format: date-time
+             */
+            event_at: string;
+            /** Reason */
+            reason: string | null;
+        };
         /**
          * AuditEventResponse
          * @description Audit event tal como se expone al frontend.
@@ -12768,6 +12890,29 @@ export interface components {
             /** Source Module */
             source_module: string | null;
         };
+        /** FreshnessItem */
+        FreshnessItem: {
+            /** Is Stale */
+            is_stale: boolean;
+            /** Key */
+            key: string;
+            /** Observed At */
+            observed_at: string | null;
+            /** Scope */
+            scope: string;
+            /** Source Op */
+            source_op: string;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /** FreshnessResponse */
+        FreshnessResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["FreshnessItem"][];
+        };
         /**
          * FulfillmentScheme
          * @description Generic fulfillment category, channel-independent.
@@ -14204,6 +14349,52 @@ export interface components {
             /** Scheme Code */
             scheme_code: string;
         };
+        /** LineageComponent */
+        LineageComponent: {
+            /**
+             * Is Stale
+             * @default false
+             */
+            is_stale: boolean;
+            /** Key */
+            key: string;
+            /** Observed At */
+            observed_at: string | null;
+            /** Source Op */
+            source_op: string | null;
+            /** Source Ref */
+            source_ref: string | null;
+            /** Value */
+            value: string;
+        };
+        /** LineageLayer */
+        LineageLayer: {
+            /** Amount Aed */
+            amount_aed: string;
+            /**
+             * Components
+             * @default []
+             */
+            components: components["schemas"]["LineageComponent"][];
+            /** Label */
+            label: string;
+            /** Layer */
+            layer: number;
+        };
+        /** LineageResponse */
+        LineageResponse: {
+            /** Field */
+            field: string;
+            /**
+             * Layers
+             * @default []
+             */
+            layers: components["schemas"]["LineageLayer"][];
+            /** Sku */
+            sku: string;
+            /** Total Aed */
+            total_aed: string;
+        };
         /**
          * LotTraceabilityRead
          * @description Resultado completo de trazabilidad de un lote.
@@ -15424,6 +15615,20 @@ export interface components {
              */
             total?: number | null;
         };
+        /** ParameterAuditResponse */
+        ParameterAuditResponse: {
+            /** Entity Id */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Entries
+             * @default []
+             */
+            entries: components["schemas"]["AuditEntry"][];
+            /** Key */
+            key: string;
+        };
         /** PaymentPromiseCreate */
         PaymentPromiseCreate: {
             /** Customer Id */
@@ -16427,6 +16632,33 @@ export interface components {
              * @default 0
              */
             position: number;
+        };
+        /** ProductCardResponse */
+        ProductCardResponse: {
+            /** Listing */
+            listing: {
+                [key: string]: unknown;
+            } | null;
+            /** Master */
+            master: {
+                [key: string]: unknown;
+            };
+            /**
+             * Price History
+             * @default []
+             */
+            price_history: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Proposals
+             * @default []
+             */
+            proposals: {
+                [key: string]: unknown;
+            }[];
+            /** Sku */
+            sku: string;
         };
         /**
          * ProductCertificationLink
@@ -19240,6 +19472,36 @@ export interface components {
              * @enum {string}
              */
             status: "existing" | "new";
+        };
+        /** SourceHealthItem */
+        SourceHealthItem: {
+            /** Age Minutes */
+            age_minutes: number | null;
+            /** Freshness Sla Minutes */
+            freshness_sla_minutes: number;
+            /** Is Healthy */
+            is_healthy: boolean;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Sync Attempt At */
+            last_sync_attempt_at: string | null;
+            /** Last Sync Success At */
+            last_sync_success_at: string | null;
+            /** Source Op */
+            source_op: string;
+        };
+        /** SourceHealthResponse */
+        SourceHealthResponse: {
+            /**
+             * Blocking
+             * @default []
+             */
+            blocking: string[];
+            /**
+             * Sources
+             * @default []
+             */
+            sources: components["schemas"]["SourceHealthItem"][];
         };
         /** SourceListCreate */
         SourceListCreate: {
@@ -32537,6 +32799,74 @@ export interface operations {
             };
         };
     };
+    freshness: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FreshnessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lineage: {
+        parameters: {
+            query?: {
+                selling_model?: components["schemas"]["SellingModel"];
+            };
+            header?: never;
+            path: {
+                channel_code: string;
+                sku: string;
+                field: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     importLogistics: {
         parameters: {
             query?: {
@@ -32772,6 +33102,38 @@ export interface operations {
             };
         };
     };
+    parameterAudit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParameterAuditResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     channelPricingGetParams: {
         parameters: {
             query?: never;
@@ -32862,6 +33224,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductPriceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getProductCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+                sku: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductCardResponse"];
                 };
             };
             /** @description Validation Error */
@@ -32999,6 +33393,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sourcesHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceHealthResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
