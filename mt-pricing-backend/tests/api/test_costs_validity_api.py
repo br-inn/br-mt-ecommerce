@@ -373,6 +373,71 @@ async def test_list_default_only_current(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_list_default_paginates_and_real_total(
+    client: AsyncClient, db_session: AsyncSession, make_product
+) -> None:
+    """Default path (current-only) must paginate past `limit` and report a real
+    COUNT in `total` — regression for the hand-rolled vigencia path that returned
+    cursor.next=null and total=len(page).
+    """
+    # Distinct SKUs sharing a common scheme so we can scope the listing to
+    # exactly these rows (the test DB may carry other seeded costs).
+    skus = ["_API_PGAA", "_API_PGAB", "_API_PGAC"]
+    for s in skus:
+        await make_product(s)
+    headers = await _auth(db_session)
+
+    # One current (open-ended) cost per SKU → 3 vigentes HOY for supplier filter.
+    for s in skus:
+        r = await client.post(
+            "/api/v1/costs", json=_create_payload(s, "2026-01-01", fob=100), headers=headers
+        )
+        assert r.status_code == 201, r.text
+
+    collected_ids: set[str] = set()
+    collected_skus: set[str] = set()
+    cursor: str | None = None
+    pages = 0
+    saw_non_null_cursor = False
+    # Walk the full default (current-only) listing in pages of 2.
+    while True:
+        url = "/api/v1/costs?limit=2"
+        if cursor:
+            url += f"&cursor={cursor}"
+        rp = await client.get(url, headers=headers)
+        assert rp.status_code == 200, rp.text
+        body = rp.json()
+        page_ids = {it["id"] for it in body["items"]}
+        # No overlap across pages → cursor advances correctly.
+        assert page_ids.isdisjoint(collected_ids)
+        collected_ids |= page_ids
+        collected_skus |= {it["sku"] for it in body["items"]}
+        cursor = body["cursor"]["next"]
+        pages += 1
+        if cursor is not None:
+            saw_non_null_cursor = True
+        if cursor is None:
+            break
+        assert pages < 50, "pagination did not terminate"
+
+    # Regression: with >limit current rows the default path MUST expose a next
+    # cursor (the old hand-rolled path always returned cursor.next=null).
+    assert saw_non_null_cursor, "default path must expose a next cursor when more rows exist"
+    assert pages >= 2, "expected to page past the first limit"
+    # Following the cursor returns every seeded current row.
+    assert set(skus).issubset(collected_skus)
+
+    # include_total must be the real COUNT (>2 — at least our 3 seeded rows),
+    # not the trimmed page size (which would be 2).
+    rt = await client.get("/api/v1/costs?include_total=true&limit=2", headers=headers)
+    assert rt.status_code == 200, rt.text
+    total = rt.json()["total"]
+    assert total is not None
+    assert total > 2, f"expected real count > 2, got {total}"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_no_auth_returns_401(client: AsyncClient) -> None:
     r = await client.get("/api/v1/costs")
     assert r.status_code == 401

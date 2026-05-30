@@ -36,13 +36,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import and_, desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
 from app.api.pagination import decode_cursor, encode_cursor
-from app.db.models.cost import Cost
 from app.db.models.user import User
 from app.repositories.audit import AuditRepository
 from app.repositories.pricing import CostRepository
@@ -183,54 +181,31 @@ async def list_costs(
     """
     effective_sku = sku or product_sku
 
-    # Camino legacy: sin filtro de vigencia → paginación por id (cursor UUID).
-    if valid_on is None and include_history:
-        repo = CostRepository(session)
-        cur = _decode_uuid_cursor(cursor)
-        rows, next_cur, total = await repo.list_paginated(
-            product_sku=effective_sku,
-            scheme_code=scheme,
-            supplier_code=supplier,
-            cursor=cur,
-            limit=limit,
-            include_total=include_total,
-        )
-        return Pagination[CostResponse](
-            items=[_to_response(r) for r in rows],
-            cursor=Cursor(next=_encode_uuid_cursor(next_cur)),
-            page_size=limit,
-            total=total,
-        )
+    # Resuelve el filtro de vigencia:
+    # - include_history=True  → sin filtro (historia completa).
+    # - valid_on dado          → ese filtro tiene prioridad.
+    # - default                → costes vigentes HOY.
+    if include_history and valid_on is None:
+        on: date | None = None
+    else:
+        on = valid_on or date.today()
 
-    # Camino con vigencia: filtra por rango y ordena por valid_from desc.
-    on = valid_on or date.today()
-    clauses = [
-        Cost.valid_from <= on,
-        (Cost.valid_to.is_(None)) | (Cost.valid_to >= on),
-    ]
-    if effective_sku:
-        clauses.append(Cost.sku == effective_sku)
-    if scheme:
-        clauses.append(Cost.scheme_code == scheme)
-    if supplier:
-        clauses.append(Cost.supplier_code == supplier)
-
-    stmt = (
-        select(Cost)
-        .where(and_(*clauses))
-        .order_by(desc(Cost.valid_from), Cost.id.asc())
-        .limit(limit + 1)
+    repo = CostRepository(session)
+    cur = _decode_uuid_cursor(cursor)
+    rows, next_cur, total = await repo.list_paginated(
+        product_sku=effective_sku,
+        scheme_code=scheme,
+        supplier_code=supplier,
+        valid_on=on,
+        cursor=cur,
+        limit=limit,
+        include_total=include_total,
     )
-    result = await session.execute(stmt)
-    rows = list(result.scalars().all())
-    next_cur = None
-    if len(rows) > limit:
-        rows = rows[:limit]
     return Pagination[CostResponse](
         items=[_to_response(r) for r in rows],
-        cursor=Cursor(next=next_cur),
+        cursor=Cursor(next=_encode_uuid_cursor(next_cur)),
         page_size=limit,
-        total=len(rows) if include_total else None,
+        total=total,
     )
 
 

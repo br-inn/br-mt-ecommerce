@@ -143,11 +143,18 @@ class CostRepository(BaseRepository[Cost]):
         product_sku: str | None = None,
         scheme_code: str | None = None,
         supplier_code: str | None = None,
+        valid_on: date | None = None,
         cursor: UUID | None = None,
         limit: int = 50,
         include_total: bool = False,
     ) -> tuple[Sequence[Cost], UUID | None, int | None]:
-        """Listado paginado (cursor por id ASC) con filtros opcionales."""
+        """Listado paginado (cursor por id ASC) con filtros opcionales.
+
+        Si ``valid_on`` se pasa, sólo devuelve costes cuyo rango de vigencia
+        contiene esa fecha: ``valid_from <= valid_on AND (valid_to IS NULL OR
+        valid_to >= valid_on)``. El COUNT (cuando ``include_total``) aplica el
+        mismo filtro, por lo que ``total`` es el conteo real de la query.
+        """
         clauses: list[Any] = []
         if product_sku:
             clauses.append(Cost.sku == product_sku)
@@ -155,6 +162,9 @@ class CostRepository(BaseRepository[Cost]):
             clauses.append(Cost.scheme_code == scheme_code)
         if supplier_code:
             clauses.append(Cost.supplier_code == supplier_code)
+        if valid_on is not None:
+            clauses.append(Cost.valid_from <= valid_on)
+            clauses.append((Cost.valid_to.is_(None)) | (Cost.valid_to >= valid_on))
 
         total: int | None = None
         if include_total:
