@@ -8,7 +8,7 @@ commit-on-success).
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -101,10 +101,12 @@ class FXRateRepository(BaseRepository[FXRate]):
 # Cost
 # ---------------------------------------------------------------------------
 class CostRepository(BaseRepository[Cost]):
-    """Repo del nuevo schema de costs (US-1A-04-02). Las columnas legacy
-    (`product_sku`, `valid_from`, `valid_to`, `total`) están expuestas como
-    hybrid attrs sólo en Python — para queries usamos las reales (`sku`,
-    `effective_at`, `status`, `scheme_landed_aed`).
+    """Repo del schema de costs con vigencia por rangos (mig 20260603_148).
+
+    Las columnas reales son ``valid_from`` / ``valid_to`` (NULL = rango abierto).
+    `effective_at` / `status` son hybrids derivados sólo de lectura. Para
+    "coste vigente" filtramos por rango: ``valid_from <= as_of AND (valid_to IS
+    NULL OR valid_to >= as_of)``.
     """
 
     model = Cost
@@ -114,21 +116,22 @@ class CostRepository(BaseRepository[Cost]):
         self,
         product_sku: str,
         scheme_code: str,
-        as_of: datetime | None = None,
+        as_of: date | None = None,
     ) -> Cost | None:
-        """Retorna el row `status='active'` para SKU+scheme (más reciente por
-        `effective_at`). El parámetro `as_of` se preserva en firma legacy pero
-        se ignora — un único 'active' garantizado por UNIQUE parcial.
+        """Retorna el coste vigente a la fecha `as_of` (default hoy) para
+        SKU+scheme. Vigente := ``valid_from <= as_of AND (valid_to IS NULL OR
+        valid_to >= as_of)``. La exclusión GiST garantiza ≤1 fila.
         """
-        _ = as_of  # legacy parameter, no longer used
+        on = as_of or date.today()
         stmt = (
             select(Cost)
             .where(
                 Cost.sku == product_sku,
                 Cost.scheme_code == scheme_code,
-                Cost.status == "active",
+                Cost.valid_from <= on,
+                (Cost.valid_to.is_(None)) | (Cost.valid_to >= on),
             )
-            .order_by(desc(Cost.effective_at))
+            .order_by(desc(Cost.valid_from))
             .limit(1)
         )
         result = await self.session.execute(stmt)
@@ -175,12 +178,26 @@ class CostRepository(BaseRepository[Cost]):
             rows = rows[:limit]
         return rows, next_cursor, total
 
-    async def list_for_sku(self, product_sku: str, *, only_active: bool = False) -> Sequence[Cost]:
-        """Devuelve todos los costos para un SKU (orden: scheme + effective_at desc)."""
+    async def list_for_sku(
+        self,
+        product_sku: str,
+        *,
+        only_active: bool = False,
+        as_of: date | None = None,
+    ) -> Sequence[Cost]:
+        """Devuelve los costos para un SKU (orden: scheme + valid_from desc).
+
+        Si ``only_active`` filtra a los vigentes a la fecha ``as_of`` (default
+        hoy): ``valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of)``.
+        """
         stmt = select(Cost).where(Cost.sku == product_sku)
         if only_active:
-            stmt = stmt.where(Cost.status == "active")
-        stmt = stmt.order_by(Cost.scheme_code.asc(), desc(Cost.effective_at))
+            on = as_of or date.today()
+            stmt = stmt.where(
+                Cost.valid_from <= on,
+                (Cost.valid_to.is_(None)) | (Cost.valid_to >= on),
+            )
+        stmt = stmt.order_by(Cost.scheme_code.asc(), desc(Cost.valid_from))
         result = await self.session.execute(stmt)
         return result.scalars().all()
 

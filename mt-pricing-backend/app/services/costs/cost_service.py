@@ -101,27 +101,44 @@ class CostService:
     # Reads
     # ------------------------------------------------------------------
     async def get_active(
-        self, sku: str, scheme_code: str, supplier_code: str | None = None
+        self,
+        sku: str,
+        scheme_code: str,
+        supplier_code: str | None = None,
+        as_of: date | None = None,
     ) -> Cost | None:
+        """Coste vigente a la fecha ``as_of`` (default hoy) para la clave dada.
+
+        Vigente := ``valid_from <= as_of AND (valid_to IS NULL OR valid_to >=
+        as_of)``. La exclusión GiST garantiza ≤1 fila por clave.
+        """
+        on = as_of or date.today()
         stmt = (
             select(Cost)
             .where(
                 Cost.sku == sku,
                 Cost.scheme_code == scheme_code,
-                Cost.supplier_code == supplier_code,
-                Cost.status == "active",
+                func.coalesce(Cost.supplier_code, "") == (supplier_code or ""),
+                Cost.valid_from <= on,
+                (Cost.valid_to.is_(None)) | (Cost.valid_to >= on),
             )
-            .order_by(desc(Cost.effective_at))
+            .order_by(desc(Cost.valid_from))
             .limit(1)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_for_sku(self, sku: str, *, only_active: bool = False) -> Sequence[Cost]:
+    async def list_for_sku(
+        self, sku: str, *, only_active: bool = False, as_of: date | None = None
+    ) -> Sequence[Cost]:
         stmt = select(Cost).where(Cost.sku == sku)
         if only_active:
-            stmt = stmt.where(Cost.status == "active")
-        stmt = stmt.order_by(Cost.scheme_code.asc(), desc(Cost.effective_at))
+            on = as_of or date.today()
+            stmt = stmt.where(
+                Cost.valid_from <= on,
+                (Cost.valid_to.is_(None)) | (Cost.valid_to >= on),
+            )
+        stmt = stmt.order_by(Cost.scheme_code.asc(), desc(Cost.valid_from))
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -374,8 +391,11 @@ class CostService:
     # Helpers
     # ------------------------------------------------------------------
     async def missing_cost_skus(self, scheme_code: str, *, limit: int = 1000) -> Sequence[str]:
-        """Devuelve los SKUs sin coste activo para el scheme. Implementación
+        """Devuelve los SKUs sin coste vigente hoy para el scheme. Implementación
         en SQL puro — usa NOT EXISTS para evitar un join LEFT con filtro post.
+
+        Vigente := ``valid_from <= current_date AND (valid_to IS NULL OR
+        valid_to >= current_date)``.
         """
         from sqlalchemy import text as sql_text
 
@@ -388,7 +408,8 @@ class CostService:
                 SELECT 1 FROM costs c
                 WHERE c.sku = p.sku
                   AND c.scheme_code = :scheme
-                  AND c.status = 'active'
+                  AND c.valid_from <= current_date
+                  AND (c.valid_to IS NULL OR c.valid_to >= current_date)
               )
             ORDER BY p.sku
             LIMIT :lim
