@@ -64,6 +64,13 @@ from app.services.importer.importer_service import (
 router = APIRouter(prefix="/imports", tags=["imports"])
 
 
+def _content_type_for(filename: str) -> str:
+    """Return the MIME type appropriate for *filename* based on its extension."""
+    if filename.lower().endswith(".xml"):
+        return "text/xml"
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
 def get_importer_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ImporterService:
@@ -423,7 +430,7 @@ async def upload_and_run_pim(
         upload_bytes(
             storage_path,
             file_bytes,
-            content_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            content_type=_content_type_for(file.filename),
             bucket=settings.SUPABASE_STORAGE_BUCKET_IMPORTS,
             upsert=True,
         )

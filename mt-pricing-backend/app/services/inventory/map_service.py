@@ -9,7 +9,9 @@ Flujo principal: `process_gr(gr_id)` →
   3. Calcula unit_cost_aed
   4. Calcula MAP
   5. Upsert InventoryPosition + INSERT CostLot
-  6. Actualiza Cost via CostService.update_cost()
+  6. Establece un nuevo Cost vigente desde la fecha del GR
+     (CostService.create_cost con auto-encadenado; corrección in-place sólo
+     si ya hay un coste con el mismo valid_from = fecha del GR)
   7. Marca GR processed
 """
 
@@ -316,77 +318,76 @@ class MAPService:
         fx_rate_id: UUID | None,
         effective_at: datetime,
     ) -> None:
-        """Actualiza o crea el Cost activo para el SKU con el nuevo MAP.
+        """Establece el Cost vigente para el SKU con el nuevo MAP a partir de la
+        fecha del Goods Receipt.
 
-        Estrategia para CostService.update_cost() + trigger DB:
+        Un Goods Receipt es un evento económico fechado: define un nuevo MAP
+        vigente DESDE `effective_at` (la fecha de recepción). Por eso, por
+        defecto creamos un NUEVO rango de coste vía `CostService.create_cost`
+        con `valid_from = effective_at.date()`. El auto-encadenado del service
+        cierra la fila abierta previa (`valid_to = valid_from - 1 día`),
+        preservando el histórico de costes por fecha.
+
+        Excepción — mismo día: si ya existe un coste cuyo `valid_from` coincide
+        con la fecha del GR (p.ej. dos GRs el mismo día), no se puede crear un
+        rango nuevo sin solapar (la exclusión GiST lo rechazaría); en ese caso
+        corregimos ese coste IN-PLACE vía `update_cost`.
+
+        Breakdown / trigger DB:
         El trigger `costs_compute_landed_aed_trg` recalcula `scheme_landed_aed`
         sumando el breakdown × FX. Para que `scheme_landed_aed == map_aed`,
-        pasamos el MAP directamente en `map_override_aed` (clave sufijo `_aed`).
-        El trigger lo suma directamente sin conversión FX, produciendo
-        `scheme_landed_aed = map_aed`. Todas las claves originales del breakdown
-        anterior se preservan si el Cost ya existe — el MAP override las
-        reemplaza completamente porque es el único componente del nuevo breakdown.
-        Esto es intencional: el MAP Engine establece el landed cost definitivo.
-
-        Si no existe Cost activo, lo crea con currency_origin='AED' y
-        fx_rate_id=None para que el trigger `costs_stamp_fx_trg` no intente
-        buscar FX (AED → no necesita FX).
+        pasamos el MAP directamente en `map_override_aed` (clave sufijo `_aed`):
+        el trigger lo suma sin conversión FX. currency_origin='AED' y
+        fx_rate_id=None evitan que `costs_stamp_fx_trg` busque FX.
         """
-        existing = await self._cost_svc.get_active(
+        gr_date = effective_at.date() if isinstance(effective_at, datetime) else effective_at
+        breakdown = {"map_override_aed": str(map_aed)}
+
+        # ¿Hay ya un coste con valid_from == fecha del GR? → corrección in-place.
+        existing_same_day = await self._cost_svc.get_active(
             sku=sku,
             scheme_code=scheme_code,
             supplier_code=supplier_code or None,
+            as_of=gr_date,
         )
+        same_day = existing_same_day is not None and existing_same_day.valid_from == gr_date
 
-        breakdown = {"map_override_aed": str(map_aed)}
-
-        if existing is None:
-            try:
+        try:
+            if same_day:
+                await self._cost_svc.update_cost(
+                    existing_same_day.id,  # type: ignore[union-attr]
+                    actor_id=None,
+                    breakdown=breakdown,
+                    valid_from=gr_date,
+                    currency_origin="AED",
+                    fx_rate_id=None,
+                    fx_inferred=False,
+                )
+            else:
                 await self._cost_svc.create_cost(
                     sku=sku,
                     scheme_code=scheme_code,
                     supplier_code=supplier_code or None,
                     currency_origin="AED",
-                    effective_at=effective_at,
+                    valid_from=gr_date,
                     breakdown=breakdown,
                     fx_rate_id=None,
                 )
-            except Exception:
-                logger.warning(
-                    "map_service.create_cost_failed sku=%s scheme=%s — "
-                    "updating scheme_landed_aed directly",
-                    sku,
-                    scheme_code,
-                )
-                # Fallback: UPDATE directo si el scheme requiere campos que no
-                # tenemos (e.g. fob_eur required). No bloquea el MAP Engine.
-                await self._direct_update_landed_aed(
-                    sku=sku,
-                    supplier_code=supplier_code,
-                    scheme_code=scheme_code,
-                    map_aed=map_aed,
-                )
-        else:
-            try:
-                await self._cost_svc.update_cost(
-                    existing.id,
-                    actor_id=None,
-                    breakdown=breakdown,
-                    fx_rate_id=None,
-                    fx_inferred=False,
-                )
-            except Exception:
-                logger.warning(
-                    "map_service.update_cost_failed cost_id=%s — "
-                    "updating scheme_landed_aed directly",
-                    existing.id,
-                )
-                await self._direct_update_landed_aed(
-                    sku=sku,
-                    supplier_code=supplier_code,
-                    scheme_code=scheme_code,
-                    map_aed=map_aed,
-                )
+        except Exception:
+            logger.warning(
+                "map_service.cost_write_failed sku=%s scheme=%s — "
+                "updating scheme_landed_aed directly",
+                sku,
+                scheme_code,
+            )
+            # Fallback: UPDATE directo si el scheme requiere campos que no
+            # tenemos (e.g. fob_eur required). No bloquea el MAP Engine.
+            await self._direct_update_landed_aed(
+                sku=sku,
+                supplier_code=supplier_code,
+                scheme_code=scheme_code,
+                map_aed=map_aed,
+            )
 
     async def _direct_update_landed_aed(
         self,
@@ -408,7 +409,7 @@ class MAPService:
              WHERE sku = :sku
                AND scheme_code = :scheme_code
                AND COALESCE(supplier_code, '') = :supplier_code
-               AND status = 'active'
+               AND valid_to IS NULL
             """
         )
         await self.session.execute(

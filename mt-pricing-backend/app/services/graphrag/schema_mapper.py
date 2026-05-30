@@ -242,7 +242,8 @@ class SchemaMapper:
                         "scheme_landed_aed",
                         "status",
                         "version",
-                        "effective_at",
+                        "valid_from",
+                        "valid_to",
                     ],
                 ),
             )

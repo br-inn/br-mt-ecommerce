@@ -57,6 +57,8 @@ dependencies = [
     # Tier 1 scraper — Amazon UAE browser impersonation + fast HTML parsing
     "curl_cffi>=0.7.0",
     "selectolax>=0.3.17",
+    # PIM XML importer — secure XML parsing (XXE / billion-laughs protection)
+    "defusedxml>=0.7.1",
 ]
 
 [dependency-groups]

@@ -6,9 +6,11 @@ Diseño:
   Agent F (US-1A-04-03).
 - Sólo aplica acciones ``CREATE`` y ``UPDATE``. Las ``ORPHAN`` se cuentan pero
   NO se aplican (Champion las resuelve manualmente).
-- Estampe FX as-of: si la fila trae ``effective_at`` lo respeta; si no, default
-  ``now()``. Si el FX no resuelve para la divisa origen → row contabilizada en
-  ``errors_fx_missing`` y sigue.
+- Vigencia por rangos: cada fila trae ``valid_from`` (el parser lo resuelve a
+  hoy si falta). ``create_cost`` ancla el FX as-of a ``valid_from`` y auto-
+  encadena cerrando el rango abierto previo en ``valid_from - 1``; por eso una
+  fila con fecha futura crea un rango futuro sin tocar el coste vigente hoy.
+  Si el FX no resuelve para la divisa origen → row en ``errors_fx_missing``.
 - Audit por fila + summary por chunk (consistente con :mod:`importer.applier`).
 
 Mocks en tests: pasar un dummy con el método ``create_cost(**kwargs) -> Any``;
@@ -32,7 +34,27 @@ logger = logging.getLogger(__name__)
 
 
 class FxMissingError(Exception):
-    """Levantado por la cost service real cuando no hay FX para la divisa."""
+    """FX no disponible para la divisa de la fila (legacy/test contract).
+
+    La cost service real levanta ``FXRateNotFoundAtEffectiveAt``; ambos se
+    contabilizan en ``errors_fx_missing`` (ver ``_FX_MISSING_TYPES``).
+    """
+
+
+def _fx_missing_types() -> tuple[type[Exception], ...]:
+    """Excepciones que cuentan como ``errors_fx_missing``.
+
+    Se resuelve perezosamente para no acoplar el applier al service real: los
+    unit tests mockean el protocolo y sólo usan ``FxMissingError``.
+    """
+    types: tuple[type[Exception], ...] = (FxMissingError,)
+    try:
+        from app.services.costs.cost_service import FXRateNotFoundAtEffectiveAt
+
+        types = (*types, FXRateNotFoundAtEffectiveAt)
+    except ImportError:  # pragma: no cover
+        pass
+    return types
 
 
 class CostServiceProtocol(Protocol):
@@ -108,6 +130,7 @@ async def apply_cost_diffs(
         total_rows=len(diffs),
         started_at=datetime.now(tz=UTC),
     )
+    fx_missing_types = _fx_missing_types()
 
     for d in diffs:
         if d.action == CostRowAction.NO_CHANGE:
@@ -122,13 +145,17 @@ async def apply_cost_diffs(
         if d.action not in (CostRowAction.CREATE, CostRowAction.UPDATE):
             continue
 
+        # El payload del differ ya trae los kwargs de la firma actual de
+        # create_cost (sku, scheme_code, supplier_code, currency_origin,
+        # breakdown, valid_from). Inyectamos actor + run_id como hints de audit.
         kwargs = dict(d.payload)
+        kwargs["actor_id"] = getattr(actor, "id", None)
+        kwargs["actor_email"] = getattr(actor, "email", None)
         kwargs["_import_run_id"] = run_id
-        kwargs["_actor_id"] = getattr(actor, "id", None)
 
         try:
             await cost_service.create_cost(**kwargs)
-        except FxMissingError as exc:
+        except fx_missing_types as exc:
             result.errors_fx_missing += 1
             result.failure_details.append(
                 {

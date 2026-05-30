@@ -5530,6 +5530,22 @@
         "title": "CostCenterOut",
         "type": "object"
       },
+      "CostCloseRequest": {
+        "additionalProperties": false,
+        "description": "POST /costs/{id}/close \u2014 fija `valid_to` (descatalogar / cierre sin\nsucesor). Si solapa otro rango \u2192 409 `cost_range_overlap`.",
+        "properties": {
+          "valid_to": {
+            "format": "date",
+            "title": "Valid To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "valid_to"
+        ],
+        "title": "CostCloseRequest",
+        "type": "object"
+      },
       "CostComponentsTemplate": {
         "description": "Estructura de `cost_components_template` JSONB del scheme.\n\nCampos definidos por el seed de la tabla `schemes` (US-1A-04-01).",
         "properties": {
@@ -5555,7 +5571,7 @@
       },
       "CostCreate": {
         "additionalProperties": false,
-        "description": "POST /costs \u2014 payload del Comercial.\n\nEl backend:\n  1. Valida `breakdown` contra `cost_components_template` del scheme.\n  2. Inserta \u2014 el trigger `costs_stamp_fx_trg` busca FX as-of v\u00eda\n     `fx_rate_at(currency_origin, 'AED', effective_at)` y estampa\n     `fx_rate_id`. Si no encuentra rate \u2192 falla con\n     `error.code='fx_rate_not_found_at_effective_at'`.\n  3. El trigger AFTER suma `breakdown \u00d7 FX` \u2192 `scheme_landed_aed`.",
+        "description": "POST /costs \u2014 payload del Comercial (vigencia por rangos).\n\nEl backend:\n  1. Valida `breakdown` contra `cost_components_template` del scheme.\n  2. Auto-encadena: cierra la fila ABIERTA previa (`valid_to = vf - 1 d\u00eda`).\n  3. Inserta con `valid_to = NULL` \u2014 el trigger `costs_stamp_fx_trg` busca\n     FX as-of v\u00eda `fx_rate_at(currency_origin, 'AED', valid_from)` y estampa\n     `fx_rate_id`. Si no encuentra rate \u2192 falla con\n     `error.code='fx_rate_not_found_at_effective_at'`.\n  4. El trigger AFTER suma `breakdown \u00d7 FX` \u2192 `scheme_landed_aed`.\n  5. Si el rango solapa otro existente \u2192 409 `cost_range_overlap`.",
         "properties": {
           "breakdown": {
             "additionalProperties": true,
@@ -5568,11 +5584,6 @@
             "minLength": 3,
             "pattern": "^[A-Z]{3}$",
             "title": "Currency Origin",
-            "type": "string"
-          },
-          "effective_at": {
-            "format": "date-time",
-            "title": "Effective At",
             "type": "string"
           },
           "fx_inferred": {
@@ -5617,12 +5628,17 @@
               }
             ],
             "title": "Supplier Code"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
           }
         },
         "required": [
           "sku",
           "scheme_code",
-          "effective_at"
+          "valid_from"
         ],
         "title": "CostCreate",
         "type": "object"
@@ -5670,107 +5686,6 @@
           "sku"
         ],
         "title": "CostMissingSkuItem",
-        "type": "object"
-      },
-      "CostPatch": {
-        "additionalProperties": false,
-        "description": "[LEGACY] PATCH parcial.",
-        "properties": {
-          "breakdown": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Breakdown"
-          },
-          "currency": {
-            "anyOf": [
-              {
-                "maxLength": 3,
-                "minLength": 3,
-                "pattern": "^[A-Z]{3}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Currency"
-          },
-          "scheme_code": {
-            "anyOf": [
-              {
-                "maxLength": 32,
-                "minLength": 2,
-                "pattern": "^[A-Z][A-Z0-9_]{1,31}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scheme Code"
-          },
-          "supplier_code": {
-            "anyOf": [
-              {
-                "maxLength": 64,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supplier Code"
-          },
-          "total": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Total"
-          },
-          "valid_from": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Valid From"
-          },
-          "valid_to": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Valid To"
-          }
-        },
-        "title": "CostPatch",
         "type": "object"
       },
       "CostResponse": {
@@ -5932,21 +5847,14 @@
             "title": "Updated By"
           },
           "valid_from": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Valid From"
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
           },
           "valid_to": {
             "anyOf": [
               {
-                "format": "date-time",
+                "format": "date",
                 "type": "string"
               },
               {
@@ -5966,6 +5874,7 @@
           "sku",
           "scheme_code",
           "currency_origin",
+          "valid_from",
           "effective_at",
           "status",
           "created_at",
@@ -5976,7 +5885,7 @@
       },
       "CostUpdate": {
         "additionalProperties": false,
-        "description": "PUT /costs/{id} \u2014 versionado. Crea row nueva con version+1, marca la\nanterior `superseded`. S\u00f3lo el `breakdown` y `effective_at` viajan.",
+        "description": "PATCH /costs/{id} \u2014 correcci\u00f3n IN-PLACE. Muta la misma fila\n(breakdown / valid_from / currency_origin) y re-estampa FX/landed. NO crea\nversi\u00f3n nueva ni toca `valid_to` (para cerrar un rango usar POST .../close).",
         "properties": {
           "breakdown": {
             "anyOf": [
@@ -6004,18 +5913,6 @@
             ],
             "title": "Currency Origin"
           },
-          "effective_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effective At"
-          },
           "fx_inferred": {
             "anyOf": [
               {
@@ -6038,6 +5935,18 @@
               }
             ],
             "title": "Fx Rate Id"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
           }
         },
         "title": "CostUpdate",
@@ -37053,7 +36962,7 @@
     },
     "/api/v1/admin/inventory/seed-from-costs": {
       "post": {
-        "description": "Idempotente. Siembra inventory_positions desde costs activos.",
+        "description": "Idempotente. Siembra inventory_positions desde costs vigentes hoy.",
         "operationId": "seed_inventory_from_costs_api_v1_admin_inventory_seed_from_costs_post",
         "responses": {
           "200": {
@@ -43453,6 +43362,33 @@
           },
           {
             "in": "query",
+            "name": "valid_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Valid On"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_history",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include History",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
             "name": "cursor",
             "required": false,
             "schema": {
@@ -43578,6 +43514,105 @@
         ]
       }
     },
+    "/api/v1/costs/as-of": {
+      "get": {
+        "description": "Devuelve el coste cuyo rango de vigencia contiene `date` (`valid_from <= date AND (valid_to IS NULL OR valid_to >= date)`). 404 si no hay coste vigente a esa fecha.",
+        "operationId": "costsAsOf",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sku",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Sku",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scheme_code",
+            "required": true,
+            "schema": {
+              "maxLength": 32,
+              "minLength": 2,
+              "title": "Scheme Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "supplier_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Supplier Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Coste vigente a una fecha dada para sku+scheme(+supplier)",
+        "tags": [
+          "costs"
+        ]
+      }
+    },
     "/api/v1/costs/missing": {
       "get": {
         "description": "Devuelve la lista de SKUs activos que NO tienen un cost activo para el scheme dado (FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE).",
@@ -43592,6 +43627,23 @@
               "minLength": 2,
               "title": "Scheme Code",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
             }
           },
           {
@@ -43753,8 +43805,7 @@
         ]
       },
       "patch": {
-        "deprecated": true,
-        "description": "DEPRECATED \u2014 mantiene compat con tests Sprint 2. Internamente delega a `update_cost` (versionado). El frontend debe migrar a PUT /costs/{id}.",
+        "description": "Correcci\u00f3n parcial IN-PLACE de un coste (breakdown / valid_from / currency_origin). NO crea versi\u00f3n nueva ni toca `valid_to`. Si mover `valid_from` solapa otro rango \u2192 409 `cost_range_overlap`.",
         "operationId": "costsPatch",
         "parameters": [
           {
@@ -43772,7 +43823,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CostPatch"
+                "$ref": "#/components/schemas/CostUpdate"
               }
             }
           },
@@ -43799,6 +43850,16 @@
             },
             "description": "Not Found"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -43815,13 +43876,13 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "[DEPRECATED] PATCH parcial \u2014 usa PUT /costs/{id} versionado",
+        "summary": "Corregir coste IN-PLACE (misma fila)",
         "tags": [
           "costs"
         ]
       },
       "put": {
-        "description": "Actualiza un cost creando una nueva versi\u00f3n (v+1). La versi\u00f3n anterior queda en `superseded`. Re-valida breakdown contra el template del scheme.",
+        "description": "Corrige un cost mutando la MISMA fila (breakdown / valid_from / currency_origin). NO crea versi\u00f3n nueva ni toca `valid_to` (para cerrar un rango usar POST /costs/{id}/close). Si mover `valid_from` solapa otro rango \u2192 409 `cost_range_overlap`.",
         "operationId": "costsUpdate",
         "parameters": [
           {
@@ -43866,6 +43927,16 @@
             },
             "description": "Not Found"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -43882,7 +43953,86 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Actualizar coste (versionado: previa \u2192 superseded, nueva v+1)",
+        "summary": "Corregir coste IN-PLACE (misma fila, re-estampa FX/landed)",
+        "tags": [
+          "costs"
+        ]
+      }
+    },
+    "/api/v1/costs/{cost_id}/close": {
+      "post": {
+        "description": "Fija el `valid_to` de un coste vigente para descatalogarlo. 404 si no existe; 409 si el rango resultante solapa otro existente.",
+        "operationId": "costsClose",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cost_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cost Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostCloseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cerrar coste (fija valid_to \u2014 descatalogar sin sucesor)",
         "tags": [
           "costs"
         ]
@@ -60030,7 +60180,7 @@
     },
     "/api/v1/products/{sku}/costs": {
       "get": {
-        "description": "Devuelve todos los costs activos del SKU agrupados por scheme (FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE) con breakdown desglosado.",
+        "description": "Devuelve los costs del SKU agrupados por scheme (FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE) vigentes a la fecha `as_of` (default hoy), con breakdown desglosado.",
         "operationId": "productsListCosts",
         "parameters": [
           {
@@ -60040,6 +60190,23 @@
             "schema": {
               "title": "Sku",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
             }
           },
           {
@@ -60084,7 +60251,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Costes activos del SKU agrupados por scheme",
+        "summary": "Costes vigentes del SKU agrupados por scheme",
         "tags": [
           "costs"
         ]

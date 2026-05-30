@@ -713,15 +713,15 @@
     },
     "upload": {
       "title": "ارفع ملف PIM",
-      "hint": "اسحب وأفلت ملف .xlsx أو انقر للاختيار.",
-      "limits": "حتى 50 ميغابايت. صيغة XLSX.",
+      "hint": "اسحب وأفلت ملف .xlsx أو .xml، أو انقر للاختيار.",
+      "limits": "حتى 50 ميغابايت. صيغة XLSX أو XML.",
       "dropLabel": "منطقة الرفع",
       "remove": "إزالة الملف",
       "startPreview": "إنشاء المعاينة",
       "uploading": "جارٍ الرفع…",
       "errors": {
         "tooLarge": "حجم الملف يتجاوز 50 ميغابايت.",
-        "invalidFormat": "يُسمح فقط بصيغة XLSX."
+        "invalidFormat": "يُسمح فقط بصيغتَي XLSX أو XML."
       }
     },
     "preview": {

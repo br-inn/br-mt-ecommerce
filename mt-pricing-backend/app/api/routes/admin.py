@@ -12,7 +12,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_role
@@ -51,8 +51,12 @@ async def seed_inventory_from_costs(
     current_user: Annotated[User, Depends(require_role("admin"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> SeedInventoryResponse:
-    """Idempotente. Siembra inventory_positions desde costs activos."""
-    stmt = select(Cost).where(Cost.status == "active")
+    """Idempotente. Siembra inventory_positions desde costs vigentes hoy."""
+    today = func.current_date()
+    stmt = select(Cost).where(
+        Cost.valid_from <= today,
+        (Cost.valid_to.is_(None)) | (Cost.valid_to >= today),
+    )
     result = await session.execute(stmt)
     costs = result.scalars().all()
 
