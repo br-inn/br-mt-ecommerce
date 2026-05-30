@@ -1,8 +1,12 @@
 """F1 provenance + audit: provenance columns, source_observations, source_health
 
-Revision ID: 20260603_148
-Revises: 20260603_147
+Revision ID: 20260603_149
+Revises: 20260603_148
 Create Date: 2026-05-30
+
+Note: existing rows of the 4 tables that gain `created_at` receive `now()` as their
+creation timestamp (no true historical creation time is available). Treat pre-149
+`created_at` values as the migration moment, not real provenance.
 """
 
 from __future__ import annotations
@@ -12,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "20260603_148"
-down_revision = "20260603_147"
+revision = "20260603_149"
+down_revision = "20260603_148"
 branch_labels = None
 depends_on = None
 
