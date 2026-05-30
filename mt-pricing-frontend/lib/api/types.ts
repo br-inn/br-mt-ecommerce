@@ -5237,9 +5237,6 @@ export interface paths {
          *     Runs the pricing engine for each SKU and inserts rows into `prices`
          *     with status='pending_review'. SKUs not found in channel logistics are
          *     skipped; infeasible prices are reported as errors.
-         *
-         *     proposed_by is stored as NULL until get_current_user is threaded through.
-         *     # TODO: thread current user UUID once auth dependency is available here.
          */
         post: operations["proposePricesSelected"];
         delete?: never;

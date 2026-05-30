@@ -54215,7 +54215,7 @@
     },
     "/api/v1/pricing/{channel_code}/prices/propose-selected": {
       "post": {
-        "description": "Propose prices for selected SKUs into the approval flow.\n\nRuns the pricing engine for each SKU and inserts rows into `prices`\nwith status='pending_review'. SKUs not found in channel logistics are\nskipped; infeasible prices are reported as errors.\n\nproposed_by is stored as NULL until get_current_user is threaded through.\n# TODO: thread current user UUID once auth dependency is available here.",
+        "description": "Propose prices for selected SKUs into the approval flow.\n\nRuns the pricing engine for each SKU and inserts rows into `prices`\nwith status='pending_review'. SKUs not found in channel logistics are\nskipped; infeasible prices are reported as errors.",
         "operationId": "proposePricesSelected",
         "parameters": [
           {

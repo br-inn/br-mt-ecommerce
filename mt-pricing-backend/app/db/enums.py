@@ -201,3 +201,42 @@ class CeilingBasis(StrEnum):
 
     CATALOG_PVP = "catalog_pvp"
     MARGIN_FLOOR = "margin_floor"
+
+
+# ── F1 Provenance + Audit ──────────────────────────────────────────────────
+
+
+class SourceOp(StrEnum):
+    """Operación / origen de datos que produjo una observación de provenance.
+
+    Alineado 1:1 con el PG enum `source_op` (mig. 20260603_149).
+    """
+
+    COMPRAS_PO = "compras_po"
+    IMPORTACION_DUA = "importacion_dua"
+    TESORERIA_FX = "tesoreria_fx"
+    MASTER_CANAL = "master_canal"
+    VENDOR_PRICE_LIST = "vendor_price_list"
+    SETTLEMENT_AMAZON = "settlement_amazon"
+    SETTLEMENT_NOON = "settlement_noon"
+    CONTABILIDAD_ANALITICA = "contabilidad_analitica"
+    MASTER_FISCAL = "master_fiscal"
+    MARKETING_BUDGET = "marketing_budget"
+    POSTVENTA_RMA = "postventa_rma"
+    MASTER_COMERCIAL = "master_comercial"
+    DECISION_LOCAL = "decision_local"
+    MANUAL = "manual"
+
+
+class SnapshotKind(StrEnum):
+    """Tipo de snapshot de escenario de pricing.
+
+    Alineado 1:1 con el PG enum `snapshot_kind` (mig. 20260603_149).
+    """
+
+    MANUAL_A = "manual_a"
+    MANUAL_B = "manual_b"
+    AUTO_PRE_OPTIMIZATION = "auto_pre_optimization"
+    AUTO_PRE_IMPORT = "auto_pre_import"
+    AUTO_PRE_BULK_MARGIN_CHANGE = "auto_pre_bulk_margin_change"
+    AUTO_PRE_SYNC_PARAM = "auto_pre_sync_param"

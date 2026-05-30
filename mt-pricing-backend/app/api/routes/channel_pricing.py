@@ -63,6 +63,7 @@ from app.schemas.channel_pricing import (
 from app.services.pricing.engine import PricingEngine
 from app.services.pricing.loader import ParameterLoader
 from app.services.pricing.optimizer import ChannelOptimizer
+from app.services.pricing.provenance import emit_audit, record_observation, stamp
 from app.services.pricing.schemas import (
     ProductLogistics,
     ProductPricingData,
@@ -197,8 +198,38 @@ async def update_route_params(
 
     values = body.model_dump(exclude_unset=True)
     if values:
+        # Load before-state for audit trail
+        before_row = (
+            (
+                await session.execute(
+                    select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
+                )
+            )
+            .scalars()
+            .first()
+        )
+        before = (
+            {c: str(getattr(before_row, c)) for c in values if hasattr(before_row, c)}
+            if before_row
+            else None
+        )
+        values = stamp(
+            values,
+            actor_id=_user.id,
+            source_op="decision_local",
+            updated_field="updated_by",
+        )
         await session.execute(
             update(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id).values(**values)
+        )
+        await emit_audit(
+            session,
+            entity_type="pricing_param",
+            entity_id=str(fee_row.route_id),
+            action="update",
+            actor_id=_user.id,
+            before=before,
+            after=values,
         )
         await session.commit()
 
@@ -236,10 +267,41 @@ async def update_fee_params(
 
     values = body.model_dump(exclude_unset=True)
     if values:
+        # Load before-state for audit trail
+        before_row = (
+            (
+                await session.execute(
+                    select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
+                )
+            )
+            .scalars()
+            .first()
+        )
+        before = (
+            {c: str(getattr(before_row, c)) for c in values if hasattr(before_row, c)}
+            if before_row
+            else None
+        )
+        fee_id = str(before_row.id) if before_row else channel_code
+        values = stamp(
+            values,
+            actor_id=_user.id,
+            source_op="decision_local",
+            updated_field="updated_by",
+        )
         await session.execute(
             update(ChannelFeeParams)
             .where(ChannelFeeParams.channel_id == channel_id)
             .values(**values)
+        )
+        await emit_audit(
+            session,
+            entity_type="pricing_param",
+            entity_id=fee_id,
+            action="update",
+            actor_id=_user.id,
+            before=before,
+            after=values,
         )
         await session.commit()
 
@@ -318,17 +380,54 @@ async def upsert_margin_target(
     """Upsert margin target. Clears all overrides for this family+selling_model."""
     channel_id = await _resolve_channel_id(channel_code, session)
 
+    # Capture deleted overrides as before-state for audit
+    deleted_overrides_rows = (
+        (
+            await session.execute(
+                select(ChannelMarginOverride).where(
+                    ChannelMarginOverride.channel_id == channel_id,
+                    ChannelMarginOverride.selling_model == body.selling_model.value,
+                    ChannelMarginOverride.product_sku.in_(
+                        select(Product.sku).where(Product.family_id == body.family_id)
+                    ),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    before_overrides = (
+        [
+            {"sku": r.product_sku, "margin_override_pct": str(r.margin_override_pct)}
+            for r in deleted_overrides_rows
+        ]
+        if deleted_overrides_rows
+        else None
+    )
+
+    target_values = {
+        "channel_id": channel_id,
+        "family_id": body.family_id,
+        "selling_model": body.selling_model.value,
+        "margin_target_pct": body.margin_target_pct,
+    }
+    stamped = stamp(
+        target_values,
+        actor_id=_user.id,
+        source_op="decision_local",
+        updated_field="updated_by",
+    )
     await session.execute(
         pg_insert(ChannelMarginTarget)
-        .values(
-            channel_id=channel_id,
-            family_id=body.family_id,
-            selling_model=body.selling_model.value,
-            margin_target_pct=body.margin_target_pct,
-        )
+        .values(**stamped)
         .on_conflict_do_update(
             constraint="uq_channel_margin_targets",
-            set_={"margin_target_pct": body.margin_target_pct},
+            set_={
+                "margin_target_pct": body.margin_target_pct,
+                "updated_by": _user.id,
+                "source_op": "decision_local",
+                "observed_at": stamped["observed_at"],
+            },
         )
     )
     # Clear overrides for products in this family (Pricing Desk behavior)
@@ -340,6 +439,15 @@ async def upsert_margin_target(
                 select(Product.sku).where(Product.family_id == body.family_id)
             ),
         )
+    )
+    await emit_audit(
+        session,
+        entity_type="margin_target",
+        entity_id=str(body.family_id),
+        action="update",
+        actor_id=_user.id,
+        before=before_overrides,
+        after={"margin_target_pct": str(body.margin_target_pct)},
     )
     await session.commit()
 
@@ -365,22 +473,54 @@ async def upsert_margin_override(
     """Upsert per-SKU margin override."""
     channel_id = await _resolve_channel_id(channel_code, session)
 
+    override_values: dict = {
+        "product_sku": sku,
+        "channel_id": channel_id,
+        "selling_model": body.selling_model.value,
+        "margin_override_pct": body.margin_override_pct,
+        "reason": body.reason,
+    }
+    stamped = stamp(
+        override_values,
+        actor_id=_user.id,
+        source_op="decision_local",
+        updated_field="created_by",
+    )
+    if body.reason is not None:
+        stamped["override_by"] = _user.id
+        stamped["override_reason"] = body.reason
+
+    conflict_set = {
+        "margin_override_pct": body.margin_override_pct,
+        "reason": body.reason,
+        "created_by": _user.id,
+        "source_op": "decision_local",
+        "observed_at": stamped["observed_at"],
+    }
+    if body.reason is not None:
+        conflict_set["override_by"] = _user.id
+        conflict_set["override_reason"] = body.reason
+
     await session.execute(
         pg_insert(ChannelMarginOverride)
-        .values(
-            product_sku=sku,
-            channel_id=channel_id,
-            selling_model=body.selling_model.value,
-            margin_override_pct=body.margin_override_pct,
-            reason=body.reason,
-        )
+        .values(**stamped)
         .on_conflict_do_update(
             constraint="uq_channel_margin_overrides",
-            set_={
-                "margin_override_pct": body.margin_override_pct,
-                "reason": body.reason,
-            },
+            set_=conflict_set,
         )
+    )
+    await emit_audit(
+        session,
+        entity_type="margin_override",
+        entity_id=f"{channel_code}:{sku}",
+        action="update",
+        actor_id=_user.id,
+        after={
+            "sku": sku,
+            "margin_override_pct": str(body.margin_override_pct),
+            "reason": body.reason,
+        },
+        reason=body.reason,
     )
     await session.commit()
 
@@ -615,15 +755,17 @@ async def optimize_catalog(
 @router.post(
     "/optimize/apply",
     operation_id="applyOptimization",
-    dependencies=[Depends(require_permissions("prices:propose"))],
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def apply_optimization(
     channel_code: str,
+    _user: Annotated[User, Depends(require_permissions("prices:propose"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
     selling_model: SellingModel = Query(default=SellingModel.B2C),
 ) -> None:
     """Persist optimization result as per-SKU margin overrides."""
+    from datetime import UTC, datetime
+
     channel_id = await _resolve_channel_id(channel_code, session)
     loader = ParameterLoader(session)
     route, fees, schemes = await loader.load_route_and_fees(channel_id)
@@ -634,6 +776,7 @@ async def apply_optimization(
     else:
         results = ChannelOptimizer.full_optimize_catalog_b2b(products, route, fees, schemes)
 
+    now = datetime.now(UTC)
     for r in results:
         await session.execute(
             pg_insert(ChannelMarginOverride)
@@ -643,15 +786,29 @@ async def apply_optimization(
                 selling_model=selling_model.value,
                 margin_override_pct=r.margin_pct,
                 reason="auto-optimized",
+                created_by=_user.id,
+                source_op="decision_local",
+                observed_at=now,
             )
             .on_conflict_do_update(
                 constraint="uq_channel_margin_overrides",
                 set_={
                     "margin_override_pct": r.margin_pct,
                     "reason": "auto-optimized",
+                    "created_by": _user.id,
+                    "source_op": "decision_local",
+                    "observed_at": now,
                 },
             )
         )
+    await emit_audit(
+        session,
+        entity_type="optimization",
+        entity_id=channel_code,
+        action="optimize_apply",
+        actor_id=_user.id,
+        after={"count": len(results)},
+    )
     await session.commit()
 
 
@@ -664,11 +821,11 @@ async def apply_optimization(
     "/prices/propose-selected",
     operation_id="proposePricesSelected",
     response_model=ProposeSelectedResult,
-    dependencies=[Depends(require_permissions("prices:propose"))],
 )
 async def propose_prices_selected(
     channel_code: str,
     body: ProposeSelectedRequest,
+    _user: Annotated[User, Depends(require_permissions("prices:propose"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ProposeSelectedResult:
     """Propose prices for selected SKUs into the approval flow.
@@ -676,21 +833,28 @@ async def propose_prices_selected(
     Runs the pricing engine for each SKU and inserts rows into `prices`
     with status='pending_review'. SKUs not found in channel logistics are
     skipped; infeasible prices are reported as errors.
-
-    proposed_by is stored as NULL until get_current_user is threaded through.
-    # TODO: thread current user UUID once auth dependency is available here.
     """
     from app.services.pricing.price_proposer import PriceProposer
 
     channel_id = await _resolve_channel_id(channel_code, session)
     proposer = PriceProposer(session)
-    return await proposer.propose(
+    result = await proposer.propose(
         channel_id=channel_id,
         skus=body.skus,
         selling_model=body.selling_model,
-        proposed_by=None,  # TODO: replace with current user UUID once threaded
+        proposed_by=str(_user.id),
         notes=body.notes,
     )
+    await emit_audit(
+        session,
+        entity_type="price_proposal",
+        entity_id=channel_code,
+        action="propose",
+        actor_id=_user.id,
+        after={"skus": body.skus},
+    )
+    await session.commit()
+    return result
 
 
 # ── Excel import endpoints ───────────────────────────────────────────
@@ -700,10 +864,10 @@ async def propose_prices_selected(
     "/catalog/import",
     operation_id="importCatalog",
     response_model=CatalogImportResult,
-    dependencies=[Depends(require_permissions("prices:propose"))],
 )
 async def import_catalog(
     channel_code: str,
+    _user: Annotated[User, Depends(require_permissions("prices:propose"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
     file: UploadFile = File(...),
     confirm: bool = False,
@@ -840,6 +1004,7 @@ async def import_catalog(
 
     upserted = 0
     if confirm:
+        upserted_skus: list[str] = []
         for r in valid_rows:
             values: dict = {
                 "pe_eur": r["pe_eur"],
@@ -854,6 +1019,17 @@ async def import_catalog(
             )
             if result.rowcount > 0:
                 upserted += 1
+                upserted_skus.append(r["sku"])
+                await record_observation(
+                    session,
+                    source_op="master_canal",
+                    target_table="products",
+                    target_field="catalog_pvp_eur",
+                    value=r["catalog_pvp_eur"],
+                    sku=r["sku"],
+                    channel_id=channel_id,
+                    source_ref=file.filename,
+                )
             else:
                 errors.append(
                     {
@@ -862,6 +1038,14 @@ async def import_catalog(
                         "error": "SKU not found in products table",
                     }
                 )
+        await emit_audit(
+            session,
+            entity_type="catalog_import",
+            entity_id=channel_code,
+            action="import",
+            actor_id=_user.id,
+            after={"upserted": upserted, "skus": upserted_skus},
+        )
         await session.commit()
 
     return CatalogImportResult(
@@ -875,10 +1059,10 @@ async def import_catalog(
 @router.post(
     "/logistics/import",
     operation_id="importLogistics",
-    dependencies=[Depends(require_permissions("prices:propose"))],
 )
 async def import_logistics(
     channel_code: str,
+    _user: Annotated[User, Depends(require_permissions("prices:propose"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
     file: UploadFile = File(...),
     confirm: bool = False,
@@ -946,6 +1130,14 @@ async def import_logistics(
             errors.append({"row": row_num, "sku": sku, "error": str(e)})
 
     if confirm:
+        await emit_audit(
+            session,
+            entity_type="catalog_import",
+            entity_id=channel_code,
+            action="import",
+            actor_id=_user.id,
+            after={"upserted": upserted},
+        )
         await session.commit()
 
     return {"total_rows": total, "upserted": upserted, "errors": errors}
@@ -1056,6 +1248,7 @@ async def save_scenario(
         ],
     }
 
+    kind = "manual_a" if slot == "A" else "manual_b"
     await session.execute(
         pg_insert(PricingScenario)
         .values(
@@ -1064,13 +1257,16 @@ async def save_scenario(
             slot=slot,
             label=body.label,
             config_jsonb=snapshot,
+            kind=kind,
         )
         .on_conflict_do_update(
-            constraint="uq_pricing_scenarios_slot",
+            index_elements=["channel_id", "selling_model", "slot"],
+            index_where=text("kind IN ('manual_a','manual_b')"),
             set_={
                 "label": body.label,
                 "config_jsonb": snapshot,
                 "snapshot_at": text("now()"),
+                "kind": kind,
             },
         )
     )
