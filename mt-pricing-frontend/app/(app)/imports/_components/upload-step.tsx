@@ -13,6 +13,8 @@ import type { AnalyzeImportResponse } from "@/lib/api/endpoints/imports";
 const ACCEPTED = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
+  "text/xml",
+  "application/xml",
 ];
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB (NFR importer)
 
@@ -34,7 +36,8 @@ export function UploadStep({ onAnalyzed }: Props) {
     if (
       !ACCEPTED.includes(f.type) &&
       !f.name.toLowerCase().endsWith(".xlsx") &&
-      !f.name.toLowerCase().endsWith(".xls")
+      !f.name.toLowerCase().endsWith(".xls") &&
+      !f.name.toLowerCase().endsWith(".xml")
     ) {
       return t("errors.invalidFormat");
     }
@@ -108,7 +111,7 @@ export function UploadStep({ onAnalyzed }: Props) {
           <input
             ref={inputRef}
             type="file"
-            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".xlsx,.xls,.xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/xml,application/xml"
             className="hidden"
             onChange={onSelect}
             data-testid="import-file-input"
