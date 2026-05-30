@@ -150,6 +150,7 @@ from app.db.models.product_models import (
     ModelTechTable,
     ProductModel,
 )
+from app.db.models.provenance import SourceHealth, SourceObservation
 from app.db.models.rule_suggestion import RuleSuggestion
 from app.db.models.sales import (
     AtpCheckingRule,
@@ -443,4 +444,7 @@ __all__ = [
     "ChannelMarginTarget",
     "ChannelMarginOverride",
     "PricingScenario",
+    # F1 Provenance + Audit (mig. 20260603_149)
+    "SourceObservation",
+    "SourceHealth",
 ]

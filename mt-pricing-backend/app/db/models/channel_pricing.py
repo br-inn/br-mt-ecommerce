@@ -34,6 +34,9 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
+_SOURCE_OP = PG_ENUM(name="source_op", create_type=False)
+_SNAPSHOT_KIND = PG_ENUM(name="snapshot_kind", create_type=False)
+
 
 class TradeRouteParams(UuidPkMixin, Base):
     """Parámetros de ruta comercial (EUR→AED): FX, fletes, aranceles, etc.
@@ -67,7 +70,31 @@ class TradeRouteParams(UuidPkMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
-    updated_by: Mapped[str | None] = mapped_column(Text)
+    updated_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_trade_route_params_updated_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_trade_route_params_created_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_op: Mapped[str] = mapped_column(
+        _SOURCE_OP, nullable=False, server_default=text("'manual'")
+    )
+    source_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    override_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_trade_route_params_override_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ChannelFeeParams(UuidPkMixin, Base):
@@ -111,7 +138,31 @@ class ChannelFeeParams(UuidPkMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
-    updated_by: Mapped[str | None] = mapped_column(Text)
+    updated_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_fee_params_updated_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_fee_params_created_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_op: Mapped[str] = mapped_column(
+        _SOURCE_OP, nullable=False, server_default=text("'manual'")
+    )
+    source_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    override_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_fee_params_override_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     route: Mapped[TradeRouteParams] = relationship(
         "TradeRouteParams",
@@ -200,7 +251,33 @@ class ChannelProductLogistics(UuidPkMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
-    updated_by: Mapped[str | None] = mapped_column(Text)
+    updated_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_product_logistics_updated_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_product_logistics_created_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_op: Mapped[str] = mapped_column(
+        _SOURCE_OP, nullable=False, server_default=text("'manual'")
+    )
+    source_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    override_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey(
+            "users.id", name="fk_channel_product_logistics_override_by", ondelete="SET NULL"
+        ),
+        nullable=True,
+    )
+    override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("product_sku", "channel_id", name="uq_channel_product_logistics"),
@@ -235,7 +312,31 @@ class ChannelMarginTarget(UuidPkMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
-    updated_by: Mapped[str | None] = mapped_column(Text)
+    updated_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_margin_targets_updated_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_margin_targets_created_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_op: Mapped[str] = mapped_column(
+        _SOURCE_OP, nullable=False, server_default=text("'manual'")
+    )
+    source_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    override_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_margin_targets_override_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         UniqueConstraint(
@@ -279,7 +380,23 @@ class ChannelMarginOverride(UuidPkMixin, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
-    created_by: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_margin_overrides_created_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_op: Mapped[str] = mapped_column(
+        _SOURCE_OP, nullable=False, server_default=text("'manual'")
+    )
+    source_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    override_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_channel_margin_overrides_override_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         UniqueConstraint(
@@ -323,12 +440,32 @@ class PricingScenario(UuidPkMixin, Base):
     snapshot_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
-    created_by: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[UUID | None] = mapped_column(
+        UUID_PG,
+        ForeignKey("users.id", name="fk_pricing_scenarios_created_by", ondelete="SET NULL"),
+        nullable=True,
+    )
+    kind: Mapped[str] = mapped_column(
+        _SNAPSHOT_KIND, nullable=False, server_default=text("'manual_a'")
+    )
+    retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         CheckConstraint("slot IN ('A','B')", name="ck_pricing_scenarios_slot"),
-        UniqueConstraint("channel_id", "selling_model", "slot", name="uq_pricing_scenarios_slot"),
+        Index(
+            "uq_pricing_scenarios_manual",
+            "channel_id",
+            "selling_model",
+            "slot",
+            unique=True,
+            postgresql_where=text("kind IN ('manual_a','manual_b')"),
+        ),
         Index("idx_pricing_scenarios_lookup", "channel_id", "selling_model"),
+        Index(
+            "idx_pricing_scenarios_retention",
+            "retention_until",
+            postgresql_where=text("retention_until IS NOT NULL"),
+        ),
     )
 
 
