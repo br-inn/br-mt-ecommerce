@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 async def _ecb_rate_exists_today(session: AsyncSession) -> bool:
-    today = datetime.now(UTC).date().isoformat()
+    # asyncpg exige un objeto `date` para el param de tipo date (no un str ISO,
+    # que provoca DataError: 'str' object has no attribute 'toordinal').
+    today = datetime.now(UTC).date()
     row = (
         await session.execute(
             text(
