@@ -25,6 +25,7 @@ import { MtButton, MtTd, MtTh, Pill, SectionCard } from "@/components/mt/primiti
 import { MtEmpty, MtSkeleton } from "@/components/mt/states";
 import { MT } from "@/components/mt/tokens";
 import type { Cost } from "@/lib/api/endpoints/costs";
+import { costState, type CostState } from "./cost-state";
 
 export interface CostTableProps {
   costs: Cost[];
@@ -37,21 +38,6 @@ export interface CostTableProps {
   showHistory?: boolean;
   onToggleHistory?: (next: boolean) => void;
   canWrite?: boolean;
-}
-
-type CostState = "vigente" | "programado" | "caducado";
-
-/** Hoy en formato "YYYY-MM-DD" (local), comparable lexicográficamente con las dates ISO. */
-function todayIso(): string {
-  return new Date().toLocaleDateString("en-CA"); // en-CA → "YYYY-MM-DD"
-}
-
-/** Estado del coste derivado por fecha respecto a hoy. */
-export function costState(cost: Pick<Cost, "valid_from" | "valid_to">): CostState {
-  const today = todayIso();
-  if (cost.valid_from > today) return "programado";
-  if (cost.valid_to && cost.valid_to < today) return "caducado";
-  return "vigente";
 }
 
 const STATE_META: Record<
