@@ -5,6 +5,7 @@ Single source of truth: cualquier env var nueva se documenta primero en
 directamente desde otros módulos — siempre via `from app.core.config import settings`.
 """
 
+from decimal import Decimal
 from functools import lru_cache
 from typing import Literal
 
@@ -253,6 +254,11 @@ class Settings(BaseSettings):
     ODOO_DB: str = ""
     ODOO_USERNAME: str = ""
     ODOO_PASSWORD: str = ""
+
+    # ── FX (F2) ──────────────────────────────────────────────────────────
+    FX_USD_AED_PEG: Decimal = Decimal("3.6725")  # peg UAE Central Bank (1997)
+    ECB_FX_URL: str = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+    AUTO_SNAPSHOT_RETENTION_DAYS: int = 90
 
     @property
     def is_prod(self) -> bool:

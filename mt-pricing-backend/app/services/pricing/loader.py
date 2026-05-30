@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -60,8 +61,22 @@ class ParameterLoader:
 
         route_row: TradeRouteParams = fee_row.route
 
+        # F2: fx_rates es la única verdad del FX. Si hay un rate activo EUR→AED
+        # lo usamos; si no, caemos al route_row.fx_rate (legacy / canal nuevo).
+        from app.services.fx.fx_rate_service import (
+            FXRateNotFoundError,
+            FXRateService,
+        )
+
+        effective_fx = route_row.fx_rate
+        try:
+            fx = await FXRateService(self._session).rate_at("EUR", "AED", datetime.now(UTC))
+            effective_fx = fx.rate
+        except FXRateNotFoundError:
+            pass  # fallback: usa route_row.fx_rate (legacy)
+
         route = RouteParams(
-            fx_rate=route_row.fx_rate,
+            fx_rate=effective_fx,
             fx_buffer_pct=route_row.fx_buffer_pct,
             freight_rate_per_kg=route_row.freight_rate_per_kg,
             freight_min_aed=route_row.freight_min_aed,

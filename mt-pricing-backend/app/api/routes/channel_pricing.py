@@ -25,7 +25,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permissions
-from app.db.enums import CeilingBasis, FulfillmentScheme, SellingModel
+from app.db.enums import CeilingBasis, FulfillmentScheme, SellingModel, SnapshotKind
 from app.db.models.channel_pricing import (
     ChannelFeeParams,
     ChannelMarginOverride,
@@ -72,6 +72,7 @@ from app.services.pricing.engine import PricingEngine
 from app.services.pricing.loader import ParameterLoader
 from app.services.pricing.optimizer import ChannelOptimizer
 from app.services.pricing.provenance import emit_audit, record_observation, stamp
+from app.services.pricing.scenarios import build_scenario_config, create_auto_snapshot
 from app.services.pricing.schemas import (
     ProductLogistics,
     ProductPricingData,
@@ -900,6 +901,14 @@ async def apply_optimization(
     else:
         results = ChannelOptimizer.full_optimize_catalog_b2b(products, route, fees, schemes)
 
+    # F2: snapshot recuperable del estado actual ANTES de mutar overrides.
+    await create_auto_snapshot(
+        session,
+        channel_id=channel_id,
+        selling_model=selling_model.value,
+        kind=SnapshotKind.AUTO_PRE_OPTIMIZATION,
+    )
+
     now = datetime.now(UTC)
     for r in results:
         await session.execute(
@@ -1128,6 +1137,13 @@ async def import_catalog(
 
     upserted = 0
     if confirm:
+        # F2: snapshot recuperable del estado actual ANTES de persistir el import.
+        await create_auto_snapshot(
+            session,
+            channel_id=channel_id,
+            selling_model="b2c",
+            kind=SnapshotKind.AUTO_PRE_IMPORT,
+        )
         upserted_skus: list[str] = []
         for r in valid_rows:
             values: dict = {
@@ -1290,87 +1306,8 @@ async def save_scenario(
 
     channel_id = await _resolve_channel_id(channel_code, session)
 
-    # Snapshot of current state
-    fee_row = (
-        (
-            await session.execute(
-                select(ChannelFeeParams).where(ChannelFeeParams.channel_id == channel_id)
-            )
-        )
-        .scalars()
-        .first()
-    )
-    route_row = (
-        (
-            await session.execute(
-                select(TradeRouteParams).where(TradeRouteParams.id == fee_row.route_id)
-            )
-        )
-        .scalars()
-        .first()
-        if fee_row
-        else None
-    )
-    targets = (
-        (
-            await session.execute(
-                select(ChannelMarginTarget).where(
-                    ChannelMarginTarget.channel_id == channel_id,
-                    ChannelMarginTarget.selling_model == body.selling_model.value,
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    overrides = (
-        (
-            await session.execute(
-                select(ChannelMarginOverride).where(
-                    ChannelMarginOverride.channel_id == channel_id,
-                    ChannelMarginOverride.selling_model == body.selling_model.value,
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    snapshot = {
-        "route": {
-            c: str(getattr(route_row, c))
-            for c in (
-                "fx_rate",
-                "fx_buffer_pct",
-                "freight_rate_per_kg",
-                "freight_min_aed",
-                "import_tariff_pct",
-                "local_warehouse_pct",
-                "handling_pct",
-            )
-        }
-        if route_row
-        else {},
-        "fees": {
-            c: str(getattr(fee_row, c))
-            for c in (
-                "mt_discount_pct",
-                "commission_pct",
-                "vat_pct",
-                "advertising_pct",
-                "returns_pct",
-                "storage_multiplier",
-            )
-        }
-        if fee_row
-        else {},
-        "targets": [
-            {"family_id": str(t.family_id), "margin": str(t.margin_target_pct)} for t in targets
-        ],
-        "overrides": [
-            {"sku": o.product_sku, "margin": str(o.margin_override_pct)} for o in overrides
-        ],
-    }
+    # Snapshot of current state (DRY — shared with auto-snapshots, F2).
+    snapshot = await build_scenario_config(session, channel_id, body.selling_model.value)
 
     kind = "manual_a" if slot == "A" else "manual_b"
     await session.execute(
