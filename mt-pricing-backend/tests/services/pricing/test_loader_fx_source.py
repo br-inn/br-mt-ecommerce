@@ -70,9 +70,21 @@ async def test_loader_prefers_fx_rates(db_session: AsyncSession) -> None:
 
 
 async def test_loader_falls_back_to_route_fx_rate(db_session: AsyncSession) -> None:
+    from sqlalchemy import text
+
     from app.services.pricing.loader import ParameterLoader
 
     channel_id = await _seed_channel_with_route_fx(db_session, "ch_fx2", Decimal("4.00"))
-    # No EUR→AED rate seeded → fallback to route_row.fx_rate
+    # La migración 010 siembra un EUR→AED 4.29 activo. Para probar el fallback
+    # hay que cerrar cualquier rate activo (dentro de la txn, se revierte al final).
+    await db_session.execute(
+        text(
+            "UPDATE fx_rates SET effective_to = now() "
+            "WHERE from_currency='EUR' AND to_currency='AED' AND effective_to IS NULL"
+        )
+    )
+    await db_session.flush()
+
+    # Sin rate activo en fx_rates → fallback a route_row.fx_rate (legacy).
     route, _f, _s = await ParameterLoader(db_session).load_route_and_fees(channel_id)
     assert route.fx_rate == Decimal("4.00")

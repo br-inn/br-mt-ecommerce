@@ -20,10 +20,11 @@ class _FakeAdapter:
 
 @pytest.mark.asyncio
 async def test_sync_inserts_rate_observation_and_health(
-    db_session: AsyncSession, monkeypatch
-) -> None:  # noqa: ANN001
-    res = await fx_sync_service.sync_ecb_eur_aed(db_session, adapter=_FakeAdapter())
-    assert res["status"] == "ok" and res["inserted"] == 1
+    db_session: AsyncSession,
+) -> None:
+    # commit=False + db_session (rollback) → aislamiento, sin contaminar fx_rates.
+    res = await fx_sync_service.sync_ecb_eur_aed(db_session, adapter=_FakeAdapter(), commit=False)
+    assert res["status"] == "ok" and res["inserted"] == 1, res
     row = (
         await db_session.execute(
             text(
@@ -43,6 +44,8 @@ async def test_sync_inserts_rate_observation_and_health(
 
 @pytest.mark.asyncio
 async def test_sync_idempotent_same_day(db_session: AsyncSession) -> None:
-    await fx_sync_service.sync_ecb_eur_aed(db_session, adapter=_FakeAdapter())
-    res2 = await fx_sync_service.sync_ecb_eur_aed(db_session, adapter=_FakeAdapter())
-    assert res2["inserted"] == 0 and res2["status"] == "ok"
+    res1 = await fx_sync_service.sync_ecb_eur_aed(db_session, adapter=_FakeAdapter(), commit=False)
+    assert res1["status"] == "ok", res1
+    # 2ª corrida ve el rate ecb de hoy (flushed en la misma sesión) → no inserta.
+    res2 = await fx_sync_service.sync_ecb_eur_aed(db_session, adapter=_FakeAdapter(), commit=False)
+    assert res2["inserted"] == 0 and res2["status"] == "ok", res2

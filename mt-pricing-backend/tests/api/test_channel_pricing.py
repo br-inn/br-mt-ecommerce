@@ -556,6 +556,33 @@ async def test_apply_optimization_persists_overrides(cp_client: AsyncClient) -> 
 
 
 @pytest.mark.asyncio
+async def test_optimize_apply_creates_auto_snapshot(
+    cp_client_with_session: tuple[AsyncClient, AsyncSession],
+) -> None:
+    """F2: optimize/apply crea un snapshot `auto_pre_optimization` recuperable."""
+    client, session = cp_client_with_session
+    resp = await client.post(
+        "/api/v1/pricing/amazon_uae/optimize/apply",
+        params={"selling_model": "b2c"},
+    )
+    assert resp.status_code == 204, resp.text
+
+    ch_id = (
+        await session.execute(text("SELECT id FROM channels WHERE code = 'amazon_uae' LIMIT 1"))
+    ).scalar_one()
+    count = (
+        await session.execute(
+            text(
+                "SELECT count(*) FROM pricing_scenarios "
+                "WHERE channel_id = :cid AND kind::text = 'auto_pre_optimization'"
+            ),
+            {"cid": ch_id},
+        )
+    ).scalar_one()
+    assert count >= 1
+
+
+@pytest.mark.asyncio
 async def test_propose_selected_returns_result_shape(cp_client: AsyncClient) -> None:
     """POST /prices/propose-selected returns total/proposed/skipped/errors shape."""
     resp = await cp_client.post(

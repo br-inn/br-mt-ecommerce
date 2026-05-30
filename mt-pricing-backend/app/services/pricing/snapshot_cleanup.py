@@ -14,7 +14,9 @@ async def cleanup_expired_auto_snapshots(session: AsyncSession) -> int:
     """Borra snapshots auto vencidos. Devuelve el número de filas eliminadas."""
     res = await session.execute(
         text(
-            "DELETE FROM pricing_scenarios WHERE kind LIKE 'auto\\_%' ESCAPE '\\' "
+            # `kind` es enum PG (`snapshot_kind`); LIKE no opera sobre enum → castear a
+            # text (asyncpg: `operator does not exist: snapshot_kind ~~ text`).
+            "DELETE FROM pricing_scenarios WHERE kind::text LIKE 'auto\\_%' ESCAPE '\\' "
             "AND retention_until IS NOT NULL AND retention_until < now()"
         )
     )
