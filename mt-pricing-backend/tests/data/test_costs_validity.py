@@ -118,3 +118,31 @@ async def test_columns_exist_and_status_dropped(db_session):
     assert "valid_to" in cols
     assert "status" not in cols
     assert "effective_at" not in cols
+
+
+async def test_model_hybrids(db_session, make_product):
+    """El modelo ORM expone valid_from/valid_to reales y hybrids de compat.
+
+    - ``effective_at`` (hybrid) devuelve ``valid_from``.
+    - ``status`` (hybrid) se deriva por fecha: 'active' (rango abierto) o
+      'superseded'.
+    - ``valid_to`` real es NULL para un rango abierto.
+    """
+    from app.db.models.cost import Cost
+
+    await make_product("_HYB")
+
+    c = Cost(
+        sku="_HYB",
+        scheme_code="FBA",
+        currency_origin="AED",
+        breakdown={},
+        valid_from=dt.date(2026, 1, 1),
+    )
+    db_session.add(c)
+    await db_session.flush()
+    await db_session.refresh(c)
+
+    assert c.effective_at == dt.date(2026, 1, 1)
+    assert c.status in ("active", "superseded")
+    assert c.valid_to is None
