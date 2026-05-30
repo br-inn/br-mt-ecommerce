@@ -1833,6 +1833,75 @@
         "title": "AuditActorRef",
         "type": "object"
       },
+      "AuditEntry": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "event_at": {
+            "format": "date-time",
+            "title": "Event At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "actor_id",
+          "action",
+          "before",
+          "after",
+          "reason",
+          "event_at"
+        ],
+        "title": "AuditEntry",
+        "type": "object"
+      },
       "AuditEventResponse": {
         "additionalProperties": false,
         "description": "Audit event tal como se expone al frontend.\n\nEl `id` se serializa como string para evitar p\u00e9rdida de precisi\u00f3n en JS\n(BigInt en backend, Number s\u00f3lo soporta 2^53). El cliente lo trata como\nopaque ID.",
@@ -11373,6 +11442,74 @@
         "title": "FinancialEntryOut",
         "type": "object"
       },
+      "FreshnessItem": {
+        "properties": {
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "source_op": {
+            "title": "Source Op",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "scope",
+          "key",
+          "source_op",
+          "observed_at",
+          "valid_until",
+          "is_stale"
+        ],
+        "title": "FreshnessItem",
+        "type": "object"
+      },
+      "FreshnessResponse": {
+        "properties": {
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FreshnessItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "FreshnessResponse",
+        "type": "object"
+      },
       "FulfillmentScheme": {
         "description": "Generic fulfillment category, channel-independent.\n\nCANAL_FULL      \u2192 FBA (Amazon) / FBN (Noon): channel stores + ships.\nCANAL_LASTMILE  \u2192 Easy Ship: MT stores, channel ships last mile.\nMERCHANT_MANAGED \u2192 Self-Ship / FBM: MT stores and ships.",
         "enum": [
@@ -15134,6 +15271,131 @@
         "title": "LastGoodExportRead",
         "type": "object"
       },
+      "LineageComponent": {
+        "properties": {
+          "is_stale": {
+            "default": false,
+            "title": "Is Stale",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "source_op": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Op"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
+          },
+          "value": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "source_op",
+          "source_ref",
+          "observed_at"
+        ],
+        "title": "LineageComponent",
+        "type": "object"
+      },
+      "LineageLayer": {
+        "properties": {
+          "amount_aed": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount Aed",
+            "type": "string"
+          },
+          "components": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineageComponent"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "layer": {
+            "title": "Layer",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "layer",
+          "label",
+          "amount_aed"
+        ],
+        "title": "LineageLayer",
+        "type": "object"
+      },
+      "LineageResponse": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "layers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LineageLayer"
+            },
+            "title": "Layers",
+            "type": "array"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          },
+          "total_aed": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Aed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "field",
+          "total_aed"
+        ],
+        "title": "LineageResponse",
+        "type": "object"
+      },
       "LotTraceabilityRead": {
         "description": "Resultado completo de trazabilidad de un lote.",
         "properties": {
@@ -18328,6 +18590,37 @@
         "title": "Pagination[UnmatchedOfferResponse]",
         "type": "object"
       },
+      "ParameterAuditResponse": {
+        "properties": {
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "entries": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "entity_type",
+          "entity_id"
+        ],
+        "title": "ParameterAuditResponse",
+        "type": "object"
+      },
       "PaymentPromiseCreate": {
         "properties": {
           "customer_id": {
@@ -20984,6 +21277,56 @@
           "filename"
         ],
         "title": "ProductAssetUploadRequest",
+        "type": "object"
+      },
+      "ProductCardResponse": {
+        "properties": {
+          "listing": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing"
+          },
+          "master": {
+            "additionalProperties": true,
+            "title": "Master",
+            "type": "object"
+          },
+          "price_history": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Price History",
+            "type": "array"
+          },
+          "proposals": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "master",
+          "listing"
+        ],
+        "title": "ProductCardResponse",
         "type": "object"
       },
       "ProductCertificationLink": {
@@ -29852,6 +30195,101 @@
           "diffs"
         ],
         "title": "SkuDiffResult",
+        "type": "object"
+      },
+      "SourceHealthItem": {
+        "properties": {
+          "age_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Minutes"
+          },
+          "freshness_sla_minutes": {
+            "title": "Freshness Sla Minutes",
+            "type": "integer"
+          },
+          "is_healthy": {
+            "title": "Is Healthy",
+            "type": "boolean"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_sync_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync Attempt At"
+          },
+          "last_sync_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync Success At"
+          },
+          "source_op": {
+            "title": "Source Op",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_op",
+          "last_sync_attempt_at",
+          "last_sync_success_at",
+          "last_error",
+          "freshness_sla_minutes",
+          "age_minutes",
+          "is_healthy"
+        ],
+        "title": "SourceHealthItem",
+        "type": "object"
+      },
+      "SourceHealthResponse": {
+        "properties": {
+          "blocking": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocking",
+            "type": "array"
+          },
+          "sources": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SourceHealthItem"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "title": "SourceHealthResponse",
         "type": "object"
       },
       "SourceListCreate": {
@@ -53761,6 +54199,138 @@
         ]
       }
     },
+    "/api/v1/pricing/{channel_code}/freshness": {
+      "get": {
+        "description": "Return freshness items for the channel's config tables.",
+        "operationId": "freshness",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreshnessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Freshness",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/lineage/{sku}/{field}": {
+      "get": {
+        "description": "Return cost/ceiling lineage for a SKU.",
+        "operationId": "lineage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sku",
+            "required": true,
+            "schema": {
+              "title": "Sku",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "title": "Field",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Lineage",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
     "/api/v1/pricing/{channel_code}/logistics/import": {
       "post": {
         "description": "Import logistics fees Excel (inbound, storage, fulfillment per SKU).",
@@ -54163,6 +54733,63 @@
         ]
       }
     },
+    "/api/v1/pricing/{channel_code}/parameters/{key}/audit": {
+      "get": {
+        "description": "Return audit trail for a pricing parameter key.",
+        "operationId": "parameterAudit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterAuditResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Parameter Audit",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
     "/api/v1/pricing/{channel_code}/params": {
       "get": {
         "description": "Return route + fee + scheme params for this channel.",
@@ -54348,6 +54975,63 @@
           }
         ],
         "summary": "Get Product Price",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/products/{sku}/card": {
+      "get": {
+        "description": "Return product card: master data, price history, listing, proposals.",
+        "operationId": "getProductCard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sku",
+            "required": true,
+            "schema": {
+              "title": "Sku",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Product Card",
         "tags": [
           "channel-pricing"
         ]
@@ -54593,6 +55277,54 @@
           }
         ],
         "summary": "Load Scenario",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/sources/health": {
+      "get": {
+        "description": "Return health status of all data sources.",
+        "operationId": "sourcesHealth",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Sources Health",
         "tags": [
           "channel-pricing"
         ]
