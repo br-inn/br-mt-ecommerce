@@ -5,7 +5,7 @@ NO necesita DB — el applier sólo invoca ``cost_service.create_cost(**kwargs)`
 
 from __future__ import annotations
 
-from decimal import Decimal
+from datetime import date
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -20,7 +20,14 @@ from app.services.importer_costs.differ import CostDiff, CostRowAction
 pytestmark = pytest.mark.unit
 
 
-def _diff(action: CostRowAction, *, sku="SKU1", row=1, scheme="FBA") -> CostDiff:
+def _diff(
+    action: CostRowAction,
+    *,
+    sku="SKU1",
+    row=1,
+    scheme="FBA",
+    valid_from=date(2026, 5, 7),
+) -> CostDiff:
     return CostDiff(
         row_index=row,
         sku=sku,
@@ -28,13 +35,12 @@ def _diff(action: CostRowAction, *, sku="SKU1", row=1, scheme="FBA") -> CostDiff
         supplier_code="SUP-A",
         action=action,
         payload={
-            "product_sku": sku,
+            "sku": sku,
             "scheme_code": scheme,
             "supplier_code": "SUP-A",
-            "currency": "AED",
-            "total": Decimal("100"),
+            "currency_origin": "AED",
             "breakdown": {"fob": "80"},
-            "effective_at": None,
+            "valid_from": valid_from,
         },
     )
 
@@ -55,10 +61,13 @@ async def test_apply_create_calls_cost_service() -> None:
     assert res.updated == 0
     assert res.errors == 0
     assert cost_service.create_cost.await_count == 1
-    # Asegura que pasamos el run_id como _import_run_id (audit hint).
+    # Asegura que pasamos el run_id como _import_run_id (audit hint) y que el
+    # payload usa la firma actual de create_cost (sku/valid_from).
     call_kwargs = cost_service.create_cost.call_args.kwargs
     assert call_kwargs["_import_run_id"] == "r1"
-    assert call_kwargs["product_sku"] == "SKU1"
+    assert call_kwargs["sku"] == "SKU1"
+    assert call_kwargs["valid_from"] == date(2026, 5, 7)
+    assert call_kwargs["actor_id"] == "00000000-0000-0000-0000-000000000001"
 
 
 async def test_apply_update_increments_counter() -> None:

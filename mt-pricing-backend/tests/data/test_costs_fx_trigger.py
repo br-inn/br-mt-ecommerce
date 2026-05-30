@@ -14,15 +14,20 @@ Cobertura BDD (≥6 casos cubriendo todos los AC del trigger):
 5. INSERT con breakdown ``{fob_eur, freight_eur}`` → ``scheme_landed_aed`` se
    calcula automáticamente (AC#4).
 6. UPDATE de ``breakdown`` → ``scheme_landed_aed`` se recalcula (AC#6 indirecto).
-7. UNIQUE parcial (status='active') previene 2 rows active para el mismo
-   (sku, scheme_code, supplier_code).
+7. Exclusión GiST (``ex_costs_no_overlap``) rechaza 2 rangos de vigencia que
+   solapan para el mismo (sku, scheme_code, supplier_code).
 8. INSERT con ``fx_inferred=true`` queda marcado para audit (AC#5).
+
+Nota vigencia (mig 20260603_148): la tabla ``costs`` usa rangos
+``valid_from`` (DATE NOT NULL) / ``valid_to`` (DATE NULL = abierto). Las
+columnas ``effective_at`` / ``status`` fueron DROPEADAS; el trigger FX ancla
+as-of a ``valid_from``.
 """
 
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -93,44 +98,49 @@ async def _insert_cost(
     sku: str,
     scheme_code: str,
     currency_origin: str,
-    effective_at: datetime,
+    valid_from: date,
     breakdown: dict,
     supplier_code: str | None = None,
     fx_rate_id: str | None = None,
     fx_inferred: bool = False,
-    status: str = "active",
+    valid_to: date | None = None,
     version: int = 1,
 ) -> str:
-    """INSERT plain text — testea trigger directo, no ORM."""
+    """INSERT plain text — testea trigger directo, no ORM.
+
+    Vigencia por rangos: ``valid_from`` (DATE, NOT NULL) + ``valid_to`` (DATE,
+    NULL = rango abierto). El trigger ``costs_stamp_fx_trg`` ancla el FX as-of
+    a ``valid_from``.
+    """
     import json
 
     bk = json.dumps(breakdown).replace("'", "''")
     fx_sql = f"'{fx_rate_id}'::uuid" if fx_rate_id else "NULL"
     sup_sql = f"'{supplier_code}'" if supplier_code else "NULL"
+    vto_sql = "NULL" if valid_to is None else ":vto"
     sql = text(
         f"""
         INSERT INTO costs (
             sku, scheme_code, supplier_code, currency_origin,
-            fx_rate_id, breakdown, effective_at, status, fx_inferred, version
+            fx_rate_id, breakdown, valid_from, valid_to, fx_inferred, version
         ) VALUES (
             :sku, :scheme, {sup_sql}, :cur,
-            {fx_sql}, '{bk}'::jsonb, :eff, :st, :fxi, :ver
+            {fx_sql}, '{bk}'::jsonb, :vfrom, {vto_sql}, :fxi, :ver
         )
         RETURNING id
         """
     )
-    res = await session.execute(
-        sql,
-        {
-            "sku": sku,
-            "scheme": scheme_code,
-            "cur": currency_origin,
-            "eff": effective_at,
-            "st": status,
-            "fxi": fx_inferred,
-            "ver": version,
-        },
-    )
+    params: dict = {
+        "sku": sku,
+        "scheme": scheme_code,
+        "cur": currency_origin,
+        "vfrom": valid_from,
+        "fxi": fx_inferred,
+        "ver": version,
+    }
+    if valid_to is not None:
+        params["vto"] = valid_to
+    res = await session.execute(sql, params)
     return str(res.scalar_one())
 
 
@@ -139,8 +149,8 @@ async def _row_by_id(session: AsyncSession, row_id: str) -> dict:
         text(
             """
             SELECT id, sku, scheme_code, supplier_code, currency_origin,
-                   fx_rate_id, breakdown, scheme_landed_aed, effective_at,
-                   status, fx_inferred, version
+                   fx_rate_id, breakdown, scheme_landed_aed, valid_from,
+                   valid_to, fx_inferred, version
               FROM costs WHERE id = :id
             """
         ),
@@ -195,14 +205,14 @@ async def test_trigger_stamps_fx_rate_id_when_currency_eur(
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
 
     cost_id = await _insert_cost(
         db_session,
         sku=sku,
         scheme_code="FBA",
         currency_origin="EUR",
-        effective_at=eff,
+        valid_from=vf,
         breakdown={"fob_eur": "12.40", "freight_eur": "1.80"},
     )
     row = await _row_by_id(db_session, cost_id)
@@ -219,14 +229,14 @@ async def test_explicit_fx_rate_id_is_preserved(
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     fx_a = await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
 
     cost_id = await _insert_cost(
         db_session,
         sku=sku,
         scheme_code="FBA",
         currency_origin="EUR",
-        effective_at=eff,
+        valid_from=vf,
         breakdown={"fob_eur": "10"},
         fx_rate_id=fx_a,  # explicit
     )
@@ -258,14 +268,14 @@ async def test_missing_fx_rate_raises_with_canonical_code(
         text("DELETE FROM fx_rates WHERE from_currency='GBP' AND to_currency='AED'")
     )
 
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
     with pytest.raises((IntegrityError, InternalError, Exception)) as ei:
         await _insert_cost(
             db_session,
             sku=sku,
             scheme_code="FBA",
             currency_origin="GBP",
-            effective_at=eff,
+            valid_from=vf,
             breakdown={"fob_gbp": "10"},
         )
     assert "fx_rate_not_found_at_effective_at" in str(ei.value)
@@ -279,14 +289,14 @@ async def test_aed_origin_keeps_fx_rate_id_null(
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
 
     cost_id = await _insert_cost(
         db_session,
         sku=sku,
         scheme_code="FBA",
         currency_origin="AED",
-        effective_at=eff,
+        valid_from=vf,
         breakdown={"fob_aed": "47.90", "customs_aed": "2.10"},
     )
     row = await _row_by_id(db_session, cost_id)
@@ -302,14 +312,14 @@ async def test_scheme_landed_aed_computed_on_insert(
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
 
     cost_id = await _insert_cost(
         db_session,
         sku=sku,
         scheme_code="FBA",
         currency_origin="EUR",
-        effective_at=eff,
+        valid_from=vf,
         # 12.40 + 1.80 = 14.20 EUR → 14.20 * 4.29 = 60.918 AED.
         # + customs_aed=2.10 = 63.018 AED
         breakdown={
@@ -334,14 +344,14 @@ async def test_update_breakdown_recomputes_landed_aed(
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
 
     cost_id = await _insert_cost(
         db_session,
         sku=sku,
         scheme_code="FBA",
         currency_origin="EUR",
-        effective_at=eff,
+        valid_from=vf,
         breakdown={"fob_eur": "10"},
     )
     row1 = await _row_by_id(db_session, cost_id)
@@ -364,39 +374,40 @@ async def test_update_breakdown_recomputes_landed_aed(
 
 
 # ---------------------------------------------------------------------------
-# UNIQUE parcial — sólo 1 active por (sku, scheme_code, supplier_code).
+# Exclusión GiST — dos rangos de vigencia que solapan para la misma clave
+# (sku, scheme_code, supplier_code) son rechazados por ``ex_costs_no_overlap``.
 # ---------------------------------------------------------------------------
-async def test_unique_active_constraint_prevents_duplicate_active(
+async def test_overlapping_validity_ranges_are_rejected(
     db_session: AsyncSession,
 ) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
 
+    # Primer rango ABIERTO (valid_to NULL) desde vf.
     await _insert_cost(
         db_session,
         sku=sku,
         scheme_code="FBA",
         currency_origin="EUR",
-        effective_at=eff,
+        valid_from=vf,
         breakdown={"fob_eur": "10"},
-        status="active",
         version=1,
     )
+    # Segundo rango que solapa (mismo valid_from, también abierto) → GiST.
     with pytest.raises((IntegrityError, InternalError, Exception)) as ei:
         await _insert_cost(
             db_session,
             sku=sku,
             scheme_code="FBA",
             currency_origin="EUR",
-            effective_at=eff,
+            valid_from=vf,
             breakdown={"fob_eur": "11"},
-            status="active",
             version=2,
         )
     msg = str(ei.value).lower()
-    assert "uq_costs_active_combo" in msg or "duplicate" in msg or "unique" in msg
+    assert "ex_costs_no_overlap" in msg or "exclusion" in msg or "overlap" in msg
 
 
 # ---------------------------------------------------------------------------
@@ -406,14 +417,14 @@ async def test_fx_inferred_flag_is_persisted(db_session: AsyncSession) -> None:
     sku = await _ensure_test_sku(db_session)
     await _purge_costs(db_session, sku)
     await _ensure_eur_aed_rate(db_session, rate=4.29)
-    eff = datetime(2026, 6, 12, tzinfo=UTC)
+    vf = date(2026, 6, 12)
 
     cost_id = await _insert_cost(
         db_session,
         sku=sku,
         scheme_code="FBA",
         currency_origin="EUR",
-        effective_at=eff,
+        valid_from=vf,
         breakdown={"fob_eur": "10"},
         fx_inferred=True,
     )

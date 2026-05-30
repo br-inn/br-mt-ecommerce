@@ -31,6 +31,7 @@ Cambios S3 vs S2:
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -46,10 +47,10 @@ from app.repositories.pricing import CostRepository
 from app.schemas.common import Cursor, Pagination, ProblemDetails
 from app.schemas.costs import (
     CostBreakdownValidationWarning,
+    CostCloseRequest,
     CostCreate,
     CostCreatedResponse,
     CostMissingSkuItem,
-    CostPatch,
     CostResponse,
     CostUpdate,
 )
@@ -59,6 +60,7 @@ from app.services.costs.breakdown_validator import (
 )
 from app.services.costs.cost_service import (
     CostNotFound,
+    CostRangeOverlap,
     CostService,
     FXRateNotFoundAtEffectiveAt,
     SchemeNotFound,
@@ -105,7 +107,16 @@ def _encode_uuid_cursor(value: UUID | None) -> str | None:
 
 
 def _to_response(cost) -> CostResponse:
-    """Convierte ORM row → CostResponse incluyendo aliases legacy."""
+    """Convierte ORM row → CostResponse (vigencia por rangos + aliases legacy).
+
+    ``valid_from``/``valid_to`` son las columnas reales (DATE). ``effective_at``
+    y ``status`` provienen de hybrids del modelo (effective_at == valid_from;
+    status derivado por fecha). El campo ``effective_at`` del schema es
+    ``datetime`` → lo derivamos de ``valid_from`` (medianoche).
+    """
+    from datetime import datetime as _dt
+
+    eff = _dt.combine(cost.valid_from, _dt.min.time()) if cost.valid_from else None
     return CostResponse(
         id=cost.id,
         sku=cost.sku,
@@ -115,7 +126,9 @@ def _to_response(cost) -> CostResponse:
         fx_rate_id=cost.fx_rate_id,
         breakdown=cost.breakdown or {},
         scheme_landed_aed=cost.scheme_landed_aed,
-        effective_at=cost.effective_at,
+        valid_from=cost.valid_from,
+        valid_to=cost.valid_to,
+        effective_at=eff,
         status=cost.status,
         fx_inferred=cost.fx_inferred,
         version=cost.version,
@@ -127,9 +140,7 @@ def _to_response(cost) -> CostResponse:
         product_sku=cost.sku,
         currency=cost.currency_origin,
         total=cost.scheme_landed_aed,
-        valid_from=cost.effective_at,
-        valid_to=None if cost.status == "active" else cost.updated_at,
-        fx_at=cost.effective_at,
+        fx_at=eff,
     )
 
 
@@ -152,18 +163,40 @@ async def list_costs(
     sku: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     scheme: Annotated[str | None, Query(min_length=2, max_length=32)] = None,
     supplier: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
+    valid_on: Annotated[date | None, Query()] = None,
+    include_history: Annotated[bool, Query()] = False,
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     include_total: Annotated[bool, Query()] = False,
     _user: User = Depends(require_permissions("costs:read")),
     session: AsyncSession = Depends(get_db_session),
 ) -> Pagination[CostResponse]:
+    """Lista costos con vigencia por rangos.
+
+    - ``valid_on`` (ISO date): filtra a costos cuyo rango contiene la fecha
+      (``valid_from <= valid_on AND (valid_to IS NULL OR valid_to >= valid_on)``).
+    - ``include_history=false`` (default): sólo costos vigentes HOY.
+    - ``include_history=true``: todos los rangos (orden por ``valid_from`` desc).
+      Si además se pasa ``valid_on``, este filtro tiene prioridad.
+    """
+    effective_sku = sku or product_sku
+
+    # Resuelve el filtro de vigencia:
+    # - include_history=True  → sin filtro (historia completa).
+    # - valid_on dado          → ese filtro tiene prioridad.
+    # - default                → costes vigentes HOY.
+    if include_history and valid_on is None:
+        on: date | None = None
+    else:
+        on = valid_on or date.today()
+
     repo = CostRepository(session)
     cur = _decode_uuid_cursor(cursor)
     rows, next_cur, total = await repo.list_paginated(
-        product_sku=sku or product_sku,
+        product_sku=effective_sku,
         scheme_code=scheme,
         supplier_code=supplier,
+        valid_on=on,
         cursor=cur,
         limit=limit,
         include_total=include_total,
@@ -191,12 +224,53 @@ async def list_costs(
 )
 async def missing_costs_by_scheme(
     scheme_code: Annotated[str, Query(min_length=2, max_length=32)],
+    as_of: Annotated[date | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=5000)] = 1000,
     _user: User = Depends(require_permissions("costs:read")),
     svc: CostService = Depends(get_cost_service),
 ) -> list[CostMissingSkuItem]:
-    skus = await svc.missing_cost_skus(scheme_code, limit=limit)
+    skus = await svc.missing_cost_skus(scheme_code, as_of=as_of, limit=limit)
     return [CostMissingSkuItem(sku=s) for s in skus]
+
+
+# ---------------------------------------------------------------------------
+# GET /costs/as-of — coste vigente a una fecha (vigencia por rangos)
+# ---------------------------------------------------------------------------
+@router.get(
+    "/as-of",
+    response_model=CostResponse,
+    summary="Coste vigente a una fecha dada para sku+scheme(+supplier)",
+    description=(
+        "Devuelve el coste cuyo rango de vigencia contiene `date` "
+        "(`valid_from <= date AND (valid_to IS NULL OR valid_to >= date)`). "
+        "404 si no hay coste vigente a esa fecha."
+    ),
+    operation_id="costsAsOf",
+    responses={404: {"model": ProblemDetails}},
+)
+async def cost_as_of(
+    sku: Annotated[str, Query(min_length=1, max_length=128)],
+    scheme_code: Annotated[str, Query(min_length=2, max_length=32)],
+    on: Annotated[date, Query(alias="date")],
+    supplier_code: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
+    _user: User = Depends(require_permissions("costs:read")),
+    svc: CostService = Depends(get_cost_service),
+) -> CostResponse:
+    cost = await svc.cost_as_of(
+        sku=sku,
+        scheme_code=scheme_code,
+        supplier_code=supplier_code,
+        on=on,
+    )
+    if cost is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "cost_not_found",
+                "title": "No hay coste vigente a esa fecha",
+            },
+        )
+    return _to_response(cost)
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +307,7 @@ async def create_cost(
             scheme_code=data.scheme_code,
             supplier_code=data.supplier_code,
             currency_origin=data.currency_origin,
-            effective_at=data.effective_at,
+            valid_from=data.valid_from,
             breakdown=data.breakdown,
             actor_id=user.id,
             actor_email=user.email,
@@ -249,12 +323,20 @@ async def create_cost(
                 "field": exc.field_name,
             },
         ) from exc
+    except CostRangeOverlap as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": exc.code,
+                "title": "El rango de vigencia solapa otro existente",
+            },
+        ) from exc
     except FXRateNotFoundAtEffectiveAt as exc:
         raise HTTPException(
             status_code=422,
             detail={
                 "code": exc.code,
-                "title": "FX no disponible en effective_at",
+                "title": "FX no disponible en valid_from",
             },
         ) from exc
     except SchemeNotFound as exc:
@@ -310,37 +392,21 @@ async def create_cost(
     )
 
 
-# ---------------------------------------------------------------------------
-# PUT /costs/{id} — versionado (US-1A-04-03 AC#6)
-# ---------------------------------------------------------------------------
-@router.put(
-    "/{cost_id}",
-    response_model=CostCreatedResponse,
-    summary="Actualizar coste (versionado: previa → superseded, nueva v+1)",
-    description=(
-        "Actualiza un cost creando una nueva versión (v+1). La versión "
-        "anterior queda en `superseded`. Re-valida breakdown contra el "
-        "template del scheme."
-    ),
-    operation_id="costsUpdate",
-    responses={
-        404: {"model": ProblemDetails},
-        422: {"model": ProblemDetails},
-    },
-)
-async def update_cost(
+async def _apply_in_place_update(
+    *,
     cost_id: UUID,
     data: CostUpdate,
-    user: Annotated[User, Depends(require_permissions("costs:write"))],
-    svc: Annotated[CostService, Depends(get_cost_service)],
+    user: User,
+    svc: CostService,
 ) -> CostCreatedResponse:
+    """Corrección IN-PLACE compartida por PUT y PATCH /costs/{id}."""
     try:
         result = await svc.update_cost(
             cost_id,
             actor_id=user.id,
             actor_email=user.email,
             breakdown=data.breakdown,
-            effective_at=data.effective_at,
+            valid_from=data.valid_from,
             currency_origin=data.currency_origin,
             fx_rate_id=data.fx_rate_id,
             fx_inferred=data.fx_inferred,
@@ -349,6 +415,14 @@ async def update_cost(
         raise HTTPException(
             status_code=404,
             detail={"code": exc.code, "title": "Coste no existe"},
+        ) from exc
+    except CostRangeOverlap as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": exc.code,
+                "title": "El rango de vigencia solapa otro existente",
+            },
         ) from exc
     except MissingRequiredField as exc:
         raise HTTPException(
@@ -362,7 +436,7 @@ async def update_cost(
     except FXRateNotFoundAtEffectiveAt as exc:
         raise HTTPException(
             status_code=422,
-            detail={"code": exc.code, "title": "FX no disponible en effective_at"},
+            detail={"code": exc.code, "title": "FX no disponible en valid_from"},
         ) from exc
 
     return CostCreatedResponse(
@@ -372,6 +446,81 @@ async def update_cost(
             for w in result.warnings
         ],
     )
+
+
+# ---------------------------------------------------------------------------
+# PUT /costs/{id} — corrección IN-PLACE (vigencia por rangos)
+# ---------------------------------------------------------------------------
+@router.put(
+    "/{cost_id}",
+    response_model=CostCreatedResponse,
+    summary="Corregir coste IN-PLACE (misma fila, re-estampa FX/landed)",
+    description=(
+        "Corrige un cost mutando la MISMA fila (breakdown / valid_from / "
+        "currency_origin). NO crea versión nueva ni toca `valid_to` (para "
+        "cerrar un rango usar POST /costs/{id}/close). Si mover `valid_from` "
+        "solapa otro rango → 409 `cost_range_overlap`."
+    ),
+    operation_id="costsUpdate",
+    responses={
+        404: {"model": ProblemDetails},
+        409: {"model": ProblemDetails},
+        422: {"model": ProblemDetails},
+    },
+)
+async def update_cost(
+    cost_id: UUID,
+    data: CostUpdate,
+    user: Annotated[User, Depends(require_permissions("costs:write"))],
+    svc: Annotated[CostService, Depends(get_cost_service)],
+) -> CostCreatedResponse:
+    return await _apply_in_place_update(cost_id=cost_id, data=data, user=user, svc=svc)
+
+
+# ---------------------------------------------------------------------------
+# POST /costs/{id}/close — fija valid_to (descatalogar / cierre sin sucesor)
+# ---------------------------------------------------------------------------
+@router.post(
+    "/{cost_id}/close",
+    response_model=CostResponse,
+    summary="Cerrar coste (fija valid_to — descatalogar sin sucesor)",
+    description=(
+        "Fija el `valid_to` de un coste vigente para descatalogarlo. "
+        "404 si no existe; 409 si el rango resultante solapa otro existente."
+    ),
+    operation_id="costsClose",
+    responses={
+        404: {"model": ProblemDetails},
+        409: {"model": ProblemDetails},
+    },
+)
+async def close_cost(
+    cost_id: UUID,
+    data: CostCloseRequest,
+    user: Annotated[User, Depends(require_permissions("costs:write"))],
+    svc: Annotated[CostService, Depends(get_cost_service)],
+) -> CostResponse:
+    try:
+        cost = await svc.close_cost(
+            cost_id=cost_id,
+            valid_to=data.valid_to,
+            actor_id=user.id,
+            actor_email=user.email,
+        )
+    except CostNotFound as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": exc.code, "title": "Coste no existe"},
+        ) from exc
+    except CostRangeOverlap as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": exc.code,
+                "title": "El rango de vigencia solapa otro existente",
+            },
+        ) from exc
+    return _to_response(cost)
 
 
 # ---------------------------------------------------------------------------
@@ -401,68 +550,33 @@ async def get_cost(
 
 
 # ---------------------------------------------------------------------------
-# PATCH /costs/{id} — DEPRECATED (legacy S2 — sin versionado).
-# Mantengo el endpoint para que tests existentes no se rompan, pero internamente
-# delego a `update_cost` (versionado). El frontend debería migrar a PUT.
+# PATCH /costs/{id} — corrección IN-PLACE (vigencia por rangos).
+# Misma semántica que PUT; devuelve la fila corregida (sin warnings wrapper).
 # ---------------------------------------------------------------------------
 @router.patch(
     "/{cost_id}",
     response_model=CostResponse,
-    summary="[DEPRECATED] PATCH parcial — usa PUT /costs/{id} versionado",
+    summary="Corregir coste IN-PLACE (misma fila)",
     description=(
-        "DEPRECATED — mantiene compat con tests Sprint 2. Internamente "
-        "delega a `update_cost` (versionado). El frontend debe migrar a "
-        "PUT /costs/{id}."
+        "Corrección parcial IN-PLACE de un coste (breakdown / valid_from / "
+        "currency_origin). NO crea versión nueva ni toca `valid_to`. Si mover "
+        "`valid_from` solapa otro rango → 409 `cost_range_overlap`."
     ),
     operation_id="costsPatch",
-    responses={404: {"model": ProblemDetails}, 422: {"model": ProblemDetails}},
-    deprecated=True,
+    responses={
+        404: {"model": ProblemDetails},
+        409: {"model": ProblemDetails},
+        422: {"model": ProblemDetails},
+    },
 )
 async def patch_cost(
     cost_id: UUID,
-    data: CostPatch,
+    data: CostUpdate,
     user: Annotated[User, Depends(require_permissions("costs:write"))],
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+    svc: Annotated[CostService, Depends(get_cost_service)],
 ) -> CostResponse:
-    payload = data.model_dump(exclude_unset=True)
-    if not payload:
-        repo = CostRepository(session)
-        cost = await repo.get(cost_id)
-        if cost is None:
-            raise HTTPException(
-                status_code=404,
-                detail={"code": "cost_not_found", "title": "Coste no existe"},
-            )
-        return _to_response(cost)
-
-    # Delegate to versioned update — map legacy 'currency' → 'currency_origin'.
-    svc = get_cost_service(session)
-    try:
-        result = await svc.update_cost(
-            cost_id,
-            actor_id=user.id,
-            actor_email=user.email,
-            breakdown=payload.get("breakdown"),
-            effective_at=payload.get("valid_from"),
-            currency_origin=payload.get("currency"),
-        )
-    except CostNotFound as exc:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": exc.code, "title": "Coste no existe"},
-        ) from exc
-    except MissingRequiredField as exc:
-        raise HTTPException(
-            status_code=422,
-            detail={"code": exc.code, "title": str(exc), "field": exc.field_name},
-        ) from exc
-    except FXRateNotFoundAtEffectiveAt as exc:
-        raise HTTPException(
-            status_code=422,
-            detail={"code": exc.code, "title": "FX no disponible en effective_at"},
-        ) from exc
-
-    return _to_response(result.cost)
+    result = await _apply_in_place_update(cost_id=cost_id, data=data, user=user, svc=svc)
+    return result.cost
 
 
 # ---------------------------------------------------------------------------
@@ -527,21 +641,22 @@ products_costs_router = APIRouter(prefix="/products", tags=["costs"])
 @products_costs_router.get(
     "/{sku}/costs",
     response_model=list[CostResponse],
-    summary="Costes activos del SKU agrupados por scheme",
+    summary="Costes vigentes del SKU agrupados por scheme",
     description=(
-        "Devuelve todos los costs activos del SKU agrupados por scheme "
-        "(FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE) con breakdown "
-        "desglosado."
+        "Devuelve los costs del SKU agrupados por scheme "
+        "(FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE) vigentes a la fecha "
+        "`as_of` (default hoy), con breakdown desglosado."
     ),
     operation_id="productsListCosts",
 )
 async def list_costs_for_sku(
     sku: str,
+    as_of: Annotated[date | None, Query()] = None,
     only_active: Annotated[bool, Query()] = True,
     _user: User = Depends(require_permissions("costs:read")),
     svc: CostService = Depends(get_cost_service),
 ) -> list[CostResponse]:
-    rows = await svc.list_for_sku(sku, only_active=only_active)
+    rows = await svc.list_for_sku(sku, only_active=only_active, as_of=as_of)
     return [_to_response(r) for r in rows]
 
 

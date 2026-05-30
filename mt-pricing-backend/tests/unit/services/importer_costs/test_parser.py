@@ -11,7 +11,7 @@ Construye xlsx en memoria con openpyxl y verifica:
 from __future__ import annotations
 
 import io
-from datetime import datetime
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -53,7 +53,7 @@ def _row(
     storage="0.5",
     ppc="0",
     otros="0.5",
-    eff_at="2026-05-07",
+    valid_from="2026-05-07",
 ):
     return [
         sku,
@@ -71,7 +71,7 @@ def _row(
         storage,
         ppc,
         otros,
-        eff_at,
+        valid_from,
     ]
 
 
@@ -89,8 +89,8 @@ def test_parse_valid_basic_row() -> None:
     assert r.total == Decimal("100.50")
     assert r.breakdown["fob"] == "80"
     assert r.breakdown["freight"] == "10"
-    assert r.effective_at is not None
-    assert isinstance(r.effective_at, datetime)
+    assert r.valid_from == date(2026, 5, 7)
+    assert isinstance(r.valid_from, date)
 
 
 def test_parse_header_mismatch() -> None:
@@ -158,9 +158,27 @@ def test_parse_currency_invalid_length_rejected() -> None:
     assert any("currency" in e for e in r.errors)
 
 
-def test_parse_effective_at_optional() -> None:
-    bio = io.BytesIO(_make_xlsx([_row(eff_at="")]))
+def test_parse_valid_from_absent_defaults_to_today() -> None:
+    """Si la fila no trae valid_from, se usa la fecha de hoy (documentado)."""
+    bio = io.BytesIO(_make_xlsx([_row(valid_from="")]))
     res = parse_costs_xlsx_stream(bio)
     r = res.rows[0]
     assert r.ok
-    assert r.effective_at is None
+    assert r.valid_from == date.today()
+
+
+def test_parse_valid_from_future_date() -> None:
+    """Una fila con fecha futura se parsea sin error (crea rango futuro al apply)."""
+    bio = io.BytesIO(_make_xlsx([_row(valid_from="2099-01-01")]))
+    res = parse_costs_xlsx_stream(bio)
+    r = res.rows[0]
+    assert r.ok
+    assert r.valid_from == date(2099, 1, 1)
+
+
+def test_parse_valid_from_invalid_yields_error() -> None:
+    bio = io.BytesIO(_make_xlsx([_row(valid_from="not-a-date")]))
+    res = parse_costs_xlsx_stream(bio)
+    r = res.rows[0]
+    assert not r.ok
+    assert any("valid_from" in e for e in r.errors)

@@ -16,7 +16,7 @@ Patrón: FastAPI ad-hoc + dependency_overrides (sin DB ni JWT real).
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -64,6 +64,8 @@ class _FakeCost:
         self.supplier_code: str | None = kw.get("supplier_code")
         self.currency_origin: str = kw.get("currency_origin", "EUR")
         self.fx_rate_id: UUID | None = kw.get("fx_rate_id")
+        self.valid_from: date = kw.get("valid_from", date(2026, 5, 12))
+        self.valid_to: date | None = kw.get("valid_to")
         self.effective_at: datetime = kw.get("effective_at", now)
         self.breakdown: dict[str, Any] = kw.get("breakdown", {"fob_eur": "12.40"})
         self.scheme_landed_aed: Decimal | None = kw.get("scheme_landed_aed", Decimal("60.9180"))
@@ -85,12 +87,16 @@ class _FakeCostService:
         self.create_calls.append(kw)
         return CreateCostResult(cost=self._cost, warnings=[])
 
-    async def list_for_sku(self, sku: str, *, only_active: bool = False) -> list[_FakeCost]:
+    async def list_for_sku(
+        self, sku: str, *, only_active: bool = False, as_of: date | None = None
+    ) -> list[_FakeCost]:
         if sku == self._cost.sku:
             return [self._cost]
         return []
 
-    async def missing_cost_skus(self, scheme_code: str, *, limit: int = 1000) -> list[str]:
+    async def missing_cost_skus(
+        self, scheme_code: str, *, as_of: date | None = None, limit: int = 1000
+    ) -> list[str]:
         return []
 
     async def update_cost(self, cost_id: UUID, **kw: Any) -> CreateCostResult:
@@ -194,7 +200,7 @@ async def test_post_costs_does_not_touch_inventory() -> None:
         "sku": "MT-V-099",
         "scheme_code": "FBA",
         "currency_origin": "EUR",
-        "effective_at": "2026-05-12T00:00:00Z",
+        "valid_from": "2026-05-12",
         "breakdown": {"fob_eur": 10.0},
     }
 
