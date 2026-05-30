@@ -3,18 +3,23 @@
 /**
  * CostTable — tabla por (scheme × supplier) para US-1A-04-04 AC#1.
  *
+ * Contrato de vigencia por rangos (Task 2):
  * Columnas: Scheme · Supplier · Currency origin · Total AED landed · FX rate
- *           · Effective at · Versión · Estado · Acciones.
+ *           · Desde (valid_from) · Hasta (valid_to) · Estado · Acciones.
  *
+ * - El "Estado" es un badge derivado por FECHA respecto a hoy:
+ *     Vigente   → hoy ∈ [valid_from, valid_to] (o valid_to null & valid_from ≤ hoy)
+ *     Programado → valid_from > hoy
+ *     Caducado  → valid_to < hoy
  * - Click en row expande breakdown JSONB con cada componente desglosado (AC#2).
- * - Toggle "Mostrar histórico" oculta/muestra rows superseded (AC#4).
+ * - Toggle "Mostrar histórico" muestra/oculta rangos no vigentes (AC#4).
  *
- * Estilo: primitivos `components/mt`. La accion de editar la lleva el caller
- * (sheet/modal) — recibimos `onEdit(cost)` y `onAdd()`.
+ * Estilo: primitivos `components/mt`. Las acciones (editar / descatalogar) las
+ * lleva el caller — recibimos `onEdit(cost)`, `onClose(cost)` y `onAdd()`.
  */
 
 import * as React from "react";
-import { ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Ban } from "lucide-react";
 
 import { MtButton, MtTd, MtTh, Pill, SectionCard } from "@/components/mt/primitives";
 import { MtEmpty, MtSkeleton } from "@/components/mt/states";
@@ -25,12 +30,38 @@ export interface CostTableProps {
   costs: Cost[];
   loading?: boolean;
   onEdit?: (cost: Cost) => void;
+  /** Descatalogar / cerrar el rango vigente (fija valid_to). */
+  onClose?: (cost: Cost) => void;
   onAdd?: () => void;
-  /** Si true, se muestran las rows superseded grayed out. */
+  /** Si true, se muestran también los rangos no vigentes (caducados/programados). */
   showHistory?: boolean;
   onToggleHistory?: (next: boolean) => void;
   canWrite?: boolean;
 }
+
+type CostState = "vigente" | "programado" | "caducado";
+
+/** Hoy en formato "YYYY-MM-DD" (local), comparable lexicográficamente con las dates ISO. */
+function todayIso(): string {
+  return new Date().toLocaleDateString("en-CA"); // en-CA → "YYYY-MM-DD"
+}
+
+/** Estado del coste derivado por fecha respecto a hoy. */
+export function costState(cost: Pick<Cost, "valid_from" | "valid_to">): CostState {
+  const today = todayIso();
+  if (cost.valid_from > today) return "programado";
+  if (cost.valid_to && cost.valid_to < today) return "caducado";
+  return "vigente";
+}
+
+const STATE_META: Record<
+  CostState,
+  { label: string; tone: "success" | "brand" | "ghost" }
+> = {
+  vigente: { label: "Vigente", tone: "success" },
+  programado: { label: "Programado", tone: "brand" },
+  caducado: { label: "Caducado", tone: "ghost" },
+};
 
 function formatNumber(raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined || raw === "") return "—";
@@ -55,13 +86,15 @@ export function CostTable({
   costs,
   loading = false,
   onEdit,
+  onClose,
   onAdd,
   showHistory = false,
   onToggleHistory,
   canWrite = true,
 }: CostTableProps) {
   const visibleCosts = React.useMemo(
-    () => (showHistory ? costs : costs.filter((c) => c.status === "active")),
+    () =>
+      showHistory ? costs : costs.filter((c) => costState(c) === "vigente"),
     [costs, showHistory],
   );
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -140,8 +173,8 @@ export function CostTable({
               <MtTh>Origen</MtTh>
               <MtTh className="text-right">Total AED landed</MtTh>
               <MtTh>FX</MtTh>
-              <MtTh>Effective at</MtTh>
-              <MtTh>Versión</MtTh>
+              <MtTh>Desde</MtTh>
+              <MtTh>Hasta</MtTh>
               <MtTh>Estado</MtTh>
               {canWrite ? <MtTh className="text-right">Acción</MtTh> : null}
             </tr>
@@ -149,11 +182,13 @@ export function CostTable({
           <tbody>
             {visibleCosts.map((c) => {
               const isOpen = expanded.has(c.id);
-              const superseded = c.status === "superseded";
+              const state = costState(c);
+              const meta = STATE_META[state];
+              const dimmed = state !== "vigente";
               return (
                 <React.Fragment key={c.id}>
                   <tr
-                    style={{ opacity: superseded ? 0.55 : 1 }}
+                    style={{ opacity: dimmed ? 0.55 : 1 }}
                     data-testid={`cost-row-${c.id}`}
                   >
                     <MtTd>
@@ -192,35 +227,47 @@ export function CostTable({
                         </Pill>
                       ) : null}
                     </MtTd>
-                    <MtTd mono>{formatDate(c.effective_at)}</MtTd>
-                    <MtTd mono className="text-center">
-                      v{c.version}
+                    <MtTd mono>{formatDate(c.valid_from)}</MtTd>
+                    <MtTd mono>
+                      {c.valid_to ? (
+                        formatDate(c.valid_to)
+                      ) : (
+                        <span style={{ color: MT.ink3 }}>abierto</span>
+                      )}
                     </MtTd>
                     <MtTd>
-                      {superseded ? (
-                        <Pill tone="ghost" dot>
-                          superseded
-                        </Pill>
-                      ) : (
-                        <Pill tone="success" dot>
-                          active
-                        </Pill>
-                      )}
+                      <Pill tone={meta.tone} dot>
+                        {meta.label}
+                      </Pill>
                     </MtTd>
                     {canWrite ? (
                       <MtTd className="text-right">
-                        {!superseded && onEdit ? (
-                          <MtButton
-                            size="sm"
-                            tone="ghost"
-                            icon={<Pencil className="size-3" />}
-                            onClick={() => onEdit(c)}
-                            aria-label="edit"
-                            data-testid={`cost-edit-${c.id}`}
-                          >
-                            Editar
-                          </MtButton>
-                        ) : null}
+                        <div className="flex items-center justify-end gap-1">
+                          {state !== "caducado" && onEdit ? (
+                            <MtButton
+                              size="sm"
+                              tone="ghost"
+                              icon={<Pencil className="size-3" />}
+                              onClick={() => onEdit(c)}
+                              aria-label="edit"
+                              data-testid={`cost-edit-${c.id}`}
+                            >
+                              Corregir
+                            </MtButton>
+                          ) : null}
+                          {state === "vigente" && onClose ? (
+                            <MtButton
+                              size="sm"
+                              tone="ghost"
+                              icon={<Ban className="size-3" />}
+                              onClick={() => onClose(c)}
+                              aria-label="descatalogar"
+                              data-testid={`cost-close-${c.id}`}
+                            >
+                              Descatalogar
+                            </MtButton>
+                          ) : null}
+                        </div>
                       </MtTd>
                     ) : null}
                   </tr>

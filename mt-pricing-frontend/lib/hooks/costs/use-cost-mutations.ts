@@ -10,6 +10,7 @@
  */
 
 export {
+  useCloseCost,
   useCreateCost,
   useDeleteCost,
   usePatchCost,
