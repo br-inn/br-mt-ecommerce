@@ -100,6 +100,8 @@ def make_celery() -> Celery:
             "app.workers.tasks.rule_engine_analyzer",
             # F2 — FX sync diario ECB→fx_rates (mt.fx.sync_daily)
             "app.workers.tasks.fx",
+            # F2 — cleanup nightly de snapshots auto vencidos
+            "app.workers.tasks.pricing_snapshots",
         ],
     )
 
