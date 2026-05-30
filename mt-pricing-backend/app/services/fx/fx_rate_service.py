@@ -217,7 +217,7 @@ class FXRateService:
         rate: Decimal | float | int | str,
         effective_from: datetime,
         source: str = "manual",
-        actor: User,
+        actor: User | None,
         allow_retroactive: bool = False,
         reason: str | None = None,
     ) -> FXRate:
@@ -263,8 +263,9 @@ class FXRateService:
             source=source,
         )
         # `created_by` se setea via attribute si la columna existe (migración 017).
+        # Actor de sistema (job FX automático): actor=None → created_by NULL (F2).
         if hasattr(new_rate, "created_by"):
-            new_rate.created_by = actor.id
+            new_rate.created_by = actor.id if actor is not None else None
         self.session.add(new_rate)
 
         try:
@@ -280,8 +281,9 @@ class FXRateService:
             entity_type="fx_rate",
             entity_id=str(new_rate.id),
             action="fx_rate.created",
-            actor_id=actor.id,
-            actor_email=actor.email,
+            actor_id=actor.id if actor is not None else None,
+            actor_email=actor.email if actor is not None else None,
+            actor_role=None if actor is not None else "system",
             after=_snapshot(new_rate),
             reason=reason,
         )
