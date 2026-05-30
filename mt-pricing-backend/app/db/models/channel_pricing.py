@@ -34,8 +34,34 @@ from app.db.base import Base
 from app.db.mixins import UuidPkMixin
 from app.db.types import UUID_PG
 
-_SOURCE_OP = PG_ENUM(name="source_op", create_type=False)
-_SNAPSHOT_KIND = PG_ENUM(name="snapshot_kind", create_type=False)
+_SOURCE_OP = PG_ENUM(
+    "compras_po",
+    "importacion_dua",
+    "tesoreria_fx",
+    "master_canal",
+    "vendor_price_list",
+    "settlement_amazon",
+    "settlement_noon",
+    "contabilidad_analitica",
+    "master_fiscal",
+    "marketing_budget",
+    "postventa_rma",
+    "master_comercial",
+    "decision_local",
+    "manual",
+    name="source_op",
+    create_type=False,
+)
+_SNAPSHOT_KIND = PG_ENUM(
+    "manual_a",
+    "manual_b",
+    "auto_pre_optimization",
+    "auto_pre_import",
+    "auto_pre_bulk_margin_change",
+    "auto_pre_sync_param",
+    name="snapshot_kind",
+    create_type=False,
+)
 
 
 class TradeRouteParams(UuidPkMixin, Base):

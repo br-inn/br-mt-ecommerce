@@ -107,17 +107,16 @@ class PriceProposer:
                 }
 
                 # proposed_by is uuid in DB — NULL since no current user UUID is threaded
-                # TODO: pass real user UUID once get_current_user is available here
-
                 # Step 1: INSERT with status='draft' (trigger only allows draft/auto_approved)
                 await self._session.execute(
                     text("""
                         INSERT INTO prices
                             (id, product_sku, channel_id, scheme_code, currency,
-                             amount, margin_pct, status, breakdown)
+                             amount, margin_pct, status, breakdown, proposed_by)
                         VALUES
                             (:id, :sku, :ch, :scheme_code, 'AED',
-                             :amount, :margin, 'draft', CAST(:breakdown AS jsonb))
+                             :amount, :margin, 'draft',
+                             CAST(:breakdown AS jsonb), :proposed_by)
                     """),
                     {
                         "id": price_id,
@@ -127,6 +126,7 @@ class PriceProposer:
                         "amount": float(best.selling_price_aed),
                         "margin": float(best.margin_pct),
                         "breakdown": json.dumps(breakdown_dict),
+                        "proposed_by": proposed_by,
                     },
                 )
 
