@@ -5,11 +5,13 @@ Estructura mínima esperada del Excel (header literal en row 1):
     | breakdown_fob | breakdown_freight | breakdown_customs
     | breakdown_fba_fee | breakdown_fbm_fee | breakdown_payment_fee
     | breakdown_marketing | breakdown_storage | breakdown_ppc
-    | breakdown_otros | effective_at
+    | breakdown_otros | valid_from
 
-Las columnas ``breakdown_*`` son opcionales (vacío = 0). ``effective_at`` es la
-fecha as-of del FX y sirve como ``valid_from`` del coste. Si no viene, se usa
-``now()`` al apply.
+Las columnas ``breakdown_*`` son opcionales (vacío = 0). ``valid_from`` es la
+fecha de inicio de vigencia del coste (ISO ``YYYY-MM-DD`` o fecha Excel) y sirve
+como ancla as-of del FX. Si no viene, se usa la fecha de hoy (``date.today()``).
+Filas con ``valid_from`` futuro son válidas: crean un rango futuro y el
+auto-encadenado del service cierra el rango abierto previo en ``valid_from - 1``.
 
 Notas:
 - ``read_only=True`` + ``data_only=True`` → no carga el archivo entero en RAM.
@@ -22,7 +24,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, BinaryIO
@@ -43,7 +45,7 @@ EXPECTED_COSTS_HEADERS: tuple[str, ...] = (
     "breakdown_storage",
     "breakdown_ppc",
     "breakdown_otros",
-    "effective_at",
+    "valid_from",
 )
 
 BREAKDOWN_COLUMNS: tuple[str, ...] = tuple(
@@ -62,7 +64,7 @@ class CostRow:
     currency: str | None
     total: Decimal | None
     breakdown: dict[str, Any] = field(default_factory=dict)
-    effective_at: datetime | None = None
+    valid_from: date | None = None
     errors: list[str] = field(default_factory=list)
 
     @property
@@ -117,16 +119,22 @@ def _cast_decimal(v: Any) -> Decimal | None:
         raise ValueError(f"Decimal inválido: {v!r}") from exc
 
 
-def _cast_datetime(v: Any) -> datetime | None:
+def _cast_date(v: Any) -> date | None:
+    """Parsea ``valid_from`` a ``date``. None/"" → None (el caller usa hoy).
+
+    Acepta fechas Excel nativas (``datetime``/``date``) e ISO ``YYYY-MM-DD``
+    (también con componente de hora, que se descarta).
+    """
     if v is None or v == "":
         return None
     if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
         return v
     s = str(v).strip()
-    # Soportamos ISO o YYYY-MM-DD.
     for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.strptime(s, fmt)
+            return datetime.strptime(s, fmt).date()
         except ValueError:
             continue
     raise ValueError(f"Fecha inválida: {v!r}")
@@ -171,12 +179,15 @@ def _map_cost_row(excel_row: tuple[Any, ...] | list[Any], row_index: int) -> Cos
             short_key = key.replace("breakdown_", "")
             breakdown[short_key] = str(val)
 
-    # effective_at idx 15.
+    # valid_from idx 15. Si la fila no la trae, default a hoy (documentado).
     try:
-        effective_at = _cast_datetime(_at(15))
+        valid_from = _cast_date(_at(15))
     except ValueError as exc:
-        errors.append(f"col 'effective_at': {exc}")
-        effective_at = None
+        errors.append(f"col 'valid_from': {exc}")
+        valid_from = None
+    else:
+        if valid_from is None:
+            valid_from = date.today()
 
     if sku is None:
         errors.append("col 'sku': requerido y vino vacío.")
@@ -191,7 +202,7 @@ def _map_cost_row(excel_row: tuple[Any, ...] | list[Any], row_index: int) -> Cos
         currency=currency,
         total=total,
         breakdown=breakdown,
-        effective_at=effective_at,
+        valid_from=valid_from,
         errors=errors,
     )
 

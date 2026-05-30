@@ -16,10 +16,13 @@ con sprint3-backlog-refined US-1A-04-02:
     * ``*_pct`` → porcentaje aplicado sobre subtotal (componente fee variable)
 - ``scheme_landed_aed`` NUMERIC(14,4) — calculado por trigger AFTER, no
   GENERATED (los componentes JSONB hacen un GENERATED imposible).
-- ``effective_at`` TIMESTAMPTZ NOT NULL — fecha de aplicabilidad. El trigger
-  busca el FX vigente a esta fecha vía ``fx_rate_at(currency_origin, 'AED', NEW.effective_at)``.
-- ``status`` String(16) ∈ {active, superseded} — sólo 1 row 'active' por
-  (sku, scheme_code, supplier_code) gracias a un UNIQUE parcial.
+- ``valid_from`` DATE NOT NULL — inicio de vigencia del coste. El trigger
+  busca el FX vigente a esta fecha vía ``fx_rate_at(currency_origin, 'AED', NEW.valid_from)``.
+- ``valid_to`` DATE NULL — fin de vigencia (inclusive). NULL = rango abierto
+  (vigente indefinidamente). La exclusión GiST ``ex_costs_no_overlap`` evita
+  solapes por clave ``(sku, scheme_code, coalesce(supplier_code,''))``.
+  ``effective_at`` y ``status`` ya no son columnas: se exponen como hybrids de
+  compatibilidad (``effective_at``→``valid_from``; ``status`` derivado por fecha).
 - ``fx_inferred`` BOOL default FALSE — marca importer (FX asumido por defecto del batch).
 - ``version`` INT default 1 — incrementa al supersede.
 - AuditMixin (``created_by``, ``updated_by``) + TimestampMixin (``created_at``, ``updated_at``).
@@ -32,20 +35,24 @@ Refs:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
-    DateTime,
+    Date,
     ForeignKey,
     Index,
     Integer,
     Numeric,
     String,
     Text,
+    and_,
+    case,
+    func,
+    or_,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -94,27 +101,19 @@ class Cost(UuidPkMixin, TimestampMixin, AuditMixin, Base):
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
     scheme_landed_aed: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
-    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
+    valid_from: Mapped[date] = mapped_column(Date, nullable=False)
+    valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     fx_inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
     __table_args__ = (
-        CheckConstraint("status IN ('active','superseded')", name="ck_costs_status"),
         CheckConstraint("version >= 1", name="ck_costs_version_pos"),
         CheckConstraint(
             "scheme_landed_aed IS NULL OR scheme_landed_aed >= 0",
             name="ck_costs_landed_nonneg",
         ),
         Index("idx_costs_sku_scheme", "sku", "scheme_code"),
-        Index(
-            "idx_costs_active_unique_lookup",
-            "sku",
-            "scheme_code",
-            "supplier_code",
-            postgresql_where=text("status = 'active'"),
-        ),
-        Index("idx_costs_effective_at", "effective_at"),
+        Index("idx_costs_valid_from", "sku", "scheme_code", "valid_from"),
     )
 
     # ------------------------------------------------------------------
@@ -141,18 +140,51 @@ class Cost(UuidPkMixin, TimestampMixin, AuditMixin, Base):
 
     @hybrid_property
     def fx_at(self):  # type: ignore[override]
-        """Compat: la fecha as-of se expone como `fx_at` (alias `effective_at`)."""
-        return self.effective_at
+        """Compat: la fecha as-of se expone como `fx_at` (alias `valid_from`)."""
+        return self.valid_from
+
+    @fx_at.expression  # type: ignore[no-redef]
+    def fx_at(cls):
+        return cls.valid_from
 
     @hybrid_property
-    def valid_from(self):  # type: ignore[override]
-        """Compat: el viejo `valid_from` mapea a `effective_at`."""
-        return self.effective_at
+    def effective_at(self):  # type: ignore[override]
+        """Compat: el viejo `effective_at` mapea a `valid_from` (la fecha as-of).
+
+        Consumidores legacy / DTOs todavía leen `cost.effective_at`.
+        """
+        return self.valid_from
+
+    @effective_at.expression  # type: ignore[no-redef]
+    def effective_at(cls):
+        return cls.valid_from
 
     @hybrid_property
-    def valid_to(self):  # type: ignore[override]
-        """Compat: superseded → no vigente; active → NULL (vigente)."""
-        return None if self.status == "active" else self.updated_at
+    def status(self):  # type: ignore[override]
+        """Compat: estado derivado por fecha (la columna real fue dropeada).
+
+        'active' si el rango está vigente hoy (rango abierto o `today` dentro de
+        ``[valid_from, valid_to]``); en caso contrario 'superseded'.
+        """
+        today = date.today()
+        if self.valid_to is None or (self.valid_from <= today <= self.valid_to):
+            return "active"
+        return "superseded"
+
+    @status.expression  # type: ignore[no-redef]
+    def status(cls):
+        """Expresión SQL equivalente para filtros tipo `Cost.status == 'active'`."""
+        today = func.current_date()
+        return case(
+            (
+                or_(
+                    cls.valid_to.is_(None),
+                    and_(cls.valid_from <= today, today <= cls.valid_to),
+                ),
+                "active",
+            ),
+            else_="superseded",
+        )
 
 
 __all__ = ["COST_STATUSES", "Cost"]
