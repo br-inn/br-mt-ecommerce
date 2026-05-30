@@ -17392,6 +17392,140 @@
         "title": "O2CKpisOut",
         "type": "object"
       },
+      "OptimizationRunDetail": {
+        "description": "Vista de detalle \u2014 incluye el diff completo + razones + snapshots.",
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "baseline_snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Snapshot Id"
+          },
+          "detected_at": {
+            "format": "date-time",
+            "title": "Detected At",
+            "type": "string"
+          },
+          "diff_detail": {
+            "items": {},
+            "title": "Diff Detail",
+            "type": "array"
+          },
+          "drift_reasons": {
+            "additionalProperties": true,
+            "title": "Drift Reasons",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "revert_snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revert Snapshot Id"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel"
+          },
+          "skus_scheme_changed": {
+            "title": "Skus Scheme Changed",
+            "type": "integer"
+          },
+          "skus_signal_changed": {
+            "title": "Skus Signal Changed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "selling_model",
+          "skus_scheme_changed",
+          "skus_signal_changed",
+          "detected_at",
+          "acknowledged_at",
+          "baseline_snapshot_id",
+          "revert_snapshot_id",
+          "drift_reasons",
+          "diff_detail"
+        ],
+        "title": "OptimizationRunDetail",
+        "type": "object"
+      },
+      "OptimizationRunSummary": {
+        "description": "Vista de lista \u2014 campos esenciales de una alerta de drift.",
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "detected_at": {
+            "format": "date-time",
+            "title": "Detected At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "selling_model": {
+            "$ref": "#/components/schemas/SellingModel"
+          },
+          "skus_scheme_changed": {
+            "title": "Skus Scheme Changed",
+            "type": "integer"
+          },
+          "skus_signal_changed": {
+            "title": "Skus Signal Changed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "selling_model",
+          "skus_scheme_changed",
+          "skus_signal_changed",
+          "detected_at",
+          "acknowledged_at"
+        ],
+        "title": "OptimizationRunSummary",
+        "type": "object"
+      },
       "OptimizeResponse": {
         "properties": {
           "results": {
@@ -54621,6 +54755,186 @@
           }
         ],
         "summary": "Upsert margin target (clears overrides for family)",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/optimization-runs": {
+      "get": {
+        "description": "List drift-detection runs for a channel + selling model (newest first).",
+        "operationId": "listOptimizationRuns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selling_model",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SellingModel",
+              "default": "b2c"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unacknowledged",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unacknowledged",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OptimizationRunSummary"
+                  },
+                  "title": "Response Listoptimizationruns",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Optimization Runs",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/optimization-runs/{run_id}": {
+      "get": {
+        "description": "Return the full diff detail of one drift-detection run.",
+        "operationId": "getOptimizationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationRunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Optimization Run",
+        "tags": [
+          "channel-pricing"
+        ]
+      }
+    },
+    "/api/v1/pricing/{channel_code}/optimization-runs/{run_id}/ack": {
+      "post": {
+        "description": "Mark a drift-detection run as reviewed (acknowledged).",
+        "operationId": "ackOptimizationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_code",
+            "required": true,
+            "schema": {
+              "title": "Channel Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ack Optimization Run",
         "tags": [
           "channel-pricing"
         ]
