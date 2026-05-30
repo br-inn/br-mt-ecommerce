@@ -1248,6 +1248,7 @@ async def save_scenario(
         ],
     }
 
+    kind = "manual_a" if slot == "A" else "manual_b"
     await session.execute(
         pg_insert(PricingScenario)
         .values(
@@ -1256,13 +1257,16 @@ async def save_scenario(
             slot=slot,
             label=body.label,
             config_jsonb=snapshot,
+            kind=kind,
         )
         .on_conflict_do_update(
-            constraint="uq_pricing_scenarios_slot",
+            index_elements=["channel_id", "selling_model", "slot"],
+            index_where=text("kind IN ('manual_a','manual_b')"),
             set_={
                 "label": body.label,
                 "config_jsonb": snapshot,
                 "snapshot_at": text("now()"),
+                "kind": kind,
             },
         )
     )
