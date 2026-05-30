@@ -55,7 +55,8 @@ interface Props {
 export function CostsTabClient({ sku }: Props) {
   const { data: costs, isLoading, isError, refetch } = useCostsForSku(
     sku,
-    false /* incluir histórico */,
+    undefined /* as_of: vigentes hoy */,
+    false /* only_active=false → incluir histórico */,
   );
   const [showHistory, setShowHistory] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
