@@ -218,9 +218,7 @@ async def _seed_channel_pricing_data(session: AsyncSession) -> dict:
     )
     await session.flush()
     brand_id = (
-        await session.execute(
-            text("SELECT id FROM brands WHERE code = 'mt_pqa_test' LIMIT 1")
-        )
+        await session.execute(text("SELECT id FROM brands WHERE code = 'mt_pqa_test' LIMIT 1"))
     ).scalar_one()
 
     # Channels
@@ -237,9 +235,7 @@ async def _seed_channel_pricing_data(session: AsyncSession) -> dict:
     await session.flush()
 
     amazon_id = (
-        await session.execute(
-            text("SELECT id FROM channels WHERE code = 'amazon_uae' LIMIT 1")
-        )
+        await session.execute(text("SELECT id FROM channels WHERE code = 'amazon_uae' LIMIT 1"))
     ).scalar_one()
 
     # Trade route
@@ -261,8 +257,7 @@ async def _seed_channel_pricing_data(session: AsyncSession) -> dict:
     route_id = (
         await session.execute(
             text(
-                "SELECT id FROM trade_route_params "
-                "WHERE route_code = 'es_to_uae_pqa_test' LIMIT 1"
+                "SELECT id FROM trade_route_params WHERE route_code = 'es_to_uae_pqa_test' LIMIT 1"
             )
         )
     ).scalar_one()
@@ -449,9 +444,7 @@ async def test_sources_health_200(pqa_client: AsyncClient) -> None:
     data = resp.json()
     assert "sources" in data
     assert "blocking" in data
-    assert len(data["sources"]) == 14, (
-        f"Expected 14 source_op entries, got {len(data['sources'])}"
-    )
+    assert len(data["sources"]) == 14, f"Expected 14 source_op entries, got {len(data['sources'])}"
     # All sources have never synced → all is_healthy=False
     assert all(not s["is_healthy"] for s in data["sources"]), (
         "Expected all sources is_healthy=False in fresh test DB"
@@ -511,9 +504,7 @@ async def test_lineage_cost_for_seeded_sku(pqa_client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_lineage_unknown_sku_returns_404(pqa_client: AsyncClient) -> None:
     """GET /lineage/{unknown_sku}/cost → 404."""
-    resp = await pqa_client.get(
-        "/api/v1/pricing/amazon_uae/lineage/NONEXISTENT-PQA-SKU/cost"
-    )
+    resp = await pqa_client.get("/api/v1/pricing/amazon_uae/lineage/NONEXISTENT-PQA-SKU/cost")
     assert resp.status_code == 404
 
 
@@ -584,9 +575,7 @@ async def test_product_card_seeded_sku(pqa_client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_product_card_unknown_sku_returns_404(pqa_client: AsyncClient) -> None:
     """GET /products/{unknown_sku}/card → 404."""
-    resp = await pqa_client.get(
-        "/api/v1/pricing/amazon_uae/products/NONEXISTENT-PQA-SKU-999/card"
-    )
+    resp = await pqa_client.get("/api/v1/pricing/amazon_uae/products/NONEXISTENT-PQA-SKU-999/card")
     assert resp.status_code == 404
 
 
