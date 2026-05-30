@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, UploadCloud } from "lucide-react";
 
 import {
   CostCoverageCard,
   MissingSkusTable,
 } from "@/components/domain/costs/cost-coverage-card";
+import { MtButton, SectionCard } from "@/components/mt/primitives";
 import { MtError, MtSkeleton } from "@/components/mt/states";
 import {
   Card,
@@ -16,11 +18,72 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDashboardStats } from "@/lib/hooks/use-dashboard";
 import { useCostDashboardOverview } from "@/lib/hooks/admin/use-cost-dashboard";
 import { type SchemeCoverage } from "@/lib/api/endpoints/cost-dashboard";
 
+import { CostosTable } from "./_components/costos-table";
+import { CostosToolbar } from "./_components/costos-toolbar";
+
+/**
+ * `/costos` como módulo de primer nivel: tres pestañas.
+ *  - Resumen: dashboard de cobertura por esquema (`CostCoverageOverview`).
+ *  - Costes: listado global filtrable (`CostosToolbar` + `CostosTable`).
+ *  - Importar: panel que enlaza al importer batch (`/imports/costs`).
+ */
 export function CostDashboardClient() {
+  const t = useTranslations("costos");
+
+  return (
+    <Tabs defaultValue="resumen" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="resumen" data-testid="costos-tab-resumen">
+          {t("tabs.resumen")}
+        </TabsTrigger>
+        <TabsTrigger value="costes" data-testid="costos-tab-costes">
+          {t("tabs.costes")}
+        </TabsTrigger>
+        <TabsTrigger value="importar" data-testid="costos-tab-importar">
+          {t("tabs.importar")}
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="resumen">
+        <CostCoverageOverview />
+      </TabsContent>
+
+      <TabsContent value="costes" className="space-y-4">
+        <CostosToolbar />
+        <CostosTable />
+      </TabsContent>
+
+      <TabsContent value="importar">
+        <ImportarPanel />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+/** Tab "Importar": enlaza al wizard de importación batch existente. */
+function ImportarPanel() {
+  const t = useTranslations("costos.importar");
+  return (
+    <SectionCard title={t("title")}>
+      <div className="space-y-4 p-4 text-sm text-muted-foreground">
+        <p>{t("description")}</p>
+        <MtButton tone="primary" icon={<UploadCloud className="size-3.5" />} asChild>
+          <Link href="/imports/costs" data-testid="costos-import-link">
+            {t("cta")}
+          </Link>
+        </MtButton>
+      </div>
+    </SectionCard>
+  );
+}
+
+/** Tab "Resumen": dashboard de cobertura por esquema (contenido original). */
+function CostCoverageOverview() {
   const t = useTranslations("costsDashboard");
 
   const stats = useDashboardStats();

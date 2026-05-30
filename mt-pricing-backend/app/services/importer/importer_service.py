@@ -25,7 +25,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, BinaryIO
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +33,7 @@ from app.db.models.user import User
 from app.services.importer.applier import ApplyResult, apply_diffs_chunked
 from app.services.importer.differ import RowAction, RowDiff, compute_diff
 from app.services.importer.mapping_detector import detect_header_row
-from app.services.importer.parser import ParseResult, parse_xlsx_stream
+from app.services.importer.parser import ParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -184,19 +184,22 @@ class ImporterService:
         if len(file_bytes) > MAX_FILE_SIZE_BYTES:
             raise ImportFileTooLargeError(len(file_bytes), MAX_FILE_SIZE_BYTES)
 
-        # Parse en streaming desde un BytesIO.
-        bio: BinaryIO = io.BytesIO(file_bytes)
+        # Parse según formato (xlsx o xml de la plantilla).
+        from app.services.importer.source_dispatch import is_xml_filename, parse_source
+
         try:
-            if custom_mapping is not None:
+            if is_xml_filename(filename):
+                parse_result = parse_source(file_bytes, filename)
+            elif custom_mapping is not None:
                 header_idx, _headers, _samples = detect_header_row(file_bytes)
-                bio.seek(0)
-                parse_result = parse_xlsx_stream(
-                    bio,
-                    header_row_index=header_idx,
+                parse_result = parse_source(
+                    file_bytes,
+                    filename,
                     custom_mapping=custom_mapping,
+                    header_row_index=header_idx,
                 )
             else:
-                parse_result = parse_xlsx_stream(bio)
+                parse_result = parse_source(file_bytes, filename)
         except Exception as exc:
             raise ImporterDomainError(
                 code="import_parse_failed",

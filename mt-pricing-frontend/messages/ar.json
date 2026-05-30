@@ -713,15 +713,15 @@
     },
     "upload": {
       "title": "ارفع ملف PIM",
-      "hint": "اسحب وأفلت ملف .xlsx أو انقر للاختيار.",
-      "limits": "حتى 50 ميغابايت. صيغة XLSX.",
+      "hint": "اسحب وأفلت ملف .xlsx أو .xml، أو انقر للاختيار.",
+      "limits": "حتى 50 ميغابايت. صيغة XLSX أو XML.",
       "dropLabel": "منطقة الرفع",
       "remove": "إزالة الملف",
       "startPreview": "إنشاء المعاينة",
       "uploading": "جارٍ الرفع…",
       "errors": {
         "tooLarge": "حجم الملف يتجاوز 50 ميغابايت.",
-        "invalidFormat": "يُسمح فقط بصيغة XLSX."
+        "invalidFormat": "يُسمح فقط بصيغتَي XLSX أو XML."
       }
     },
     "preview": {
@@ -1441,6 +1441,51 @@
         "pass": "Pass",
         "errorGeneric": "Something went wrong."
       }
+    }
+  },
+  "costos": {
+    "tabs": {
+      "resumen": "ملخص",
+      "costes": "التكاليف",
+      "importar": "استيراد"
+    },
+    "search": "البحث حسب SKU",
+    "loadMore": "تحميل المزيد",
+    "totalCount": "{count, plural, =0 {لا توجد تكاليف} =1 {تكلفة واحدة} other {# تكاليف}}",
+    "columns": {
+      "sku": "SKU",
+      "scheme": "النظام",
+      "supplier": "المورّد",
+      "validFrom": "من",
+      "validTo": "إلى",
+      "landed": "السعر الواصل بالدرهم",
+      "state": "الحالة"
+    },
+    "open": "مفتوح",
+    "viewInCosts": "عرض في التكاليف",
+    "states": {
+      "vigente": "ساري",
+      "programado": "مجدول",
+      "caducado": "منتهي"
+    },
+    "filters": {
+      "anyScheme": "كل الأنظمة",
+      "anySupplier": "كل المورّدين",
+      "validOn": "ساري في تاريخ",
+      "showHistory": "إظهار السجل",
+      "clear": "مسح"
+    },
+    "empty": {
+      "title": "لا توجد تكاليف",
+      "description": "لا توجد تكاليف تطابق عوامل التصفية."
+    },
+    "errors": {
+      "loadFailed": "تعذّر تحميل التكاليف."
+    },
+    "importar": {
+      "title": "استيراد جماعي للتكاليف",
+      "description": "يستخدم التحميل الدُفعي للتكاليف حسب SKU × النظام × المورّد عمود valid_from لتحديد بداية صلاحية كل صف. يغلق الخادم تلقائياً النطاق المفتوح السابق.",
+      "cta": "الانتقال إلى مستورد التكاليف"
     }
   },
   "costsDashboard": {

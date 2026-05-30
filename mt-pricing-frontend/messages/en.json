@@ -713,15 +713,15 @@
     },
     "upload": {
       "title": "Upload the PIM file",
-      "hint": "Drag and drop the .xlsx or click to select.",
-      "limits": "Up to 50 MB. XLSX format.",
+      "hint": "Drag and drop the .xlsx or .xml, or click to select.",
+      "limits": "Up to 50 MB. XLSX or XML format.",
       "dropLabel": "Upload area",
       "remove": "Remove file",
       "startPreview": "Generate preview",
       "uploading": "Uploading…",
       "errors": {
         "tooLarge": "File exceeds 50 MB.",
-        "invalidFormat": "Only XLSX is allowed."
+        "invalidFormat": "Only XLSX or XML files are allowed."
       }
     },
     "preview": {
@@ -1445,6 +1445,51 @@
         "pass": "Pass",
         "errorGeneric": "Something went wrong."
       }
+    }
+  },
+  "costos": {
+    "tabs": {
+      "resumen": "Overview",
+      "costes": "Costs",
+      "importar": "Import"
+    },
+    "search": "Search by SKU",
+    "loadMore": "Load more",
+    "totalCount": "{count, plural, =0 {No costs} =1 {1 cost} other {# costs}}",
+    "columns": {
+      "sku": "SKU",
+      "scheme": "Scheme",
+      "supplier": "Supplier",
+      "validFrom": "From",
+      "validTo": "To",
+      "landed": "Landed AED",
+      "state": "State"
+    },
+    "open": "open",
+    "viewInCosts": "View in Costs",
+    "states": {
+      "vigente": "Active",
+      "programado": "Scheduled",
+      "caducado": "Expired"
+    },
+    "filters": {
+      "anyScheme": "All schemes",
+      "anySupplier": "All suppliers",
+      "validOn": "Valid on date",
+      "showHistory": "Show history",
+      "clear": "Clear"
+    },
+    "empty": {
+      "title": "No costs",
+      "description": "No costs match the filters."
+    },
+    "errors": {
+      "loadFailed": "Costs could not be loaded."
+    },
+    "importar": {
+      "title": "Bulk cost import",
+      "description": "Batch loading of costs by SKU × scheme × supplier uses the valid_from column to set the start of each row's validity. The backend automatically closes the previously open range.",
+      "cta": "Go to the cost importer"
     }
   },
   "costsDashboard": {

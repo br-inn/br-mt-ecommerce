@@ -77,7 +77,7 @@ jobs:
 
       - name: Lint (changed files only)
         run: |
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD \
+          CHANGED=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }} HEAD \
             | grep '^mt-pricing-frontend/' \
             | grep -E '\.(ts|tsx)$' \
             | sed 's|^mt-pricing-frontend/||' \
@@ -127,7 +127,7 @@ jobs:
 
       - name: Typecheck (changed files only)
         run: |
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD \
+          CHANGED=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }} HEAD \
             | grep '^mt-pricing-frontend/' \
             | grep -E '\.(ts|tsx)$' \
             | sed 's|^mt-pricing-frontend/||' \
@@ -180,7 +180,7 @@ jobs:
 
       - name: Test (changed test files only)
         run: |
-          CHANGED_TESTS=$(git diff --name-only origin/${{ github.base_ref }} HEAD \
+          CHANGED_TESTS=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }} HEAD \
             | grep '^mt-pricing-frontend/' \
             | grep -E '\.test\.(ts|tsx)$' \
             | sed 's|^mt-pricing-frontend/||' \

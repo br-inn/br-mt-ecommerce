@@ -5,19 +5,26 @@ Estrategia (igual a test_matches_api.py):
 - Override `get_cost_service` con un fake que registra llamadas in-memory.
 - Override `require_permissions(...)` recorriendo dependencies del router.
 
-Cobertura (US-1A-04-03):
+Contrato NUEVO (vigencia por rangos — US-1A-04-03):
+- POST /costs usa `valid_from: date` (no `effective_at`); schema `extra="forbid"`.
+- PUT /costs/{id} corrige IN-PLACE la MISMA fila (no versiona ni supersede).
+- `status` es un hybrid derivado: `valid_to IS NULL` ⇒ "active".
+- Solape de rangos ⇒ 409 `cost_range_overlap`.
+
+Cobertura:
 - POST /costs 201 con cost+warnings.
 - POST /costs 422 si breakdown required missing.
-- POST /costs 422 si FX missing at effective_at.
-- PUT /costs/{id} versionado → version+1.
+- POST /costs 422 si FX missing at valid_from.
+- POST /costs 409 si el rango solapa otro existente.
+- PUT /costs/{id} corrección in-place → misma fila, sigue active.
 - PUT /costs/{id} 404 si cost no existe.
-- GET /products/{sku}/costs lista activos.
+- GET /products/{sku}/costs lista vigentes.
 - GET /costs/missing?scheme_code=FBA lista SKUs huérfanos.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -37,6 +44,7 @@ from app.api.routes.costs import (
 from app.services.costs.breakdown_validator import MissingRequiredField
 from app.services.costs.cost_service import (
     CostNotFound,
+    CostRangeOverlap,
     CreateCostResult,
     FXRateNotFoundAtEffectiveAt,
 )
@@ -55,10 +63,10 @@ class _FakeCost:
         self.supplier_code: str | None = kw.get("supplier_code")
         self.currency_origin: str = kw.get("currency_origin", "EUR")
         self.fx_rate_id: UUID | None = kw.get("fx_rate_id")
-        self.effective_at: datetime = kw.get("effective_at", datetime(2026, 6, 12, tzinfo=UTC))
+        self.valid_from: date = kw.get("valid_from", date(2026, 6, 12))
+        self.valid_to: date | None = kw.get("valid_to")
         self.breakdown: dict[str, Any] = kw.get("breakdown", {})
         self.scheme_landed_aed: Decimal | None = kw.get("scheme_landed_aed", Decimal("60.918"))
-        self.status: str = kw.get("status", "active")
         self.version: int = kw.get("version", 1)
         self.fx_inferred: bool = kw.get("fx_inferred", False)
         self.created_by: UUID | None = kw.get("created_by")
@@ -67,13 +75,18 @@ class _FakeCost:
         self.created_at = kw.get("created_at", now)
         self.updated_at = kw.get("updated_at", now)
 
+    @property
+    def status(self) -> str:
+        """Hybrid derivado: rango abierto (valid_to NULL) ⇒ active."""
+        return "active" if self.valid_to is None else "superseded"
+
 
 class _FakeCostService:
     """Implementación in-memory que cumple la API que el router consume.
 
     Reglas en los tests:
     - `behavior` configura comportamientos específicos: 'missing_required',
-      'fx_missing', 'cost_not_found' o None (success).
+      'fx_missing', 'cost_not_found', 'overlap' o None (success).
     """
 
     def __init__(self) -> None:
@@ -87,12 +100,14 @@ class _FakeCostService:
             raise MissingRequiredField("fob_eur")
         if self.behavior == "fx_missing":
             raise FXRateNotFoundAtEffectiveAt("No FX rate for EUR -> AED at 2026-06-12")
+        if self.behavior == "overlap":
+            raise CostRangeOverlap("MT-V-038/FBA range overlap")
         cost = _FakeCost(
             sku=kw["sku"],
             scheme_code=kw["scheme_code"],
             supplier_code=kw.get("supplier_code"),
             currency_origin=kw["currency_origin"],
-            effective_at=kw["effective_at"],
+            valid_from=kw["valid_from"],
             breakdown=kw["breakdown"],
             version=1,
         )
@@ -106,30 +121,32 @@ class _FakeCostService:
     async def update_cost(self, cost_id: UUID, **kw: Any) -> CreateCostResult:
         if self.behavior == "cost_not_found":
             raise CostNotFound(str(cost_id))
-        prev = self.costs.get(cost_id)
-        if prev is None:
+        if self.behavior == "overlap":
+            raise CostRangeOverlap("MT-V-038/FBA range overlap")
+        cost = self.costs.get(cost_id)
+        if cost is None:
             raise CostNotFound(str(cost_id))
-        prev.status = "superseded"
-        new = _FakeCost(
-            sku=prev.sku,
-            scheme_code=prev.scheme_code,
-            supplier_code=prev.supplier_code,
-            currency_origin=kw.get("currency_origin") or prev.currency_origin,
-            effective_at=kw.get("effective_at") or prev.effective_at,
-            breakdown=kw.get("breakdown") or prev.breakdown,
-            version=prev.version + 1,
-        )
-        self.costs[new.id] = new
+        # Corrección IN-PLACE: muta la MISMA fila (no versiona ni supersede).
+        if kw.get("breakdown") is not None:
+            cost.breakdown = kw["breakdown"]
+        if kw.get("valid_from") is not None:
+            cost.valid_from = kw["valid_from"]
+        if kw.get("currency_origin") is not None:
+            cost.currency_origin = kw["currency_origin"]
         self.updated.append({"id": str(cost_id), **kw})
-        return CreateCostResult(cost=new, warnings=[])
+        return CreateCostResult(cost=cost, warnings=[])
 
-    async def list_for_sku(self, sku: str, *, only_active: bool = False) -> list[_FakeCost]:
+    async def list_for_sku(
+        self, sku: str, *, only_active: bool = False, as_of: date | None = None
+    ) -> list[_FakeCost]:
         out = [c for c in self.costs.values() if c.sku == sku]
         if only_active:
-            out = [c for c in out if c.status == "active"]
+            out = [c for c in out if c.valid_to is None]
         return out
 
-    async def missing_cost_skus(self, scheme_code: str, *, limit: int = 1000) -> list[str]:
+    async def missing_cost_skus(
+        self, scheme_code: str, *, as_of: date | None = None, limit: int = 1000
+    ) -> list[str]:
         return ["MT-V-001", "MT-V-002"]
 
 
@@ -199,7 +216,7 @@ async def test_post_costs_returns_201_with_cost_and_warnings() -> None:
         "scheme_code": "FBA",
         "supplier_code": "MT_VALVES_ES",
         "currency_origin": "EUR",
-        "effective_at": "2026-06-12T00:00:00Z",
+        "valid_from": "2026-06-12",
         "breakdown": {"fob_eur": 12.40, "freight_eur": 1.80, "weird_extra": 5.0},
     }
     async with await _client(app) as ac:
@@ -209,6 +226,9 @@ async def test_post_costs_returns_201_with_cost_and_warnings() -> None:
     assert body["cost"]["sku"] == "MT-V-038"
     assert body["cost"]["scheme_code"] == "FBA"
     assert body["cost"]["currency_origin"] == "EUR"
+    # Rango abierto ⇒ vigente (status hybrid derivado).
+    assert body["cost"]["valid_from"] == "2026-06-12"
+    assert body["cost"]["valid_to"] is None
     assert body["cost"]["status"] == "active"
     assert body["cost"]["version"] == 1
     # Legacy aliases also present.
@@ -216,6 +236,8 @@ async def test_post_costs_returns_201_with_cost_and_warnings() -> None:
     assert body["cost"]["currency"] == "EUR"
     # Warning emitted for unknown field.
     assert any(w["field"] == "weird_extra" for w in body["warnings"])
+    # El service recibió valid_from (no effective_at).
+    assert svc.created[0]["valid_from"] == date(2026, 6, 12)
 
 
 async def test_post_costs_422_missing_required_breakdown_field() -> None:
@@ -227,7 +249,7 @@ async def test_post_costs_422_missing_required_breakdown_field() -> None:
         "sku": "MT-V-038",
         "scheme_code": "FBA",
         "currency_origin": "EUR",
-        "effective_at": "2026-06-12T00:00:00Z",
+        "valid_from": "2026-06-12",
         "breakdown": {},
     }
     async with await _client(app) as ac:
@@ -238,7 +260,7 @@ async def test_post_costs_422_missing_required_breakdown_field() -> None:
     assert body["detail"]["field"] == "fob_eur"
 
 
-async def test_post_costs_422_when_fx_rate_missing_at_effective_at() -> None:
+async def test_post_costs_422_when_fx_rate_missing_at_valid_from() -> None:
     svc = _FakeCostService()
     svc.behavior = "fx_missing"
     user = _FakeUser()
@@ -247,7 +269,7 @@ async def test_post_costs_422_when_fx_rate_missing_at_effective_at() -> None:
         "sku": "MT-V-038",
         "scheme_code": "FBA",
         "currency_origin": "EUR",
-        "effective_at": "2026-06-12T00:00:00Z",
+        "valid_from": "2026-06-12",
         "breakdown": {"fob_eur": 12.40},
     }
     async with await _client(app) as ac:
@@ -257,25 +279,63 @@ async def test_post_costs_422_when_fx_rate_missing_at_effective_at() -> None:
     assert body["detail"]["code"] == "fx_rate_not_found_at_effective_at"
 
 
-async def test_put_costs_versions_correctly_status_superseded_then_active() -> None:
+async def test_post_costs_409_when_range_overlaps() -> None:
+    svc = _FakeCostService()
+    svc.behavior = "overlap"
+    user = _FakeUser()
+    app = _build_app(svc, user)
+    payload = {
+        "sku": "MT-V-038",
+        "scheme_code": "FBA",
+        "currency_origin": "EUR",
+        "valid_from": "2026-06-12",
+        "breakdown": {"fob_eur": 12.40},
+    }
+    async with await _client(app) as ac:
+        resp = await ac.post("/api/v1/costs", json=payload)
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["code"] == "cost_range_overlap"
+
+
+async def test_post_costs_422_rejects_legacy_effective_at() -> None:
+    """El schema es `extra="forbid"`: el campo viejo `effective_at` se rechaza."""
     svc = _FakeCostService()
     user = _FakeUser()
-    # Pre-seed an active cost.
-    cost = _FakeCost(version=1, status="active")
+    app = _build_app(svc, user)
+    payload = {
+        "sku": "MT-V-038",
+        "scheme_code": "FBA",
+        "currency_origin": "EUR",
+        "effective_at": "2026-06-12T00:00:00Z",
+        "valid_from": "2026-06-12",
+        "breakdown": {"fob_eur": 12.40},
+    }
+    async with await _client(app) as ac:
+        resp = await ac.post("/api/v1/costs", json=payload)
+    assert resp.status_code == 422
+
+
+async def test_put_costs_corrects_in_place_same_row_still_active() -> None:
+    svc = _FakeCostService()
+    user = _FakeUser()
+    # Pre-seed an open (active) cost.
+    cost = _FakeCost(version=1, valid_to=None)
     svc.costs[cost.id] = cost
     app = _build_app(svc, user)
     payload = {
         "breakdown": {"fob_eur": 13.00, "freight_eur": 1.80},
-        "effective_at": "2026-07-01T00:00:00Z",
+        "valid_from": "2026-07-01",
     }
     async with await _client(app) as ac:
         resp = await ac.put(f"/api/v1/costs/{cost.id}", json=payload)
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["cost"]["version"] == 2
+    # Corrección IN-PLACE: misma fila (mismo id), sigue vigente, sin versionar.
+    assert body["cost"]["id"] == str(cost.id)
+    assert body["cost"]["version"] == 1
     assert body["cost"]["status"] == "active"
-    # Previous one is now superseded.
-    assert svc.costs[cost.id].status == "superseded"
+    assert body["cost"]["valid_from"] == "2026-07-01"
+    assert body["cost"]["breakdown"]["fob_eur"] == 13.00
 
 
 async def test_put_costs_404_when_id_unknown() -> None:
@@ -292,9 +352,10 @@ async def test_put_costs_404_when_id_unknown() -> None:
 async def test_get_products_sku_costs_lists_active() -> None:
     svc = _FakeCostService()
     user = _FakeUser()
-    cost1 = _FakeCost(sku="MT-V-038", scheme_code="FBA")
-    cost2 = _FakeCost(sku="MT-V-038", scheme_code="DIRECT_B2C")
-    cost3 = _FakeCost(sku="MT-V-038", scheme_code="FBM", status="superseded")
+    cost1 = _FakeCost(sku="MT-V-038", scheme_code="FBA", valid_to=None)
+    cost2 = _FakeCost(sku="MT-V-038", scheme_code="DIRECT_B2C", valid_to=None)
+    # Cerrado (rango pasado) ⇒ no vigente.
+    cost3 = _FakeCost(sku="MT-V-038", scheme_code="FBM", valid_to=date(2026, 1, 1))
     for c in (cost1, cost2, cost3):
         svc.costs[c.id] = c
     app = _build_app(svc, user)

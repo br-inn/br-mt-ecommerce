@@ -141,7 +141,13 @@ class PricingEngine:
 
     @staticmethod
     def _landed_b2c(product: ProductPricingData, route: RouteParams, fees: ChannelFees) -> Decimal:
-        """Cost of one unit landed in Dubai warehouse (layers 1-3)."""
+        """Cost of one unit landed in Dubai warehouse (layers 1-3).
+
+        If a real landed cost is known (from goods receipts / MAP), use it directly
+        and skip the pe_eur derivation. F0 cost wiring.
+        """
+        if product.landed_cost_aed is not None:
+            return product.landed_cost_aed
         net_eur = product.pe_eur * (1 - fees.mt_discount_pct / 100)
         fx = route.fx_rate * (1 + route.fx_buffer_pct / 100)
         aed = net_eur * fx
@@ -150,8 +156,13 @@ class PricingEngine:
 
     @staticmethod
     def _landed_b2b(product: ProductPricingData, route: RouteParams, fees: ChannelFees) -> Decimal:
-        """Cost of one box landed in Dubai warehouse (layers 1-3)."""
+        """Cost of one box landed in Dubai warehouse (layers 1-3).
+
+        Real landed cost is per unit; a box holds units_per_box units. F0 cost wiring.
+        """
         n = Decimal(str(product.units_per_box))
+        if product.landed_cost_aed is not None:
+            return product.landed_cost_aed * n
         net_eur_box = product.pe_eur * n * (1 - fees.mt_discount_pct / 100)
         fx = route.fx_rate * (1 + route.fx_buffer_pct / 100)
         aed_box = net_eur_box * fx

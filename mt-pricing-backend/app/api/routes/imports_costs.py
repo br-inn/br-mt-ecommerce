@@ -56,17 +56,17 @@ def get_importer_costs_service(
 def get_cost_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> CostServiceProtocol:
-    """Resuelve el ``CostService`` real cuando esté disponible (Agent F).
+    """Resuelve el ``CostService`` real (vigencia por rangos).
 
-    Mientras tanto, devuelve un service que levanta NotImplementedError —
-    los unit tests del router mockean este dependency.
+    Los unit tests del router mockean este dependency. El fallback
+    ``_PendingCostService`` sólo aplica si el módulo no estuviera disponible.
     """
-    try:  # pragma: no cover — import opcional hasta que aterrice US-1A-04-03
-        from app.services.pricing.cost_service import CostService  # type: ignore
+    try:
+        from app.services.costs.cost_service import CostService
 
         return CostService(session)  # type: ignore[return-value]
-    except ImportError:
-        return _PendingCostService()  # pragma: no cover
+    except ImportError:  # pragma: no cover — el service ya existe
+        return _PendingCostService()
 
 
 class _PendingCostService:  # pragma: no cover — sólo si Agent F no merge aún

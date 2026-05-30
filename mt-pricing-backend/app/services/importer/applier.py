@@ -29,6 +29,7 @@ from app.db.models.user import User
 from app.repositories.audit import AuditRepository
 from app.repositories.product import ProductRepository
 from app.services.importer.differ import RowAction, RowDiff
+from app.services.importer.related_writer import apply_related_entities, pop_related_keys
 from app.services.imports.division_assignment import assign_divisions
 
 logger = logging.getLogger(__name__)
@@ -124,6 +125,8 @@ async def _apply_one(
         payload = dict(diff.payload)
         payload["created_by"] = actor.id
         payload["updated_by"] = actor.id
+        # Pop reserved _* keys (not DB columns) before repo.create.
+        related = pop_related_keys(payload)
         # Fase B (mig 065): name_*/description_en/marketing_copy_en are not
         # columns on Product — strip them and upsert to product_translations.
         # Supported: en, es, ar (canonical) + fr, de, it, pt (JcS PIM import).
@@ -158,6 +161,8 @@ async def _apply_one(
                     await tr_repo.upsert(
                         sku=prod.sku, lang=_lang, name=trans_names[_lang], status="approved"
                     )
+        if related:
+            await apply_related_entities(session, prod.sku, related, actor_id=actor.id)
         await audit.record(
             entity_type="product",
             entity_id=diff.sku or "",
@@ -187,6 +192,9 @@ async def _apply_one(
         existing.updated_by = actor.id
         existing.updated_at = datetime.now(tz=UTC)
         await session.flush()
+        related = pop_related_keys(dict(diff.payload))
+        if related:
+            await apply_related_entities(session, diff.sku, related, actor_id=actor.id)  # type: ignore[arg-type]
         await audit.record(
             entity_type="product",
             entity_id=diff.sku or "",

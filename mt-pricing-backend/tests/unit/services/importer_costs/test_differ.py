@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -29,6 +30,7 @@ def _row(
     breakdown=None,
     errors=None,
     currency="AED",
+    valid_from=date(2026, 5, 7),
 ):
     return CostRow(
         row_index=row_index,
@@ -38,7 +40,7 @@ def _row(
         currency=currency,
         total=Decimal(total) if total is not None else None,
         breakdown=breakdown or {"fob": "80"},
-        effective_at=None,
+        valid_from=valid_from,
         errors=list(errors or []),
     )
 
@@ -52,13 +54,17 @@ class _FakeCost:
         total: Decimal,
         currency: str = "AED",
         breakdown: dict[str, Any] | None = None,
+        valid_from: date = date(2026, 1, 1),
+        valid_to: date | None = None,
     ) -> None:
-        self.product_sku = sku
+        self.sku = sku
         self.scheme_code = scheme
         self.supplier_code = supplier
-        self.total = total
-        self.currency = currency
+        # currency_origin es lo que compara el differ; total es ignorado ahora.
+        self.currency_origin = currency
         self.breakdown = breakdown or {}
+        self.valid_from = valid_from
+        self.valid_to = valid_to
 
 
 def _mk_session_with(
@@ -96,20 +102,34 @@ def _mk_session_with(
     return session
 
 
-async def test_compute_field_diff_detects_total_change() -> None:
-    cur = _FakeCost("A", "FBA", "S", Decimal("100"))
+def test_compute_field_diff_detects_breakdown_change() -> None:
+    cur = _FakeCost("A", "FBA", "S", Decimal("100"), breakdown={"fob": "70"})
     diff = _compute_field_diff(
         {
-            "total": Decimal("120"),
-            "currency": "AED",
+            "currency_origin": "AED",
             "supplier_code": "S",
-            "breakdown": {},
+            "breakdown": {"fob": "80"},
         },
         cur,
     )
-    assert "total" in diff
-    assert diff["total"]["from"] == "100"
-    assert diff["total"]["to"] == "120"
+    assert "breakdown" in diff
+    assert diff["breakdown"]["from"] == {"fob": "70"}
+    assert diff["breakdown"]["to"] == {"fob": "80"}
+
+
+def test_compute_field_diff_detects_currency_change() -> None:
+    cur = _FakeCost("A", "FBA", "S", Decimal("100"), currency="AED", breakdown={"fob": "80"})
+    diff = _compute_field_diff(
+        {
+            "currency_origin": "EUR",
+            "supplier_code": "S",
+            "breakdown": {"fob": "80"},
+        },
+        cur,
+    )
+    assert "currency_origin" in diff
+    assert diff["currency_origin"]["from"] == "AED"
+    assert diff["currency_origin"]["to"] == "EUR"
 
 
 async def test_create_action_when_no_active_cost() -> None:
@@ -160,7 +180,7 @@ async def test_orphan_when_supplier_missing() -> None:
     assert "supplier_unknown" in diffs[0].orphan_reasons
 
 
-async def test_update_when_total_changed() -> None:
+async def test_update_when_breakdown_changed() -> None:
     cur = _FakeCost("SKU001", "FBA", "SUP-A", Decimal("80.00"), "AED", {"fob": "70"})
     session = _mk_session_with(
         products=["SKU001"],
@@ -168,9 +188,9 @@ async def test_update_when_total_changed() -> None:
         suppliers=["SUP-A"],
         active_costs=[cur],
     )
+    # row breakdown default = {"fob": "80"} ≠ cur {"fob": "70"} → UPDATE.
     diffs, _ = await compute_cost_diff(session, [_row(total="100.50")])
     assert diffs[0].action == CostRowAction.UPDATE
-    assert "total" in diffs[0].diff
     assert "breakdown" in diffs[0].diff
 
 
@@ -190,6 +210,67 @@ async def test_no_change_when_identical() -> None:
         active_costs=[cur],
     )
     diffs, _ = await compute_cost_diff(session, [_row(total="100.50")])
+    assert diffs[0].action == CostRowAction.NO_CHANGE
+
+
+async def test_future_dated_row_creates_even_with_current_cost() -> None:
+    """Una fila con valid_from futuro crea un rango nuevo aunque exista un coste
+    abierto vigente hoy: se compara contra el coste vigente AL valid_from de la
+    fila, y como ninguno cubre esa fecha futura → CREATE."""
+    # Coste abierto que cubre hoy pero cierra antes de la fecha futura de la fila.
+    cur = _FakeCost(
+        "SKU001",
+        "FBA",
+        "SUP-A",
+        Decimal("80.00"),
+        "AED",
+        {"fob": "80"},
+        valid_from=date(2026, 1, 1),
+        valid_to=date(2026, 12, 31),
+    )
+    session = _mk_session_with(
+        products=["SKU001"],
+        schemes=["FBA"],
+        suppliers=["SUP-A"],
+        active_costs=[cur],
+    )
+    future_row = _row(total="100.50", valid_from=date(2027, 6, 1))
+    diffs, _ = await compute_cost_diff(session, [future_row])
+    assert diffs[0].action == CostRowAction.CREATE
+
+
+async def test_no_change_resolved_at_row_valid_from() -> None:
+    """Si el coste vigente al valid_from de la fila es idéntico → NO_CHANGE,
+    aunque exista otra fila más reciente para la misma clave."""
+    older = _FakeCost(
+        "SKU001",
+        "FBA",
+        "SUP-A",
+        Decimal("80.00"),
+        "AED",
+        {"fob": "80"},
+        valid_from=date(2026, 1, 1),
+        valid_to=date(2026, 6, 30),
+    )
+    newer = _FakeCost(
+        "SKU001",
+        "FBA",
+        "SUP-A",
+        Decimal("999"),
+        "AED",
+        {"fob": "999"},
+        valid_from=date(2026, 7, 1),
+        valid_to=None,
+    )
+    session = _mk_session_with(
+        products=["SKU001"],
+        schemes=["FBA"],
+        suppliers=["SUP-A"],
+        active_costs=[older, newer],
+    )
+    # Fila vigente en mayo → matchea `older` (idéntico) ⇒ NO_CHANGE.
+    row = _row(total="100.50", valid_from=date(2026, 5, 7))
+    diffs, _ = await compute_cost_diff(session, [row])
     assert diffs[0].action == CostRowAction.NO_CHANGE
 
 

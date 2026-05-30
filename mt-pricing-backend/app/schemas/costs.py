@@ -23,7 +23,7 @@ siguen exponiéndose en `CostResponse`.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 from uuid import UUID
@@ -55,15 +55,17 @@ SupplierStr = Annotated[
 # Cost — request payloads (NUEVO motor)
 # ---------------------------------------------------------------------------
 class CostCreate(BaseModel):
-    """POST /costs — payload del Comercial.
+    """POST /costs — payload del Comercial (vigencia por rangos).
 
     El backend:
       1. Valida `breakdown` contra `cost_components_template` del scheme.
-      2. Inserta — el trigger `costs_stamp_fx_trg` busca FX as-of vía
-         `fx_rate_at(currency_origin, 'AED', effective_at)` y estampa
+      2. Auto-encadena: cierra la fila ABIERTA previa (`valid_to = vf - 1 día`).
+      3. Inserta con `valid_to = NULL` — el trigger `costs_stamp_fx_trg` busca
+         FX as-of vía `fx_rate_at(currency_origin, 'AED', valid_from)` y estampa
          `fx_rate_id`. Si no encuentra rate → falla con
          `error.code='fx_rate_not_found_at_effective_at'`.
-      3. El trigger AFTER suma `breakdown × FX` → `scheme_landed_aed`.
+      4. El trigger AFTER suma `breakdown × FX` → `scheme_landed_aed`.
+      5. Si el rango solapa otro existente → 409 `cost_range_overlap`.
     """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -72,21 +74,22 @@ class CostCreate(BaseModel):
     scheme_code: SchemeCodeStr
     supplier_code: SupplierStr | None = None
     currency_origin: CurrencyStr = "AED"
-    effective_at: datetime
+    valid_from: date
     breakdown: dict[str, Any] = Field(default_factory=dict)
     fx_rate_id: UUID | None = None  # importer puede pasar explícito (preserva)
     fx_inferred: bool = False
 
 
 class CostUpdate(BaseModel):
-    """PUT /costs/{id} — versionado. Crea row nueva con version+1, marca la
-    anterior `superseded`. Sólo el `breakdown` y `effective_at` viajan.
+    """PATCH /costs/{id} — corrección IN-PLACE. Muta la misma fila
+    (breakdown / valid_from / currency_origin) y re-estampa FX/landed. NO crea
+    versión nueva ni toca `valid_to` (para cerrar un rango usar POST .../close).
     """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     breakdown: dict[str, Any] | None = None
-    effective_at: datetime | None = None
+    valid_from: date | None = None
     currency_origin: CurrencyStr | None = None
     fx_rate_id: UUID | None = None
     fx_inferred: bool | None = None
@@ -96,7 +99,7 @@ class CostUpdate(BaseModel):
         if not any(
             [
                 self.breakdown is not None,
-                self.effective_at is not None,
+                self.valid_from is not None,
                 self.currency_origin is not None,
                 self.fx_rate_id is not None,
                 self.fx_inferred is not None,
@@ -104,6 +107,16 @@ class CostUpdate(BaseModel):
         ):
             raise ValueError("at least one field required for update")
         return self
+
+
+class CostCloseRequest(BaseModel):
+    """POST /costs/{id}/close — fija `valid_to` (descatalogar / cierre sin
+    sucesor). Si solapa otro rango → 409 `cost_range_overlap`.
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    valid_to: date
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +166,7 @@ class CostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    # Nuevos (canónicos)
+    # Nuevos (canónicos) — vigencia por rangos
     sku: str
     scheme_code: str
     supplier_code: str | None = None
@@ -161,8 +174,10 @@ class CostResponse(BaseModel):
     fx_rate_id: UUID | None = None
     breakdown: dict[str, Any] = Field(default_factory=dict)
     scheme_landed_aed: Decimal | None = None
-    effective_at: datetime
-    status: Literal["active", "superseded"]
+    valid_from: date
+    valid_to: date | None = None
+    effective_at: datetime  # hybrid alias → valid_from
+    status: Literal["active", "superseded"]  # hybrid derivado por fecha
     fx_inferred: bool = False
     version: int = 1
     created_by: UUID | None = None
@@ -173,8 +188,6 @@ class CostResponse(BaseModel):
     product_sku: str | None = None
     currency: str | None = None
     total: Decimal | None = None
-    valid_from: datetime | None = None
-    valid_to: datetime | None = None
     fx_at: datetime | None = None
 
 
@@ -208,6 +221,7 @@ class CostCreatedResponse(BaseModel):
 __all__ = [
     "CostBase",
     "CostBreakdownValidationWarning",
+    "CostCloseRequest",
     "CostCreate",
     "CostCreatedResponse",
     "CostMissingSkuItem",

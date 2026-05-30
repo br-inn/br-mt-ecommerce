@@ -504,7 +504,7 @@ export interface paths {
         put?: never;
         /**
          * Seed inventory_positions desde costs activos
-         * @description Idempotente. Siembra inventory_positions desde costs activos.
+         * @description Idempotente. Siembra inventory_positions desde costs vigentes hoy.
          */
         post: operations["seed_inventory_from_costs_api_v1_admin_inventory_seed_from_costs_post"];
         delete?: never;
@@ -2109,6 +2109,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/costs/as-of": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Coste vigente a una fecha dada para sku+scheme(+supplier)
+         * @description Devuelve el coste cuyo rango de vigencia contiene `date` (`valid_from <= date AND (valid_to IS NULL OR valid_to >= date)`). 404 si no hay coste vigente a esa fecha.
+         */
+        get: operations["costsAsOf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/costs/missing": {
         parameters: {
             query?: never;
@@ -2142,8 +2162,8 @@ export interface paths {
          */
         get: operations["costsGet"];
         /**
-         * Actualizar coste (versionado: previa → superseded, nueva v+1)
-         * @description Actualiza un cost creando una nueva versión (v+1). La versión anterior queda en `superseded`. Re-valida breakdown contra el template del scheme.
+         * Corregir coste IN-PLACE (misma fila, re-estampa FX/landed)
+         * @description Corrige un cost mutando la MISMA fila (breakdown / valid_from / currency_origin). NO crea versión nueva ni toca `valid_to` (para cerrar un rango usar POST /costs/{id}/close). Si mover `valid_from` solapa otro rango → 409 `cost_range_overlap`.
          */
         put: operations["costsUpdate"];
         post?: never;
@@ -2155,11 +2175,30 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * [DEPRECATED] PATCH parcial — usa PUT /costs/{id} versionado
-         * @deprecated
-         * @description DEPRECATED — mantiene compat con tests Sprint 2. Internamente delega a `update_cost` (versionado). El frontend debe migrar a PUT /costs/{id}.
+         * Corregir coste IN-PLACE (misma fila)
+         * @description Corrección parcial IN-PLACE de un coste (breakdown / valid_from / currency_origin). NO crea versión nueva ni toca `valid_to`. Si mover `valid_from` solapa otro rango → 409 `cost_range_overlap`.
          */
         patch: operations["costsPatch"];
+        trace?: never;
+    };
+    "/api/v1/costs/{cost_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cerrar coste (fija valid_to — descatalogar sin sucesor)
+         * @description Fija el `valid_to` de un coste vigente para descatalogarlo. 404 si no existe; 409 si el rango resultante solapa otro existente.
+         */
+        post: operations["costsClose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/currencies": {
@@ -3422,6 +3461,31 @@ export interface paths {
         get: operations["importDatasheetsGetStatus"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Invoice
+         * @description Ingest a commercial invoice + import invoice pair to cost records.
+         *
+         *     - **commercial_pdf**: MT commercial invoice PDF (real cost per SKU).
+         *     - **import_pdf**: customs import invoice PDF (intrastat values + duties).
+         *     - **tariff_pct**: applicable tariff percentage (default 5 %).
+         *     - **confirm**: dry-run when False (default); write to DB when True.
+         */
+        post: operations["ingestInvoice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6315,8 +6379,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Costes activos del SKU agrupados por scheme
-         * @description Devuelve todos los costs activos del SKU agrupados por scheme (FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE) con breakdown desglosado.
+         * Costes vigentes del SKU agrupados por scheme
+         * @description Devuelve los costs del SKU agrupados por scheme (FBA/FBM/DIRECT_B2C/DIRECT_B2B/MARKETPLACE) vigentes a la fecha `as_of` (default hoy), con breakdown desglosado.
          */
         get: operations["productsListCosts"];
         put?: never;
@@ -9404,6 +9468,13 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_ingestInvoice */
+        Body_ingestInvoice: {
+            /** Commercial Pdf */
+            commercial_pdf: string;
+            /** Import Pdf */
+            import_pdf: string;
+        };
         /** Body_preview_ficha_enrich_api_v1_products__sku__ficha_enrich_preview_post */
         Body_preview_ficha_enrich_api_v1_products__sku__ficha_enrich_preview_post: {
             /**
@@ -10547,6 +10618,18 @@ export interface components {
             valid_to: string | null;
         };
         /**
+         * CostCloseRequest
+         * @description POST /costs/{id}/close — fija `valid_to` (descatalogar / cierre sin
+         *     sucesor). Si solapa otro rango → 409 `cost_range_overlap`.
+         */
+        CostCloseRequest: {
+            /**
+             * Valid To
+             * Format: date
+             */
+            valid_to: string;
+        };
+        /**
          * CostComponentsTemplate
          * @description Estructura de `cost_components_template` JSONB del scheme.
          *
@@ -10566,15 +10649,17 @@ export interface components {
         };
         /**
          * CostCreate
-         * @description POST /costs — payload del Comercial.
+         * @description POST /costs — payload del Comercial (vigencia por rangos).
          *
          *     El backend:
          *       1. Valida `breakdown` contra `cost_components_template` del scheme.
-         *       2. Inserta — el trigger `costs_stamp_fx_trg` busca FX as-of vía
-         *          `fx_rate_at(currency_origin, 'AED', effective_at)` y estampa
+         *       2. Auto-encadena: cierra la fila ABIERTA previa (`valid_to = vf - 1 día`).
+         *       3. Inserta con `valid_to = NULL` — el trigger `costs_stamp_fx_trg` busca
+         *          FX as-of vía `fx_rate_at(currency_origin, 'AED', valid_from)` y estampa
          *          `fx_rate_id`. Si no encuentra rate → falla con
          *          `error.code='fx_rate_not_found_at_effective_at'`.
-         *       3. El trigger AFTER suma `breakdown × FX` → `scheme_landed_aed`.
+         *       4. El trigger AFTER suma `breakdown × FX` → `scheme_landed_aed`.
+         *       5. Si el rango solapa otro existente → 409 `cost_range_overlap`.
          */
         CostCreate: {
             /** Breakdown */
@@ -10586,11 +10671,6 @@ export interface components {
              * @default AED
              */
             currency_origin: string;
-            /**
-             * Effective At
-             * Format: date-time
-             */
-            effective_at: string;
             /**
              * Fx Inferred
              * @default false
@@ -10604,6 +10684,11 @@ export interface components {
             sku: string;
             /** Supplier Code */
             supplier_code?: string | null;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
         };
         /**
          * CostCreatedResponse
@@ -10624,28 +10709,6 @@ export interface components {
             name?: string | null;
             /** Sku */
             sku: string;
-        };
-        /**
-         * CostPatch
-         * @description [LEGACY] PATCH parcial.
-         */
-        CostPatch: {
-            /** Breakdown */
-            breakdown?: {
-                [key: string]: unknown;
-            } | null;
-            /** Currency */
-            currency?: string | null;
-            /** Scheme Code */
-            scheme_code?: string | null;
-            /** Supplier Code */
-            supplier_code?: string | null;
-            /** Total */
-            total?: number | string | null;
-            /** Valid From */
-            valid_from?: string | null;
-            /** Valid To */
-            valid_to?: string | null;
         };
         /**
          * CostResponse
@@ -10713,8 +10776,11 @@ export interface components {
             updated_at: string;
             /** Updated By */
             updated_by?: string | null;
-            /** Valid From */
-            valid_from?: string | null;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
             /** Valid To */
             valid_to?: string | null;
             /**
@@ -10725,8 +10791,9 @@ export interface components {
         };
         /**
          * CostUpdate
-         * @description PUT /costs/{id} — versionado. Crea row nueva con version+1, marca la
-         *     anterior `superseded`. Sólo el `breakdown` y `effective_at` viajan.
+         * @description PATCH /costs/{id} — corrección IN-PLACE. Muta la misma fila
+         *     (breakdown / valid_from / currency_origin) y re-estampa FX/landed. NO crea
+         *     versión nueva ni toca `valid_to` (para cerrar un rango usar POST .../close).
          */
         CostUpdate: {
             /** Breakdown */
@@ -10735,12 +10802,12 @@ export interface components {
             } | null;
             /** Currency Origin */
             currency_origin?: string | null;
-            /** Effective At */
-            effective_at?: string | null;
             /** Fx Inferred */
             fx_inferred?: boolean | null;
             /** Fx Rate Id */
             fx_rate_id?: string | null;
+            /** Valid From */
+            valid_from?: string | null;
         };
         /** CounterProposalRequest */
         CounterProposalRequest: {
@@ -13516,6 +13583,50 @@ export interface components {
             payment_terms: string;
             /** So Id */
             so_id?: string | null;
+        };
+        /** InvoiceIngestItem */
+        InvoiceIngestItem: {
+            /** Code */
+            code: string;
+            /** Commercial Eur */
+            commercial_eur: string;
+            /** Detail */
+            detail?: string | null;
+            /** Duty Eur */
+            duty_eur: string;
+            /** Import Value Eur */
+            import_value_eur: string;
+            /** Po Action */
+            po_action: string;
+            /** Po Number */
+            po_number: string | null;
+            /** Qty */
+            qty: string;
+            /** Status */
+            status: string;
+        };
+        /** InvoiceIngestResult */
+        InvoiceIngestResult: {
+            /**
+             * Created
+             * @default 0
+             */
+            created: number;
+            /**
+             * Errors
+             * @default 0
+             */
+            errors: number;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["InvoiceIngestItem"][];
+            /**
+             * Skipped
+             * @default 0
+             */
+            skipped: number;
         };
         /** InvoiceLineCreate */
         InvoiceLineCreate: {
@@ -26304,6 +26415,8 @@ export interface operations {
                 sku?: string | null;
                 scheme?: string | null;
                 supplier?: string | null;
+                valid_on?: string | null;
+                include_history?: boolean;
                 cursor?: string | null;
                 limit?: number;
                 include_total?: boolean;
@@ -26376,10 +26489,54 @@ export interface operations {
             };
         };
     };
+    costsAsOf: {
+        parameters: {
+            query: {
+                sku: string;
+                scheme_code: string;
+                date: string;
+                supplier_code?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     costsListMissing: {
         parameters: {
             query: {
                 scheme_code: string;
+                as_of?: string | null;
                 limit?: number;
             };
             header?: never;
@@ -26481,6 +26638,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Unprocessable Entity */
             422: {
                 headers: {
@@ -26541,7 +26707,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CostPatch"];
+                "application/json": components["schemas"]["CostUpdate"];
             };
         };
         responses: {
@@ -26563,6 +26729,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Unprocessable Entity */
             422: {
                 headers: {
@@ -26570,6 +26745,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    costsClose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cost_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CostCloseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -29107,6 +29335,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingestInvoice: {
+        parameters: {
+            query?: {
+                tariff_pct?: number;
+                confirm?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_ingestInvoice"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceIngestResult"];
                 };
             };
             /** @description Validation Error */
@@ -35657,6 +35921,7 @@ export interface operations {
     productsListCosts: {
         parameters: {
             query?: {
+                as_of?: string | null;
                 only_active?: boolean;
             };
             header?: never;

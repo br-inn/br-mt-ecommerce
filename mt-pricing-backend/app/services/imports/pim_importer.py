@@ -36,8 +36,10 @@ from app.core.config import settings
 from app.db.models.import_run import ImportRun
 from app.db.models.product import ProductTranslation
 from app.repositories.audit import AuditRepository
-from app.repositories.product import ProductRepository
+from app.repositories.product import ProductRepository, ProductTranslationRepository
 from app.services.importer.column_mapper import EXPECTED_HEADERS
+from app.services.importer.related_writer import apply_related_entities, pop_related_keys
+from app.services.importer.xml_parser import XmlParseError, parse_xml_stream
 from app.services.imports.division_assignment import assign_divisions
 from app.services.imports.pim_row_mapper import map_pim_row_to_product
 
@@ -109,6 +111,10 @@ class PimImporter:
                 self.run_id,
                 self._division_codes,
             )
+
+        # Dispatch XML branch — antes de intentar abrir con openpyxl.
+        if str(self.source_path).lower().endswith(".xml"):
+            return await self._run_xml()
 
         if not self.source_path.exists():
             if self._storage_bucket:
@@ -269,6 +275,188 @@ class PimImporter:
             len(data),
             tmp,
         )
+
+    # ---------------------------------------------------------------- xml run
+    async def _run_xml(self) -> ImportRun:
+        """Ejecuta el import desde una fuente .xml (rama async del PimImporter).
+
+        Comparte la misma sesión y `_run` que la rama xlsx — el run ya fue
+        cargado en `run()` antes del dispatch.
+        """
+        # 1. Resolver fuente (mirror xlsx path).
+        if not self.source_path.exists():
+            if self._storage_bucket:
+                await self._download_from_storage()
+            else:
+                await self._mark_failed(f"Archivo XML no encontrado: {self.source_path}")
+                raise FileNotFoundError(self.source_path)
+
+        # 2. Parsear XML — error de archivo aborta el run.
+        try:
+            parse_result = parse_xml_stream(self.source_path.read_bytes())
+        except XmlParseError as exc:
+            await self._mark_failed(f"XmlParseError: {exc}")
+            return self._run  # type: ignore[return-value]
+
+        # 3. Marcar run como running.
+        self._run.status = "running"  # type: ignore[union-attr]
+        self._run.started_at = datetime.now(tz=UTC)  # type: ignore[union-attr]
+        await self.session.commit()
+
+        inserted = 0
+        updated = 0
+        error_rows = 0
+        errors: list[dict[str, Any]] = []
+
+        tr_repo = ProductTranslationRepository(self.session)
+
+        # 4. Iterar filas.
+        for row in parse_result.rows:
+            # Filas con errores de validación o sin SKU → error de fila.
+            if row.errors or row.sku is None:
+                error_rows += 1
+                if len(errors) < MAX_ERRORS_LOGGED:
+                    errors.append(
+                        {
+                            "row": row.row_index,
+                            "error": "; ".join(row.errors) if row.errors else "SKU ausente",
+                        }
+                    )
+                logger.warning(
+                    "PimImporter XML row %d errors: %s",
+                    row.row_index,
+                    row.errors,
+                )
+                continue
+
+            sku = row.sku
+            try:
+                async with self.session.begin_nested():
+                    payload = dict(row.payload)
+                    related = pop_related_keys(payload)
+
+                    # Extraer campos que NO son columnas del modelo Product.
+                    name_en: str | None = payload.pop("name_en", None)
+                    description_en: str | None = payload.pop("description_en", None)
+                    marketing_copy_en: str | None = payload.pop("marketing_copy_en", None)
+                    payload.pop("active", None)
+                    payload.pop("division_codes", None)
+
+                    existing = await self._repo.get_by_sku(sku)
+
+                    if existing is None:
+                        # INSERT
+                        if self.actor_id is not None:
+                            payload["created_by"] = self.actor_id
+                            payload["updated_by"] = self.actor_id
+                        await self._repo.create(**payload)
+                        # Upsert EN translation (name + description + marketing_copy).
+                        en_kwargs: dict[str, Any] = {"status": "approved"}
+                        if name_en is not None:
+                            en_kwargs["name"] = name_en
+                        if description_en is not None:
+                            en_kwargs["description"] = description_en
+                        if marketing_copy_en is not None:
+                            en_kwargs["marketing_copy"] = marketing_copy_en
+                        if len(en_kwargs) > 1:
+                            await tr_repo.upsert(sku=sku, lang="en", **en_kwargs)
+                        await apply_related_entities(
+                            self.session, sku, related, actor_id=self.actor_id
+                        )
+                        await self._audit_event(
+                            action="product.imported.created",
+                            sku=sku,
+                            payload_diff={"_import_run_id": str(self.run_id)},
+                        )
+                        await self._maybe_assign_divisions(sku)
+                        inserted += 1
+
+                    else:
+                        # UPDATE — solo campos no locked.
+                        locked = set(existing.manual_locked_fields or [])
+                        changed: dict[str, Any] = {}
+                        for field, new_value in payload.items():
+                            if field in locked:
+                                continue
+                            if field in {"sku", "internal_id", "created_at", "created_by"}:
+                                continue
+                            current = getattr(existing, field, None)
+                            if current != new_value:
+                                setattr(existing, field, new_value)
+                                changed[field] = {
+                                    "from": _safe_repr(current),
+                                    "to": _safe_repr(new_value),
+                                }
+                        # Upsert EN translation si no está locked.
+                        if "translations.en" not in locked:
+                            en_kwargs = {"status": "approved"}
+                            if name_en is not None:
+                                en_kwargs["name"] = name_en
+                            if description_en is not None:
+                                en_kwargs["description"] = description_en
+                            if marketing_copy_en is not None:
+                                en_kwargs["marketing_copy"] = marketing_copy_en
+                            if len(en_kwargs) > 1:
+                                await tr_repo.upsert(sku=sku, lang="en", **en_kwargs)
+                        if related:
+                            await apply_related_entities(
+                                self.session, sku, related, actor_id=self.actor_id
+                            )
+                        if changed:
+                            if self.actor_id is not None:
+                                existing.updated_by = self.actor_id
+                            existing.updated_at = datetime.now(tz=UTC)
+                            await self.session.flush()
+                            await self._audit_event(
+                                action="product.imported.updated",
+                                sku=sku,
+                                payload_diff={
+                                    "_import_run_id": str(self.run_id),
+                                    "diff": changed,
+                                },
+                            )
+                        await self._maybe_assign_divisions(sku)
+                        updated += 1
+
+            except Exception as exc:
+                error_rows += 1
+                if len(errors) < MAX_ERRORS_LOGGED:
+                    errors.append({"row": row.row_index, "error": str(exc)[:200]})
+                logger.warning(
+                    "PimImporter XML row %d sku=%s failed: %s",
+                    row.row_index,
+                    sku,
+                    exc,
+                )
+
+        # 5. Finalizar run.
+        total = len(parse_result.rows)
+        self._run.total_rows = total  # type: ignore[union-attr]
+        self._run.inserted_rows = inserted  # type: ignore[union-attr]
+        self._run.updated_rows = updated  # type: ignore[union-attr]
+        self._run.skipped_rows = 0  # XML no emite filas vacías; errores van a error_rows
+        self._run.error_rows = error_rows  # type: ignore[union-attr]
+        self._run.errors = errors  # type: ignore[union-attr]
+        self._run.summary = {  # type: ignore[union-attr]
+            "inserted": inserted,
+            "updated": updated,
+            "errors": error_rows,
+            "max_errors_logged": MAX_ERRORS_LOGGED,
+        }
+        self._run.finished_at = datetime.now(tz=UTC)  # type: ignore[union-attr]
+        self._run.status = (  # type: ignore[union-attr]
+            "completed" if error_rows == 0 else "completed_with_errors"
+        )
+        await self.session.commit()
+        logger.info(
+            "PimImporter XML completed run_id=%s inserted=%d updated=%d errors=%d",
+            self.run_id,
+            inserted,
+            updated,
+            error_rows,
+        )
+        self._cleanup_tmp()
+        return self._run  # type: ignore[return-value]
 
     def _cleanup_tmp(self) -> None:
         """Remove temp file created by _download_from_storage, if any."""

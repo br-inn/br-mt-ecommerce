@@ -81,6 +81,9 @@ class ProductPricingData:
     b2c_labeling_aed: Decimal
     ceiling_basis: CeilingBasis
     logistics: ProductLogistics
+    # Real landed cost per unit in AED from goods receipts (MAP). When set, the
+    # engine uses it as layers 1-3 instead of deriving from pe_eur (F0 cost wiring).
+    landed_cost_aed: Optional[Decimal] = None
 
     def __post_init__(self) -> None:
         if self.units_per_box < 1:

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -24,8 +25,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.cost import Cost
 from app.db.models.cost_scheme import CostScheme
-from app.db.models.pricing import Cost
 from app.db.models.product import Product
 from app.db.models.supplier import Supplier
 from app.services.importer_costs.parser import CostRow
@@ -77,23 +78,34 @@ def _normalize_decimal(v: Any) -> str | None:
 
 
 def _build_payload(row: CostRow) -> dict[str, Any]:
-    """Convierte CostRow → kwargs para CostService.create_cost."""
+    """Convierte CostRow → kwargs para ``CostService.create_cost``.
+
+    Las claves coinciden con la firma actual del service (vigencia por rangos):
+    ``sku`` / ``scheme_code`` / ``supplier_code`` / ``currency_origin`` /
+    ``breakdown`` / ``valid_from``. ``valid_from`` default a hoy si la fila no
+    lo trae (el parser ya lo resuelve, pero reforzamos por seguridad).
+    """
     return {
-        "product_sku": row.sku,
+        "sku": row.sku,
         "scheme_code": row.scheme_code,
         "supplier_code": row.supplier_code,
-        "currency": row.currency or "AED",
-        "total": row.total,
+        "currency_origin": row.currency or "AED",
         "breakdown": dict(row.breakdown),
-        "effective_at": row.effective_at,
+        "valid_from": row.valid_from or date.today(),
     }
 
 
 def _compute_field_diff(payload: dict[str, Any], current: Cost) -> dict[str, dict[str, Any]]:
+    """Diff entre el payload de import y el coste vigente a su ``valid_from``.
+
+    Compara sólo lo que el importer realmente fija: ``currency_origin``,
+    ``supplier_code`` y ``breakdown``. El ``scheme_landed_aed`` lo deriva el
+    trigger DB a partir del breakdown, por lo que comparar breakdown ya cubre
+    cambios de coste sin depender de un total preexistente.
+    """
     diff: dict[str, dict[str, Any]] = {}
     fields_to_compare = {
-        "total": ("total", _normalize_decimal),
-        "currency": ("currency", lambda v: v),
+        "currency_origin": ("currency_origin", lambda v: v),
         "supplier_code": ("supplier_code", lambda v: v),
     }
     for payload_key, (col, norm) in fields_to_compare.items():
@@ -132,25 +144,52 @@ async def _load_master_sets(
     return sku_set, scheme_set, supplier_set
 
 
-async def _load_active_costs(
+def _norm_key(sku: str, scheme: str, supplier: str | None) -> tuple[str, str, str]:
+    """Clave normalizada (supplier NULL == '') — coincide con la exclusión GiST."""
+    return (sku, scheme, supplier or "")
+
+
+async def _load_costs_for_keys(
     session: AsyncSession, keys: Sequence[tuple[str, str, str | None]]
-) -> dict[tuple[str, str, str | None], Cost]:
-    """Carga los costos activos (valid_to IS NULL) para los triples (sku,scheme,supplier?)."""
+) -> dict[tuple[str, str, str], list[Cost]]:
+    """Carga TODAS las filas de coste (cualquier rango de vigencia) para los
+    triples ``(sku, scheme, supplier?)`` presentes en el import.
+
+    A diferencia de la versión anterior (sólo ``valid_to IS NULL``), traemos la
+    cadena completa para poder resolver, por fila, el coste vigente al
+    ``valid_from`` de esa fila — necesario para soportar filas con fecha futura.
+    """
     if not keys:
         return {}
-    skus = [k[0] for k in keys]
-    schemes = [k[1] for k in keys]
-    stmt = (
-        select(Cost)
-        .where(Cost.product_sku.in_(skus))
-        .where(Cost.scheme_code.in_(schemes))
-        .where(Cost.valid_to.is_(None))
-    )
+    skus = list({k[0] for k in keys})
+    schemes = list({k[1] for k in keys})
+    stmt = select(Cost).where(Cost.sku.in_(skus)).where(Cost.scheme_code.in_(schemes))
     result = await session.execute(stmt)
-    out: dict[tuple[str, str, str | None], Cost] = {}
+    out: dict[tuple[str, str, str], list[Cost]] = {}
     for c in result.scalars().all():
-        out[(c.product_sku, c.scheme_code, c.supplier_code)] = c
+        out.setdefault(_norm_key(c.sku, c.scheme_code, c.supplier_code), []).append(c)
     return out
+
+
+def _cost_as_of(
+    by_key: dict[tuple[str, str, str], list[Cost]],
+    key: tuple[str, str, str],
+    on: date,
+) -> Cost | None:
+    """Devuelve la fila vigente a la fecha ``on`` para ``key``, o None.
+
+    Vigente := ``valid_from <= on AND (valid_to IS NULL OR valid_to >= on)``.
+    La exclusión GiST garantiza ≤1 fila; ante empates, gana el ``valid_from``
+    más reciente (consistente con ``CostService.cost_as_of``).
+    """
+    candidates = [
+        c
+        for c in by_key.get(key, [])
+        if c.valid_from <= on and (c.valid_to is None or c.valid_to >= on)
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda c: c.valid_from)
 
 
 async def compute_cost_diff(
@@ -164,7 +203,7 @@ async def compute_cost_diff(
     suppliers = [r.supplier_code for r in valid_rows if r.supplier_code]
 
     sku_set, scheme_set, supplier_set = await _load_master_sets(session, skus, schemes, suppliers)
-    active_costs = await _load_active_costs(
+    costs_by_key = await _load_costs_for_keys(
         session,
         [(r.sku, r.scheme_code, r.supplier_code) for r in valid_rows],  # type: ignore[misc]
     )
@@ -215,9 +254,13 @@ async def compute_cost_diff(
             )
             continue
 
-        key = (r.sku, r.scheme_code, r.supplier_code)
-        current = active_costs.get(key)  # type: ignore[arg-type]
         payload = _build_payload(r)
+        # Compara contra el coste vigente AL valid_from de la fila (no sólo el
+        # rango abierto). Así una fila futura crea un rango nuevo aunque exista
+        # un coste vigente hoy.
+        on = r.valid_from or date.today()
+        key = _norm_key(r.sku, r.scheme_code, r.supplier_code)  # type: ignore[arg-type]
+        current = _cost_as_of(costs_by_key, key, on)
         if current is None:
             diffs.append(
                 CostDiff(

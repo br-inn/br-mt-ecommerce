@@ -16,7 +16,7 @@ La interacción `create_cost`/`update_cost` con DB real se cubre en
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -52,6 +52,8 @@ class _FakeCost:
         self.currency_origin = kw.get("currency_origin", "EUR")
         self.fx_rate_id = kw.get("fx_rate_id")
         self.effective_at = kw.get("effective_at", datetime(2026, 6, 12, tzinfo=UTC))
+        self.valid_from = kw.get("valid_from", date(2026, 6, 12))
+        self.valid_to = kw.get("valid_to")
         self.breakdown = kw.get("breakdown", {})
         self.scheme_landed_aed = kw.get("scheme_landed_aed")
         self.status = kw.get("status", "active")

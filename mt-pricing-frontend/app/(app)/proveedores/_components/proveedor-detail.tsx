@@ -23,8 +23,10 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { RbacGuard } from "@/components/auth/rbac-guard";
+import { AuditTimelineRich } from "@/components/domain/audit/audit-timeline-rich";
 import { useSupplier } from "@/lib/hooks/suppliers/use-suppliers";
 import { useCosts } from "@/lib/hooks/costs/use-costs";
+import { costState } from "@/components/domain/costs/cost-state";
 
 interface Props {
   code: string;
@@ -137,21 +139,26 @@ export function ProveedorDetail({ code }: Props) {
         </TabsContent>
 
         <TabsContent value="audit">
-          <Card>
-            <CardHeader>
-              <CardTitle>{tTabs("audit")}</CardTitle>
-              <CardDescription>
-                {/* TODO Sprint 2: timeline real desde audit_events. */}
-                Pendiente Sprint 2 — timeline desde audit_events.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Eventos del proveedor se están registrando server-side y se
-                mostrarán aquí en una iteración futura.
-              </p>
-            </CardContent>
-          </Card>
+          <RbacGuard
+            permissions={["audit:read"]}
+            fallback={
+              <Card>
+                <CardHeader>
+                  <CardTitle>{tTabs("audit")}</CardTitle>
+                  <CardDescription>
+                    No tienes permiso para ver el historial de auditoría.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            }
+          >
+            <AuditTimelineRich
+              baseFilters={{
+                entity_types: ["supplier"],
+                entity_id: supplier.code,
+              }}
+            />
+          </RbacGuard>
         </TabsContent>
       </Tabs>
     </div>
@@ -171,10 +178,19 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-/** Mini-lista read-only de costes asociados al proveedor. */
+/** Variante de Badge por estado de vigencia (derivado por fecha). */
+const COST_STATE_BADGE: Record<
+  ReturnType<typeof costState>,
+  "default" | "secondary" | "outline"
+> = {
+  vigente: "default",
+  programado: "secondary",
+  caducado: "outline",
+};
+
+/** Mini-lista read-only de costes asociados al proveedor (rangos de vigencia). */
 function SupplierCostsList({ supplierCode }: { supplierCode: string }) {
-  const t = useTranslations("costs");
-  const tFields = useTranslations("costs.fields");
+  const t = useTranslations("costos");
   const { data, isLoading, isError } = useCosts({ supplier: supplierCode });
 
   const items = React.useMemo(
@@ -185,8 +201,8 @@ function SupplierCostsList({ supplierCode }: { supplierCode: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("subtitle")}</CardDescription>
+        <CardTitle>{t("tabs.costes")}</CardTitle>
+        <CardDescription>{t("empty.description")}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -198,24 +214,37 @@ function SupplierCostsList({ supplierCode }: { supplierCode: string }) {
         ) : isError ? (
           <p className="text-sm text-destructive">{t("errors.loadFailed")}</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("empty")}</p>
+          <p className="text-sm text-muted-foreground">{t("empty.title")}</p>
         ) : (
           <ul className="divide-y">
-            {items.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-3 py-2 text-sm"
-              >
-                <span className="font-mono text-xs">{c.product_sku}</span>
-                <span>{c.scheme_code}</span>
-                <span>
-                  {tFields("total")}: {c.total} {c.currency}
-                </span>
-                <Badge variant={c.valid_to ? "outline" : "default"}>
-                  {c.valid_to ? t("status.expired") : t("status.current")}
-                </Badge>
-              </li>
-            ))}
+            {items.map((c) => {
+              const state = costState(c);
+              return (
+                <li
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm"
+                >
+                  <span className="font-mono text-xs">{c.sku}</span>
+                  <span className="font-mono text-xs">{c.scheme_code}</span>
+                  <span className="tabular-nums">
+                    {c.scheme_landed_aed ?? "—"} AED
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {c.valid_from} → {c.valid_to ?? t("open")}
+                  </span>
+                  <Badge variant={COST_STATE_BADGE[state]}>
+                    {t(`states.${state}`)}
+                  </Badge>
+                  <Button asChild variant="link" size="sm" className="h-auto p-0">
+                    <Link
+                      href={`/catalogo/${encodeURIComponent(c.sku)}/costos`}
+                    >
+                      {t("viewInCosts")}
+                    </Link>
+                  </Button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>
